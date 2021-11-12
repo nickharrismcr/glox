@@ -49,11 +49,14 @@ func (vm *VM) interpret(source string) (InterpretResult, string) {
 func (vm *VM) run() (InterpretResult, Value) {
 
 	for {
+
 		inst := vm.chunk.code[vm.ip]
+
 		if debugTraceExecution {
 			vm.stackTrace()
 			_ = vm.chunk.disassembleInstruction(inst, vm.ip)
 		}
+
 		vm.ip++
 		switch inst {
 		case OP_RETURN:

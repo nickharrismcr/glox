@@ -11,7 +11,6 @@ func main() {
 
 	fmt.Println("GLOX V0.01")
 	vm := NewVM()
-	vm.test()
 
 	if len(os.Args) == 1 {
 		repl(vm)

@@ -37,6 +37,15 @@ type Parser struct {
 	rules               map[TokenType]ParseRule
 }
 
+func NewParser() *Parser {
+	p := &Parser{
+		hadError:  false,
+		panicMode: false,
+	}
+	p.setRules()
+	return p
+}
+
 func (vm *VM) compile(source string) bool {
 
 	parser := NewParser()
@@ -47,15 +56,6 @@ func (vm *VM) compile(source string) bool {
 	parser.consume(TOKEN_EOF, "Expect end of expression")
 	parser.endCompiler()
 	return !parser.hadError
-}
-
-func NewParser() *Parser {
-	p := &Parser{
-		hadError:  false,
-		panicMode: false,
-	}
-	p.setRules()
-	return p
 }
 
 func (p *Parser) setRules() {
