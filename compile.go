@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 type Precedence int
@@ -81,7 +82,7 @@ func (p *Parser) setRules() {
 		TOKEN_LESS:          {prefix: nil, infix: binary, prec: PREC_COMPARISON},
 		TOKEN_LESS_EQUAL:    {prefix: nil, infix: binary, prec: PREC_COMPARISON},
 		TOKEN_IDENTIFIER:    {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_STRING:        {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_STRING:        {prefix: loxstring, infix: nil, prec: PREC_NONE},
 		TOKEN_NUMBER:        {prefix: number, infix: nil, prec: PREC_NONE},
 		TOKEN_AND:           {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_CLASS:         {prefix: nil, infix: nil, prec: PREC_NONE},
@@ -265,6 +266,14 @@ func number(p *Parser) {
 
 	val, _ := strconv.ParseFloat(p.previous.lexeme(), 64)
 	p.emitConstant(NumberValue{value: val})
+
+}
+
+func loxstring(p *Parser) {
+
+	str := p.previous.lexeme()
+	strobj := MakeStringObject(strings.Replace(str, "\"", "", -1))
+	p.emitConstant(MakeObjectValue(&strobj))
 
 }
 

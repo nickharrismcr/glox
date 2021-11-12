@@ -61,34 +61,6 @@ func (vm *VM) isFalsey(v Value) bool {
 	return true
 }
 
-func (vm *VM) valuesEqual(a, b Value) bool {
-	switch a.(type) {
-	case BooleanValue:
-		switch b.(type) {
-		case BooleanValue:
-			return a.(BooleanValue).Get() == b.(BooleanValue).Get()
-		default:
-			return false
-		}
-	case NumberValue:
-		switch b.(type) {
-		case NumberValue:
-			return a.(NumberValue).Get() == b.(NumberValue).Get()
-		default:
-			return false
-		}
-
-	case NilValue:
-		switch b.(type) {
-		case NilValue:
-			return true
-		default:
-			return false
-		}
-	}
-	return false
-}
-
 func (vm *VM) interpret(source string) (InterpretResult, string) {
 
 	vm.chunk = NewChunk()
@@ -154,7 +126,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 		case OP_EQUAL:
 			a := vm.pop()
 			b := vm.pop()
-			vm.push(MakeBooleanValue(vm.valuesEqual(a, b)))
+			vm.push(MakeBooleanValue(valuesEqual(a, b)))
 		case OP_GREATER:
 			if !vm.binaryGreater() {
 				return INTERPRET_RUNTIME_ERROR, MakeNilValue()
@@ -170,21 +142,36 @@ func (vm *VM) run() (InterpretResult, Value) {
 
 func (vm *VM) binaryAdd() bool {
 	v2 := vm.pop()
-	nv2, ok := v2.(NumberValue)
-	if !ok {
-		vm.runTimeError("Operands must be numbers")
-		return false
-	}
+	switch v2.(type) {
+	case NumberValue:
+		nv2, _ := v2.(NumberValue)
+		v1 := vm.pop()
+		nv1, ok := v1.(NumberValue)
+		if !ok {
+			vm.runTimeError("Addition type mismatch")
+			return false
+		}
+		vm.push(MakeNumberValue(nv1.Get() + nv2.Get()))
+		return true
+	case ObjectValue:
+		ov2 := v2.(ObjectValue).value
+		if ov2.getType() == OBJECT_STRING {
+			v1 := vm.pop()
+			o1, ok := v1.(ObjectValue)
+			if !ok {
+				vm.runTimeError("Addition type mismatch")
+				return false
+			}
+			ov1 := o1.value
+			if ov1.getType() == OBJECT_STRING {
+				vm.concatenate(ov1.String(), ov2.String())
+				return true
+			}
 
-	v1 := vm.pop()
-	nv1, ok := v1.(NumberValue)
-	if !ok {
-		vm.runTimeError("Operands must be numbers")
-		return false
+		}
 	}
-
-	vm.push(MakeNumberValue(nv1.Get() + nv2.Get()))
-	return true
+	vm.runTimeError("Operands must be numbers or strings")
+	return false
 }
 
 func (vm *VM) binarySubtract() bool {
@@ -292,4 +279,10 @@ func (vm *VM) binaryLess() bool {
 
 	vm.push(MakeBooleanValue(nv1.Get() < nv2.Get()))
 	return true
+}
+
+func (vm *VM) concatenate(s1, s2 string) {
+
+	so := MakeStringObject(s1 + s2)
+	vm.push(MakeObjectValue(so))
 }

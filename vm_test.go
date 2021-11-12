@@ -29,6 +29,10 @@ func TestVMExpression(t *testing.T) {
 		{"false!=1", "true"},
 		{"nil==nil", "true"},
 		{"nil==false", "false"},
+		{"nil==\"hello\"", "false"},
+		{"\"hello\"==\"hello\"", "true"},
+		{"\"hello\"!=\"hello\"", "false"},
+		{"\"hello\"+\"hello\"", "hellohello"},
 	}
 
 	for i, test := range tests {

@@ -11,6 +11,46 @@ func PrintValue(v Value) {
 	fmt.Printf("%s\n", v.String())
 }
 
+func valuesEqual(a, b Value) bool {
+	switch a.(type) {
+	case BooleanValue:
+		switch b.(type) {
+		case BooleanValue:
+			return a.(BooleanValue).Get() == b.(BooleanValue).Get()
+		default:
+			return false
+		}
+	case NumberValue:
+		switch b.(type) {
+		case NumberValue:
+			return a.(NumberValue).Get() == b.(NumberValue).Get()
+		default:
+			return false
+		}
+
+	case NilValue:
+		switch b.(type) {
+		case NilValue:
+			return true
+		default:
+			return false
+		}
+	case ObjectValue:
+		switch b.(type) {
+		case ObjectValue:
+			av := a.(ObjectValue).value
+			bv := b.(ObjectValue).value
+			if av.getType() != bv.getType() {
+				return false
+			}
+			return av.String() == bv.String()
+		default:
+			return false
+		}
+	}
+	return false
+}
+
 //================================================================================================
 type NumberValue struct {
 	value float64
@@ -78,5 +118,29 @@ func (nv NilValue) String() string {
 }
 
 //================================================================================================
+type ObjectValue struct {
+	value Object
+}
+
+func (_ ObjectValue) isVal() {}
+
+func MakeObjectValue(obj Object) ObjectValue {
+	return ObjectValue{
+		value: obj,
+	}
+}
+
+func (ov ObjectValue) Get() Object {
+	return ov.value
+}
+
+func (ov ObjectValue) String() string {
+	return ov.value.String()
+}
+
+func (ov ObjectValue) isStringObject() bool {
+	return ov.value.getType() == OBJECT_STRING
+}
+
 //================================================================================================
 //================================================================================================
