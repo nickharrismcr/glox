@@ -72,31 +72,31 @@ func (p *Parser) setRules() {
 		TOKEN_SEMICOLON:     {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_SLASH:         {prefix: nil, infix: binary, prec: PREC_FACTOR},
 		TOKEN_STAR:          {prefix: nil, infix: binary, prec: PREC_FACTOR},
-		TOKEN_BANG:          {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_BANG_EQUAL:    {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_BANG:          {prefix: unary, infix: nil, prec: PREC_NONE},
+		TOKEN_BANG_EQUAL:    {prefix: nil, infix: binary, prec: PREC_EQUALITY},
 		TOKEN_EQUAL:         {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_EQUAL_EQUAL:   {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_GREATER:       {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_GREATER_EQUAL: {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_LESS:          {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_LESS_EQUAL:    {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_EQUAL_EQUAL:   {prefix: nil, infix: binary, prec: PREC_EQUALITY},
+		TOKEN_GREATER:       {prefix: nil, infix: binary, prec: PREC_COMPARISON},
+		TOKEN_GREATER_EQUAL: {prefix: nil, infix: binary, prec: PREC_COMPARISON},
+		TOKEN_LESS:          {prefix: nil, infix: binary, prec: PREC_COMPARISON},
+		TOKEN_LESS_EQUAL:    {prefix: nil, infix: binary, prec: PREC_COMPARISON},
 		TOKEN_IDENTIFIER:    {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_STRING:        {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_NUMBER:        {prefix: number, infix: nil, prec: PREC_NONE},
 		TOKEN_AND:           {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_CLASS:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_ELSE:          {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_FALSE:         {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_FALSE:         {prefix: literal, infix: nil, prec: PREC_NONE},
 		TOKEN_FOR:           {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_FUNC:          {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_IF:            {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_NIL:           {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_NIL:           {prefix: literal, infix: nil, prec: PREC_NONE},
 		TOKEN_OR:            {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_PRINT:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_RETURN:        {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_SUPER:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_THIS:          {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_TRUE:          {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_TRUE:          {prefix: literal, infix: nil, prec: PREC_NONE},
 		TOKEN_VAR:           {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_WHILE:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_ERROR:         {prefix: nil, infix: nil, prec: PREC_NONE},
@@ -240,6 +240,18 @@ func binary(p *Parser) {
 		p.emitByte(OP_MULTIPLY)
 	case TOKEN_SLASH:
 		p.emitByte(OP_DIVIDE)
+	case TOKEN_BANG_EQUAL:
+		p.emitBytes(OP_EQUAL, OP_NOT)
+	case TOKEN_EQUAL_EQUAL:
+		p.emitByte(OP_EQUAL)
+	case TOKEN_LESS:
+		p.emitByte(OP_LESS)
+	case TOKEN_LESS_EQUAL:
+		p.emitBytes(OP_GREATER, OP_NOT)
+	case TOKEN_GREATER:
+		p.emitByte(OP_GREATER)
+	case TOKEN_GREATER_EQUAL:
+		p.emitBytes(OP_LESS, OP_NOT)
 	}
 }
 
@@ -264,5 +276,18 @@ func unary(p *Parser) {
 	switch opType {
 	case TOKEN_MINUS:
 		p.emitByte(OP_NEGATE)
+	case TOKEN_BANG:
+		p.emitByte(OP_NOT)
+	}
+}
+
+func literal(p *Parser) {
+	switch p.previous.tokentype {
+	case TOKEN_NIL:
+		p.emitByte(OP_NIL)
+	case TOKEN_FALSE:
+		p.emitByte(OP_FALSE)
+	case TOKEN_TRUE:
+		p.emitByte(OP_TRUE)
 	}
 }

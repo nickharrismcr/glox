@@ -18,6 +18,17 @@ func TestVMExpression(t *testing.T) {
 		{"1+(2*(3+(4*-5)))", "-33.000000"},
 		{"1+(2*3)+(4*5)", "27.000000"},
 		{"1+(2/(3+(4/-5)))", "1.909091"},
+		{"2>1", "true"},
+		{"2>=1", "true"},
+		{"2<1", "false"},
+		{"2<=1", "false"},
+		{"!true", "false"},
+		{"!false", "true"},
+		{"1==1", "true"},
+		{"true!=false", "true"},
+		{"false!=1", "true"},
+		{"nil==nil", "true"},
+		{"nil==false", "false"},
 	}
 
 	for i, test := range tests {

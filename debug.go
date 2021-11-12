@@ -83,6 +83,20 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.simpleInstruction("OP_MULTIPLY", offset)
 	case OP_DIVIDE:
 		return c.simpleInstruction("OP_DIVIDE", offset)
+	case OP_NIL:
+		return c.simpleInstruction("OP_NIL", offset)
+	case OP_TRUE:
+		return c.simpleInstruction("OP_TRUE", offset)
+	case OP_FALSE:
+		return c.simpleInstruction("OP_FALSE", offset)
+	case OP_NOT:
+		return c.simpleInstruction("OP_NOT", offset)
+	case OP_EQUAL:
+		return c.simpleInstruction("OP_EQUAL", offset)
+	case OP_GREATER:
+		return c.simpleInstruction("OP_GREATER", offset)
+	case OP_LESS:
+		return c.simpleInstruction("OP_LESS", offset)
 	default:
 		fmt.Printf("Unknown opcode %d", i)
 		return offset + 1
