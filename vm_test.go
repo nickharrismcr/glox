@@ -57,3 +57,18 @@ func TestVMSyntaxError(t *testing.T) {
 	}
 
 }
+
+func TestVMRuntimeError(t *testing.T) {
+
+	vm := NewVM()
+
+	status, _ := vm.interpret("false+1")
+	if status != INTERPRET_RUNTIME_ERROR {
+		t.Error("Test failed : runtime error expected ")
+	}
+	status, _ = vm.interpret("\"hello\"+1")
+	if status != INTERPRET_RUNTIME_ERROR {
+		t.Error("Test failed : runtime error expected ")
+	}
+
+}
