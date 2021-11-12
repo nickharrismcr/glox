@@ -35,18 +35,19 @@ func (vm *VM) pop() Value {
 	return vm.stack[vm.stackTop]
 }
 
-func (vm *VM) interpret(source string) InterpretResult {
+func (vm *VM) interpret(source string) (InterpretResult, string) {
 
 	vm.chunk = NewChunk()
 	if !vm.compile(source) {
-		return INTERPRET_COMPILE_ERROR
+		return INTERPRET_COMPILE_ERROR, ""
 	}
 	vm.ip = 0
-	res := vm.run()
-	return res
+	res, val := vm.run()
+	return res, val.String()
 }
 
-func (vm *VM) run() InterpretResult {
+func (vm *VM) run() (InterpretResult, Value) {
+
 	for {
 		inst := vm.chunk.code[vm.ip]
 		if debugTraceExecution {
@@ -57,8 +58,7 @@ func (vm *VM) run() InterpretResult {
 		switch inst {
 		case OP_RETURN:
 			v := vm.pop()
-			PrintValue(v)
-			return INTERPRET_OK
+			return INTERPRET_OK, v
 		case OP_CONSTANT:
 			idx := vm.chunk.code[vm.ip]
 			vm.ip++
@@ -78,6 +78,7 @@ func (vm *VM) run() InterpretResult {
 			vm.binary_divide()
 		}
 	}
+	return INTERPRET_RUNTIME_ERROR, NumberValue{}
 }
 
 func (vm *VM) binary_add() {
