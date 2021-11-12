@@ -2,7 +2,8 @@ package main
 
 import "fmt"
 
-var debug = true
+var debugTraceExecution = true
+var debugPrintCode = true
 
 var token_names = map[TokenType]string{
 	TOKEN_LEFT_PAREN:    "TOKEN_LEFT_PAREN ",
@@ -99,4 +100,13 @@ func (c *Chunk) constantInstruction(name string, offset int) int {
 	value := c.constants[constant]
 	fmt.Printf("  %s\n", value.String())
 	return offset + 2
+}
+
+func (vm *VM) stackTrace() {
+	fmt.Printf("                                                         ")
+	for i := 0; i < vm.stackTop; i++ {
+		v := vm.stack[i]
+		fmt.Printf("[ %s ]", v.String())
+	}
+	fmt.Printf("\n")
 }

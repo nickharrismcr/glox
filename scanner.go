@@ -79,6 +79,10 @@ type Token struct {
 	start, length, line int
 }
 
+func (t Token) lexeme() string {
+	return (*t.source)[t.start : t.start+t.length]
+}
+
 func NewScanner(source string) *Scanner {
 	return &Scanner{
 		source: source,
@@ -173,6 +177,7 @@ func (s *Scanner) errorToken(message string) Token {
 }
 
 func (s *Scanner) advance() string {
+
 	s.current++
 	return s.source[s.current-1 : s.current]
 }
@@ -208,6 +213,7 @@ func (s *Scanner) skipWhiteSpace() {
 				}
 				return
 			}
+			return
 		default:
 			return
 		}

@@ -1,9 +1,5 @@
 package main
 
-import (
-	"fmt"
-)
-
 type InterpretResult int
 
 const (
@@ -40,16 +36,20 @@ func (vm *VM) pop() Value {
 }
 
 func (vm *VM) interpret(source string) InterpretResult {
-	vm.compile(source)
+
+	vm.chunk = NewChunk()
+	if !vm.compile(source) {
+		return INTERPRET_COMPILE_ERROR
+	}
 	vm.ip = 0
-	return INTERPRET_OK
-	//return vm.run()
+	res := vm.run()
+	return res
 }
 
 func (vm *VM) run() InterpretResult {
 	for {
 		inst := vm.chunk.code[vm.ip]
-		if debug {
+		if debugTraceExecution {
 			vm.stackTrace()
 			_ = vm.chunk.disassembleInstruction(inst, vm.ip)
 		}
@@ -107,13 +107,4 @@ func (vm *VM) binary_divide() {
 	f1 := v1.(NumberValue).Get()
 	f2 := v2.(NumberValue).Get()
 	vm.push(NumberValue{value: f1 / f2})
-}
-
-func (vm *VM) stackTrace() {
-	fmt.Printf("          ")
-	for i := 0; i < vm.stackTop; i++ {
-		v := vm.stack[i]
-		fmt.Printf("[ %s ]", v.String())
-	}
-	fmt.Printf("\n")
 }

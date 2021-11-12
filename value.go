@@ -8,7 +8,7 @@ type Value interface {
 }
 
 func PrintValue(v Value) {
-	fmt.Printf("%s\b", v.String())
+	fmt.Printf("%s\n", v.String())
 }
 
 type NumberValue struct {
