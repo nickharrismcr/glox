@@ -2,8 +2,8 @@ package main
 
 import "fmt"
 
-var debugTraceExecution = true
-var debugPrintCode = true
+var debugTraceExecution = false
+var debugPrintCode = false
 
 var token_names = map[TokenType]string{
 	TOKEN_LEFT_PAREN:    "TOKEN_LEFT_PAREN ",
@@ -97,6 +97,10 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.simpleInstruction("OP_GREATER", offset)
 	case OP_LESS:
 		return c.simpleInstruction("OP_LESS", offset)
+	case OP_PRINT:
+		return c.simpleInstruction("OP_PRINT", offset)
+	case OP_POP:
+		return c.simpleInstruction("OP_POP", offset)
 	default:
 		fmt.Printf("Unknown opcode %d", i)
 		return offset + 1

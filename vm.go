@@ -45,6 +45,9 @@ func (vm *VM) push(v Value) {
 }
 
 func (vm *VM) pop() Value {
+	if vm.stackTop == 0 {
+		return MakeNilValue()
+	}
 	vm.stackTop--
 	return vm.stack[vm.stackTop]
 }
@@ -74,6 +77,7 @@ func (vm *VM) interpret(source string) (InterpretResult, string) {
 
 func (vm *VM) run() (InterpretResult, Value) {
 
+Loop:
 	for {
 
 		inst := vm.chunk.code[vm.ip]
@@ -95,23 +99,23 @@ func (vm *VM) run() (InterpretResult, Value) {
 			vm.push(constant)
 		case OP_NEGATE:
 			if !vm.unaryNegate() {
-				return INTERPRET_RUNTIME_ERROR, MakeNilValue()
+				break Loop
 			}
 		case OP_ADD:
 			if !vm.binaryAdd() {
-				return INTERPRET_RUNTIME_ERROR, MakeNilValue()
+				break Loop
 			}
 		case OP_SUBTRACT:
 			if !vm.binarySubtract() {
-				return INTERPRET_RUNTIME_ERROR, MakeNilValue()
+				break Loop
 			}
 		case OP_MULTIPLY:
 			if !vm.binaryMultiply() {
-				return INTERPRET_RUNTIME_ERROR, MakeNilValue()
+				break Loop
 			}
 		case OP_DIVIDE:
 			if !vm.binaryDivide() {
-				return INTERPRET_RUNTIME_ERROR, MakeNilValue()
+				break Loop
 			}
 		case OP_NIL:
 			vm.push(MakeNilValue())
@@ -129,12 +133,20 @@ func (vm *VM) run() (InterpretResult, Value) {
 			vm.push(MakeBooleanValue(valuesEqual(a, b)))
 		case OP_GREATER:
 			if !vm.binaryGreater() {
-				return INTERPRET_RUNTIME_ERROR, MakeNilValue()
+				break Loop
 			}
 		case OP_LESS:
 			if !vm.binaryLess() {
-				return INTERPRET_RUNTIME_ERROR, MakeNilValue()
+				break Loop
 			}
+		case OP_PRINT:
+			v := vm.pop()
+			fmt.Printf("%s\n", v.String())
+		case OP_POP:
+			_ = vm.pop()
+		default:
+			vm.runTimeError("Invalid Opcode")
+			break Loop
 		}
 	}
 	return INTERPRET_RUNTIME_ERROR, MakeNilValue()

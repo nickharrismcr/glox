@@ -49,13 +49,21 @@ func NewParser() *Parser {
 
 func (vm *VM) compile(source string) bool {
 
+	if debugTraceExecution {
+		fmt.Println("Compiling...")
+	}
 	parser := NewParser()
 	parser.compilingChunk = vm.chunk
 	parser.scanner = NewScanner(source)
 	parser.advance()
-	parser.expression()
+	for !parser.match(TOKEN_EOF) {
+		parser.declaration()
+	}
 	parser.consume(TOKEN_EOF, "Expect end of expression")
 	parser.endCompiler()
+	if debugTraceExecution {
+		fmt.Println("Compile done.")
+	}
 	return !parser.hadError
 }
 
@@ -105,14 +113,28 @@ func (p *Parser) setRules() {
 	}
 }
 
+func (p *Parser) match(tt TokenType) bool {
+
+	if !p.check(tt) {
+		return false
+	}
+	p.advance()
+	return true
+}
+
+func (p *Parser) check(tt TokenType) bool {
+	return p.current.tokentype == tt
+}
+
 func (p *Parser) advance() {
 
 	p.previous = p.current
 	for {
-
 		p.current = p.scanner.scanToken()
+		if debugTraceExecution {
+			fmt.Printf("Compile lexeme : %s", p.current.lexeme())
+		}
 		if p.current.tokentype != TOKEN_ERROR {
-
 			break
 		}
 		p.errorAtCurrent(p.current.lexeme())
@@ -123,8 +145,31 @@ func (p *Parser) getRule(tok TokenType) ParseRule {
 	return p.rules[tok]
 }
 
+func (p *Parser) declaration() {
+	p.statement()
+}
+func (p *Parser) statement() {
+	if p.match(TOKEN_PRINT) {
+		p.printStatement()
+	} else {
+		p.expressionStatement()
+	}
+}
+
 func (p *Parser) expression() {
 	p.parsePredence(PREC_ASSIGNMENT)
+}
+
+func (p *Parser) expressionStatement() {
+	p.expression()
+	p.consume(TOKEN_SEMICOLON, "Expect ';' after expression.")
+	p.emitByte(OP_POP)
+}
+
+func (p *Parser) printStatement() {
+	p.expression()
+	p.consume(TOKEN_SEMICOLON, "Expect ';' after value.")
+	p.emitByte(OP_PRINT)
 }
 
 func (p *Parser) consume(toktype TokenType, msg string) {
