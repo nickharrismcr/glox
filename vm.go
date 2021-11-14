@@ -59,6 +59,13 @@ func (vm *VM) peek(dist int) Value {
 	return vm.stack[(vm.stackTop-1)-dist]
 }
 
+func (vm *VM) readShort() uint16 {
+	vm.ip += 2
+	b1 := vm.chunk.code[vm.ip-2]
+	b2 := vm.chunk.code[vm.ip-1]
+	return uint16(b1<<8 | b2)
+}
+
 func (vm *VM) isFalsey(v Value) bool {
 	switch v.(type) {
 	case *NumberValue:
@@ -248,6 +255,16 @@ Loop:
 				break Loop
 			}
 			vm.stack[slot_idx] = val
+
+		case OP_JUMP_IF_FALSE:
+			offset := vm.readShort()
+			if vm.isFalsey(vm.peek(0)) {
+				vm.ip += int(offset)
+			}
+
+		case OP_JUMP:
+			offset := vm.readShort()
+			vm.ip += int(offset)
 
 		default:
 			vm.runTimeError("Invalid Opcode")

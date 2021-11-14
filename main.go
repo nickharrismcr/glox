@@ -7,6 +7,12 @@ import (
 	"os"
 )
 
+/* additions :
+
+   declare a variable as constant  e.g  const a = 1;
+
+*/
+
 func main() {
 
 	fmt.Println("GLOX V0.01")
@@ -21,15 +27,15 @@ func main() {
 
 func repl(vm *VM) {
 
-	code := `
-var a = 1; 
-{ 
-	var b = 2;
-	b= 3;
-	print b;
-}`
-	vm.interpret(code)
-	return
+	/* 	code := `
+	var a = 1;
+	{
+		var b = 2;
+		b= 3;
+		print b;
+	}`
+		vm.interpret(code)
+		return */
 
 	inp := bufio.NewScanner(os.Stdin)
 	for {

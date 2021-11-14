@@ -2,8 +2,8 @@ package main
 
 import "fmt"
 
-var debugTraceExecution = true
-var debugPrintCode = true
+var debugTraceExecution = false //true
+var debugPrintCode = false      //true
 
 var token_names = map[TokenType]string{
 	TOKEN_LEFT_PAREN:    "TOKEN_LEFT_PAREN ",
@@ -114,6 +114,10 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.byteInstruction("OP_GET_LOCAL", offset)
 	case OP_SET_LOCAL:
 		return c.byteInstruction("OP_SET_LOCAL", offset)
+	case OP_JUMP_IF_FALSE:
+		return c.jumpInstruction("OP_JUMP_IF_FALSE", 1, offset)
+	case OP_JUMP:
+		return c.jumpInstruction("OP_JUMP", 1, offset)
 
 	default:
 		fmt.Printf("Unknown opcode %d", i)
@@ -138,6 +142,20 @@ func (c *Chunk) byteInstruction(name string, offset int) int {
 	slot := c.code[offset+1]
 	fmt.Printf("%-16s %04d\n", name, slot)
 	return offset + 2
+}
+
+func (c *Chunk) jumpInstruction(name string, sign int, offset int) int {
+
+	var jump uint16
+
+	jump1 := uint16(c.code[offset+1])
+	jump2 := uint16(c.code[offset+2])
+
+	jump = uint16(jump1 << 8)
+	jump |= uint16(jump2)
+
+	fmt.Printf("%-16s %04d -> %d \n", name, offset, uint16(offset)+3+(uint16(sign)*jump))
+	return offset + 3
 }
 
 func (vm *VM) stackTrace() {

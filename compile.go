@@ -179,6 +179,8 @@ func (p *Parser) declaration() {
 func (p *Parser) statement() {
 	if p.match(TOKEN_PRINT) {
 		p.printStatement()
+	} else if p.match(TOKEN_IF) {
+		p.ifStatement()
 	} else if p.match(TOKEN_LEFT_BRACE) {
 		p.beginScope()
 		p.block()
@@ -234,6 +236,24 @@ func (p *Parser) expressionStatement() {
 	p.emitByte(OP_POP)
 }
 
+func (p *Parser) ifStatement() {
+	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.")
+	p.expression()
+	p.consume(TOKEN_RIGHT_PAREN, "Expect '(' after condition.")
+
+	thenJump := p.emitJump(OP_JUMP_IF_FALSE)
+	p.emitByte(OP_POP)
+	p.statement()
+	elseJump := p.emitJump(OP_JUMP)
+	p.patchJump(thenJump)
+	p.emitByte(OP_POP)
+	if p.match(TOKEN_ELSE) {
+		p.statement()
+	}
+	p.patchJump(elseJump)
+
+}
+
 func (p *Parser) printStatement() {
 	p.expression()
 	p.consume(TOKEN_SEMICOLON, "Expect ';' after value.")
@@ -283,6 +303,13 @@ func (p *Parser) emitByte(byte uint8) {
 func (p *Parser) emitBytes(byte1, byte2 uint8) {
 	p.emitByte(byte1)
 	p.emitByte(byte2)
+}
+
+func (p *Parser) emitJump(instr uint8) int {
+	p.emitByte(instr)
+	p.emitByte(0xff)
+	p.emitByte(0xff)
+	return len(p.currentChunk().code) - 2
 }
 
 func (p *Parser) currentChunk() *Chunk {
@@ -465,6 +492,17 @@ func (p *Parser) addLocal(name Token) {
 
 func (p *Parser) emitConstant(value Value) {
 	p.emitBytes(OP_CONSTANT, p.makeConstant(value))
+}
+
+func (p *Parser) patchJump(offset int) {
+
+	jump := len(p.currentChunk().code) - offset - 2
+	if uint16(jump) > ^uint16(0) {
+		p.error("Jump overflow")
+	}
+	p.currentChunk().code[offset] = uint8((jump >> 8) & 0xff)
+	p.currentChunk().code[offset+1] = uint8(jump & 0xff)
+
 }
 
 func (p *Parser) makeConstant(value Value) uint8 {
