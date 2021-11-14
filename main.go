@@ -21,7 +21,7 @@ func main() {
 	if len(os.Args) == 1 {
 		repl(vm)
 	} else if len(os.Args) == 2 {
-		runFile(os.Args[2], vm)
+		runFile(os.Args[1], vm)
 	}
 }
 
@@ -59,8 +59,8 @@ func repl(vm *VM) {
 func runFile(path string, vm *VM) {
 
 	bytes, err := ioutil.ReadFile(path)
-	if err == nil {
-		fmt.Println("Could not open file.")
+	if err != nil {
+		fmt.Printf("Could not open file %s.", path)
 		os.Exit(1)
 	}
 	status, result := vm.interpret(string(bytes))
