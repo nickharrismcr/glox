@@ -30,12 +30,28 @@ type ParseRule struct {
 	prec   Precedence
 }
 
+type Local struct {
+	name  Token
+	depth int
+}
+
+type Compiler struct {
+	locals     [256]Local
+	localCount int
+	scopeDepth int
+}
+
+func NewCompiler() *Compiler {
+	return &Compiler{}
+}
+
 type Parser struct {
 	scanner             *Scanner
 	compilingChunk      *Chunk
 	current, previous   Token
 	hadError, panicMode bool
 	rules               map[TokenType]ParseRule
+	currentCompiler     *Compiler
 }
 
 func NewParser() *Parser {
@@ -55,6 +71,7 @@ func (vm *VM) compile(source string) bool {
 	parser := NewParser()
 	parser.compilingChunk = vm.chunk
 	parser.scanner = NewScanner(source)
+	parser.currentCompiler = NewCompiler()
 	parser.advance()
 	for !parser.match(TOKEN_EOF) {
 		parser.declaration()
@@ -158,6 +175,10 @@ func (p *Parser) declaration() {
 func (p *Parser) statement() {
 	if p.match(TOKEN_PRINT) {
 		p.printStatement()
+	} else if p.match(TOKEN_LEFT_BRACE) {
+		p.beginScope()
+		p.block()
+		p.endScope()
 	} else {
 		p.expressionStatement()
 	}
@@ -166,6 +187,15 @@ func (p *Parser) statement() {
 func (p *Parser) expression() {
 	p.parsePredence(PREC_ASSIGNMENT)
 }
+
+func (p *Parser) block() {
+
+	for !p.check(TOKEN_RIGHT_BRACE) && !p.check(TOKEN_EOF) {
+		p.declaration()
+	}
+	p.consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.")
+}
+
 func (p *Parser) varDeclaration() {
 	global := p.parseVariable("Expect variable name")
 
@@ -249,6 +279,22 @@ func (p *Parser) endCompiler() {
 	}
 }
 
+func (p *Parser) beginScope() {
+	p.currentCompiler.scopeDepth++
+}
+
+func (p *Parser) endScope() {
+
+	c := p.currentCompiler
+	c.scopeDepth--
+
+	// drop local vars on stack
+	for c.localCount > 0 && c.locals[c.localCount-1].depth > c.scopeDepth {
+		p.emitByte(OP_POP)
+		c.localCount--
+	}
+}
+
 func (p *Parser) parsePredence(prec Precedence) {
 
 	p.advance()
@@ -280,23 +326,107 @@ func (p *Parser) identifierConstant(t Token) uint8 {
 	return p.makeConstant(MakeObjectValue(MakeStringObject(t.lexeme())))
 }
 
+func (p *Parser) identifiersEqual(a, b Token) bool {
+	if a.length != b.length {
+		return false
+	}
+	if a.lexeme() != b.lexeme() {
+		return false
+	}
+	return true
+}
+
+func (p *Parser) resolveLocal(compiler *Compiler, name Token) int {
+	for i := compiler.localCount - 1; i >= 0; i-- {
+		local := compiler.locals[i]
+		if p.identifiersEqual(name, local.name) {
+			if local.depth == -1 {
+				p.error("Can't read local variable in its own initialiser.")
+			}
+			return i
+		}
+	}
+	return -1
+}
+
 func (p *Parser) parseVariable(errorMsg string) uint8 {
 	p.consume(TOKEN_IDENTIFIER, errorMsg)
+	p.declareVariable()
+	// if local, don't add to constant table
+	if p.currentCompiler.scopeDepth > 0 {
+		return 0
+	}
 	return p.identifierConstant(p.previous)
 }
 
+func (p *Parser) markInitialised() {
+	c := p.currentCompiler
+	c.locals[c.localCount-1].depth = c.scopeDepth
+}
+
 func (p *Parser) defineVariable(global uint8) {
+	// if local, it will already be on the stack
+	if p.currentCompiler.scopeDepth > 0 {
+		p.markInitialised()
+		return
+	}
 	p.emitBytes(OP_DEFINE_GLOBAL, global)
 }
 
+func (p *Parser) declareVariable() {
+	if p.currentCompiler.scopeDepth == 0 {
+		return
+	}
+	name := p.previous
+	// check we are not trying to create 2 locals with same name
+	// current scope is at end of array, check back from that
+	for i := p.currentCompiler.localCount - 1; i >= 0; i-- {
+
+		local := p.currentCompiler.locals[i]
+		if local.depth != -1 && local.depth < p.currentCompiler.scopeDepth {
+			break
+		}
+		if p.identifiersEqual(name, local.name) {
+			p.error("Already a variable with this name in this scope.")
+		}
+	}
+	p.addLocal(name)
+}
+
 func (p *Parser) namedVariable(name Token, canAssign bool) {
-	arg := p.identifierConstant(name)
+
+	var getOp, setOp uint8
+
+	arg := p.resolveLocal(p.currentCompiler, name)
+	if arg != -1 {
+		getOp = OP_GET_LOCAL
+		setOp = OP_SET_LOCAL
+	} else {
+		arg = int(p.identifierConstant(name))
+		getOp = OP_GET_GLOBAL
+		setOp = OP_SET_GLOBAL
+	}
+
 	if canAssign && p.match(TOKEN_EQUAL) {
 		p.expression()
-		p.emitBytes(OP_SET_GLOBAL, arg)
+		p.emitBytes(setOp, uint8(arg))
 	} else {
-		p.emitBytes(OP_GET_GLOBAL, arg)
+		p.emitBytes(getOp, uint8(arg))
 	}
+}
+
+func (p *Parser) addLocal(name Token) {
+
+	if p.currentCompiler.localCount == 256 {
+		p.error("Too many variables in function")
+		return
+	}
+	local := Local{
+		name:  name,
+		depth: -1, // marks as uninitialised
+	}
+	p.currentCompiler.locals[p.currentCompiler.localCount] = local
+	p.currentCompiler.localCount++
 }
 
 func (p *Parser) emitConstant(value Value) {

@@ -218,6 +218,19 @@ Loop:
 			}
 			vm.globals[name] = vm.peek(0)
 
+		case OP_GET_LOCAL:
+			// get local from stack at position = operand and push on stack top
+			slot_idx := vm.chunk.code[vm.ip]
+			vm.ip++
+			vm.push(vm.stack[slot_idx])
+
+		case OP_SET_LOCAL:
+			// get value at stack top and store it in stack at position = operand
+			val := vm.peek(0)
+			slot_idx := vm.chunk.code[vm.ip]
+			vm.ip++
+			vm.stack[slot_idx] = val
+
 		default:
 			vm.runTimeError("Invalid Opcode")
 			break Loop

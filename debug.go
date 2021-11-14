@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 
-var debugTraceExecution = true
+var debugTraceExecution = false
 var debugPrintCode = false
 
 var token_names = map[TokenType]string{
@@ -107,6 +107,10 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.constantInstruction("OP_GET_GLOBAL", offset)
 	case OP_SET_GLOBAL:
 		return c.constantInstruction("OP_SET_GLOBAL", offset)
+	case OP_GET_LOCAL:
+		return c.byteInstruction("OP_GET_LOCAL", offset)
+	case OP_SET_LOCAL:
+		return c.byteInstruction("OP_SET_LOCAL", offset)
 
 	default:
 		fmt.Printf("Unknown opcode %d", i)
@@ -124,6 +128,12 @@ func (c *Chunk) constantInstruction(name string, offset int) int {
 	fmt.Printf("%-16s %04d", name, constant)
 	value := c.constants[constant]
 	fmt.Printf("  %s\n", value.String())
+	return offset + 2
+}
+
+func (c *Chunk) byteInstruction(name string, offset int) int {
+	slot := c.code[offset+1]
+	fmt.Printf("%-16s %04d\n", name, slot)
 	return offset + 2
 }
 
