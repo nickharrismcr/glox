@@ -2,8 +2,8 @@ package main
 
 import "fmt"
 
-var debugTraceExecution = false
-var debugPrintCode = false
+var debugTraceExecution = true
+var debugPrintCode = true
 
 var token_names = map[TokenType]string{
 	TOKEN_LEFT_PAREN:    "TOKEN_LEFT_PAREN ",
@@ -46,6 +46,7 @@ var token_names = map[TokenType]string{
 	TOKEN_WHILE:         "TOKEN_WHILE",
 	TOKEN_ERROR:         "TOKEN_ERROR",
 	TOKEN_EOF:           "TOKEN_EOF",
+	TOKEN_CONST:         "TOKEN_CONST",
 }
 
 func (c *Chunk) disassemble(name string) {
@@ -103,6 +104,8 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.simpleInstruction("OP_POP", offset)
 	case OP_DEFINE_GLOBAL:
 		return c.constantInstruction("OP_DEFINE_GLOBAL", offset)
+	case OP_DEFINE_GLOBAL_CONST:
+		return c.constantInstruction("OP_DEFINE_GLOBAL_CONST", offset)
 	case OP_GET_GLOBAL:
 		return c.constantInstruction("OP_GET_GLOBAL", offset)
 	case OP_SET_GLOBAL:
@@ -141,7 +144,11 @@ func (vm *VM) stackTrace() {
 	fmt.Printf("                                                         ")
 	for i := 0; i < vm.stackTop; i++ {
 		v := vm.stack[i]
-		fmt.Printf("[ %s ]", v.String())
+		if v.Immutable() {
+			fmt.Printf("[ %s(c) ]", v.String())
+		} else {
+			fmt.Printf("[ %s ]", v.String())
+		}
 	}
 	fmt.Printf("\n")
 }

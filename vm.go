@@ -61,12 +61,12 @@ func (vm *VM) peek(idx int) Value {
 
 func (vm *VM) isFalsey(v Value) bool {
 	switch v.(type) {
-	case NumberValue:
-		return v.(NumberValue).Get() == 0
-	case NilValue:
+	case *NumberValue:
+		return v.(*NumberValue).Get() == 0
+	case *NilValue:
 		return true
-	case BooleanValue:
-		return !v.(BooleanValue).Get()
+	case *BooleanValue:
+		return !v.(*BooleanValue).Get()
 	}
 	return true
 }
@@ -193,6 +193,16 @@ Loop:
 			vm.globals[name] = vm.peek(0)
 			vm.pop()
 
+		case OP_DEFINE_GLOBAL_CONST:
+			// name = constant at operand index
+			// pop 1 stack value and set globals[name] to it and flag as immutable
+			idx := vm.chunk.code[vm.ip]
+			vm.ip++
+			name := vm.chunk.constants[idx].String()
+			vm.globals[name] = vm.peek(0)
+			vm.globals[name].SetImmutable(true)
+			vm.pop()
+
 		case OP_GET_GLOBAL:
 			// name = constant at operand index
 			// push globals[name] onto stack
@@ -216,6 +226,10 @@ Loop:
 				vm.runTimeError("Undefined variable %s\n", name)
 				break Loop
 			}
+			if vm.globals[name].Immutable() {
+				vm.runTimeError("Cannot assign to const %s\n", name)
+				break Loop
+			}
 			vm.globals[name] = vm.peek(0)
 
 		case OP_GET_LOCAL:
@@ -229,6 +243,10 @@ Loop:
 			val := vm.peek(0)
 			slot_idx := vm.chunk.code[vm.ip]
 			vm.ip++
+			if vm.stack[slot_idx].Immutable() {
+				vm.runTimeError("Cannot assign to const local.\n")
+				break Loop
+			}
 			vm.stack[slot_idx] = val
 
 		default:
@@ -242,21 +260,21 @@ Loop:
 func (vm *VM) binaryAdd() bool {
 	v2 := vm.pop()
 	switch v2.(type) {
-	case NumberValue:
-		nv2, _ := v2.(NumberValue)
+	case *NumberValue:
+		nv2, _ := v2.(*NumberValue)
 		v1 := vm.pop()
-		nv1, ok := v1.(NumberValue)
+		nv1, ok := v1.(*NumberValue)
 		if !ok {
 			vm.runTimeError("Addition type mismatch")
 			return false
 		}
 		vm.push(MakeNumberValue(nv1.Get() + nv2.Get()))
 		return true
-	case ObjectValue:
-		ov2 := v2.(ObjectValue).value
+	case *ObjectValue:
+		ov2 := v2.(*ObjectValue).value
 		if ov2.getType() == OBJECT_STRING {
 			v1 := vm.pop()
-			o1, ok := v1.(ObjectValue)
+			o1, ok := v1.(*ObjectValue)
 			if !ok {
 				vm.runTimeError("Addition type mismatch")
 				return false
@@ -275,14 +293,14 @@ func (vm *VM) binaryAdd() bool {
 
 func (vm *VM) binarySubtract() bool {
 	v2 := vm.pop()
-	nv2, ok := v2.(NumberValue)
+	nv2, ok := v2.(*NumberValue)
 	if !ok {
 		vm.runTimeError("Operands must be numbers")
 		return false
 	}
 
 	v1 := vm.pop()
-	nv1, ok := v1.(NumberValue)
+	nv1, ok := v1.(*NumberValue)
 	if !ok {
 		vm.runTimeError("Operands must be numbers")
 		return false
@@ -294,14 +312,14 @@ func (vm *VM) binarySubtract() bool {
 
 func (vm *VM) binaryMultiply() bool {
 	v2 := vm.pop()
-	nv2, ok := v2.(NumberValue)
+	nv2, ok := v2.(*NumberValue)
 	if !ok {
 		vm.runTimeError("Operands must be numbers")
 		return false
 	}
 
 	v1 := vm.pop()
-	nv1, ok := v1.(NumberValue)
+	nv1, ok := v1.(*NumberValue)
 	if !ok {
 		vm.runTimeError("Operands must be numbers")
 		return false
@@ -313,14 +331,14 @@ func (vm *VM) binaryMultiply() bool {
 
 func (vm *VM) binaryDivide() bool {
 	v2 := vm.pop()
-	nv2, ok := v2.(NumberValue)
+	nv2, ok := v2.(*NumberValue)
 	if !ok {
 		vm.runTimeError("Operands must be numbers")
 		return false
 	}
 
 	v1 := vm.pop()
-	nv1, ok := v1.(NumberValue)
+	nv1, ok := v1.(*NumberValue)
 	if !ok {
 		vm.runTimeError("Operands must be numbers")
 		return false
@@ -332,7 +350,7 @@ func (vm *VM) binaryDivide() bool {
 
 func (vm *VM) unaryNegate() bool {
 	v := vm.pop()
-	nv, ok := v.(NumberValue)
+	nv, ok := v.(*NumberValue)
 	if !ok {
 		vm.runTimeError("Operand must be a number")
 		return false
@@ -344,14 +362,14 @@ func (vm *VM) unaryNegate() bool {
 
 func (vm *VM) binaryGreater() bool {
 	v2 := vm.pop()
-	nv2, ok := v2.(NumberValue)
+	nv2, ok := v2.(*NumberValue)
 	if !ok {
 		vm.runTimeError("Operands must be numbers")
 		return false
 	}
 
 	v1 := vm.pop()
-	nv1, ok := v1.(NumberValue)
+	nv1, ok := v1.(*NumberValue)
 	if !ok {
 		vm.runTimeError("Operands must be numbers")
 		return false
@@ -363,14 +381,14 @@ func (vm *VM) binaryGreater() bool {
 
 func (vm *VM) binaryLess() bool {
 	v2 := vm.pop()
-	nv2, ok := v2.(NumberValue)
+	nv2, ok := v2.(*NumberValue)
 	if !ok {
 		vm.runTimeError("Operands must be numbers")
 		return false
 	}
 
 	v1 := vm.pop()
-	nv1, ok := v1.(NumberValue)
+	nv1, ok := v1.(*NumberValue)
 	if !ok {
 		vm.runTimeError("Operands must be numbers")
 		return false

@@ -9,6 +9,10 @@ import (
 
 func main() {
 
+	// TODO
+	// fix local reassignment
+	// local consts
+
 	fmt.Println("GLOX V0.01")
 	vm := NewVM()
 

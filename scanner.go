@@ -47,6 +47,7 @@ const (
 	TOKEN_WHILE
 	TOKEN_ERROR
 	TOKEN_EOF
+	TOKEN_CONST
 )
 
 var keywords = map[string]TokenType{
@@ -66,6 +67,7 @@ var keywords = map[string]TokenType{
 	"func":   TOKEN_FUNC,
 	"this":   TOKEN_THIS,
 	"true":   TOKEN_TRUE,
+	"const":  TOKEN_CONST,
 }
 
 type Scanner struct {

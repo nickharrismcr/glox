@@ -31,8 +31,9 @@ type ParseRule struct {
 }
 
 type Local struct {
-	name  Token
-	depth int
+	name      Token
+	depth     int
+	immutable bool
 }
 
 type Compiler struct {
@@ -124,6 +125,7 @@ func (p *Parser) setRules() {
 		TOKEN_THIS:          {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_TRUE:          {prefix: literal, infix: nil, prec: PREC_NONE},
 		TOKEN_VAR:           {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_CONST:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_WHILE:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_ERROR:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_EOF:           {prefix: nil, infix: nil, prec: PREC_NONE},
@@ -165,6 +167,8 @@ func (p *Parser) getRule(tok TokenType) ParseRule {
 func (p *Parser) declaration() {
 	if p.match(TOKEN_VAR) {
 		p.varDeclaration()
+	} else if p.match(TOKEN_CONST) {
+		p.constDeclaration()
 	} else {
 		p.statement()
 	}
@@ -197,6 +201,7 @@ func (p *Parser) block() {
 }
 
 func (p *Parser) varDeclaration() {
+
 	global := p.parseVariable("Expect variable name")
 
 	if p.match(TOKEN_EQUAL) {
@@ -207,6 +212,20 @@ func (p *Parser) varDeclaration() {
 	p.consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration")
 
 	p.defineVariable(global)
+}
+
+func (p *Parser) constDeclaration() {
+
+	v := p.parseVariable("Expect variable name")
+
+	if p.match(TOKEN_EQUAL) {
+		p.expression()
+	} else {
+		p.error("Constants must be initialised.")
+	}
+	p.consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration")
+
+	p.defineConstVariable(v)
 }
 
 func (p *Parser) expressionStatement() {
@@ -364,6 +383,11 @@ func (p *Parser) markInitialised() {
 	c.locals[c.localCount-1].depth = c.scopeDepth
 }
 
+func (p *Parser) setLocalImmutable() {
+	c := p.compilingChunk
+	c.constants[len(c.constants)-1].SetImmutable(true)
+}
+
 func (p *Parser) defineVariable(global uint8) {
 	// if local, it will already be on the stack
 	if p.currentCompiler.scopeDepth > 0 {
@@ -371,6 +395,16 @@ func (p *Parser) defineVariable(global uint8) {
 		return
 	}
 	p.emitBytes(OP_DEFINE_GLOBAL, global)
+}
+
+func (p *Parser) defineConstVariable(global uint8) {
+	// if local, it will already be on the stack
+	if p.currentCompiler.scopeDepth > 0 {
+		p.markInitialised()
+		p.setLocalImmutable()
+		return
+	}
+	p.emitBytes(OP_DEFINE_GLOBAL_CONST, global)
 }
 
 func (p *Parser) declareVariable() {
@@ -514,7 +548,7 @@ func grouping(p *Parser, canAssign bool) {
 func number(p *Parser, canAssign bool) {
 
 	val, _ := strconv.ParseFloat(p.previous.lexeme(), 64)
-	p.emitConstant(NumberValue{value: val})
+	p.emitConstant(&NumberValue{value: val})
 
 }
 
