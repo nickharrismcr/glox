@@ -118,6 +118,8 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.jumpInstruction("OP_JUMP_IF_FALSE", 1, offset)
 	case OP_JUMP:
 		return c.jumpInstruction("OP_JUMP", 1, offset)
+	case OP_LOOP:
+		return c.jumpInstruction("OP_LOOP", -1, offset)
 
 	default:
 		fmt.Printf("Unknown opcode %d", i)

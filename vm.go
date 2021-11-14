@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
 )
 
 type InterpretResult int
@@ -27,6 +28,17 @@ func NewVM() *VM {
 	}
 	vm.resetStack()
 	return vm
+}
+
+func (vm *VM) interpret(source string) (InterpretResult, string) {
+
+	vm.chunk = NewChunk()
+	if !vm.compile(source) {
+		return INTERPRET_COMPILE_ERROR, ""
+	}
+	vm.ip = 0
+	res, val := vm.run()
+	return res, val.String()
 }
 
 func (vm *VM) resetStack() {
@@ -61,8 +73,8 @@ func (vm *VM) peek(dist int) Value {
 
 func (vm *VM) readShort() uint16 {
 	vm.ip += 2
-	b1 := vm.chunk.code[vm.ip-2]
-	b2 := vm.chunk.code[vm.ip-1]
+	b1 := uint16(vm.chunk.code[vm.ip-2])
+	b2 := uint16(vm.chunk.code[vm.ip-1])
 	return uint16(b1<<8 | b2)
 }
 
@@ -78,22 +90,11 @@ func (vm *VM) isFalsey(v Value) bool {
 	return true
 }
 
-func (vm *VM) interpret(source string) (InterpretResult, string) {
-
-	vm.chunk = NewChunk()
-	if !vm.compile(source) {
-		return INTERPRET_COMPILE_ERROR, ""
-	}
-	vm.ip = 0
-	res, val := vm.run()
-	return res, val.String()
-}
-
+// main interpreter loop
 func (vm *VM) run() (InterpretResult, Value) {
 
 Loop:
 	for {
-
 		inst := vm.chunk.code[vm.ip]
 
 		if debugTraceExecution {
@@ -107,6 +108,7 @@ Loop:
 		case OP_RETURN:
 			// exit, return the value at stack top
 			v := vm.pop()
+			runtime.GC()
 			return INTERPRET_OK, v
 
 		case OP_CONSTANT:
@@ -266,6 +268,10 @@ Loop:
 			offset := vm.readShort()
 			vm.ip += int(offset)
 
+		case OP_LOOP:
+			offset := vm.readShort()
+			vm.ip -= int(offset)
+
 		default:
 			vm.runTimeError("Invalid Opcode")
 			break Loop
@@ -274,7 +280,9 @@ Loop:
 	return INTERPRET_RUNTIME_ERROR, MakeNilValue()
 }
 
+// numbers and strings only
 func (vm *VM) binaryAdd() bool {
+
 	v2 := vm.pop()
 	switch v2.(type) {
 	case *NumberValue:
@@ -287,6 +295,7 @@ func (vm *VM) binaryAdd() bool {
 		}
 		vm.push(MakeNumberValue(nv1.Get() + nv2.Get()))
 		return true
+
 	case *ObjectValue:
 		ov2 := v2.(*ObjectValue).value
 		if ov2.getType() == OBJECT_STRING {
@@ -301,7 +310,6 @@ func (vm *VM) binaryAdd() bool {
 				vm.concatenate(ov1.String(), ov2.String())
 				return true
 			}
-
 		}
 	}
 	vm.runTimeError("Operands must be numbers or strings")

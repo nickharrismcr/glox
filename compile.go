@@ -110,7 +110,7 @@ func (p *Parser) setRules() {
 		TOKEN_IDENTIFIER:    {prefix: variable, infix: nil, prec: PREC_NONE},
 		TOKEN_STRING:        {prefix: loxstring, infix: nil, prec: PREC_NONE},
 		TOKEN_NUMBER:        {prefix: number, infix: nil, prec: PREC_NONE},
-		TOKEN_AND:           {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_AND:           {prefix: nil, infix: and_, prec: PREC_AND},
 		TOKEN_CLASS:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_ELSE:          {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_FALSE:         {prefix: literal, infix: nil, prec: PREC_NONE},
@@ -118,7 +118,7 @@ func (p *Parser) setRules() {
 		TOKEN_FUNC:          {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_IF:            {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_NIL:           {prefix: literal, infix: nil, prec: PREC_NONE},
-		TOKEN_OR:            {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_OR:            {prefix: nil, infix: or_, prec: PREC_OR},
 		TOKEN_PRINT:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_RETURN:        {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_SUPER:         {prefix: nil, infix: nil, prec: PREC_NONE},
@@ -181,6 +181,8 @@ func (p *Parser) statement() {
 		p.printStatement()
 	} else if p.match(TOKEN_IF) {
 		p.ifStatement()
+	} else if p.match(TOKEN_WHILE) {
+		p.whileStatement()
 	} else if p.match(TOKEN_LEFT_BRACE) {
 		p.beginScope()
 		p.block()
@@ -254,6 +256,22 @@ func (p *Parser) ifStatement() {
 
 }
 
+func (p *Parser) whileStatement() {
+
+	loopStart := len(p.currentChunk().code)
+	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after while.")
+	p.expression()
+	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.")
+
+	exitJump := p.emitJump(OP_JUMP_IF_FALSE)
+	p.emitByte(OP_POP)
+
+	p.statement()
+	p.emitLoop(loopStart)
+	p.patchJump(exitJump)
+	p.emitByte(OP_POP)
+}
+
 func (p *Parser) printStatement() {
 	p.expression()
 	p.consume(TOKEN_SEMICOLON, "Expect ';' after value.")
@@ -303,6 +321,18 @@ func (p *Parser) emitByte(byte uint8) {
 func (p *Parser) emitBytes(byte1, byte2 uint8) {
 	p.emitByte(byte1)
 	p.emitByte(byte2)
+}
+
+func (p *Parser) emitLoop(loopStart int) {
+	p.emitByte(OP_LOOP)
+
+	offset := len(p.currentChunk().code) - loopStart + 2
+	if offset >= int(^uint16(0)) {
+		p.error("Loop body too large")
+	}
+
+	p.emitByte(uint8((offset >> 8) & 0xff))
+	p.emitByte(uint8(offset & 0xff))
 }
 
 func (p *Parser) emitJump(instr uint8) int {
@@ -624,4 +654,24 @@ func literal(p *Parser, canAssign bool) {
 	case TOKEN_TRUE:
 		p.emitByte(OP_TRUE)
 	}
+}
+
+func and_(p *Parser, canAssign bool) {
+
+	endJump := p.emitJump(OP_JUMP_IF_FALSE)
+	p.emitByte(OP_POP)
+	p.parsePredence(PREC_AND)
+	p.patchJump(endJump)
+}
+
+func or_(p *Parser, canAssign bool) {
+
+	elseJump := p.emitJump(OP_JUMP_IF_FALSE)
+	endJump := p.emitJump(OP_JUMP)
+
+	p.patchJump(elseJump)
+	p.emitByte(OP_POP)
+
+	p.parsePredence(PREC_OR)
+	p.patchJump(endJump)
 }
