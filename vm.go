@@ -55,8 +55,8 @@ func (vm *VM) pop() Value {
 	return vm.stack[vm.stackTop]
 }
 
-func (vm *VM) peek(idx int) Value {
-	return vm.stack[idx]
+func (vm *VM) peek(dist int) Value {
+	return vm.stack[(vm.stackTop-1)-dist]
 }
 
 func (vm *VM) isFalsey(v Value) bool {
