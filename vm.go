@@ -18,10 +18,13 @@ type VM struct {
 	ip       int
 	stack    [256]Value
 	stackTop int
+	globals  map[string]Value
 }
 
 func NewVM() *VM {
-	vm := &VM{}
+	vm := &VM{
+		globals: map[string]Value{},
+	}
 	vm.resetStack()
 	return vm
 }
@@ -50,6 +53,10 @@ func (vm *VM) pop() Value {
 	}
 	vm.stackTop--
 	return vm.stack[vm.stackTop]
+}
+
+func (vm *VM) peek(idx int) Value {
+	return vm.stack[idx]
 }
 
 func (vm *VM) isFalsey(v Value) bool {
@@ -89,61 +96,128 @@ Loop:
 
 		vm.ip++
 		switch inst {
+
 		case OP_RETURN:
+			// exit, return the value at stack top
 			v := vm.pop()
 			return INTERPRET_OK, v
+
 		case OP_CONSTANT:
+			// get the constant indexed by operand 2 and push it onto the stack
 			idx := vm.chunk.code[vm.ip]
 			vm.ip++
 			constant := vm.chunk.constants[idx]
 			vm.push(constant)
+
 		case OP_NEGATE:
+			// negate the value at stack top
 			if !vm.unaryNegate() {
 				break Loop
 			}
+
 		case OP_ADD:
+			// pop 2 stack values, add them and push onto the stack
 			if !vm.binaryAdd() {
 				break Loop
 			}
+
 		case OP_SUBTRACT:
+			// pop 2 stack values, subtract and push onto the stack
 			if !vm.binarySubtract() {
 				break Loop
 			}
+
 		case OP_MULTIPLY:
+			// pop 2 stack values, multiply and push onto the stack
 			if !vm.binaryMultiply() {
 				break Loop
 			}
+
 		case OP_DIVIDE:
+			// pop 2 stack values, divide and push onto the stack
 			if !vm.binaryDivide() {
 				break Loop
 			}
+
 		case OP_NIL:
+			// push nil val onto the stack
 			vm.push(MakeNilValue())
+
 		case OP_TRUE:
+			// push true bool val onto the stack
 			vm.push(MakeBooleanValue(true))
+
 		case OP_FALSE:
+			// push false bool val onto the stack
 			vm.push(MakeBooleanValue(false))
+
 		case OP_NOT:
+			// replace stack top with boolean not of itself
 			v := vm.pop()
 			bv := vm.isFalsey(v)
 			vm.push(MakeBooleanValue(bv))
+
 		case OP_EQUAL:
+			// pop 2 stack values, stack top = boolean
 			a := vm.pop()
 			b := vm.pop()
 			vm.push(MakeBooleanValue(valuesEqual(a, b)))
+
 		case OP_GREATER:
+			// pop 2 stack values, stack top = boolean
 			if !vm.binaryGreater() {
 				break Loop
 			}
+
 		case OP_LESS:
+			// pop 2 stack values, stack top = boolean
 			if !vm.binaryLess() {
 				break Loop
 			}
+
 		case OP_PRINT:
+			// pop 1 stack value and print it
 			v := vm.pop()
 			fmt.Printf("%s\n", v.String())
+
 		case OP_POP:
+			// pop 1 stack value and discard
 			_ = vm.pop()
+
+		case OP_DEFINE_GLOBAL:
+			// name = constant at operand index
+			// pop 1 stack value and set globals[name] to it
+			idx := vm.chunk.code[vm.ip]
+			vm.ip++
+			name := vm.chunk.constants[idx].String()
+			vm.globals[name] = vm.peek(0)
+			vm.pop()
+
+		case OP_GET_GLOBAL:
+			// name = constant at operand index
+			// push globals[name] onto stack
+			idx := vm.chunk.code[vm.ip]
+			vm.ip++
+			name := vm.chunk.constants[idx].String()
+			value, ok := vm.globals[name]
+			if !ok {
+				vm.runTimeError("Undefined variable %s\n", name)
+				break Loop
+			}
+			vm.push(value)
+
+		case OP_SET_GLOBAL:
+			// name = constant at operand index
+			// set globals[name] to stack top, key must exist
+			idx := vm.chunk.code[vm.ip]
+			vm.ip++
+			name := vm.chunk.constants[idx].String()
+			if _, ok := vm.globals[name]; !ok {
+				vm.runTimeError("Undefined variable %s\n", name)
+				break Loop
+			}
+			vm.globals[name] = vm.peek(0)
+
 		default:
 			vm.runTimeError("Invalid Opcode")
 			break Loop

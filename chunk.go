@@ -17,6 +17,9 @@ const (
 	OP_LESS
 	OP_PRINT
 	OP_POP
+	OP_DEFINE_GLOBAL
+	OP_GET_GLOBAL
+	OP_SET_GLOBAL
 )
 
 type Chunk struct {
@@ -33,12 +36,28 @@ func NewChunk() *Chunk {
 	}
 }
 
-func (c *Chunk) WriteOpCode(b uint8, line int) {
+func (c *Chunk) writeOpCode(b uint8, line int) {
 	c.code = append(c.code, b)
 	c.lines = append(c.lines, line)
 }
 
-func (c *Chunk) AddConstant(v Value) uint8 {
+func (c *Chunk) addConstant(v Value) uint8 {
+
+	// if constant is already in list, reuse it
+	ok, idx := c.inConstants(v)
+	if ok {
+		return idx
+	}
 	c.constants = append(c.constants, v)
 	return uint8(len(c.constants) - 1)
+}
+
+func (c *Chunk) inConstants(v Value) (bool, uint8) {
+
+	for i, cv := range c.constants {
+		if valuesEqual(cv, v) {
+			return true, uint8(i)
+		}
+	}
+	return false, 0
 }
