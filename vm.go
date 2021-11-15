@@ -259,16 +259,19 @@ Loop:
 			vm.stack[slot_idx] = val
 
 		case OP_JUMP_IF_FALSE:
+			// if stack top is falsey, jump by offset ( 2 operands )
 			offset := vm.readShort()
 			if vm.isFalsey(vm.peek(0)) {
 				vm.ip += int(offset)
 			}
 
 		case OP_JUMP:
+			// jump by offset ( 2 operands )
 			offset := vm.readShort()
 			vm.ip += int(offset)
 
 		case OP_LOOP:
+			// jump back by offset ( 2 operands )
 			offset := vm.readShort()
 			vm.ip -= int(offset)
 

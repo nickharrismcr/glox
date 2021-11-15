@@ -1,0 +1,27 @@
+
+// my first lox program !!!  
+
+var s = "";
+var a = 0;
+var b = 0;
+var c = 0; 
+
+while (a < 10) {
+    
+    a = a + 1;
+    s = ">";
+    b = 0;
+    while (b < a*10 ) { 
+        
+        s = " " + s;
+        b = b + 1; 
+        print s;
+        
+        c = 0; 
+        while (c < 100000 ){
+            c = c + 1;
+        }
+    }
+    
+}
+

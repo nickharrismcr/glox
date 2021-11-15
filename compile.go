@@ -179,6 +179,8 @@ func (p *Parser) declaration() {
 func (p *Parser) statement() {
 	if p.match(TOKEN_PRINT) {
 		p.printStatement()
+	} else if p.match(TOKEN_FOR) {
+		p.forStatement()
 	} else if p.match(TOKEN_IF) {
 		p.ifStatement()
 	} else if p.match(TOKEN_WHILE) {
@@ -270,6 +272,47 @@ func (p *Parser) whileStatement() {
 	p.emitLoop(loopStart)
 	p.patchJump(exitJump)
 	p.emitByte(OP_POP)
+}
+
+func (p *Parser) forStatement() {
+	p.beginScope()
+	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after for.")
+	// initialiser
+	if p.match(TOKEN_SEMICOLON) {
+	} else if p.match(TOKEN_VAR) {
+		p.varDeclaration()
+	} else {
+		p.expressionStatement()
+	}
+	loopStart := len(p.currentChunk().code)
+	// exit condition
+	exitJump := -1
+	if !p.match(TOKEN_SEMICOLON) {
+		p.expression()
+		p.consume(TOKEN_SEMICOLON, "Expect ';'.")
+		exitJump = p.emitJump(OP_JUMP_IF_FALSE)
+		p.emitByte(OP_POP)
+	}
+	// increment
+	if !p.match(TOKEN_RIGHT_PAREN) {
+		// jump over increment, will be executed after body
+		bodyJump := p.emitJump(OP_JUMP)
+		incrementStart := len(p.currentChunk().code)
+		p.expression()
+		p.emitByte(OP_POP)
+		p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.")
+		p.emitLoop(loopStart)
+		loopStart = incrementStart
+		p.patchJump(bodyJump)
+	}
+	p.statement()
+	p.emitLoop(loopStart)
+
+	if exitJump != -1 {
+		p.patchJump(exitJump)
+		p.emitByte(OP_POP)
+	}
+	p.endScope()
 }
 
 func (p *Parser) printStatement() {

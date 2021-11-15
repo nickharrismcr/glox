@@ -3,7 +3,7 @@ package main
 import "fmt"
 
 var debugTraceExecution = false //true
-var debugPrintCode = false      //true
+var debugPrintCode = true
 
 var token_names = map[TokenType]string{
 	TOKEN_LEFT_PAREN:    "TOKEN_LEFT_PAREN ",
