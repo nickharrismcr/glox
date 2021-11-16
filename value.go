@@ -6,42 +6,53 @@ type Value interface {
 	isVal()
 	String() string
 	Immutable() bool
-	SetImmutable(bool)
 }
 
-func PrintValue(v Value) {
+func printValue(v Value) {
 	fmt.Printf("%s\n", v.String())
+}
+
+func immutable(v Value) Value {
+	switch v.(type) {
+	case NumberValue:
+		return makeNumberValue(v.(NumberValue).Get(), true)
+	case BooleanValue:
+		return makeBooleanValue(v.(BooleanValue).Get(), true)
+	case ObjectValue:
+		return makeObjectValue(v.(ObjectValue).Get(), true)
+	}
+	return makeNilValue()
 }
 
 func valuesEqual(a, b Value) bool {
 	switch a.(type) {
-	case *BooleanValue:
+	case BooleanValue:
 		switch b.(type) {
-		case *BooleanValue:
-			return a.(*BooleanValue).Get() == b.(*BooleanValue).Get()
+		case BooleanValue:
+			return a.(BooleanValue).Get() == b.(BooleanValue).Get()
 		default:
 			return false
 		}
-	case *NumberValue:
+	case NumberValue:
 		switch b.(type) {
-		case *NumberValue:
-			return a.(*NumberValue).Get() == b.(*NumberValue).Get()
+		case NumberValue:
+			return a.(NumberValue).Get() == b.(NumberValue).Get()
 		default:
 			return false
 		}
 
-	case *NilValue:
+	case NilValue:
 		switch b.(type) {
-		case *NilValue:
+		case NilValue:
 			return true
 		default:
 			return false
 		}
-	case *ObjectValue:
+	case ObjectValue:
 		switch b.(type) {
-		case *ObjectValue:
-			av := a.(*ObjectValue).value
-			bv := b.(*ObjectValue).value
+		case ObjectValue:
+			av := a.(ObjectValue).value
+			bv := b.(ObjectValue).value
 			if av.getType() != bv.getType() {
 				return false
 			}
@@ -61,25 +72,22 @@ type NumberValue struct {
 
 func (_ NumberValue) isVal() {}
 
-func MakeNumberValue(v float64) *NumberValue {
-	return &NumberValue{
-		value: v,
+func makeNumberValue(v float64, immutable bool) NumberValue {
+	return NumberValue{
+		value:     v,
+		immutable: immutable,
 	}
 }
 
-func (nv *NumberValue) Immutable() bool {
+func (nv NumberValue) Immutable() bool {
 	return nv.immutable
 }
 
-func (nv *NumberValue) SetImmutable(b bool) {
-	nv.immutable = b
-}
-
-func (nv *NumberValue) Get() float64 {
+func (nv NumberValue) Get() float64 {
 	return nv.value
 }
 
-func (nv *NumberValue) String() string {
+func (nv NumberValue) String() string {
 	return fmt.Sprintf("%f", nv.value)
 }
 
@@ -91,25 +99,22 @@ type BooleanValue struct {
 
 func (_ BooleanValue) isVal() {}
 
-func MakeBooleanValue(v bool) *BooleanValue {
-	return &BooleanValue{
-		value: v,
+func makeBooleanValue(v bool, immutable bool) BooleanValue {
+	return BooleanValue{
+		value:     v,
+		immutable: immutable,
 	}
 }
 
-func (nv *BooleanValue) Immutable() bool {
+func (nv BooleanValue) Immutable() bool {
 	return nv.immutable
 }
 
-func (nv *BooleanValue) SetImmutable(b bool) {
-	nv.immutable = b
-}
-
-func (nv *BooleanValue) Get() bool {
+func (nv BooleanValue) Get() bool {
 	return nv.value
 }
 
-func (nv *BooleanValue) String() string {
+func (nv BooleanValue) String() string {
 	if nv.value {
 		return "true"
 	}
@@ -123,25 +128,21 @@ type NilValue struct {
 
 func (_ NilValue) isVal() {}
 
-func MakeNilValue() *NilValue {
-	return &NilValue{
+func makeNilValue() NilValue {
+	return NilValue{
 		value: false,
 	}
 }
 
-func (nv *NilValue) Immutable() bool {
+func (nv NilValue) Immutable() bool {
 	return true
 }
 
-func (nv *NilValue) SetImmutable(b bool) {
-
-}
-
-func (nv *NilValue) Get() bool {
+func (nv NilValue) Get() bool {
 	return nv.value
 }
 
-func (nv *NilValue) String() string {
+func (nv NilValue) String() string {
 	return "nil"
 }
 
@@ -153,18 +154,15 @@ type ObjectValue struct {
 
 func (_ ObjectValue) isVal() {}
 
-func MakeObjectValue(obj Object) *ObjectValue {
-	return &ObjectValue{
-		value: obj,
+func makeObjectValue(obj Object, immutable bool) ObjectValue {
+	return ObjectValue{
+		value:     obj,
+		immutable: immutable,
 	}
 }
 
-func (nv *ObjectValue) Immutable() bool {
+func (nv ObjectValue) Immutable() bool {
 	return nv.immutable
-}
-
-func (nv *ObjectValue) SetImmutable(b bool) {
-	nv.immutable = b
 }
 
 func (ov ObjectValue) Get() Object {

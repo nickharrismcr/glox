@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type TokenType int
 
 const (
@@ -48,26 +50,30 @@ const (
 	TOKEN_ERROR
 	TOKEN_EOF
 	TOKEN_CONST
+	TOKEN_BREAK
+	TOKEN_CONTINUE
 )
 
 var keywords = map[string]TokenType{
-	"and":    TOKEN_AND,
-	"class":  TOKEN_CLASS,
-	"else":   TOKEN_ELSE,
-	"if":     TOKEN_IF,
-	"nil":    TOKEN_NIL,
-	"or":     TOKEN_OR,
-	"print":  TOKEN_PRINT,
-	"return": TOKEN_RETURN,
-	"super":  TOKEN_SUPER,
-	"var":    TOKEN_VAR,
-	"while":  TOKEN_WHILE,
-	"false":  TOKEN_FALSE,
-	"for":    TOKEN_FOR,
-	"func":   TOKEN_FUNC,
-	"this":   TOKEN_THIS,
-	"true":   TOKEN_TRUE,
-	"const":  TOKEN_CONST,
+	"and":      TOKEN_AND,
+	"class":    TOKEN_CLASS,
+	"else":     TOKEN_ELSE,
+	"if":       TOKEN_IF,
+	"nil":      TOKEN_NIL,
+	"or":       TOKEN_OR,
+	"print":    TOKEN_PRINT,
+	"return":   TOKEN_RETURN,
+	"super":    TOKEN_SUPER,
+	"var":      TOKEN_VAR,
+	"while":    TOKEN_WHILE,
+	"false":    TOKEN_FALSE,
+	"for":      TOKEN_FOR,
+	"func":     TOKEN_FUNC,
+	"this":     TOKEN_THIS,
+	"true":     TOKEN_TRUE,
+	"const":    TOKEN_CONST,
+	"break":    TOKEN_BREAK,
+	"continue": TOKEN_CONTINUE,
 }
 
 type Scanner struct {
@@ -151,7 +157,7 @@ func (s *Scanner) scanToken() Token {
 	case "\"":
 		return s.string()
 	}
-	return s.errorToken("Unexpected character.")
+	return s.errorToken(fmt.Sprintf("Unexpected character [%s]", c))
 }
 
 func (s *Scanner) isAtEnd() bool {
@@ -196,6 +202,7 @@ func (s *Scanner) match(expected string) bool {
 }
 
 func (s *Scanner) skipWhiteSpace() {
+
 	for {
 		c := s.peek()
 		switch c {
@@ -213,13 +220,14 @@ func (s *Scanner) skipWhiteSpace() {
 				for s.peek() != "\n" && !s.isAtEnd() {
 					s.advance()
 				}
+			} else {
 				return
 			}
-			return
 		default:
 			return
 		}
 	}
+
 }
 
 func (s *Scanner) peek() string {

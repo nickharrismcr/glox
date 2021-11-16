@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 
-var debugTraceExecution = false //true
+var debugTraceExecution = false
 var debugPrintCode = true
 
 var token_names = map[TokenType]string{

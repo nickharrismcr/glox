@@ -31,15 +31,25 @@ type ParseRule struct {
 }
 
 type Local struct {
-	name      Token
-	depth     int
-	immutable bool
+	name  Token
+	depth int
+}
+
+type Loop struct {
+	parent *Loop
+	start  int
+	break_ bool
+}
+
+func NewLoop() *Loop {
+	return &Loop{}
 }
 
 type Compiler struct {
 	locals     [256]Local
 	localCount int
 	scopeDepth int
+	loop       *Loop
 }
 
 func NewCompiler() *Compiler {
@@ -150,9 +160,6 @@ func (p *Parser) advance() {
 	p.previous = p.current
 	for {
 		p.current = p.scanner.scanToken()
-		if debugTraceExecution {
-			fmt.Printf("Lexeme : %s\n", p.current.lexeme())
-		}
 		if p.current.tokentype != TOKEN_ERROR {
 			break
 		}
@@ -179,6 +186,10 @@ func (p *Parser) declaration() {
 func (p *Parser) statement() {
 	if p.match(TOKEN_PRINT) {
 		p.printStatement()
+	} else if p.match(TOKEN_BREAK) {
+		p.breakStatement()
+	} else if p.match(TOKEN_CONTINUE) {
+		p.continueStatement()
 	} else if p.match(TOKEN_FOR) {
 		p.forStatement()
 	} else if p.match(TOKEN_IF) {
@@ -260,7 +271,10 @@ func (p *Parser) ifStatement() {
 
 func (p *Parser) whileStatement() {
 
-	loopStart := len(p.currentChunk().code)
+	loopSave := p.currentCompiler.loop
+	p.currentCompiler.loop = NewLoop()
+
+	p.currentCompiler.loop.start = len(p.currentChunk().code)
 	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after while.")
 	p.expression()
 	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.")
@@ -268,13 +282,22 @@ func (p *Parser) whileStatement() {
 	exitJump := p.emitJump(OP_JUMP_IF_FALSE)
 	p.emitByte(OP_POP)
 
+	// body statements could contain break or continue statements.
+	// if continue, we know loop start at this point so could just do an emitLoop ? maybe hold loopStart in current compiler
+	// if break, would need to emit a jump and patch it after body has been processed - how?
 	p.statement()
-	p.emitLoop(loopStart)
+	p.emitLoop(p.currentCompiler.loop.start)
 	p.patchJump(exitJump)
 	p.emitByte(OP_POP)
+
+	p.currentCompiler.loop = loopSave
 }
 
 func (p *Parser) forStatement() {
+
+	loopSave := p.currentCompiler.loop
+	p.currentCompiler.loop = NewLoop()
+
 	p.beginScope()
 	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after for.")
 	// initialiser
@@ -284,7 +307,7 @@ func (p *Parser) forStatement() {
 	} else {
 		p.expressionStatement()
 	}
-	loopStart := len(p.currentChunk().code)
+	p.currentCompiler.loop.start = len(p.currentChunk().code)
 	// exit condition
 	exitJump := -1
 	if !p.match(TOKEN_SEMICOLON) {
@@ -301,18 +324,41 @@ func (p *Parser) forStatement() {
 		p.expression()
 		p.emitByte(OP_POP)
 		p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.")
-		p.emitLoop(loopStart)
-		loopStart = incrementStart
+		p.emitLoop(p.currentCompiler.loop.start)
+		p.currentCompiler.loop.start = incrementStart
 		p.patchJump(bodyJump)
 	}
 	p.statement()
-	p.emitLoop(loopStart)
+	p.emitLoop(p.currentCompiler.loop.start)
 
 	if exitJump != -1 {
 		p.patchJump(exitJump)
 		p.emitByte(OP_POP)
 	}
 	p.endScope()
+	p.currentCompiler.loop = loopSave
+}
+
+func (p *Parser) breakStatement() {
+	p.consume(TOKEN_SEMICOLON, "Expect ';' after value.")
+	if p.currentCompiler.loop == nil {
+		p.errorAtCurrent("Cannot use break outside loop.")
+	}
+
+}
+
+func (p *Parser) continueStatement() {
+	p.consume(TOKEN_SEMICOLON, "Expect ';' after value.")
+	if p.currentCompiler.loop == nil {
+		p.errorAtCurrent("Cannot use continue outside loop.")
+	}
+	p.emitLoop(p.currentCompiler.loop.start)
+	// drop local vars on stack
+	c := p.currentCompiler
+	for c.localCount > 0 && c.locals[c.localCount-1].depth > c.scopeDepth {
+		p.emitByte(OP_POP)
+		c.localCount--
+	}
 }
 
 func (p *Parser) printStatement() {
@@ -442,7 +488,7 @@ func (p *Parser) parsePredence(prec Precedence) {
 }
 
 func (p *Parser) identifierConstant(t Token) uint8 {
-	return p.makeConstant(MakeObjectValue(MakeStringObject(t.lexeme())))
+	return p.makeConstant(makeObjectValue(MakeStringObject(t.lexeme()), false))
 }
 
 func (p *Parser) identifiersEqual(a, b Token) bool {
@@ -485,7 +531,7 @@ func (p *Parser) markInitialised() {
 
 func (p *Parser) setLocalImmutable() {
 	c := p.compilingChunk
-	c.constants[len(c.constants)-1].SetImmutable(true)
+	c.constants[len(c.constants)-1] = immutable(c.constants[len(c.constants)-1])
 }
 
 func (p *Parser) defineVariable(global uint8) {
@@ -659,7 +705,7 @@ func grouping(p *Parser, canAssign bool) {
 func number(p *Parser, canAssign bool) {
 
 	val, _ := strconv.ParseFloat(p.previous.lexeme(), 64)
-	p.emitConstant(&NumberValue{value: val})
+	p.emitConstant(makeNumberValue(val, false))
 
 }
 
@@ -667,7 +713,7 @@ func loxstring(p *Parser, canAssign bool) {
 
 	str := p.previous.lexeme()
 	strobj := MakeStringObject(strings.Replace(str, "\"", "", -1))
-	p.emitConstant(MakeObjectValue(&strobj))
+	p.emitConstant(makeObjectValue(&strobj, false))
 
 }
 
