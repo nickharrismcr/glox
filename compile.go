@@ -38,7 +38,7 @@ type Local struct {
 type Loop struct {
 	parent *Loop
 	start  int
-	break_ bool
+	break_ int
 }
 
 func NewLoop() *Loop {
@@ -281,11 +281,10 @@ func (p *Parser) whileStatement() {
 
 	exitJump := p.emitJump(OP_JUMP_IF_FALSE)
 	p.emitByte(OP_POP)
-
-	// body statements could contain break or continue statements.
-	// if continue, we know loop start at this point so could just do an emitLoop ? maybe hold loopStart in current compiler
-	// if break, would need to emit a jump and patch it after body has been processed - how?
 	p.statement()
+	if p.currentCompiler.loop.break_ != 0 {
+		p.patchJump(p.currentCompiler.loop.break_)
+	}
 	p.emitLoop(p.currentCompiler.loop.start)
 	p.patchJump(exitJump)
 	p.emitByte(OP_POP)
@@ -329,6 +328,9 @@ func (p *Parser) forStatement() {
 		p.patchJump(bodyJump)
 	}
 	p.statement()
+	if p.currentCompiler.loop.break_ != 0 {
+		p.patchJump(p.currentCompiler.loop.break_)
+	}
 	p.emitLoop(p.currentCompiler.loop.start)
 
 	if exitJump != -1 {
@@ -344,7 +346,13 @@ func (p *Parser) breakStatement() {
 	if p.currentCompiler.loop == nil {
 		p.errorAtCurrent("Cannot use break outside loop.")
 	}
-
+	p.currentCompiler.loop.break_ = p.emitJump(OP_JUMP)
+	// drop local vars on stack
+	c := p.currentCompiler
+	for c.localCount > 0 && c.locals[c.localCount-1].depth > c.scopeDepth {
+		p.emitByte(OP_POP)
+		c.localCount--
+	}
 }
 
 func (p *Parser) continueStatement() {

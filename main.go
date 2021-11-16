@@ -9,14 +9,10 @@ import (
 
 /* additions :
 
-   declare a variable as constant  e.g  const a = 1;
+   declare constant  e.g  const a = 1;
+   loop break/continue
 
    TODO:
-   add loop break/continue
-    - don't create new opcodes?  vm doesn't know if we are in a loop, just follows jumps
-	- compiler should insert necessary jumps
-	- "Make sure to think about scope. What should happen to local variables declared inside the body
-	   of the loop or in blocks nested inside the loop when a continue is executed?"
    add switch statement
 */
 
@@ -24,8 +20,6 @@ func main() {
 
 	fmt.Println("GLOX V0.01")
 	vm := NewVM()
-	runFile("testloop.lox", vm)
-	return
 
 	if len(os.Args) == 1 {
 		repl(vm)
