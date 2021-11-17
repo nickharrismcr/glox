@@ -177,5 +177,9 @@ func (ov ObjectValue) isStringObject() bool {
 	return ov.value.getType() == OBJECT_STRING
 }
 
+func (ov ObjectValue) isFunctionObject() bool {
+	return ov.value.getType() == OBJECT_FUNCTION
+}
+
 //================================================================================================
 //================================================================================================

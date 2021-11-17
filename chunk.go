@@ -34,7 +34,7 @@ type Chunk struct {
 	lines     []int
 }
 
-func NewChunk() *Chunk {
+func newChunk() *Chunk {
 	return &Chunk{
 		code:      []uint8{},
 		constants: []Value{},

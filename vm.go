@@ -14,12 +14,25 @@ const (
 	INTERPRET_RUNTIME_ERROR
 )
 
-type VM struct {
-	chunk    *Chunk
+const (
+	FRAMES_MAX int = 64
+	STACK_MAX  int = FRAMES_MAX * 256
+)
+
+type CallFrame struct {
+	function *FunctionObject
 	ip       int
-	stack    [256]Value
-	stackTop int
-	globals  map[string]Value
+	slots    []Value //this is going to be a slice of the vm's stack
+}
+
+type VM struct {
+	chunk      *Chunk
+	ip         int
+	stack      [STACK_MAX]Value
+	stackTop   int
+	globals    map[string]Value
+	frames     [FRAMES_MAX]*CallFrame
+	frameCount int
 }
 
 func NewVM() *VM {
@@ -32,13 +45,29 @@ func NewVM() *VM {
 
 func (vm *VM) interpret(source string) (InterpretResult, string) {
 
-	vm.chunk = NewChunk()
-	if !vm.compile(source) {
+	function := vm.compile(source)
+	if function == nil {
 		return INTERPRET_COMPILE_ERROR, ""
 	}
-	vm.ip = 0
+	vm.push(makeObjectValue(function, false))
+	frame := &CallFrame{
+		function: function,
+		ip:       0,
+		slots:    vm.stack[:],
+	}
+	vm.frames[vm.frameCount] = frame
+	vm.frameCount++
+
 	res, val := vm.run()
 	return res, val.String()
+}
+
+func (vm *VM) frame() *CallFrame {
+	return vm.frames[vm.frameCount-1]
+}
+
+func (vm *VM) getCode() []uint8 {
+	return vm.frame().function.chunk.code
 }
 
 func (vm *VM) resetStack() {
@@ -48,7 +77,7 @@ func (vm *VM) resetStack() {
 func (vm *VM) runTimeError(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, format, args...)
 	fmt.Fprint(os.Stderr, "\n")
-	line := vm.chunk.lines[vm.ip-1]
+	line := vm.frame().function.chunk.lines[vm.frame().ip-1]
 	fmt.Fprintf(os.Stderr, "[line %d] in script \n", line)
 	vm.resetStack()
 
@@ -72,9 +101,9 @@ func (vm *VM) peek(dist int) Value {
 }
 
 func (vm *VM) readShort() uint16 {
-	vm.ip += 2
-	b1 := uint16(vm.chunk.code[vm.ip-2])
-	b2 := uint16(vm.chunk.code[vm.ip-1])
+	vm.frame().ip += 2
+	b1 := uint16(vm.getCode()[vm.frame().ip-2])
+	b2 := uint16(vm.getCode()[vm.frame().ip-1])
 	return uint16(b1<<8 | b2)
 }
 
@@ -95,14 +124,14 @@ func (vm *VM) run() (InterpretResult, Value) {
 
 Loop:
 	for {
-		inst := vm.chunk.code[vm.ip]
+		inst := vm.getCode()[vm.frame().ip]
 
 		if debugTraceExecution {
 			vm.stackTrace()
-			_ = vm.chunk.disassembleInstruction(inst, vm.ip)
+			_ = vm.frame().function.chunk.disassembleInstruction(inst, vm.frame().ip)
 		}
 
-		vm.ip++
+		vm.frame().ip++
 		switch inst {
 
 		case OP_RETURN:
@@ -113,9 +142,9 @@ Loop:
 
 		case OP_CONSTANT:
 			// get the constant indexed by operand 2 and push it onto the stack
-			idx := vm.chunk.code[vm.ip]
-			vm.ip++
-			constant := vm.chunk.constants[idx]
+			idx := vm.getCode()[vm.frame().ip]
+			vm.frame().ip++
+			constant := vm.frame().function.chunk.constants[idx]
 			vm.push(constant)
 
 		case OP_NEGATE:
@@ -196,18 +225,18 @@ Loop:
 		case OP_DEFINE_GLOBAL:
 			// name = constant at operand index
 			// pop 1 stack value and set globals[name] to it
-			idx := vm.chunk.code[vm.ip]
-			vm.ip++
-			name := vm.chunk.constants[idx].String()
+			idx := vm.getCode()[vm.frame().ip]
+			vm.frame().ip++
+			name := vm.frame().function.chunk.constants[idx].String()
 			vm.globals[name] = vm.peek(0)
 			vm.pop()
 
 		case OP_DEFINE_GLOBAL_CONST:
 			// name = constant at operand index
 			// pop 1 stack value and set globals[name] to it and flag as immutable
-			idx := vm.chunk.code[vm.ip]
-			vm.ip++
-			name := vm.chunk.constants[idx].String()
+			idx := vm.getCode()[vm.frame().ip]
+			vm.frame().ip++
+			name := vm.frame().function.chunk.constants[idx].String()
 			vm.globals[name] = vm.peek(0)
 			vm.globals[name] = immutable(vm.globals[name])
 			vm.pop()
@@ -215,9 +244,9 @@ Loop:
 		case OP_GET_GLOBAL:
 			// name = constant at operand index
 			// push globals[name] onto stack
-			idx := vm.chunk.code[vm.ip]
-			vm.ip++
-			name := vm.chunk.constants[idx].String()
+			idx := vm.getCode()[vm.frame().ip]
+			vm.frame().ip++
+			name := vm.frame().function.chunk.constants[idx].String()
 			value, ok := vm.globals[name]
 			if !ok {
 				vm.runTimeError("Undefined variable %s\n", name)
@@ -228,9 +257,9 @@ Loop:
 		case OP_SET_GLOBAL:
 			// name = constant at operand index
 			// set globals[name] to stack top, key must exist
-			idx := vm.chunk.code[vm.ip]
-			vm.ip++
-			name := vm.chunk.constants[idx].String()
+			idx := vm.getCode()[vm.frame().ip]
+			vm.frame().ip++
+			name := vm.frame().function.chunk.constants[idx].String()
 			if _, ok := vm.globals[name]; !ok {
 				vm.runTimeError("Undefined variable %s\n", name)
 				break Loop
@@ -243,37 +272,37 @@ Loop:
 
 		case OP_GET_LOCAL:
 			// get local from stack at position = operand and push on stack top
-			slot_idx := vm.chunk.code[vm.ip]
-			vm.ip++
-			vm.push(vm.stack[slot_idx])
+			slot_idx := vm.getCode()[vm.frame().ip]
+			vm.frame().ip++
+			vm.push(vm.frame().slots[slot_idx])
 
 		case OP_SET_LOCAL:
 			// get value at stack top and store it in stack at position = operand
 			val := vm.peek(0)
-			slot_idx := vm.chunk.code[vm.ip]
-			vm.ip++
-			if vm.stack[slot_idx].Immutable() {
+			slot_idx := vm.getCode()[vm.frame().ip]
+			vm.frame().ip++
+			if vm.frame().slots[slot_idx].Immutable() {
 				vm.runTimeError("Cannot assign to const local.\n")
 				break Loop
 			}
-			vm.stack[slot_idx] = val
+			vm.frame().slots[slot_idx] = val
 
 		case OP_JUMP_IF_FALSE:
 			// if stack top is falsey, jump by offset ( 2 operands )
 			offset := vm.readShort()
 			if vm.isFalsey(vm.peek(0)) {
-				vm.ip += int(offset)
+				vm.frame().ip += int(offset)
 			}
 
 		case OP_JUMP:
 			// jump by offset ( 2 operands )
 			offset := vm.readShort()
-			vm.ip += int(offset)
+			vm.frame().ip += int(offset)
 
 		case OP_LOOP:
 			// jump back by offset ( 2 operands )
 			offset := vm.readShort()
-			vm.ip -= int(offset)
+			vm.frame().ip -= int(offset)
 
 		default:
 			vm.runTimeError("Invalid Opcode")

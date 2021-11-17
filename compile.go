@@ -45,15 +45,34 @@ func NewLoop() *Loop {
 	return &Loop{}
 }
 
+type FunctionType int
+
+const (
+	TYPE_FUNCTION FunctionType = iota
+	TYPE_SCRIPT
+)
+
 type Compiler struct {
+	function   *FunctionObject
+	type_      FunctionType
 	locals     [256]Local
 	localCount int
 	scopeDepth int
 	loop       *Loop
 }
 
-func NewCompiler() *Compiler {
-	return &Compiler{}
+func NewCompiler(type_ FunctionType) *Compiler {
+
+	rv := &Compiler{
+		type_:    type_,
+		function: makeFunctionObject(),
+	}
+	// slot 0 is for enclosing function
+	rv.locals[0] = Local{
+		depth: 0,
+		name:  Token{},
+	}
+	return rv
 }
 
 type Parser struct {
@@ -74,7 +93,7 @@ func NewParser() *Parser {
 	return p
 }
 
-func (vm *VM) compile(source string) bool {
+func (vm *VM) compile(source string) *FunctionObject {
 
 	if debugTraceExecution {
 		fmt.Println("Compiling...")
@@ -82,17 +101,20 @@ func (vm *VM) compile(source string) bool {
 	parser := NewParser()
 	parser.compilingChunk = vm.chunk
 	parser.scanner = NewScanner(source)
-	parser.currentCompiler = NewCompiler()
+	parser.currentCompiler = NewCompiler(TYPE_SCRIPT)
 	parser.advance()
 	for !parser.match(TOKEN_EOF) {
 		parser.declaration()
 	}
 	parser.consume(TOKEN_EOF, "Expect end of expression")
-	parser.endCompiler()
+	function := parser.endCompiler()
 	if debugTraceExecution {
 		fmt.Println("Compile done.")
 	}
-	return !parser.hadError
+	if parser.hadError {
+		return nil
+	}
+	return function
 }
 
 func (p *Parser) setRules() {
@@ -448,16 +470,25 @@ func (p *Parser) emitJump(instr uint8) int {
 }
 
 func (p *Parser) currentChunk() *Chunk {
-	return p.compilingChunk
+	return p.currentCompiler.function.chunk
 }
 
-func (p *Parser) endCompiler() {
+func (p *Parser) endCompiler() *FunctionObject {
 	p.emitReturn()
+	function := p.currentCompiler.function
 	if debugPrintCode {
 		if !p.hadError {
-			p.compilingChunk.disassemble("code")
+			s := ""
+			if function.name == nil {
+				s = "<script>"
+			} else {
+				s = function.name.String()
+			}
+			p.currentChunk().disassemble(s)
 		}
 	}
+
+	return function
 }
 
 func (p *Parser) beginScope() {
@@ -546,7 +577,7 @@ func (p *Parser) markInitialised() {
 }
 
 func (p *Parser) setLocalImmutable() {
-	c := p.compilingChunk
+	c := p.currentChunk()
 	c.constants[len(c.constants)-1] = immutable(c.constants[len(c.constants)-1])
 }
 
@@ -641,7 +672,7 @@ func (p *Parser) patchJump(offset int) {
 }
 
 func (p *Parser) makeConstant(value Value) uint8 {
-	constidx := p.compilingChunk.addConstant(value)
+	constidx := p.currentChunk().addConstant(value)
 	if constidx > 255 {
 		p.error("Too many constants in one chunk")
 		return 0

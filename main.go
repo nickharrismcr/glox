@@ -14,7 +14,6 @@ import (
    string multiply by number ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
 
    TODO:
-   fix locals after break statement in for - not being correctly dropped ?
    add switch statement
 */
 
