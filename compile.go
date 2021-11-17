@@ -165,6 +165,7 @@ func (p *Parser) advance() {
 		}
 		p.errorAtCurrent(p.current.lexeme())
 	}
+
 }
 
 func (p *Parser) getRule(tok TokenType) ParseRule {
@@ -172,6 +173,7 @@ func (p *Parser) getRule(tok TokenType) ParseRule {
 }
 
 func (p *Parser) declaration() {
+
 	if p.match(TOKEN_VAR) {
 		p.varDeclaration()
 	} else if p.match(TOKEN_CONST) {
@@ -182,6 +184,7 @@ func (p *Parser) declaration() {
 	if p.panicMode {
 		p.synchronize()
 	}
+
 }
 func (p *Parser) statement() {
 	if p.match(TOKEN_PRINT) {
@@ -342,31 +345,36 @@ func (p *Parser) forStatement() {
 }
 
 func (p *Parser) breakStatement() {
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after value.")
+	p.consume(TOKEN_SEMICOLON, "Expect ';' after statement.")
 	if p.currentCompiler.loop == nil {
 		p.errorAtCurrent("Cannot use break outside loop.")
 	}
-	p.currentCompiler.loop.break_ = p.emitJump(OP_JUMP)
+
 	// drop local vars on stack
 	c := p.currentCompiler
-	for c.localCount > 0 && c.locals[c.localCount-1].depth > c.scopeDepth {
-		p.emitByte(OP_POP)
-		c.localCount--
+
+	for i := 0; i < c.localCount; i++ {
+		if c.locals[i].depth >= c.scopeDepth-1 {
+			p.emitByte(OP_POP)
+		}
 	}
+	p.currentCompiler.loop.break_ = p.emitJump(OP_JUMP)
 }
 
 func (p *Parser) continueStatement() {
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after value.")
+	p.consume(TOKEN_SEMICOLON, "Expect ';' after statement.")
 	if p.currentCompiler.loop == nil {
 		p.errorAtCurrent("Cannot use continue outside loop.")
 	}
-	p.emitLoop(p.currentCompiler.loop.start)
+
 	// drop local vars on stack
 	c := p.currentCompiler
-	for c.localCount > 0 && c.locals[c.localCount-1].depth > c.scopeDepth {
-		p.emitByte(OP_POP)
-		c.localCount--
+	for i := 0; i < c.localCount; i++ {
+		if c.locals[i].depth >= c.scopeDepth-1 {
+			p.emitByte(OP_POP)
+		}
 	}
+	p.emitLoop(p.currentCompiler.loop.start)
 }
 
 func (p *Parser) printStatement() {

@@ -340,20 +340,41 @@ func (vm *VM) binarySubtract() bool {
 
 func (vm *VM) binaryMultiply() bool {
 	v2 := vm.pop()
-	nv2, ok := v2.(NumberValue)
-	if !ok {
-		vm.runTimeError("Operands must be numbers")
-		return false
-	}
-
 	v1 := vm.pop()
-	nv1, ok := v1.(NumberValue)
-	if !ok {
-		vm.runTimeError("Operands must be numbers")
+
+	switch v2.(type) {
+	case NumberValue:
+		switch v1.(type) {
+		case NumberValue:
+			vm.push(makeNumberValue(v1.(NumberValue).Get()*v2.(NumberValue).Get(), false))
+		case ObjectValue:
+			if !v1.(ObjectValue).isStringObject() {
+				vm.runTimeError("Invalid operand for multiply.")
+				return false
+			}
+			vm.push(vm.stringMultiply(v1.String(), int(v2.(NumberValue).Get())))
+		default:
+			vm.runTimeError("Invalid operand for multiply.")
+			return false
+		}
+	case ObjectValue:
+		if !v2.(ObjectValue).isStringObject() {
+			vm.runTimeError("Invalid operand for multiply.")
+			return false
+		}
+		switch v1.(type) {
+		case NumberValue:
+			vm.push(vm.stringMultiply(v2.String(), int(v1.(NumberValue).Get())))
+		default:
+			vm.runTimeError("Invalid operand for multiply.")
+			return false
+		}
+
+	default:
+		vm.runTimeError("Invalid operand for multiply.")
 		return false
 	}
 
-	vm.push(makeNumberValue(nv1.Get()*nv2.Get(), false))
 	return true
 }
 
@@ -430,4 +451,12 @@ func (vm *VM) concatenate(s1, s2 string) {
 
 	so := MakeStringObject(s1 + s2)
 	vm.push(makeObjectValue(so, false))
+}
+
+func (vm *VM) stringMultiply(s string, x int) Value {
+	rv := ""
+	for i := 0; i < x; i++ {
+		rv += s
+	}
+	return makeObjectValue(MakeStringObject(rv), false)
 }

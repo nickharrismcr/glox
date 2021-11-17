@@ -11,34 +11,46 @@ import (
 
    declare constant  e.g  const a = 1;
    loop break/continue
+   string multiply by number ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
 
    TODO:
+   fix locals after break statement in for - not being correctly dropped ?
    add switch statement
 */
 
 func main() {
 
+	var do_repl bool
+	var filename string
+
 	fmt.Println("GLOX V0.01")
 	vm := NewVM()
 
 	if len(os.Args) == 1 {
+		usage()
+	}
+	for _, arg := range os.Args {
+		switch arg {
+		case "--debug":
+			debugPrintCode = true
+			debugTraceExecution = true
+		case "--repl":
+			do_repl = true
+		default:
+			filename = arg
+		}
+	}
+	if do_repl {
 		repl(vm)
-	} else if len(os.Args) == 2 {
-		runFile(os.Args[1], vm)
+	} else {
+		if filename == "" {
+			usage()
+		}
+		runFile(filename, vm)
 	}
 }
 
 func repl(vm *VM) {
-
-	/* 	code := `
-	var a = 1;
-	{
-		var b = 2;
-		b= 3;
-		print b;
-	}`
-		vm.interpret(code)
-		return */
 
 	inp := bufio.NewScanner(os.Stdin)
 	for {
@@ -54,9 +66,7 @@ func repl(vm *VM) {
 			}
 			break
 		}
-
 	}
-
 }
 
 func runFile(path string, vm *VM) {
@@ -74,4 +84,9 @@ func runFile(path string, vm *VM) {
 		os.Exit(70)
 	}
 	fmt.Println(result)
+}
+
+func usage() {
+	fmt.Println("Usage : glox [--debug][--repl] filename")
+	os.Exit(1)
 }

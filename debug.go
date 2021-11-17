@@ -3,7 +3,7 @@ package main
 import "fmt"
 
 var debugTraceExecution = false
-var debugPrintCode = true
+var debugPrintCode = false
 
 var token_names = map[TokenType]string{
 	TOKEN_LEFT_PAREN:    "TOKEN_LEFT_PAREN ",
@@ -47,6 +47,8 @@ var token_names = map[TokenType]string{
 	TOKEN_ERROR:         "TOKEN_ERROR",
 	TOKEN_EOF:           "TOKEN_EOF",
 	TOKEN_CONST:         "TOKEN_CONST",
+	TOKEN_BREAK:         "TOKEN_BREAK",
+	TOKEN_CONTINUE:      "TOKEN_CONTINUE",
 }
 
 func (c *Chunk) disassemble(name string) {
@@ -61,13 +63,18 @@ func (c *Chunk) disassemble(name string) {
 	}
 }
 
+var lastoffset int = 0
+
 func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
+
 	fmt.Printf("%04d ", offset)
-	if offset > 0 && c.lines[offset] == c.lines[offset-1] {
+	if offset > 0 && c.lines[offset] == lastoffset {
 		fmt.Printf("   | ")
+
 	} else {
 		fmt.Printf("%04d ", c.lines[offset])
 	}
+	lastoffset = c.lines[offset]
 
 	switch i {
 	case OP_RETURN:
