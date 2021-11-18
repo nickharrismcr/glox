@@ -72,12 +72,12 @@ func NewCompiler(type_ FunctionType) *Compiler {
 		depth: 0,
 		name:  Token{},
 	}
+	rv.localCount = 1
 	return rv
 }
 
 type Parser struct {
 	scanner             *Scanner
-	compilingChunk      *Chunk
 	current, previous   Token
 	hadError, panicMode bool
 	rules               map[TokenType]ParseRule
@@ -99,7 +99,6 @@ func (vm *VM) compile(source string) *FunctionObject {
 		fmt.Println("Compiling...")
 	}
 	parser := NewParser()
-	parser.compilingChunk = vm.chunk
 	parser.scanner = NewScanner(source)
 	parser.currentCompiler = NewCompiler(TYPE_SCRIPT)
 	parser.advance()
