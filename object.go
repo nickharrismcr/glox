@@ -18,13 +18,13 @@ type Object interface {
 type FunctionObject struct {
 	arity int
 	chunk *Chunk
-	name  *StringObject
+	name  StringObject
 }
 
 func makeFunctionObject() *FunctionObject {
 	return &FunctionObject{
 		arity: 0,
-		name:  nil,
+		name:  MakeStringObject(""),
 		chunk: newChunk(),
 	}
 }
@@ -36,7 +36,7 @@ func (_ FunctionObject) getType() ObjectType {
 }
 
 func (f *FunctionObject) String() string {
-	if f.name == nil {
+	if f.name.String() == "" {
 		return "<script>"
 	}
 	return fmt.Sprintf("<fn %s>", f.name)
