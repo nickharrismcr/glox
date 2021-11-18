@@ -1,11 +1,14 @@
 import sys, glob,subprocess,difflib
-
-mode="read"   #read|write
+ 
 
 def run(fname):
 
     res = subprocess.Popen(["..\glox.exe","%s" % fname],stdout=subprocess.PIPE)
     return res
+
+mode = "read"
+if len(sys.argv) > 1 :
+    mode = sys.argv[1]
 
 for f in glob.glob("*lox"):
 
