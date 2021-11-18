@@ -15,6 +15,7 @@ import (
 
    TODO:
    add switch statement
+   debug "print "hello "+str(2);" runtime crash
 */
 
 func main() {

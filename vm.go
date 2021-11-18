@@ -44,6 +44,7 @@ func NewVM() *VM {
 	}
 	vm.resetStack()
 	vm.defineNative("clock", clockNative)
+	vm.defineNative("str", strNative)
 	return vm
 }
 
@@ -98,11 +99,6 @@ func (vm *VM) defineNative(name string, function NativeFn) {
 	vm.globals[name] = vm.stack[1]
 	vm.pop()
 	vm.pop()
-}
-
-func clockNative(argCount int, arg_stackptr int, vm *VM) Value {
-	elapsed := time.Since(vm.starttime)
-	return makeNumberValue(float64(elapsed.Seconds()), false)
 }
 
 func (vm *VM) push(v Value) {
