@@ -7,6 +7,7 @@ type ObjectType int
 const (
 	OBJECT_STRING ObjectType = iota
 	OBJECT_FUNCTION
+	OBJECT_NATIVE
 )
 
 type Object interface {
@@ -15,6 +16,9 @@ type Object interface {
 	String() string
 }
 
+type NativeFn func(argCount int, args_stackptr int, vm *VM) Value
+
+//-------------------------------------------------------------------------------------------
 type FunctionObject struct {
 	arity int
 	chunk *Chunk
@@ -42,6 +46,8 @@ func (f *FunctionObject) String() string {
 	return fmt.Sprintf("<fn %s>", f.name)
 }
 
+//-------------------------------------------------------------------------------------------
+
 type StringObject struct {
 	chars *string
 }
@@ -64,4 +70,26 @@ func (s StringObject) get() string {
 
 func (s StringObject) String() string {
 	return *s.chars
+}
+
+//-------------------------------------------------------------------------------------------
+
+type NativeObject struct {
+	function NativeFn
+}
+
+func makeNativeObject(function NativeFn) *NativeObject {
+	return &NativeObject{
+		function: function,
+	}
+}
+
+func (_ NativeObject) isObject() {}
+
+func (_ NativeObject) getType() ObjectType {
+	return OBJECT_NATIVE
+}
+
+func (f *NativeObject) String() string {
+	return "<built-in>"
 }

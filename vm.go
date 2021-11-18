@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"time"
 )
 
 type InterpretResult int
@@ -33,13 +34,16 @@ type VM struct {
 	globals    map[string]Value
 	frames     [FRAMES_MAX]*CallFrame
 	frameCount int
+	starttime  time.Time
 }
 
 func NewVM() *VM {
 	vm := &VM{
-		globals: map[string]Value{},
+		globals:   map[string]Value{},
+		starttime: time.Now(),
 	}
 	vm.resetStack()
+	vm.defineNative("clock", clockNative)
 	return vm
 }
 
@@ -88,6 +92,18 @@ func (vm *VM) runTimeError(format string, args ...interface{}) {
 	vm.resetStack()
 
 }
+func (vm *VM) defineNative(name string, function NativeFn) {
+	vm.push(makeObjectValue(MakeStringObject(name), false))
+	vm.push(makeObjectValue(makeNativeObject(function), false))
+	vm.globals[name] = vm.stack[1]
+	vm.pop()
+	vm.pop()
+}
+
+func clockNative(argCount int, arg_stackptr int, vm *VM) Value {
+	elapsed := time.Since(vm.starttime)
+	return makeNumberValue(float64(elapsed.Seconds()), false)
+}
 
 func (vm *VM) push(v Value) {
 	vm.stack[vm.stackTop] = v
@@ -110,6 +126,12 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 	if ov, ok := callee.(ObjectValue); ok {
 		if ov.isFunctionObject() {
 			return vm.call(ov.Get().(*FunctionObject), argCount)
+		}
+		if ov.isNativeFunction() {
+			nf := ov.Get().(*NativeObject)
+			res := nf.function(argCount, vm.stackTop-argCount, vm)
+			vm.push(res)
+			return true
 		}
 	}
 	vm.runTimeError("Can only call functions and classes.")

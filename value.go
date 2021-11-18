@@ -181,5 +181,9 @@ func (ov ObjectValue) isFunctionObject() bool {
 	return ov.value.getType() == OBJECT_FUNCTION
 }
 
+func (ov ObjectValue) isNativeFunction() bool {
+	return ov.value.getType() == OBJECT_NATIVE
+}
+
 //================================================================================================
 //================================================================================================

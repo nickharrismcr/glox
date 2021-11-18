@@ -1,6 +1,6 @@
 import sys, glob,subprocess,difflib
 
-mode="read"  #"write"
+mode="read"   #read|write
 
 def run(fname):
 
@@ -10,7 +10,7 @@ def run(fname):
 for f in glob.glob("*lox"):
 
     pipe = run(f)
-    testdatafile="%s.testoutput" % f
+    testdatafile="output/%s.testoutput" % f
     if mode == "write":
         with open(testdatafile,"wb") as outfile:
             res=pipe.communicate()
