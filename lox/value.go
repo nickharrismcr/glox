@@ -135,7 +135,7 @@ func makeNilValue() NilValue {
 }
 
 func (nv NilValue) Immutable() bool {
-	return true
+	return false
 }
 
 func (nv NilValue) Get() bool {
