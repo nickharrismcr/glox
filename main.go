@@ -11,9 +11,10 @@ import (
 /* additions :
 
    declare constant  e.g  const a = 1;
+   modulus operator %
    loop break/continue
    string multiply by number ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
-   native funcs :  str()   substr()
+   native funcs :  str(number)   substr(string,start,length)
 
    TODO:
    add switch statement

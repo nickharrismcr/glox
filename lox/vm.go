@@ -239,6 +239,12 @@ Loop:
 				break Loop
 			}
 
+		case OP_MODULUS:
+			// pop 2 stack values, take modulus and push onto the stack
+			if !vm.binaryModulus() {
+				break Loop
+			}
+
 		case OP_DIVIDE:
 			// pop 2 stack values, divide and push onto the stack
 			if !vm.binaryDivide() {
@@ -500,6 +506,25 @@ func (vm *VM) binaryDivide() bool {
 	}
 
 	vm.push(makeNumberValue(nv1.Get()/nv2.Get(), false))
+	return true
+}
+
+func (vm *VM) binaryModulus() bool {
+	v2 := vm.pop()
+	nv2, ok := v2.(NumberValue)
+	if !ok {
+		vm.runTimeError("Operands must be numbers")
+		return false
+	}
+
+	v1 := vm.pop()
+	nv1, ok := v1.(NumberValue)
+	if !ok {
+		vm.runTimeError("Operands must be numbers")
+		return false
+	}
+
+	vm.push(makeNumberValue(float64(int(nv1.Get())%int(nv2.Get())), false))
 	return true
 }
 

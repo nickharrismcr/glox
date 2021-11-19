@@ -87,6 +87,8 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.simpleInstruction("OP_ADD", offset)
 	case OP_SUBTRACT:
 		return c.simpleInstruction("OP_SUBTRACT", offset)
+	case OP_MODULUS:
+		return c.simpleInstruction("OP_MODULUS", offset)
 	case OP_MULTIPLY:
 		return c.simpleInstruction("OP_MULTIPLY", offset)
 	case OP_DIVIDE:

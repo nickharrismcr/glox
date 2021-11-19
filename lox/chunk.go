@@ -27,6 +27,7 @@ const (
 	OP_JUMP
 	OP_LOOP
 	OP_CALL
+	OP_MODULUS
 )
 
 type Chunk struct {

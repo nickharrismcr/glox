@@ -12,6 +12,7 @@ const (
 	TOKEN_RIGHT_BRACE
 	TOKEN_COMMA
 	TOKEN_DOT
+	TOKEN_PERCENT
 	TOKEN_MINUS
 	TOKEN_PLUS
 	TOKEN_SEMICOLON
@@ -130,6 +131,8 @@ func (s *Scanner) scanToken() Token {
 		return s.makeToken(TOKEN_MINUS)
 	case "+":
 		return s.makeToken(TOKEN_PLUS)
+	case "%":
+		return s.makeToken(TOKEN_PERCENT)
 	case "/":
 		return s.makeToken(TOKEN_SLASH)
 	case "*":

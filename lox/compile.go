@@ -16,7 +16,7 @@ const (
 	PREC_EQUALITY              // == !=
 	PREC_COMPARISON            // < > <= >=
 	PREC_TERM                  // + -
-	PREC_FACTOR                // * /
+	PREC_FACTOR                // * / %
 	PREC_UNARY                 // ! -
 	PREC_CALL                  // . ()
 	PREC_PRIMARY
@@ -132,6 +132,7 @@ func (p *Parser) setRules() {
 		TOKEN_SEMICOLON:     {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_SLASH:         {prefix: nil, infix: binary, prec: PREC_FACTOR},
 		TOKEN_STAR:          {prefix: nil, infix: binary, prec: PREC_FACTOR},
+		TOKEN_PERCENT:       {prefix: nil, infix: binary, prec: PREC_FACTOR},
 		TOKEN_BANG:          {prefix: unary, infix: nil, prec: PREC_NONE},
 		TOKEN_BANG_EQUAL:    {prefix: nil, infix: binary, prec: PREC_EQUALITY},
 		TOKEN_EQUAL:         {prefix: nil, infix: nil, prec: PREC_NONE},
@@ -805,6 +806,8 @@ func binary(p *Parser, canAssign bool) {
 		p.emitByte(OP_MULTIPLY)
 	case TOKEN_SLASH:
 		p.emitByte(OP_DIVIDE)
+	case TOKEN_PERCENT:
+		p.emitByte(OP_MODULUS)
 	case TOKEN_BANG_EQUAL:
 		p.emitBytes(OP_EQUAL, OP_NOT)
 	case TOKEN_EQUAL_EQUAL:
