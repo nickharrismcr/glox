@@ -1,4 +1,4 @@
-package main
+package lox
 
 import (
 	"fmt"
@@ -48,7 +48,7 @@ func NewVM() *VM {
 	return vm
 }
 
-func (vm *VM) interpret(source string) (InterpretResult, string) {
+func (vm *VM) Interpret(source string) (InterpretResult, string) {
 
 	function := vm.compile(source)
 	if function == nil {
@@ -126,6 +126,7 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 		if ov.isNativeFunction() {
 			nf := ov.Get().(*NativeObject)
 			res := nf.function(argCount, vm.stackTop-argCount, vm)
+			vm.stackTop -= argCount + 1
 			vm.push(res)
 			return true
 		}
@@ -182,7 +183,7 @@ Loop:
 	for {
 		inst := vm.getCode()[frame.ip]
 
-		if debugTraceExecution {
+		if DebugTraceExecution {
 			vm.stackTrace()
 			_ = frame.function.chunk.disassembleInstruction(inst, frame.ip)
 		}

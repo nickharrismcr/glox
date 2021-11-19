@@ -1,4 +1,4 @@
-package main
+package lox
 
 const (
 	OP_RETURN uint8 = iota

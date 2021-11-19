@@ -1,4 +1,4 @@
-package main
+package lox
 
 import (
 	"fmt"
@@ -97,7 +97,7 @@ func NewParser() *Parser {
 
 func (vm *VM) compile(source string) *FunctionObject {
 
-	if debugTraceExecution {
+	if DebugTraceExecution {
 		fmt.Println("Compiling...")
 	}
 	parser := NewParser()
@@ -109,7 +109,7 @@ func (vm *VM) compile(source string) *FunctionObject {
 	}
 	parser.consume(TOKEN_EOF, "Expect end of expression")
 	function := parser.endCompiler()
-	if debugTraceExecution {
+	if DebugTraceExecution {
 		fmt.Println("Compile done.")
 	}
 	if parser.hadError {
@@ -529,7 +529,7 @@ func (p *Parser) currentChunk() *Chunk {
 func (p *Parser) endCompiler() *FunctionObject {
 	p.emitReturn()
 	function := p.currentCompiler.function
-	if debugPrintCode {
+	if DebugPrintCode {
 		if !p.hadError {
 			s := ""
 			if function.name.String() == "" {

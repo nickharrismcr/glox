@@ -1,6 +1,7 @@
 package main
 
 import (
+	"lox"
 	"testing"
 )
 
@@ -11,7 +12,7 @@ type Tests []Test
 
 func TestVMExpression(t *testing.T) {
 
-	vm := NewVM()
+	vm := lox.NewVM()
 
 	tests := Tests{
 		{"1+2+3+4+5", "15.000000"},
@@ -37,7 +38,7 @@ func TestVMExpression(t *testing.T) {
 
 	for i, test := range tests {
 		status, res := vm.interpret(test.input)
-		if status != INTERPRET_OK || res != test.output {
+		if status != lox.INTERPRET_OK || res != test.output {
 			t.Errorf("Test %d failed : %s != %s ", i, test.output, res)
 		}
 	}
@@ -45,14 +46,14 @@ func TestVMExpression(t *testing.T) {
 
 func TestVMSyntaxError(t *testing.T) {
 
-	vm := NewVM()
+	vm := lox.NewVM()
 
 	status, _ := vm.interpret("//0ax")
-	if status != INTERPRET_COMPILE_ERROR {
+	if status != lox.INTERPRET_COMPILE_ERROR {
 		t.Error("Test failed : compile error expected ")
 	}
 	status, _ = vm.interpret("x9iu-")
-	if status != INTERPRET_COMPILE_ERROR {
+	if status != lox.INTERPRET_COMPILE_ERROR {
 		t.Error("Test failed : compile error expected ")
 	}
 
@@ -60,14 +61,14 @@ func TestVMSyntaxError(t *testing.T) {
 
 func TestVMRuntimeError(t *testing.T) {
 
-	vm := NewVM()
+	vm := lox.NewVM()
 
 	status, _ := vm.interpret("false+1")
-	if status != INTERPRET_RUNTIME_ERROR {
+	if status != lox.INTERPRET_RUNTIME_ERROR {
 		t.Error("Test failed : runtime error expected ")
 	}
 	status, _ = vm.interpret("\"hello\"+1")
-	if status != INTERPRET_RUNTIME_ERROR {
+	if status != lox.INTERPRET_RUNTIME_ERROR {
 		t.Error("Test failed : runtime error expected ")
 	}
 

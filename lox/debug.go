@@ -1,9 +1,9 @@
-package main
+package lox
 
 import "fmt"
 
-var debugTraceExecution = false
-var debugPrintCode = false
+var DebugTraceExecution = false
+var DebugPrintCode = false
 
 var token_names = map[TokenType]string{
 	TOKEN_LEFT_PAREN:    "TOKEN_LEFT_PAREN ",
@@ -173,10 +173,17 @@ func (vm *VM) stackTrace() {
 	fmt.Printf("                                                         ")
 	for i := 0; i < vm.stackTop; i++ {
 		v := vm.stack[i]
+		s := v.String()
+		switch v.(type) {
+		case ObjectValue:
+			if v.(ObjectValue).isStringObject() {
+				s = fmt.Sprintf("\"%s\"", s)
+			}
+		}
 		if v.Immutable() {
-			fmt.Printf("[ %s(c) ]", v.String())
+			fmt.Printf("[ %s(c) ]", s)
 		} else {
-			fmt.Printf("[ %s ]", v.String())
+			fmt.Printf("[ %s ]", s)
 		}
 	}
 	fmt.Printf("\n")

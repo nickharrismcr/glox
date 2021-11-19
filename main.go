@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"glox/lox"
 	"io/ioutil"
 	"os"
 )
@@ -24,7 +25,7 @@ func main() {
 	var filename string
 
 	fmt.Println("GLOX V0.01")
-	vm := NewVM()
+	vm := lox.NewVM()
 
 	if len(os.Args) == 1 {
 		usage()
@@ -32,8 +33,8 @@ func main() {
 	for _, arg := range os.Args {
 		switch arg {
 		case "--debug":
-			debugPrintCode = true
-			debugTraceExecution = true
+			lox.DebugPrintCode = true
+			lox.DebugTraceExecution = true
 		case "--repl":
 			do_repl = true
 		default:
@@ -50,7 +51,7 @@ func main() {
 	}
 }
 
-func repl(vm *VM) {
+func repl(vm *lox.VM) {
 
 	inp := bufio.NewScanner(os.Stdin)
 	for {
@@ -60,8 +61,8 @@ func repl(vm *VM) {
 			if len(s) == 0 {
 				return
 			}
-			status, result := vm.interpret(s)
-			if status == INTERPRET_OK {
+			status, result := vm.Interpret(s)
+			if status == lox.INTERPRET_OK {
 				fmt.Println(result)
 			}
 			break
@@ -69,18 +70,18 @@ func repl(vm *VM) {
 	}
 }
 
-func runFile(path string, vm *VM) {
+func runFile(path string, vm *lox.VM) {
 
 	bytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		fmt.Printf("Could not open file %s.", path)
 		os.Exit(1)
 	}
-	status, result := vm.interpret(string(bytes))
-	if status == INTERPRET_COMPILE_ERROR {
+	status, result := vm.Interpret(string(bytes))
+	if status == lox.INTERPRET_COMPILE_ERROR {
 		os.Exit(65)
 	}
-	if status == INTERPRET_RUNTIME_ERROR {
+	if status == lox.INTERPRET_RUNTIME_ERROR {
 		os.Exit(70)
 	}
 	fmt.Println(result)
