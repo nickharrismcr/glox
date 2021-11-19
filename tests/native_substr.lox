@@ -1,0 +1,17 @@
+
+func testsubstr(string,st,len) {
+    print string+" "+str(st)+" "+str(len);
+    print substr(string,st,len);
+}
+
+testsubstr("hello",1,2);
+testsubstr("hello",2,2);
+testsubstr("hello",3,2);
+testsubstr("hello",4,2);
+testsubstr("hello",5,2);
+testsubstr("hello",1,5);
+testsubstr("hello",2,5);
+testsubstr("hello",3,5);
+testsubstr("hello",4,5);
+testsubstr("hello",5,5);
+testsubstr("hello",6,5);

@@ -45,6 +45,7 @@ func NewVM() *VM {
 	vm.resetStack()
 	vm.defineNative("clock", clockNative)
 	vm.defineNative("str", strNative)
+	vm.defineNative("substr", substrNative)
 	return vm
 }
 
@@ -75,8 +76,8 @@ func (vm *VM) resetStack() {
 func (vm *VM) runTimeError(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, format, args...)
 	fmt.Fprint(os.Stderr, "\n")
-	line := vm.frame().function.chunk.lines[vm.frame().ip-1]
-	fmt.Fprintf(os.Stderr, "[line %d] in script \n", line)
+	//line := vm.frame().function.chunk.lines[vm.frame().ip-1]
+	//fmt.Fprintf(os.Stderr, "[line %d] in script \n", line)
 
 	for i := vm.frameCount - 1; i >= 0; i-- {
 		frame := vm.frames[i]
@@ -86,7 +87,7 @@ func (vm *VM) runTimeError(format string, args ...interface{}) {
 		if function.name.String() == "" {
 			fmt.Fprintf(os.Stderr, "script \n")
 		} else {
-			fmt.Fprintf(os.Stderr, function.name.String())
+			fmt.Fprintf(os.Stderr, "%s \n", function.name.String())
 		}
 	}
 
@@ -126,6 +127,9 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 		if ov.isNativeFunction() {
 			nf := ov.Get().(*NativeObject)
 			res := nf.function(argCount, vm.stackTop-argCount, vm)
+			if _, ok := res.(NilValue); ok { // error occurred
+				return false
+			}
 			vm.stackTop -= argCount + 1
 			vm.push(res)
 			return true

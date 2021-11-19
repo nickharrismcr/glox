@@ -13,10 +13,11 @@ import (
    declare constant  e.g  const a = 1;
    loop break/continue
    string multiply by number ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
+   native funcs :  str()   substr()
 
    TODO:
    add switch statement
-   debug "print "hello "+str(2);" runtime crash
+
 */
 
 func main() {
