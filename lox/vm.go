@@ -16,14 +16,15 @@ const (
 )
 
 const (
-	FRAMES_MAX int = 64
-	STACK_MAX  int = FRAMES_MAX * 256
+	FRAMES_MAX       int = 64
+	STACK_MAX        int = FRAMES_MAX * 256
+	GC_COLLECT_POINT int = 10000
 )
 
 type CallFrame struct {
 	function *FunctionObject
 	ip       int
-	slots    int // start of vm stack
+	slots    int // start of vm stack for this frame
 }
 
 type VM struct {
@@ -35,6 +36,7 @@ type VM struct {
 	frames     [FRAMES_MAX]*CallFrame
 	frameCount int
 	starttime  time.Time
+	counter    int
 }
 
 func NewVM() *VM {
@@ -93,6 +95,7 @@ func (vm *VM) runTimeError(format string, args ...interface{}) {
 	vm.resetStack()
 
 }
+
 func (vm *VM) defineNative(name string, function NativeFn) {
 	vm.push(makeObjectValue(MakeStringObject(name), false))
 	vm.push(makeObjectValue(makeNativeObject(function), false))
@@ -184,6 +187,10 @@ func (vm *VM) run() (InterpretResult, Value) {
 	frame := vm.frame()
 Loop:
 	for {
+		vm.counter++
+		if vm.counter == GC_COLLECT_POINT {
+			runtime.GC()
+		}
 		inst := vm.getCode()[frame.ip]
 
 		if DebugTraceExecution {
