@@ -1,7 +1,7 @@
 package main
 
 import (
-	"lox"
+	"glox/lox"
 	"testing"
 )
 
@@ -37,7 +37,7 @@ func TestVMExpression(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		status, res := vm.interpret(test.input)
+		status, res := vm.Interpret(test.input)
 		if status != lox.INTERPRET_OK || res != test.output {
 			t.Errorf("Test %d failed : %s != %s ", i, test.output, res)
 		}
@@ -48,11 +48,11 @@ func TestVMSyntaxError(t *testing.T) {
 
 	vm := lox.NewVM()
 
-	status, _ := vm.interpret("//0ax")
+	status, _ := vm.Interpret("//0ax")
 	if status != lox.INTERPRET_COMPILE_ERROR {
 		t.Error("Test failed : compile error expected ")
 	}
-	status, _ = vm.interpret("x9iu-")
+	status, _ = vm.Interpret("x9iu-")
 	if status != lox.INTERPRET_COMPILE_ERROR {
 		t.Error("Test failed : compile error expected ")
 	}
@@ -63,11 +63,11 @@ func TestVMRuntimeError(t *testing.T) {
 
 	vm := lox.NewVM()
 
-	status, _ := vm.interpret("false+1")
+	status, _ := vm.Interpret("false+1")
 	if status != lox.INTERPRET_RUNTIME_ERROR {
 		t.Error("Test failed : runtime error expected ")
 	}
-	status, _ = vm.interpret("\"hello\"+1")
+	status, _ = vm.Interpret("\"hello\"+1")
 	if status != lox.INTERPRET_RUNTIME_ERROR {
 		t.Error("Test failed : runtime error expected ")
 	}
