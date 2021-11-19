@@ -10,17 +10,25 @@ func clockNative(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeNumberValue(float64(elapsed.Seconds()), false)
 }
 
+// str(x)
 func strNative(argcount int, arg_stackptr int, vm *VM) Value {
 	if argcount != 1 {
 		vm.runTimeError("Single argument expected.")
 		return makeNilValue()
 	}
 	arg := vm.stack[arg_stackptr]
+
 	switch arg.(type) {
+
 	case NumberValue:
-		s := fmt.Sprintf("%f", arg.(NumberValue).Get())
+		s := arg.(NumberValue).String()
 		so := MakeStringObject(s)
 		return makeObjectValue(so, false)
+
+	case NilValue:
+		so := MakeStringObject("nil")
+		return makeObjectValue(so, false)
+
 	case ObjectValue:
 		o := arg.(ObjectValue)
 		switch o.value.getType() {
@@ -29,11 +37,13 @@ func strNative(argcount int, arg_stackptr int, vm *VM) Value {
 		case OBJECT_FUNCTION:
 			return makeObjectValue(MakeStringObject("<func>"), false)
 		}
+
 	case BooleanValue:
 		s := fmt.Sprintf("%t", arg.(BooleanValue).Get())
 		so := MakeStringObject(s)
 		return makeObjectValue(so, false)
 	}
+
 	return makeObjectValue(MakeStringObject(""), false)
 }
 
