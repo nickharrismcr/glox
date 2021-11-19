@@ -46,6 +46,7 @@ func NewVM() *VM {
 	vm.defineNative("clock", clockNative)
 	vm.defineNative("str", strNative)
 	vm.defineNative("substr", substrNative)
+	vm.defineNative("len", lenNative)
 	return vm
 }
 
@@ -82,8 +83,8 @@ func (vm *VM) runTimeError(format string, args ...interface{}) {
 	for i := vm.frameCount - 1; i >= 0; i-- {
 		frame := vm.frames[i]
 		function := frame.function
-		inst := function.chunk.code[frame.ip]
-		fmt.Fprintf(os.Stderr, "[line %d] in ", function.chunk.lines[inst])
+
+		fmt.Fprintf(os.Stderr, "[line %d] in ", function.chunk.lines[frame.ip])
 		if function.name.String() == "" {
 			fmt.Fprintf(os.Stderr, "script \n")
 		} else {

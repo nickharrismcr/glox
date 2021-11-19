@@ -78,3 +78,20 @@ func substrNative(argcount int, arg_stackptr int, vm *VM) Value {
 	}
 	return makeObjectValue(MakeStringObject(string_[start-1:(start+length)-1]), false)
 }
+
+// len( string )
+func lenNative(argcount int, arg_stackptr int, vm *VM) Value {
+	if argcount != 1 {
+		vm.runTimeError("Invalid argument count to len.")
+		return makeNilValue()
+	}
+	vstring_ := vm.stack[arg_stackptr]
+
+	vo_string, ok := vstring_.(ObjectValue)
+	if !ok {
+		vm.runTimeError("Invalid argument type to len.")
+		return makeNilValue()
+	}
+	s := vo_string.String()
+	return makeNumberValue(float64(len(s)), false)
+}

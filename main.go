@@ -14,10 +14,11 @@ import (
    modulus operator %
    loop break/continue
    string multiply by number ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
-   native funcs :  str(number)   substr(string,start,length)
+   native funcs :  str(number)   substr(string,start,length)   len(string)
 
    TODO:
    add switch statement
+   integer number type
 
 */
 
@@ -65,7 +66,9 @@ func repl(vm *lox.VM) {
 			}
 			status, result := vm.Interpret(s)
 			if status == lox.INTERPRET_OK {
-				fmt.Println(result)
+				if result != "nil" {
+					fmt.Println(result)
+				}
 			}
 			break
 		}
