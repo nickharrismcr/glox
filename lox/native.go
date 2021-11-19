@@ -2,8 +2,18 @@ package lox
 
 import (
 	"fmt"
+	"math"
 	"time"
 )
+
+func (vm *VM) defineNatives() {
+	vm.defineNative("clock", clockNative)
+	vm.defineNative("str", strNative)
+	vm.defineNative("substr", substrNative)
+	vm.defineNative("len", lenNative)
+	vm.defineNative("sin", sinNative)
+	vm.defineNative("cos", cosNative)
+}
 
 func clockNative(argCount int, arg_stackptr int, vm *VM) Value {
 	elapsed := time.Since(vm.starttime)
@@ -108,4 +118,38 @@ func lenNative(argcount int, arg_stackptr int, vm *VM) Value {
 	}
 	s := vo_string.String()
 	return makeNumberValue(float64(len(s)), false)
+}
+
+// sin(number)
+func sinNative(argcount int, arg_stackptr int, vm *VM) Value {
+	if argcount != 1 {
+		vm.runTimeError("Invalid argument count to sin.")
+		return makeNilValue()
+	}
+	vnum := vm.stack[arg_stackptr]
+
+	vn, ok := vnum.(NumberValue)
+	if !ok {
+		vm.runTimeError("Invalid argument type to sin.")
+		return makeNilValue()
+	}
+	n := vn.Get()
+	return makeNumberValue(math.Sin(n), false)
+}
+
+// cos(number)
+func cosNative(argcount int, arg_stackptr int, vm *VM) Value {
+	if argcount != 1 {
+		vm.runTimeError("Invalid argument count to cos.")
+		return makeNilValue()
+	}
+	vnum := vm.stack[arg_stackptr]
+
+	vn, ok := vnum.(NumberValue)
+	if !ok {
+		vm.runTimeError("Invalid argument type to cos.")
+		return makeNilValue()
+	}
+	n := vn.Get()
+	return makeNumberValue(math.Cos(n), false)
 }

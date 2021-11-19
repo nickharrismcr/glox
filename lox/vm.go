@@ -43,10 +43,8 @@ func NewVM() *VM {
 		starttime: time.Now(),
 	}
 	vm.resetStack()
-	vm.defineNative("clock", clockNative)
-	vm.defineNative("str", strNative)
-	vm.defineNative("substr", substrNative)
-	vm.defineNative("len", lenNative)
+	vm.defineNatives()
+
 	return vm
 }
 

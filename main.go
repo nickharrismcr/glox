@@ -14,7 +14,7 @@ import (
    modulus operator %
    loop break/continue
    string multiply by number ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
-   native funcs :  str(number)   substr(string,start,length)   len(string)
+   native funcs :  str(number)   substr(string,start,length)   len(string)    sin(x)  cos(x)
 
    TODO:
    add switch statement
