@@ -24,6 +24,18 @@ func immutable(v Value) Value {
 	return makeNilValue()
 }
 
+func mutable(v Value) Value {
+	switch v.(type) {
+	case NumberValue:
+		return makeNumberValue(v.(NumberValue).Get(), false)
+	case BooleanValue:
+		return makeBooleanValue(v.(BooleanValue).Get(), false)
+	case ObjectValue:
+		return makeObjectValue(v.(ObjectValue).Get(), false)
+	}
+	return makeNilValue()
+}
+
 func valuesEqual(a, b Value) bool {
 	switch a.(type) {
 	case BooleanValue:

@@ -1,9 +1,0 @@
-func say(a,b) {
-    print a*b;
-}
-
-for (var i = 1; i < 20; i=i+1 ) { 
-    say("hello ",i);
-}
-
-say ("hello",30000.6);

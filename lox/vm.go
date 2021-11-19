@@ -201,7 +201,7 @@ Loop:
 			result := vm.pop()
 			vm.frameCount--
 			if vm.frameCount == 0 {
-				vm.pop() // main script function
+				vm.pop() // drop main script function obj
 				runtime.GC()
 				return INTERPRET_OK, result
 			}
@@ -343,7 +343,7 @@ Loop:
 				vm.runTimeError("Cannot assign to const %s\n", name)
 				break Loop
 			}
-			vm.globals[name] = vm.peek(0)
+			vm.globals[name] = mutable(vm.peek(0)) // in case of assignment of const
 
 		case OP_GET_LOCAL:
 			// get local from stack at position = operand and push on stack top
@@ -360,7 +360,7 @@ Loop:
 				vm.runTimeError("Cannot assign to const local.\n")
 				break Loop
 			}
-			vm.stack[frame.slots+slot_idx] = val
+			vm.stack[frame.slots+slot_idx] = mutable(val)
 
 		case OP_JUMP_IF_FALSE:
 			// if stack top is falsey, jump by offset ( 2 operands )
@@ -524,8 +524,10 @@ func (vm *VM) binaryModulus() bool {
 		vm.runTimeError("Operands must be numbers")
 		return false
 	}
-
-	vm.push(makeNumberValue(float64(int(nv1.Get())%int(nv2.Get())), false))
+	iv1 := int(nv1.Get())
+	iv2 := int(nv2.Get())
+	ret := float64(iv1 % iv2)
+	vm.push(makeNumberValue(ret, false))
 	return true
 }
 

@@ -83,6 +83,10 @@ func substrNative(argcount int, arg_stackptr int, vm *VM) Value {
 	}
 
 	length := int(vn_len.Get())
+	if length < 0 {
+		vm.runTimeError("substr() length cannot be negative.")
+		return makeNilValue()
+	}
 	if (start+length)-1 > len(string_) {
 		length = (len(string_) - start) + 1
 	}
