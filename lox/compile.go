@@ -669,7 +669,7 @@ func (p *Parser) argumentList() uint8 {
 	return argCount
 }
 
-func (p *Parser) list() uint8 {
+func (p *Parser) parseList() uint8 {
 	var itemCount uint8 = 0
 	if !p.check(TOKEN_RIGHT_BRACKET) {
 		for {
@@ -920,10 +920,49 @@ func call(p *Parser, canAssign bool) {
 
 func listLiteral(p *Parser, canAssign bool) {
 
-	listCount := p.list()
+	listCount := p.parseList()
 	p.emitBytes(OP_CREATE_LIST, listCount)
 }
 
+// var[<expr>]
 func slice(p *Parser, canAssign bool) {
 
+	if p.check(TOKEN_RIGHT_BRACKET) {
+		p.error("Can't have empty list slice.")
+		return
+	}
+
+	// handle the slice variants : [exp], [:], [:exp], [exp:], [exp:exp]
+	if p.match(TOKEN_COLON) {
+		p.emitByte(OP_NIL)
+		if p.check(TOKEN_RIGHT_BRACKET) {
+			// [:]
+			p.emitByte(OP_NIL)
+			p.emitByte(OP_LIST_SLICE)
+		} else {
+			// [:exp]
+			p.expression()
+			p.emitByte(OP_LIST_SLICE)
+		}
+	} else {
+		p.expression()
+		if p.check(TOKEN_RIGHT_BRACKET) {
+			// [exp]
+			p.emitByte(OP_LIST_INDEX)
+		} else {
+			if p.match(TOKEN_COLON) {
+				if p.check(TOKEN_RIGHT_BRACKET) {
+					// [exp:]
+					p.emitByte(OP_NIL)
+					p.emitByte(OP_LIST_SLICE)
+				} else {
+					// [exp:exp]
+					p.expression()
+					p.emitByte(OP_LIST_SLICE)
+				}
+			}
+		}
+	}
+
+	p.consume(TOKEN_RIGHT_BRACKET, "Expect ']' after expression.")
 }

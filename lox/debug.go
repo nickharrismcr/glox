@@ -133,6 +133,10 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.byteInstruction("OP_CALL", offset)
 	case OP_CREATE_LIST:
 		return c.byteInstruction("OP_CREATE_LIST", offset)
+	case OP_LIST_INDEX:
+		return c.simpleInstruction("OP_LIST_INDEX", offset)
+	case OP_LIST_SLICE:
+		return c.simpleInstruction("OP_LIST_SLICE", offset)
 
 	default:
 		fmt.Printf("Unknown opcode %d", i)

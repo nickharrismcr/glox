@@ -20,6 +20,7 @@ const (
 	TOKEN_SEMICOLON
 	TOKEN_SLASH
 	TOKEN_STAR
+	TOKEN_COLON
 	// One or two character tokens.
 	TOKEN_BANG
 	TOKEN_BANG_EQUAL
@@ -129,6 +130,8 @@ func (s *Scanner) scanToken() Token {
 		return s.makeToken(TOKEN_RIGHT_BRACKET)
 	case ";":
 		return s.makeToken(TOKEN_SEMICOLON)
+	case ":":
+		return s.makeToken(TOKEN_COLON)
 	case ",":
 		return s.makeToken(TOKEN_COMMA)
 	case ".":

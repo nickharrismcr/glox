@@ -29,6 +29,8 @@ const (
 	OP_CALL
 	OP_MODULUS
 	OP_CREATE_LIST
+	OP_LIST_INDEX
+	OP_LIST_SLICE
 )
 
 type Chunk struct {

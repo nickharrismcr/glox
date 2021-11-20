@@ -72,6 +72,7 @@ func (vm *VM) getCode() []uint8 {
 
 func (vm *VM) resetStack() {
 	vm.stackTop = 0
+	vm.frameCount = 0
 }
 
 func (vm *VM) runTimeError(format string, args ...interface{}) {
@@ -425,6 +426,38 @@ Loop:
 			}
 			lo := MakeListObject(list)
 			vm.push(makeObjectValue(lo, false))
+
+		case OP_LIST_INDEX:
+			// list + index on stack,  item at index -> stack top
+			var nv NumberValue
+			var ov ObjectValue
+			var ok bool
+
+			v := vm.pop()
+			if nv, ok = v.(NumberValue); !ok {
+				vm.runTimeError("Invalid subscript to list.")
+				break Loop
+			}
+			idx := nv.get()
+			lv := vm.pop()
+			if ov, ok = lv.(ObjectValue); !ok {
+				vm.runTimeError("Cannot take subscript of non-list variable.")
+				break Loop
+			}
+			if ov.get().getType() != OBJECT_LIST {
+				vm.runTimeError("Cannot take subscript of non-list variable.")
+				break Loop
+			}
+			list := ov.get().(*ListObject).get()
+			ix := int(idx)
+			if idx < 0 {
+				ix = int(len(list) + int(idx))
+			}
+			if ix < 0 || ix >= len(list) {
+				vm.runTimeError("List subscript out of range.")
+				break Loop
+			}
+			vm.push(list[ix])
 
 		default:
 			vm.runTimeError("Invalid Opcode")
