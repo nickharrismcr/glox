@@ -189,9 +189,9 @@ func (vm *VM) stackTrace() {
 			}
 		}
 		if v.Immutable() {
-			fmt.Printf("[ %s(c) ]", s)
+			fmt.Printf("| %s(c) |", s)
 		} else {
-			fmt.Printf("[ %s ]", s)
+			fmt.Printf("| %s |", s)
 		}
 	}
 	fmt.Printf("\n")

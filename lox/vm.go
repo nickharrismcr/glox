@@ -312,7 +312,7 @@ Loop:
 					s = v.(ObjectValue).stringObjectValue()
 				case *FunctionObject:
 					s = v.String()
-				case ListObject:
+				case *ListObject:
 					s = v.String()
 
 				}
@@ -417,47 +417,20 @@ Loop:
 
 		case OP_CREATE_LIST:
 			// item count is operand, expects items on stack,  list object will be stack top
-			itemCount := int(vm.getCode()[frame.ip])
-			frame.ip++
-			list := []Value{}
 
-			for i := 0; i < itemCount; i++ {
-				list = append([]Value{vm.pop()}, list...) // reverse order
-			}
-			lo := MakeListObject(list)
-			vm.push(makeObjectValue(lo, false))
+			vm.createList(frame)
 
 		case OP_LIST_INDEX:
 			// list + index on stack,  item at index -> stack top
-			var nv NumberValue
-			var ov ObjectValue
-			var ok bool
+			if !vm.listIndex(frame) {
+				break Loop
+			}
 
-			v := vm.pop()
-			if nv, ok = v.(NumberValue); !ok {
-				vm.runTimeError("Invalid subscript to list.")
+		case OP_LIST_SLICE:
+			// list + from/to on stack. nil indicates from start/end.  new list at index -> stack top
+			if !vm.listSlice(frame) {
 				break Loop
 			}
-			idx := nv.get()
-			lv := vm.pop()
-			if ov, ok = lv.(ObjectValue); !ok {
-				vm.runTimeError("Cannot take subscript of non-list variable.")
-				break Loop
-			}
-			if ov.get().getType() != OBJECT_LIST {
-				vm.runTimeError("Cannot take subscript of non-list variable.")
-				break Loop
-			}
-			list := ov.get().(*ListObject).get()
-			ix := int(idx)
-			if idx < 0 {
-				ix = int(len(list) + int(idx))
-			}
-			if ix < 0 || ix >= len(list) {
-				vm.runTimeError("List subscript out of range.")
-				break Loop
-			}
-			vm.push(list[ix])
 
 		default:
 			vm.runTimeError("Invalid Opcode")
@@ -465,6 +438,123 @@ Loop:
 		}
 	}
 	return INTERPRET_RUNTIME_ERROR, makeNilValue()
+}
+
+func (vm *VM) createList(frame *CallFrame) {
+
+	itemCount := int(vm.getCode()[frame.ip])
+	frame.ip++
+	list := []Value{}
+
+	for i := 0; i < itemCount; i++ {
+		list = append([]Value{vm.pop()}, list...) // reverse order
+	}
+	lo := makeListObject(list)
+	vm.push(makeObjectValue(lo, false))
+}
+
+func (vm *VM) listIndex(frame *CallFrame) bool {
+
+	var nv NumberValue
+	var ov ObjectValue
+	var ok bool
+
+	v := vm.pop()
+	if nv, ok = v.(NumberValue); !ok {
+		vm.runTimeError("Invalid subscript to list.")
+		return false
+	}
+	idx := nv.get()
+	lv := vm.pop()
+	if ov, ok = lv.(ObjectValue); !ok {
+		vm.runTimeError("Cannot take subscript of non-list variable.")
+		return false
+
+	}
+	if ov.get().getType() != OBJECT_LIST {
+		vm.runTimeError("Cannot take subscript of non-list variable.")
+		return false
+	}
+	list := ov.get().(*ListObject).get()
+	ix := int(idx)
+	if idx < 0 {
+		ix = int(len(list) + int(idx))
+	}
+	if ix < 0 || ix >= len(list) {
+		vm.runTimeError("List subscript out of range.")
+		return false
+	}
+	vm.push(list[ix])
+	return true
+
+}
+func (vm *VM) listSlice(frame *CallFrame) bool {
+
+	var nv_from NumberValue
+	var nv_to NumberValue
+	var ov ObjectValue
+
+	var from_start, to_end, ok bool
+
+	from_start = false
+	to_end = false
+
+	v_to := vm.pop()
+	if _, ok = v_to.(NilValue); ok {
+		to_end = true
+	} else if nv_to, ok = v_to.(NumberValue); !ok {
+		vm.runTimeError("Invalid type in slice expression.")
+		return false
+	}
+	to_idx := nv_to.get()
+
+	v_from := vm.pop()
+	if _, ok = v_from.(NilValue); ok {
+		from_start = true
+	} else if nv_from, ok = v_from.(NumberValue); !ok {
+		vm.runTimeError("Invalid type in slice expression.")
+		return false
+	}
+	from_idx := nv_from.get()
+
+	lv := vm.pop()
+	if ov, ok = lv.(ObjectValue); !ok {
+		vm.runTimeError("Cannot take slice of non-list variable.")
+		return false
+	}
+	if ov.get().getType() != OBJECT_LIST {
+		vm.runTimeError("Cannot take slice of non-list variable.")
+		return false
+	}
+	list := ov.get().(*ListObject).get()
+
+	to_ix := int(to_idx)
+	if to_end {
+		to_ix = len(list)
+	}
+	if to_idx < 0 {
+		to_ix = int(len(list) + int(to_idx))
+	}
+	if to_ix < 0 || to_ix > len(list) {
+		vm.runTimeError("List subscript out of range.")
+		return false
+	}
+
+	from_ix := int(from_idx)
+	if from_start {
+		from_ix = 0
+	}
+	if to_idx < 0 {
+		from_ix = int(len(list) + int(to_idx))
+	}
+	if from_ix < 0 || from_ix > len(list) {
+		vm.runTimeError("List subscript out of range.")
+		return false
+	}
+
+	lo := makeListObject(list[from_ix:to_ix])
+	vm.push(makeObjectValue(lo, false))
+	return true
 }
 
 // numbers and strings only

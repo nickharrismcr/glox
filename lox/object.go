@@ -104,7 +104,7 @@ type ListObject struct {
 	items []Value
 }
 
-func MakeListObject(items []Value) *ListObject {
+func makeListObject(items []Value) *ListObject {
 	return &ListObject{
 		items: items,
 	}
