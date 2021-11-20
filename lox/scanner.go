@@ -10,6 +10,8 @@ const (
 	TOKEN_RIGHT_PAREN
 	TOKEN_LEFT_BRACE
 	TOKEN_RIGHT_BRACE
+	TOKEN_LEFT_BRACKET
+	TOKEN_RIGHT_BRACKET
 	TOKEN_COMMA
 	TOKEN_DOT
 	TOKEN_PERCENT
@@ -121,6 +123,10 @@ func (s *Scanner) scanToken() Token {
 		return s.makeToken(TOKEN_LEFT_BRACE)
 	case "}":
 		return s.makeToken(TOKEN_RIGHT_BRACE)
+	case "[":
+		return s.makeToken(TOKEN_LEFT_BRACKET)
+	case "]":
+		return s.makeToken(TOKEN_RIGHT_BRACKET)
 	case ";":
 		return s.makeToken(TOKEN_SEMICOLON)
 	case ",":

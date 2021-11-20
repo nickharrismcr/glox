@@ -85,10 +85,10 @@ func (vm *VM) runTimeError(format string, args ...interface{}) {
 		function := frame.function
 
 		fmt.Fprintf(os.Stderr, "[line %d] in ", function.chunk.lines[frame.ip])
-		if function.name.String() == "" {
+		if function.name.get() == "" {
 			fmt.Fprintf(os.Stderr, "script \n")
 		} else {
-			fmt.Fprintf(os.Stderr, "%s \n", function.name.String())
+			fmt.Fprintf(os.Stderr, "%s \n", function.name.get())
 		}
 	}
 
@@ -124,10 +124,10 @@ func (vm *VM) peek(dist int) Value {
 func (vm *VM) callValue(callee Value, argCount int) bool {
 	if ov, ok := callee.(ObjectValue); ok {
 		if ov.isFunctionObject() {
-			return vm.call(ov.Get().(*FunctionObject), argCount)
+			return vm.call(ov.get().(*FunctionObject), argCount)
 		}
 		if ov.isNativeFunction() {
-			nf := ov.Get().(*NativeObject)
+			nf := ov.get().(*NativeObject)
 			res := nf.function(argCount, vm.stackTop-argCount, vm)
 			if _, ok := res.(NilValue); ok { // error occurred
 				return false
@@ -172,11 +172,11 @@ func (vm *VM) readShort() uint16 {
 func (vm *VM) isFalsey(v Value) bool {
 	switch v.(type) {
 	case NumberValue:
-		return v.(NumberValue).Get() == 0
+		return v.(NumberValue).get() == 0
 	case NilValue:
 		return true
 	case BooleanValue:
-		return !v.(BooleanValue).Get()
+		return !v.(BooleanValue).get()
 	}
 	return true
 }
@@ -215,7 +215,7 @@ Loop:
 			frame = vm.frames[vm.frameCount-1]
 
 		case OP_CONSTANT:
-			// get the constant indexed by operand 2 and push it onto the stack
+			// get the constant indexed by operand and push it onto the stack
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			constant := frame.function.chunk.constants[idx]
@@ -296,7 +296,28 @@ Loop:
 		case OP_PRINT:
 			// pop 1 stack value and print it
 			v := vm.pop()
-			fmt.Printf("%s\n", v.String())
+			s := ""
+			switch v.(type) {
+			case NumberValue:
+				s = v.String()
+			case BooleanValue:
+				s = v.String()
+			case NilValue:
+				s = v.String()
+			case ObjectValue:
+				a := v.(ObjectValue).get()
+				switch a.(type) {
+				case StringObject:
+					s = v.(ObjectValue).stringObjectValue()
+				case *FunctionObject:
+					s = v.String()
+				case ListObject:
+					s = v.String()
+
+				}
+
+			}
+			fmt.Printf("%s\n", s)
 
 		case OP_POP:
 			// pop 1 stack value and discard
@@ -307,7 +328,7 @@ Loop:
 			// pop 1 stack value and set globals[name] to it
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
-			name := frame.function.chunk.constants[idx].String()
+			name := getStringValue(frame.function.chunk.constants[idx])
 			vm.globals[name] = vm.peek(0)
 			vm.pop()
 
@@ -316,7 +337,7 @@ Loop:
 			// pop 1 stack value and set globals[name] to it and flag as immutable
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
-			name := frame.function.chunk.constants[idx].String()
+			name := getStringValue(frame.function.chunk.constants[idx])
 			vm.globals[name] = vm.peek(0)
 			vm.globals[name] = immutable(vm.globals[name])
 			vm.pop()
@@ -326,7 +347,7 @@ Loop:
 			// push globals[name] onto stack
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
-			name := frame.function.chunk.constants[idx].String()
+			name := getStringValue(frame.function.chunk.constants[idx])
 			value, ok := vm.globals[name]
 			if !ok {
 				vm.runTimeError("Undefined variable %s\n", name)
@@ -339,7 +360,7 @@ Loop:
 			// set globals[name] to stack top, key must exist
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
-			name := frame.function.chunk.constants[idx].String()
+			name := getStringValue(frame.function.chunk.constants[idx])
 			if _, ok := vm.globals[name]; !ok {
 				vm.runTimeError("Undefined variable %s\n", name)
 				break Loop
@@ -393,6 +414,18 @@ Loop:
 			}
 			frame = vm.frame()
 
+		case OP_CREATE_LIST:
+			// item count is operand, expects items on stack,  list object will be stack top
+			itemCount := int(vm.getCode()[frame.ip])
+			frame.ip++
+			list := []Value{}
+
+			for i := 0; i < itemCount; i++ {
+				list = append([]Value{vm.pop()}, list...) // reverse order
+			}
+			lo := MakeListObject(list)
+			vm.push(makeObjectValue(lo, false))
+
 		default:
 			vm.runTimeError("Invalid Opcode")
 			break Loop
@@ -414,11 +447,12 @@ func (vm *VM) binaryAdd() bool {
 			vm.runTimeError("Addition type mismatch")
 			return false
 		}
-		vm.push(makeNumberValue(nv1.Get()+nv2.Get(), false))
+		vm.push(makeNumberValue(nv1.get()+nv2.get(), false))
 		return true
 
 	case ObjectValue:
-		ov2 := v2.(ObjectValue).value
+		o2 := v2.(ObjectValue)
+		ov2 := o2.value
 		if ov2.getType() == OBJECT_STRING {
 			v1 := vm.pop()
 			o1, ok := v1.(ObjectValue)
@@ -428,7 +462,7 @@ func (vm *VM) binaryAdd() bool {
 			}
 			ov1 := o1.value
 			if ov1.getType() == OBJECT_STRING {
-				vm.concatenate(ov1.String(), ov2.String())
+				vm.concatenate(o1.stringObjectValue(), o2.stringObjectValue())
 				return true
 			}
 		}
@@ -452,7 +486,7 @@ func (vm *VM) binarySubtract() bool {
 		return false
 	}
 
-	vm.push(makeNumberValue(nv1.Get()-nv2.Get(), false))
+	vm.push(makeNumberValue(nv1.get()-nv2.get(), false))
 	return true
 }
 
@@ -464,13 +498,14 @@ func (vm *VM) binaryMultiply() bool {
 	case NumberValue:
 		switch v1.(type) {
 		case NumberValue:
-			vm.push(makeNumberValue(v1.(NumberValue).Get()*v2.(NumberValue).Get(), false))
+			vm.push(makeNumberValue(v1.(NumberValue).get()*v2.(NumberValue).get(), false))
 		case ObjectValue:
 			if !v1.(ObjectValue).isStringObject() {
 				vm.runTimeError("Invalid operand for multiply.")
 				return false
 			}
-			vm.push(vm.stringMultiply(v1.String(), int(v2.(NumberValue).Get())))
+			s := v1.(ObjectValue).get().(StringObject).get()
+			vm.push(vm.stringMultiply(s, int(v2.(NumberValue).get())))
 		default:
 			vm.runTimeError("Invalid operand for multiply.")
 			return false
@@ -482,8 +517,10 @@ func (vm *VM) binaryMultiply() bool {
 		}
 		switch v1.(type) {
 		case NumberValue:
-			vm.push(vm.stringMultiply(v2.String(), int(v1.(NumberValue).Get())))
+			s := v2.(ObjectValue).get().(StringObject).get()
+			vm.push(vm.stringMultiply(s, int(v1.(NumberValue).get())))
 		default:
+
 			vm.runTimeError("Invalid operand for multiply.")
 			return false
 		}
@@ -511,7 +548,7 @@ func (vm *VM) binaryDivide() bool {
 		return false
 	}
 
-	vm.push(makeNumberValue(nv1.Get()/nv2.Get(), false))
+	vm.push(makeNumberValue(nv1.get()/nv2.get(), false))
 	return true
 }
 
@@ -529,8 +566,8 @@ func (vm *VM) binaryModulus() bool {
 		vm.runTimeError("Operands must be numbers")
 		return false
 	}
-	iv1 := int(nv1.Get())
-	iv2 := int(nv2.Get())
+	iv1 := int(nv1.get())
+	iv2 := int(nv2.get())
 	ret := float64(iv1 % iv2)
 	vm.push(makeNumberValue(ret, false))
 	return true
@@ -543,7 +580,7 @@ func (vm *VM) unaryNegate() bool {
 		vm.runTimeError("Operand must be a number")
 		return false
 	}
-	f := nv.Get()
+	f := nv.get()
 	vm.push(makeNumberValue(-f, false))
 	return true
 }
@@ -563,7 +600,7 @@ func (vm *VM) binaryGreater() bool {
 		return false
 	}
 
-	vm.push(makeBooleanValue(nv1.Get() > nv2.Get(), false))
+	vm.push(makeBooleanValue(nv1.get() > nv2.get(), false))
 	return true
 }
 
@@ -582,7 +619,7 @@ func (vm *VM) binaryLess() bool {
 		return false
 	}
 
-	vm.push(makeBooleanValue(nv1.Get() < nv2.Get(), false))
+	vm.push(makeBooleanValue(nv1.get() < nv2.get(), false))
 	return true
 }
 

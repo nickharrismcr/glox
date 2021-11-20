@@ -15,11 +15,11 @@ func printValue(v Value) {
 func immutable(v Value) Value {
 	switch v.(type) {
 	case NumberValue:
-		return makeNumberValue(v.(NumberValue).Get(), true)
+		return makeNumberValue(v.(NumberValue).get(), true)
 	case BooleanValue:
-		return makeBooleanValue(v.(BooleanValue).Get(), true)
+		return makeBooleanValue(v.(BooleanValue).get(), true)
 	case ObjectValue:
-		return makeObjectValue(v.(ObjectValue).Get(), true)
+		return makeObjectValue(v.(ObjectValue).get(), true)
 	}
 	return makeNilValue()
 }
@@ -27,11 +27,11 @@ func immutable(v Value) Value {
 func mutable(v Value) Value {
 	switch v.(type) {
 	case NumberValue:
-		return makeNumberValue(v.(NumberValue).Get(), false)
+		return makeNumberValue(v.(NumberValue).get(), false)
 	case BooleanValue:
-		return makeBooleanValue(v.(BooleanValue).Get(), false)
+		return makeBooleanValue(v.(BooleanValue).get(), false)
 	case ObjectValue:
-		return makeObjectValue(v.(ObjectValue).Get(), false)
+		return makeObjectValue(v.(ObjectValue).get(), false)
 	}
 	return makeNilValue()
 }
@@ -41,14 +41,14 @@ func valuesEqual(a, b Value) bool {
 	case BooleanValue:
 		switch b.(type) {
 		case BooleanValue:
-			return a.(BooleanValue).Get() == b.(BooleanValue).Get()
+			return a.(BooleanValue).get() == b.(BooleanValue).get()
 		default:
 			return false
 		}
 	case NumberValue:
 		switch b.(type) {
 		case NumberValue:
-			return a.(NumberValue).Get() == b.(NumberValue).Get()
+			return a.(NumberValue).get() == b.(NumberValue).get()
 		default:
 			return false
 		}
@@ -76,6 +76,10 @@ func valuesEqual(a, b Value) bool {
 	return false
 }
 
+func getStringValue(v Value) string {
+	return v.(ObjectValue).stringObjectValue()
+}
+
 //================================================================================================
 type NumberValue struct {
 	value     float64
@@ -95,7 +99,7 @@ func (nv NumberValue) Immutable() bool {
 	return nv.immutable
 }
 
-func (nv NumberValue) Get() float64 {
+func (nv NumberValue) get() float64 {
 	return nv.value
 }
 
@@ -122,7 +126,7 @@ func (nv BooleanValue) Immutable() bool {
 	return nv.immutable
 }
 
-func (nv BooleanValue) Get() bool {
+func (nv BooleanValue) get() bool {
 	return nv.value
 }
 
@@ -150,7 +154,7 @@ func (nv NilValue) Immutable() bool {
 	return false
 }
 
-func (nv NilValue) Get() bool {
+func (nv NilValue) get() bool {
 	return nv.value
 }
 
@@ -177,7 +181,7 @@ func (nv ObjectValue) Immutable() bool {
 	return nv.immutable
 }
 
-func (ov ObjectValue) Get() Object {
+func (ov ObjectValue) get() Object {
 	return ov.value
 }
 
@@ -187,6 +191,10 @@ func (ov ObjectValue) String() string {
 
 func (ov ObjectValue) isStringObject() bool {
 	return ov.value.getType() == OBJECT_STRING
+}
+
+func (ov ObjectValue) stringObjectValue() string {
+	return ov.value.(StringObject).get()
 }
 
 func (ov ObjectValue) isFunctionObject() bool {

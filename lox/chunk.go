@@ -28,6 +28,7 @@ const (
 	OP_LOOP
 	OP_CALL
 	OP_MODULUS
+	OP_CREATE_LIST
 )
 
 type Chunk struct {

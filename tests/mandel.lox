@@ -1,5 +1,6 @@
 
 func mandel() {
+
     const width=180;
     const height=80;
     const chars=" .,-:;i+hHM$*#@";

@@ -18,7 +18,7 @@ const (
 	PREC_TERM                  // + -
 	PREC_FACTOR                // * / %
 	PREC_UNARY                 // ! -
-	PREC_CALL                  // . ()
+	PREC_CALL                  // . () []
 	PREC_PRIMARY
 )
 
@@ -125,6 +125,8 @@ func (p *Parser) setRules() {
 		TOKEN_RIGHT_PAREN:   {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_LEFT_BRACE:    {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_RIGHT_BRACE:   {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_LEFT_BRACKET:  {prefix: listLiteral, infix: slice, prec: PREC_CALL},
+		TOKEN_RIGHT_BRACKET: {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_COMMA:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_DOT:           {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_MINUS:         {prefix: unary, infix: binary, prec: PREC_TERM},
@@ -533,10 +535,10 @@ func (p *Parser) endCompiler() *FunctionObject {
 	if DebugPrintCode {
 		if !p.hadError {
 			s := ""
-			if function.name.String() == "" {
+			if function.name.get() == "" {
 				s = "<script>"
 			} else {
-				s = function.name.String()
+				s = function.name.get()
 			}
 			p.currentChunk().disassemble(s)
 		}
@@ -665,6 +667,24 @@ func (p *Parser) argumentList() uint8 {
 	}
 	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments")
 	return argCount
+}
+
+func (p *Parser) list() uint8 {
+	var itemCount uint8 = 0
+	if !p.check(TOKEN_RIGHT_BRACKET) {
+		for {
+			p.expression()
+			itemCount++
+			if itemCount == 255 {
+				p.error("Can't have more than 255 initialiser items. ")
+			}
+			if !p.match(TOKEN_COMMA) {
+				break
+			}
+		}
+	}
+	p.consume(TOKEN_RIGHT_BRACKET, "Expect ']' after list items.")
+	return itemCount
 }
 
 func (p *Parser) defineConstVariable(global uint8) {
@@ -840,7 +860,7 @@ func loxstring(p *Parser, canAssign bool) {
 
 	str := p.previous.lexeme()
 	strobj := MakeStringObject(strings.Replace(str, "\"", "", -1))
-	p.emitConstant(makeObjectValue(&strobj, false))
+	p.emitConstant(makeObjectValue(strobj, false))
 
 }
 
@@ -896,4 +916,14 @@ func call(p *Parser, canAssign bool) {
 
 	argCount := p.argumentList()
 	p.emitBytes(OP_CALL, argCount)
+}
+
+func listLiteral(p *Parser, canAssign bool) {
+
+	listCount := p.list()
+	p.emitBytes(OP_CREATE_LIST, listCount)
+}
+
+func slice(p *Parser, canAssign bool) {
+
 }

@@ -131,6 +131,8 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.jumpInstruction("OP_LOOP", -1, offset)
 	case OP_CALL:
 		return c.byteInstruction("OP_CALL", offset)
+	case OP_CREATE_LIST:
+		return c.byteInstruction("OP_CREATE_LIST", offset)
 
 	default:
 		fmt.Printf("Unknown opcode %d", i)
@@ -179,7 +181,7 @@ func (vm *VM) stackTrace() {
 		switch v.(type) {
 		case ObjectValue:
 			if v.(ObjectValue).isStringObject() {
-				s = fmt.Sprintf("\"%s\"", s)
+				s = fmt.Sprintf("%s", s)
 			}
 		}
 		if v.Immutable() {

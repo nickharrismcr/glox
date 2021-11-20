@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-/* additions :
+/* additions to vanilla lox :
 
    declare constant  e.g  const a = 1;
    modulus operator %
@@ -19,6 +19,7 @@ import (
    TODO:
    add switch statement
    integer number type
+   lists/maps
 
 */
 
@@ -27,7 +28,7 @@ func main() {
 	var do_repl bool
 	var filename string
 
-	fmt.Println("GLOX V0.01")
+	fmt.Println("GLOX:")
 	vm := lox.NewVM()
 
 	if len(os.Args) == 1 {

@@ -46,10 +46,12 @@ func strNative(argcount int, arg_stackptr int, vm *VM) Value {
 			return arg
 		case OBJECT_FUNCTION:
 			return makeObjectValue(MakeStringObject("<func>"), false)
+		case OBJECT_LIST:
+			return makeObjectValue(MakeStringObject(o.String()), false)
 		}
 
 	case BooleanValue:
-		s := fmt.Sprintf("%t", arg.(BooleanValue).Get())
+		s := fmt.Sprintf("%t", arg.(BooleanValue).get())
 		so := MakeStringObject(s)
 		return makeObjectValue(so, false)
 	}
@@ -85,14 +87,14 @@ func substrNative(argcount int, arg_stackptr int, vm *VM) Value {
 		return makeNilValue()
 	}
 
-	string_ := vo_string.String()
-	start := int(vn_start.Get())
+	string_ := vo_string.get().(StringObject).get()
+	start := int(vn_start.get())
 	if start < 1 || start > len(string_) {
 		vm.runTimeError("substr() start out of bounds.")
 		return makeNilValue()
 	}
 
-	length := int(vn_len.Get())
+	length := int(vn_len.get())
 	if length < 0 {
 		vm.runTimeError("substr() length cannot be negative.")
 		return makeNilValue()
@@ -109,15 +111,22 @@ func lenNative(argcount int, arg_stackptr int, vm *VM) Value {
 		vm.runTimeError("Invalid argument count to len.")
 		return makeNilValue()
 	}
-	vstring_ := vm.stack[arg_stackptr]
-
-	vo_string, ok := vstring_.(ObjectValue)
+	val := vm.stack[arg_stackptr]
+	vobj, ok := val.(ObjectValue)
 	if !ok {
 		vm.runTimeError("Invalid argument type to len.")
 		return makeNilValue()
 	}
-	s := vo_string.String()
-	return makeNumberValue(float64(len(s)), false)
+	switch vobj.get().getType() {
+	case OBJECT_STRING:
+		s := vobj.get().(StringObject).get()
+		return makeNumberValue(float64(len(s)), false)
+	case OBJECT_LIST:
+		l := vobj.get().(*ListObject).get()
+		return makeNumberValue(float64(len(l)), false)
+	}
+	vm.runTimeError("Invalid argument type to len.")
+	return makeNilValue()
 }
 
 // sin(number)
@@ -133,7 +142,7 @@ func sinNative(argcount int, arg_stackptr int, vm *VM) Value {
 		vm.runTimeError("Invalid argument type to sin.")
 		return makeNilValue()
 	}
-	n := vn.Get()
+	n := vn.get()
 	return makeNumberValue(math.Sin(n), false)
 }
 
@@ -150,6 +159,6 @@ func cosNative(argcount int, arg_stackptr int, vm *VM) Value {
 		vm.runTimeError("Invalid argument type to cos.")
 		return makeNilValue()
 	}
-	n := vn.Get()
+	n := vn.get()
 	return makeNumberValue(math.Cos(n), false)
 }

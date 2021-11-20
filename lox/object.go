@@ -1,6 +1,9 @@
 package lox
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type ObjectType int
 
@@ -8,6 +11,7 @@ const (
 	OBJECT_STRING ObjectType = iota
 	OBJECT_FUNCTION
 	OBJECT_NATIVE
+	OBJECT_LIST
 )
 
 type Object interface {
@@ -40,7 +44,7 @@ func (_ FunctionObject) getType() ObjectType {
 }
 
 func (f *FunctionObject) String() string {
-	if f.name.String() == "" {
+	if f.name.get() == "" {
 		return "<script>"
 	}
 	return fmt.Sprintf("<fn %s>", f.name)
@@ -69,7 +73,7 @@ func (s StringObject) get() string {
 }
 
 func (s StringObject) String() string {
-	return *s.chars
+	return fmt.Sprintf("\"%s\"", *s.chars)
 }
 
 //-------------------------------------------------------------------------------------------
@@ -92,4 +96,36 @@ func (_ NativeObject) getType() ObjectType {
 
 func (f *NativeObject) String() string {
 	return "<built-in>"
+}
+
+//-------------------------------------------------------------------------------------------
+
+type ListObject struct {
+	items []Value
+}
+
+func MakeListObject(items []Value) *ListObject {
+	return &ListObject{
+		items: items,
+	}
+}
+
+func (_ ListObject) isObject() {}
+
+func (_ ListObject) getType() ObjectType {
+	return OBJECT_LIST
+}
+
+func (s ListObject) get() []Value {
+	return s.items
+}
+
+func (s ListObject) String() string {
+
+	list := []string{}
+
+	for _, v := range s.items {
+		list = append(list, v.String())
+	}
+	return fmt.Sprintf("[ %s ]", strings.Join(list, " , "))
 }
