@@ -928,7 +928,7 @@ func listLiteral(p *Parser, canAssign bool) {
 func slice(p *Parser, canAssign bool) {
 
 	if p.check(TOKEN_RIGHT_BRACKET) {
-		p.error("Can't have empty list slice.")
+		p.error("Can't have empty slice.")
 		return
 	}
 
@@ -938,27 +938,27 @@ func slice(p *Parser, canAssign bool) {
 		if p.check(TOKEN_RIGHT_BRACKET) {
 			// [:]
 			p.emitByte(OP_NIL)
-			p.emitByte(OP_LIST_SLICE)
+			p.emitByte(OP_SLICE)
 		} else {
 			// [:exp]
 			p.expression()
-			p.emitByte(OP_LIST_SLICE)
+			p.emitByte(OP_SLICE)
 		}
 	} else {
 		p.expression()
 		if p.check(TOKEN_RIGHT_BRACKET) {
 			// [exp]
-			p.emitByte(OP_LIST_INDEX)
+			p.emitByte(OP_INDEX)
 		} else {
 			if p.match(TOKEN_COLON) {
 				if p.check(TOKEN_RIGHT_BRACKET) {
 					// [exp:]
 					p.emitByte(OP_NIL)
-					p.emitByte(OP_LIST_SLICE)
+					p.emitByte(OP_SLICE)
 				} else {
 					// [exp:exp]
 					p.expression()
-					p.emitByte(OP_LIST_SLICE)
+					p.emitByte(OP_SLICE)
 				}
 			}
 		}

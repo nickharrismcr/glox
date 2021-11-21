@@ -15,11 +15,14 @@ import (
    loop break/continue
    string multiply by number ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
    native funcs :  str(number)   substr(string,start,length)   len(string)    sin(x)  cos(x)
+   lists  ( list literal initialisers (a=[1,2,3];),  indexing (a[x]),  slicing (a[x:y]))
 
    TODO:
+   list del  (del(list, index))
    add switch statement
    integer number type
-   lists/maps
+   string slices
+   maps
 
 */
 

@@ -420,15 +420,15 @@ Loop:
 
 			vm.createList(frame)
 
-		case OP_LIST_INDEX:
+		case OP_INDEX:
 			// list + index on stack,  item at index -> stack top
-			if !vm.listIndex(frame) {
+			if !vm.index(frame) {
 				break Loop
 			}
 
-		case OP_LIST_SLICE:
+		case OP_SLICE:
 			// list + from/to on stack. nil indicates from start/end.  new list at index -> stack top
-			if !vm.listSlice(frame) {
+			if !vm.slice(frame) {
 				break Loop
 			}
 
@@ -453,7 +453,7 @@ func (vm *VM) createList(frame *CallFrame) {
 	vm.push(makeObjectValue(lo, false))
 }
 
-func (vm *VM) listIndex(frame *CallFrame) bool {
+func (vm *VM) index(frame *CallFrame) bool {
 
 	var nv NumberValue
 	var ov ObjectValue
@@ -461,34 +461,46 @@ func (vm *VM) listIndex(frame *CallFrame) bool {
 
 	v := vm.pop()
 	if nv, ok = v.(NumberValue); !ok {
-		vm.runTimeError("Invalid subscript to list.")
+		vm.runTimeError("Subscript must be a number.")
 		return false
 	}
 	idx := nv.get()
 	lv := vm.pop()
-	if ov, ok = lv.(ObjectValue); !ok {
-		vm.runTimeError("Cannot take subscript of non-list variable.")
-		return false
+	if ov, ok = lv.(ObjectValue); ok {
+		t := ov.get().getType()
+		if t == OBJECT_LIST {
+			list := ov.get().(*ListObject).get()
+			ix := int(idx)
+			if idx < 0 {
+				ix = int(len(list) + int(idx))
+			}
+			if ix < 0 || ix >= len(list) {
+				vm.runTimeError("List subscript out of range.")
+				return false
+			}
+			vm.push(list[ix])
+			return true
 
-	}
-	if ov.get().getType() != OBJECT_LIST {
-		vm.runTimeError("Cannot take subscript of non-list variable.")
-		return false
-	}
-	list := ov.get().(*ListObject).get()
-	ix := int(idx)
-	if idx < 0 {
-		ix = int(len(list) + int(idx))
-	}
-	if ix < 0 || ix >= len(list) {
-		vm.runTimeError("List subscript out of range.")
-		return false
-	}
-	vm.push(list[ix])
-	return true
+		} else if t == OBJECT_STRING {
+			s := ov.get().(StringObject).get()
+			ix := int(idx)
+			if idx < 0 {
+				ix = int(len(s) + int(idx))
+			}
+			if ix < 0 || ix >= len(s) {
+				vm.runTimeError("List subscript out of range.")
+				return false
+			}
 
+			vm.push(makeObjectValue(MakeStringObject(string(s[ix])), false))
+			return true
+		}
+	}
+	vm.runTimeError("Invalid type for subscript.")
+	return false
 }
-func (vm *VM) listSlice(frame *CallFrame) bool {
+
+func (vm *VM) slice(frame *CallFrame) bool {
 
 	var nv_from NumberValue
 	var nv_to NumberValue
@@ -518,43 +530,69 @@ func (vm *VM) listSlice(frame *CallFrame) bool {
 	from_idx := nv_from.get()
 
 	lv := vm.pop()
-	if ov, ok = lv.(ObjectValue); !ok {
-		vm.runTimeError("Cannot take slice of non-list variable.")
-		return false
-	}
-	if ov.get().getType() != OBJECT_LIST {
-		vm.runTimeError("Cannot take slice of non-list variable.")
-		return false
-	}
-	list := ov.get().(*ListObject).get()
+	if ov, ok = lv.(ObjectValue); ok {
 
-	to_ix := int(to_idx)
-	if to_end {
-		to_ix = len(list)
-	}
-	if to_idx < 0 {
-		to_ix = int(len(list) + int(to_idx))
-	}
-	if to_ix < 0 || to_ix > len(list) {
-		vm.runTimeError("List subscript out of range.")
-		return false
-	}
+		if ov.get().getType() == OBJECT_LIST {
+			list := ov.get().(*ListObject).get()
+			to_ix := int(to_idx)
+			if to_end {
+				to_ix = len(list)
+			}
+			if to_idx < 0 {
+				to_ix = int(len(list) + int(to_idx))
+			}
+			if to_ix < 0 || to_ix > len(list) {
+				vm.runTimeError("List subscript out of range.")
+				return false
+			}
+			from_ix := int(from_idx)
+			if from_start {
+				from_ix = 0
+			}
+			if to_idx < 0 {
+				from_ix = int(len(list) + int(to_idx))
+			}
+			if from_ix < 0 || from_ix > len(list) {
+				vm.runTimeError("List subscript out of range.")
+				return false
+			}
 
-	from_ix := int(from_idx)
-	if from_start {
-		from_ix = 0
-	}
-	if to_idx < 0 {
-		from_ix = int(len(list) + int(to_idx))
-	}
-	if from_ix < 0 || from_ix > len(list) {
-		vm.runTimeError("List subscript out of range.")
-		return false
-	}
+			lo := makeListObject(list[from_ix:to_ix])
+			vm.push(makeObjectValue(lo, false))
+			return true
 
-	lo := makeListObject(list[from_ix:to_ix])
-	vm.push(makeObjectValue(lo, false))
-	return true
+		} else if ov.get().getType() == OBJECT_STRING {
+			s := ov.get().(StringObject).get()
+			to_ix := int(to_idx)
+			if to_end {
+				to_ix = len(s)
+			}
+			if to_idx < 0 {
+				to_ix = int(len(s) + int(to_idx))
+			}
+			if to_ix < 0 || to_ix > len(s) {
+				vm.runTimeError("Slice subscript out of range.")
+				return false
+			}
+			from_ix := int(from_idx)
+			if from_start {
+				from_ix = 0
+			}
+			if to_idx < 0 {
+				from_ix = int(len(s) + int(to_idx))
+			}
+			if from_ix < 0 || from_ix > len(s) {
+				vm.runTimeError("Slice subscript out of range.")
+				return false
+			}
+
+			so := MakeStringObject(s[from_ix:to_ix])
+			vm.push(makeObjectValue(so, false))
+			return true
+		}
+	}
+	vm.runTimeError("Invalid type for slice.")
+	return false
 }
 
 // numbers and strings only
