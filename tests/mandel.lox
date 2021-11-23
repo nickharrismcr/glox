@@ -27,7 +27,8 @@ func mandel() {
             if (iteration == max_iteration) {
                 line=line+" ";
             } else {
-                line=line+substr(chars,(iteration%15)+1,1);
+                var idx=(iteration%15);
+                line=line+chars[idx:idx+1];
             }
         }
         print line;

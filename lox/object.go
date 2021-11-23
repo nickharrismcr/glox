@@ -1,6 +1,7 @@
 package lox
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -76,6 +77,42 @@ func (s StringObject) String() string {
 	return fmt.Sprintf("\"%s\"", *s.chars)
 }
 
+func (s StringObject) index(ix int) (Value, error) {
+
+	if ix < 0 {
+		ix = len(s.get()) + ix
+	}
+
+	if ix < 0 || ix > len(s.get()) {
+		return NilValue{}, errors.New("List subscript out of range.")
+	}
+
+	so := MakeStringObject(string(s.get()[ix]))
+	return makeObjectValue(so, false), nil
+}
+
+func (s StringObject) slice(from_ix, to_ix int) (Value, error) {
+
+	if to_ix < 0 {
+		to_ix = len(s.get()) + 1 + to_ix
+	}
+	if from_ix < 0 {
+		from_ix = len(s.get()) + 1 + from_ix
+	}
+
+	if to_ix < 0 || to_ix > len(s.get()) {
+		return NilValue{}, errors.New("List subscript out of range.")
+	}
+
+	if from_ix < 0 || from_ix > len(s.get()) {
+		return NilValue{}, errors.New("List subscript out of range.")
+	}
+
+	so := MakeStringObject(s.get()[from_ix:to_ix])
+	return makeObjectValue(so, false), nil
+
+}
+
 //-------------------------------------------------------------------------------------------
 
 type NativeObject struct {
@@ -116,11 +153,11 @@ func (_ ListObject) getType() ObjectType {
 	return OBJECT_LIST
 }
 
-func (s ListObject) get() []Value {
+func (s *ListObject) get() []Value {
 	return s.items
 }
 
-func (s ListObject) String() string {
+func (s *ListObject) String() string {
 
 	list := []string{}
 
@@ -128,4 +165,42 @@ func (s ListObject) String() string {
 		list = append(list, v.String())
 	}
 	return fmt.Sprintf("[ %s ]", strings.Join(list, " , "))
+}
+
+func (s *ListObject) index(ix int) (Value, error) {
+
+	if ix < 0 {
+		ix = len(s.get()) + ix
+	}
+
+	if ix < 0 || ix > len(s.get()) {
+		return NilValue{}, errors.New("List subscript out of range.")
+	}
+
+	return s.get()[ix], nil
+}
+
+func (s *ListObject) slice(from_ix, to_ix int) (Value, error) {
+
+	if to_ix < 0 {
+		to_ix = len(s.items) + 1 + to_ix
+	}
+	if from_ix < 0 {
+		from_ix = len(s.items) + 1 + from_ix
+	}
+
+	if to_ix < 0 || to_ix > len(s.items) {
+		return NilValue{}, errors.New("List subscript out of range.")
+	}
+
+	if from_ix < 0 || from_ix > len(s.items) {
+		return NilValue{}, errors.New("List subscript out of range.")
+	}
+
+	if from_ix > to_ix {
+		return NilValue{}, errors.New("Invalid slice indices.")
+	}
+
+	lo := makeListObject(s.items[from_ix:to_ix])
+	return makeObjectValue(lo, false), nil
 }

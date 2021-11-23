@@ -8,6 +8,7 @@ print a[:];
 print "-"*50;
 
 for (var i = 0; i < len(a); i=i+1) {
+ 
      print a[:i];
      print a[i:];
      print a[i:i+1];

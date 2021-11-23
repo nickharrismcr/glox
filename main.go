@@ -19,10 +19,13 @@ import (
    string slices   ( a = "abcd"; a[0]=="a", a[:2]=="ab", etc)
 
    TODO:
-   list del  (del(list, index))
+
+   list item del  (del a[b] or del a[b:c])
+   - start with slice assignment i.e a[1]="a" or a[2:5] = [1,2,3]
+   - then e.g del a[2:3] would equate to a[2:3] = nil
+
    add switch statement
    integer number type
-
    maps
 
 */
