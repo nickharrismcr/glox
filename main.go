@@ -20,14 +20,15 @@ import (
 
    TODO:
 
-   list item del  (del a[b] or del a[b:c])
-   - start with slice assignment i.e a[1]="a" or a[2:5] = [1,2,3]
-   - then e.g del a[2:3] would equate to a[2:3] = nil
-      - parser currently won't allow assignment to slice  a[1] = 2
-	  - a[1] is call precedence which prevents namedVariable from doing assign
+   list index/slice assignment ( a[1]="a" or a[2:5] = [1,2,3] ),  list item del  (del a[b] or del a[b:c] - i.e assign nil )
+
+      - parser currently won't allow assignment to slice
+	  - a[i] is call precedence which prevents namedVariable from doing assign
 	  - NFI how to fix
 
-   *** wren doesn't work this way, provides list methods (add,insert,remove,removeat) instead ?
+   *** wren has a subscript list setter a[1] = 2;  how is this implemented?
+     - compiles it as a method to the list type
+	 - need lox classes!
 
    add switch statement
    integer number type
