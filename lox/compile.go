@@ -586,6 +586,7 @@ func (p *Parser) parsePredence(prec Precedence) {
 		}
 
 	}
+	// if = is left over, no rule it, return an error.
 	if canAssign && p.match(TOKEN_EQUAL) {
 		p.error("Invalid assignment target.")
 	}

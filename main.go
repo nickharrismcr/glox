@@ -23,6 +23,11 @@ import (
    list item del  (del a[b] or del a[b:c])
    - start with slice assignment i.e a[1]="a" or a[2:5] = [1,2,3]
    - then e.g del a[2:3] would equate to a[2:3] = nil
+      - parser currently won't allow assignment to slice  a[1] = 2
+	  - a[1] is call precedence which prevents namedVariable from doing assign
+	  - NFI how to fix
+
+   *** wren doesn't work this way, provides list methods (add,insert,remove,removeat) instead ?
 
    add switch statement
    integer number type
@@ -37,6 +42,7 @@ func main() {
 
 	fmt.Println("GLOX:")
 	vm := lox.NewVM()
+	vm.Interpret("var a=[1,2,3,4];a[0]=3;")
 
 	if len(os.Args) == 1 {
 		usage()
