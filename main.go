@@ -20,6 +20,7 @@ import (
 
    TODO:
 
+   list + operator
    list index/slice assignment ( a[1]="a" or a[2:5] = [1,2,3] ),  list item del  (del a[b] or del a[b:c] - i.e assign nil )
 
       - parser currently won't allow assignment to slice
@@ -43,7 +44,6 @@ func main() {
 
 	fmt.Println("GLOX:")
 	vm := lox.NewVM()
-	vm.Interpret("var a=[1,2,3,4];a[0]=3;")
 
 	if len(os.Args) == 1 {
 		usage()

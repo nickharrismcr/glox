@@ -565,7 +565,8 @@ func (vm *VM) binaryAdd() bool {
 	case ObjectValue:
 		o2 := v2.(ObjectValue)
 		ov2 := o2.value
-		if ov2.getType() == OBJECT_STRING {
+		switch ov2.getType() {
+		case OBJECT_STRING:
 			v1 := vm.pop()
 			o1, ok := v1.(ObjectValue)
 			if !ok {
@@ -574,7 +575,22 @@ func (vm *VM) binaryAdd() bool {
 			}
 			ov1 := o1.value
 			if ov1.getType() == OBJECT_STRING {
-				vm.concatenate(o1.stringObjectValue(), o2.stringObjectValue())
+				so := MakeStringObject(o1.stringObjectValue() + o2.stringObjectValue())
+				vm.push(makeObjectValue(so, false))
+				return true
+			}
+
+		case OBJECT_LIST:
+			v1 := vm.pop()
+			o1, ok := v1.(ObjectValue)
+			if !ok {
+				vm.runTimeError("Addition type mismatch")
+				return false
+			}
+			ov1 := o1.value
+			if ov1.getType() == OBJECT_LIST {
+				lo := ov1.(*ListObject).add(ov2.(*ListObject))
+				vm.push(makeObjectValue(lo, false))
 				return true
 			}
 		}
@@ -737,8 +753,6 @@ func (vm *VM) binaryLess() bool {
 
 func (vm *VM) concatenate(s1, s2 string) {
 
-	so := MakeStringObject(s1 + s2)
-	vm.push(makeObjectValue(so, false))
 }
 
 func (vm *VM) stringMultiply(s string, x int) Value {

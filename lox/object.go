@@ -167,6 +167,13 @@ func (s *ListObject) String() string {
 	return fmt.Sprintf("[ %s ]", strings.Join(list, " , "))
 }
 
+func (s *ListObject) add(other *ListObject) *ListObject {
+	l := []Value{}
+	l = append(l, s.items...)
+	l = append(l, other.items...)
+	return makeListObject(l)
+}
+
 func (s *ListObject) index(ix int) (Value, error) {
 
 	if ix < 0 {
