@@ -136,7 +136,7 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 
 	if ov, ok := callee.(ObjectValue); ok {
 		if ov.isClosureObject() {
-			return vm.call(ov.get().(*ClosureObject), argCount)
+			return vm.call(getClosureObjectValue(callee), argCount)
 		}
 		if ov.isNativeFunction() {
 			nf := ov.get().(*NativeObject)
@@ -226,7 +226,7 @@ Loop:
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			function := frame.closure.function.chunk.constants[idx]
-			closure := makeClosureObject(function.(ObjectValue).get().(*FunctionObject))
+			closure := makeClosureObject(getFunctionObjectValue(function))
 			vm.push(makeObjectValue(closure, false))
 			for i := 0; i < closure.upvalueCount; i++ {
 				isLocal := vm.getCode()[frame.ip]

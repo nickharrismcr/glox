@@ -87,6 +87,14 @@ func getStringValue(v Value) string {
 	return v.(ObjectValue).stringObjectValue()
 }
 
+func getFunctionObjectValue(v Value) *FunctionObject {
+	return v.(ObjectValue).functionObjectValue()
+}
+
+func getClosureObjectValue(v Value) *ClosureObject {
+	return v.(ObjectValue).closureObjectValue()
+}
+
 //================================================================================================
 type NumberValue struct {
 	value     float64
@@ -220,6 +228,16 @@ func (ov ObjectValue) isStringObject() bool {
 func (ov ObjectValue) stringObjectValue() string {
 
 	return ov.value.(StringObject).get()
+}
+
+func (ov ObjectValue) functionObjectValue() *FunctionObject {
+
+	return ov.value.(*FunctionObject)
+}
+
+func (ov ObjectValue) closureObjectValue() *ClosureObject {
+
+	return ov.value.(*ClosureObject)
 }
 
 func (ov ObjectValue) isFunctionObject() bool {

@@ -150,7 +150,7 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		fmt.Printf("%-16s %04d", "OP_CLOSURE", constant)
 		value := c.constants[constant]
 		fmt.Printf("  %s\n", value.String())
-		function := value.(ObjectValue).get().(*FunctionObject)
+		function := getFunctionObjectValue(value)
 		for j := 0; j < function.upvalueCount; j++ {
 			isLocal := c.code[offset]
 			offset++
