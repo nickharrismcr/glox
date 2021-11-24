@@ -1,7 +1,0 @@
-var x = "outside";
-
-func outer() {
-    print x;
-} 
-
-outer();
