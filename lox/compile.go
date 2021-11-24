@@ -41,7 +41,13 @@ type Loop struct {
 	break_ int
 }
 
+type Upvalue struct {
+	index   uint8
+	isLocal bool
+}
+
 func NewLoop() *Loop {
+
 	return &Loop{}
 }
 
@@ -60,6 +66,7 @@ type Compiler struct {
 	localCount int
 	scopeDepth int
 	loop       *Loop
+	upvalues   [256]*Upvalue
 }
 
 func NewCompiler(type_ FunctionType, parent *Compiler) *Compiler {
@@ -87,6 +94,7 @@ type Parser struct {
 }
 
 func NewParser() *Parser {
+
 	p := &Parser{
 		hadError:  false,
 		panicMode: false,
@@ -178,6 +186,7 @@ func (p *Parser) match(tt TokenType) bool {
 }
 
 func (p *Parser) check(tt TokenType) bool {
+
 	return p.current.tokentype == tt
 }
 
@@ -195,10 +204,12 @@ func (p *Parser) advance() {
 }
 
 func (p *Parser) getRule(tok TokenType) ParseRule {
+
 	return p.rules[tok]
 }
 
 func (p *Parser) declaration() {
+
 	if p.match(TOKEN_FUNC) {
 		p.funcDeclaration()
 	} else if p.match(TOKEN_VAR) {
@@ -214,6 +225,7 @@ func (p *Parser) declaration() {
 
 }
 func (p *Parser) statement() {
+
 	if p.match(TOKEN_PRINT) {
 		p.printStatement()
 	} else if p.match(TOKEN_BREAK) {
@@ -238,6 +250,7 @@ func (p *Parser) statement() {
 }
 
 func (p *Parser) expression() {
+
 	p.parsePredence(PREC_ASSIGNMENT)
 }
 
@@ -250,6 +263,7 @@ func (p *Parser) block() {
 }
 
 func (p *Parser) funcDeclaration() {
+
 	global := p.parseVariable("Expect function name.")
 	p.markInitialised()
 	p.function(TYPE_FUNCTION)
@@ -258,9 +272,12 @@ func (p *Parser) funcDeclaration() {
 
 func (p *Parser) function(type_ FunctionType) {
 
-	p.currentCompiler = NewCompiler(type_, p.currentCompiler)
+	compiler := NewCompiler(type_, p.currentCompiler)
+	p.currentCompiler = compiler
 	funcname := p.previous.lexeme()
-	p.currentCompiler.function.name = MakeStringObject(funcname)
+
+	compiler.function.name = makeStringObject(funcname)
+
 	p.beginScope()
 
 	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.")
@@ -282,7 +299,17 @@ func (p *Parser) function(type_ FunctionType) {
 	p.block()
 
 	function := p.endCompiler()
-	p.emitBytes(OP_CONSTANT, p.makeConstant(makeObjectValue(function, false)))
+	p.emitBytes(OP_CLOSURE, p.makeConstant(makeObjectValue(function, false)))
+
+	for i := 0; i < function.upvalueCount; i++ {
+		uv := *(compiler.upvalues[i])
+		if uv.isLocal {
+			p.emitByte(1)
+		} else {
+			p.emitByte(0)
+		}
+		p.emitByte(uv.index)
+	}
 }
 
 func (p *Parser) varDeclaration() {
@@ -314,12 +341,14 @@ func (p *Parser) constDeclaration() {
 }
 
 func (p *Parser) expressionStatement() {
+
 	p.expression()
 	p.consume(TOKEN_SEMICOLON, "Expect ';' after expression.")
 	p.emitByte(OP_POP)
 }
 
 func (p *Parser) ifStatement() {
+
 	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.")
 	p.expression()
 	p.consume(TOKEN_RIGHT_PAREN, "Expect '(' after condition.")
@@ -338,6 +367,7 @@ func (p *Parser) ifStatement() {
 }
 
 func (p *Parser) returnStatement() {
+
 	if p.currentCompiler.type_ == TYPE_SCRIPT {
 		p.error("Can't return from top-level code.")
 	}
@@ -423,6 +453,7 @@ func (p *Parser) forStatement() {
 }
 
 func (p *Parser) breakStatement() {
+
 	p.consume(TOKEN_SEMICOLON, "Expect ';' after statement.")
 	if p.currentCompiler.loop == nil {
 		p.errorAtCurrent("Cannot use break outside loop.")
@@ -440,6 +471,7 @@ func (p *Parser) breakStatement() {
 }
 
 func (p *Parser) continueStatement() {
+
 	p.consume(TOKEN_SEMICOLON, "Expect ';' after statement.")
 	if p.currentCompiler.loop == nil {
 		p.errorAtCurrent("Cannot use continue outside loop.")
@@ -456,11 +488,13 @@ func (p *Parser) continueStatement() {
 }
 
 func (p *Parser) printStatement() {
+
 	p.expression()
 	p.consume(TOKEN_SEMICOLON, "Expect ';' after value.")
 	p.emitByte(OP_PRINT)
 }
 func (p *Parser) synchronize() {
+
 	p.panicMode = false
 	for p.current.tokentype != TOKEN_EOF {
 		if p.previous.tokentype == TOKEN_SEMICOLON {
@@ -498,15 +532,18 @@ func (p *Parser) consume(toktype TokenType, msg string) {
 }
 
 func (p *Parser) emitByte(byte uint8) {
+
 	p.currentChunk().writeOpCode(byte, p.previous.line)
 }
 
 func (p *Parser) emitBytes(byte1, byte2 uint8) {
+
 	p.emitByte(byte1)
 	p.emitByte(byte2)
 }
 
 func (p *Parser) emitLoop(loopStart int) {
+
 	p.emitByte(OP_LOOP)
 
 	offset := len(p.currentChunk().code) - loopStart + 2
@@ -519,6 +556,7 @@ func (p *Parser) emitLoop(loopStart int) {
 }
 
 func (p *Parser) emitJump(instr uint8) int {
+
 	p.emitByte(instr)
 	p.emitByte(0xff)
 	p.emitByte(0xff)
@@ -526,10 +564,12 @@ func (p *Parser) emitJump(instr uint8) int {
 }
 
 func (p *Parser) currentChunk() *Chunk {
+
 	return p.currentCompiler.function.chunk
 }
 
 func (p *Parser) endCompiler() *FunctionObject {
+
 	p.emitReturn()
 	function := p.currentCompiler.function
 	if DebugPrintCode {
@@ -549,6 +589,7 @@ func (p *Parser) endCompiler() *FunctionObject {
 }
 
 func (p *Parser) beginScope() {
+
 	p.currentCompiler.scopeDepth++
 }
 
@@ -593,10 +634,12 @@ func (p *Parser) parsePredence(prec Precedence) {
 }
 
 func (p *Parser) identifierConstant(t Token) uint8 {
-	return p.makeConstant(makeObjectValue(MakeStringObject(t.lexeme()), false))
+
+	return p.makeConstant(makeObjectValue(makeStringObject(t.lexeme()), false))
 }
 
 func (p *Parser) identifiersEqual(a, b Token) bool {
+
 	if a.length != b.length {
 		return false
 	}
@@ -607,6 +650,7 @@ func (p *Parser) identifiersEqual(a, b Token) bool {
 }
 
 func (p *Parser) resolveLocal(compiler *Compiler, name Token) int {
+
 	for i := compiler.localCount - 1; i >= 0; i-- {
 		local := compiler.locals[i]
 		if p.identifiersEqual(name, local.name) {
@@ -618,8 +662,69 @@ func (p *Parser) resolveLocal(compiler *Compiler, name Token) int {
 	}
 	return -1
 }
+func (p *Parser) addUpvalue(compiler *Compiler, index uint8, isLocal bool) int {
+
+	upvalueCount := compiler.function.upvalueCount
+
+	// does upvalue already exist ?
+	for i := 0; i < upvalueCount; i++ {
+		upvalue := *(compiler.upvalues[i])
+		if upvalue.index == index && upvalue.isLocal == isLocal {
+			return i
+		}
+	}
+	if upvalueCount == 256 {
+		p.error("Too many closure variables in function.")
+		return 0
+	}
+	uv := &Upvalue{
+		isLocal: isLocal,
+		index:   index,
+	}
+	compiler.upvalues[upvalueCount] = uv
+	compiler.function.upvalueCount++
+
+	return upvalueCount
+
+}
+func (p *Parser) resolveUpvalue(compiler *Compiler, name Token) int {
+
+	/*
+		First, we look for a matching local variable in the enclosing function.
+		If we find one, we capture that local and return. That’s the base case.
+		Otherwise, we look for a local variable beyond the immediately enclosing function.
+		We do that by recursively calling resolveUpvalue() on the enclosing compiler, not the current one.
+		This series of resolveUpvalue() calls works its way along the chain of nested compilers until it hits
+		one of the base cases—either it finds an actual local variable to capture or it runs out of compilers.
+
+		When a local variable is found, the most deeply nested call to resolveUpvalue() captures it and returns the upvalue index.
+		That returns to the next call for the inner function declaration. That call captures the upvalue from the
+		surrounding function, and so on. As each nested call to resolveUpvalue() returns, we drill back down into
+		the innermost function declaration where the identifier we are resolving appears. At each step along
+		the way, we add an upvalue to the intervening function and pass the resulting upvalue index down to the next call.
+
+		Note that the new call to addUpvalue() passes false for the isLocal parameter. Now you see that that flag controls whether
+		the closure captures a local variable or an upvalue from the surrounding function.
+	*/
+
+	if compiler.enclosing == nil {
+		return -1
+	}
+	local := p.resolveLocal(compiler.enclosing, name)
+	if local != -1 {
+		return p.addUpvalue(compiler, uint8(local), true)
+	}
+
+	upValue := p.resolveUpvalue(compiler.enclosing, name)
+	if upValue != -1 {
+		return p.addUpvalue(compiler, uint8(upValue), false)
+	}
+
+	return -1
+}
 
 func (p *Parser) parseVariable(errorMsg string) uint8 {
+
 	p.consume(TOKEN_IDENTIFIER, errorMsg)
 	p.declareVariable()
 	// if local, don't add to constant table
@@ -630,6 +735,7 @@ func (p *Parser) parseVariable(errorMsg string) uint8 {
 }
 
 func (p *Parser) markInitialised() {
+
 	c := p.currentCompiler
 	if c.scopeDepth == 0 {
 		return
@@ -638,11 +744,13 @@ func (p *Parser) markInitialised() {
 }
 
 func (p *Parser) setLocalImmutable() {
+
 	c := p.currentChunk()
 	c.constants[len(c.constants)-1] = immutable(c.constants[len(c.constants)-1])
 }
 
 func (p *Parser) defineVariable(global uint8) {
+
 	// if local, it will already be on the stack
 	if p.currentCompiler.scopeDepth > 0 {
 		p.markInitialised()
@@ -671,6 +779,7 @@ func (p *Parser) argumentList() uint8 {
 }
 
 func (p *Parser) parseList() uint8 {
+
 	var itemCount uint8 = 0
 	if !p.check(TOKEN_RIGHT_BRACKET) {
 		for {
@@ -689,6 +798,7 @@ func (p *Parser) parseList() uint8 {
 }
 
 func (p *Parser) defineConstVariable(global uint8) {
+
 	// if local, it will already be on the stack
 	if p.currentCompiler.scopeDepth > 0 {
 		p.markInitialised()
@@ -699,6 +809,7 @@ func (p *Parser) defineConstVariable(global uint8) {
 }
 
 func (p *Parser) declareVariable() {
+
 	if p.currentCompiler.scopeDepth == 0 {
 		return
 	}
@@ -721,11 +832,15 @@ func (p *Parser) declareVariable() {
 func (p *Parser) namedVariable(name Token, canAssign bool) {
 
 	var getOp, setOp uint8
-
+	a := name.lexeme()
+	_ = a
 	arg := p.resolveLocal(p.currentCompiler, name)
 	if arg != -1 {
 		getOp = OP_GET_LOCAL
 		setOp = OP_SET_LOCAL
+	} else if arg = p.resolveUpvalue(p.currentCompiler, name); arg != -1 {
+		getOp = OP_GET_UPVALUE
+		setOp = OP_SET_UPVALUE
 	} else {
 		arg = int(p.identifierConstant(name))
 		getOp = OP_GET_GLOBAL
@@ -755,6 +870,7 @@ func (p *Parser) addLocal(name Token) {
 }
 
 func (p *Parser) emitConstant(value Value) {
+
 	p.emitBytes(OP_CONSTANT, p.makeConstant(value))
 }
 
@@ -770,6 +886,7 @@ func (p *Parser) patchJump(offset int) {
 }
 
 func (p *Parser) makeConstant(value Value) uint8 {
+
 	constidx := p.currentChunk().addConstant(value)
 	if constidx > 255 {
 		p.error("Too many constants in one chunk")
@@ -779,15 +896,18 @@ func (p *Parser) makeConstant(value Value) uint8 {
 }
 
 func (p *Parser) emitReturn() {
+
 	p.emitByte(OP_NIL)
 	p.emitByte(OP_RETURN)
 }
 
 func (p *Parser) errorAtCurrent(msg string) {
+
 	p.errorAt(p.current, msg)
 }
 
 func (p *Parser) error(msg string) {
+
 	p.errorAt(p.previous, msg)
 }
 
@@ -860,12 +980,13 @@ func number(p *Parser, canAssign bool) {
 func loxstring(p *Parser, canAssign bool) {
 
 	str := p.previous.lexeme()
-	strobj := MakeStringObject(strings.Replace(str, "\"", "", -1))
+	strobj := makeStringObject(strings.Replace(str, "\"", "", -1))
 	p.emitConstant(makeObjectValue(strobj, false))
 
 }
 
 func variable(p *Parser, canAssign bool) {
+
 	p.namedVariable(p.previous, canAssign)
 }
 
@@ -883,6 +1004,7 @@ func unary(p *Parser, canAssign bool) {
 }
 
 func literal(p *Parser, canAssign bool) {
+
 	switch p.previous.tokentype {
 	case TOKEN_NIL:
 		p.emitByte(OP_NIL)

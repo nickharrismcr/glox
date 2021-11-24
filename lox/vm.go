@@ -22,9 +22,9 @@ const (
 )
 
 type CallFrame struct {
-	function *FunctionObject
-	ip       int
-	slots    int // start of vm stack for this frame
+	closure *ClosureObject
+	ip      int
+	slots   int // start of vm stack for this frame
 }
 
 type VM struct {
@@ -40,6 +40,7 @@ type VM struct {
 }
 
 func NewVM() *VM {
+
 	vm := &VM{
 		globals:   map[string]Value{},
 		starttime: time.Now(),
@@ -56,26 +57,31 @@ func (vm *VM) Interpret(source string) (InterpretResult, string) {
 	if function == nil {
 		return INTERPRET_COMPILE_ERROR, ""
 	}
-	vm.push(makeObjectValue(function, false))
-	vm.call(function, 0)
+	closure := makeClosureObject(function)
+	vm.push(makeObjectValue(closure, false))
+	vm.call(closure, 0)
 	res, val := vm.run()
 	return res, val.String()
 }
 
 func (vm *VM) frame() *CallFrame {
+
 	return vm.frames[vm.frameCount-1]
 }
 
 func (vm *VM) getCode() []uint8 {
-	return vm.frame().function.chunk.code
+
+	return vm.frame().closure.function.chunk.code
 }
 
 func (vm *VM) resetStack() {
+
 	vm.stackTop = 0
 	vm.frameCount = 0
 }
 
 func (vm *VM) runTimeError(format string, args ...interface{}) {
+
 	fmt.Fprintf(os.Stderr, format, args...)
 	fmt.Fprint(os.Stderr, "\n")
 	//line := vm.frame().function.chunk.lines[vm.frame().ip-1]
@@ -83,7 +89,7 @@ func (vm *VM) runTimeError(format string, args ...interface{}) {
 
 	for i := vm.frameCount - 1; i >= 0; i-- {
 		frame := vm.frames[i]
-		function := frame.function
+		function := frame.closure.function
 
 		fmt.Fprintf(os.Stderr, "[line %d] in ", function.chunk.lines[frame.ip])
 		if function.name.get() == "" {
@@ -98,7 +104,8 @@ func (vm *VM) runTimeError(format string, args ...interface{}) {
 }
 
 func (vm *VM) defineNative(name string, function NativeFn) {
-	vm.push(makeObjectValue(MakeStringObject(name), false))
+
+	vm.push(makeObjectValue(makeStringObject(name), false))
 	vm.push(makeObjectValue(makeNativeObject(function), false))
 	vm.globals[name] = vm.stack[1]
 	vm.pop()
@@ -106,11 +113,13 @@ func (vm *VM) defineNative(name string, function NativeFn) {
 }
 
 func (vm *VM) push(v Value) {
+
 	vm.stack[vm.stackTop] = v
 	vm.stackTop++
 }
 
 func (vm *VM) pop() Value {
+
 	if vm.stackTop == 0 {
 		return makeNilValue()
 	}
@@ -119,13 +128,15 @@ func (vm *VM) pop() Value {
 }
 
 func (vm *VM) peek(dist int) Value {
+
 	return vm.stack[(vm.stackTop-1)-dist]
 }
 
 func (vm *VM) callValue(callee Value, argCount int) bool {
+
 	if ov, ok := callee.(ObjectValue); ok {
-		if ov.isFunctionObject() {
-			return vm.call(ov.get().(*FunctionObject), argCount)
+		if ov.isClosureObject() {
+			return vm.call(ov.get().(*ClosureObject), argCount)
 		}
 		if ov.isNativeFunction() {
 			nf := ov.get().(*NativeObject)
@@ -137,21 +148,26 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 			vm.push(res)
 			return true
 		}
+
 	}
 	vm.runTimeError("Can only call functions and classes.")
 	return false
 }
+func (vm *VM) captureUpvalue(slot int) *UpvalueObject {
 
-func (vm *VM) call(function *FunctionObject, argCount int) bool {
+	return makeUpvalueObject(&(vm.stack[slot]))
+}
 
-	if argCount != function.arity {
-		vm.runTimeError("Expected %d arguments but got %d.", function.arity, argCount)
+func (vm *VM) call(closure *ClosureObject, argCount int) bool {
+
+	if argCount != closure.function.arity {
+		vm.runTimeError("Expected %d arguments but got %d.", closure.function.arity, argCount)
 		return false
 	}
 	frame := &CallFrame{
-		function: function,
-		ip:       0,
-		slots:    vm.stackTop - argCount - 1,
+		closure: closure,
+		ip:      0,
+		slots:   vm.stackTop - argCount - 1,
 	}
 	vm.frames[vm.frameCount] = frame
 	vm.frameCount++
@@ -164,6 +180,7 @@ func (vm *VM) call(function *FunctionObject, argCount int) bool {
 }
 
 func (vm *VM) readShort() uint16 {
+
 	vm.frame().ip += 2
 	b1 := uint16(vm.getCode()[vm.frame().ip-2])
 	b2 := uint16(vm.getCode()[vm.frame().ip-1])
@@ -171,6 +188,7 @@ func (vm *VM) readShort() uint16 {
 }
 
 func (vm *VM) isFalsey(v Value) bool {
+
 	switch v.(type) {
 	case NumberValue:
 		return v.(NumberValue).get() == 0
@@ -191,16 +209,37 @@ Loop:
 		vm.counter++
 		if vm.counter == GC_COLLECT_POINT {
 			runtime.GC()
+			vm.counter = 0
 		}
 		inst := vm.getCode()[frame.ip]
 
 		if DebugTraceExecution {
 			vm.stackTrace()
-			_ = frame.function.chunk.disassembleInstruction(inst, frame.ip)
+			_ = frame.closure.function.chunk.disassembleInstruction(inst, frame.ip)
 		}
 
 		frame.ip++
 		switch inst {
+
+		case OP_CLOSURE:
+			// get the function indexed by operand from constants, wrap in a closure object and push onto stack
+			idx := vm.getCode()[frame.ip]
+			frame.ip++
+			function := frame.closure.function.chunk.constants[idx]
+			closure := makeClosureObject(function.(ObjectValue).get().(*FunctionObject))
+			vm.push(makeObjectValue(closure, false))
+			for i := 0; i < closure.upvalueCount; i++ {
+				isLocal := vm.getCode()[frame.ip]
+				frame.ip++
+				index := int(vm.getCode()[frame.ip])
+				frame.ip++
+				if isLocal == 1 {
+					closure.upvalues[i] = vm.captureUpvalue(frame.slots + index)
+				} else {
+					upv := frame.closure.upvalues[index]
+					closure.upvalues[i] = upv
+				}
+			}
 
 		case OP_RETURN:
 			// exit, return the value at stack top
@@ -215,11 +254,22 @@ Loop:
 			vm.push(result)
 			frame = vm.frames[vm.frameCount-1]
 
+		case OP_GET_UPVALUE:
+			slot := vm.getCode()[frame.ip]
+			frame.ip++
+			valIdx := frame.closure.upvalues[slot].location
+			vm.push(*valIdx)
+
+		case OP_SET_UPVALUE:
+			slot := vm.getCode()[frame.ip]
+			frame.ip++
+			*(frame.closure.upvalues[slot].location) = vm.peek(0)
+
 		case OP_CONSTANT:
 			// get the constant indexed by operand and push it onto the stack
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
-			constant := frame.function.chunk.constants[idx]
+			constant := frame.closure.function.chunk.constants[idx]
 			vm.push(constant)
 
 		case OP_NEGATE:
@@ -329,7 +379,7 @@ Loop:
 			// pop 1 stack value and set globals[name] to it
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
-			name := getStringValue(frame.function.chunk.constants[idx])
+			name := getStringValue(frame.closure.function.chunk.constants[idx])
 			vm.globals[name] = vm.peek(0)
 			vm.pop()
 
@@ -338,7 +388,7 @@ Loop:
 			// pop 1 stack value and set globals[name] to it and flag as immutable
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
-			name := getStringValue(frame.function.chunk.constants[idx])
+			name := getStringValue(frame.closure.function.chunk.constants[idx])
 			vm.globals[name] = vm.peek(0)
 			vm.globals[name] = immutable(vm.globals[name])
 			vm.pop()
@@ -348,7 +398,7 @@ Loop:
 			// push globals[name] onto stack
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
-			name := getStringValue(frame.function.chunk.constants[idx])
+			name := getStringValue(frame.closure.function.chunk.constants[idx])
 			value, ok := vm.globals[name]
 			if !ok {
 				vm.runTimeError("Undefined variable %s\n", name)
@@ -361,7 +411,7 @@ Loop:
 			// set globals[name] to stack top, key must exist
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
-			name := getStringValue(frame.function.chunk.constants[idx])
+			name := getStringValue(frame.closure.function.chunk.constants[idx])
 			if _, ok := vm.globals[name]; !ok {
 				vm.runTimeError("Undefined variable %s\n", name)
 				break Loop
@@ -407,7 +457,7 @@ Loop:
 			frame.ip -= int(offset)
 
 		case OP_CALL:
-			// arg count is operand, function object is on stack after arguments, result will be stack top
+			// arg count is operand, callable object is on stack after arguments, result will be stack top
 			argCount := vm.getCode()[frame.ip]
 			frame.ip++
 			if !vm.callValue(vm.peek(int(argCount)), int(argCount)) {
@@ -575,7 +625,7 @@ func (vm *VM) binaryAdd() bool {
 			}
 			ov1 := o1.value
 			if ov1.getType() == OBJECT_STRING {
-				so := MakeStringObject(o1.stringObjectValue() + o2.stringObjectValue())
+				so := makeStringObject(o1.stringObjectValue() + o2.stringObjectValue())
 				vm.push(makeObjectValue(so, false))
 				return true
 			}
@@ -600,6 +650,7 @@ func (vm *VM) binaryAdd() bool {
 }
 
 func (vm *VM) binarySubtract() bool {
+
 	v2 := vm.pop()
 	nv2, ok := v2.(NumberValue)
 	if !ok {
@@ -619,6 +670,7 @@ func (vm *VM) binarySubtract() bool {
 }
 
 func (vm *VM) binaryMultiply() bool {
+
 	v2 := vm.pop()
 	v1 := vm.pop()
 
@@ -662,6 +714,7 @@ func (vm *VM) binaryMultiply() bool {
 }
 
 func (vm *VM) binaryDivide() bool {
+
 	v2 := vm.pop()
 	nv2, ok := v2.(NumberValue)
 	if !ok {
@@ -681,6 +734,7 @@ func (vm *VM) binaryDivide() bool {
 }
 
 func (vm *VM) binaryModulus() bool {
+
 	v2 := vm.pop()
 	nv2, ok := v2.(NumberValue)
 	if !ok {
@@ -702,6 +756,7 @@ func (vm *VM) binaryModulus() bool {
 }
 
 func (vm *VM) unaryNegate() bool {
+
 	v := vm.pop()
 	nv, ok := v.(NumberValue)
 	if !ok {
@@ -714,6 +769,7 @@ func (vm *VM) unaryNegate() bool {
 }
 
 func (vm *VM) binaryGreater() bool {
+
 	v2 := vm.pop()
 	nv2, ok := v2.(NumberValue)
 	if !ok {
@@ -733,6 +789,7 @@ func (vm *VM) binaryGreater() bool {
 }
 
 func (vm *VM) binaryLess() bool {
+
 	v2 := vm.pop()
 	nv2, ok := v2.(NumberValue)
 	if !ok {
@@ -756,9 +813,10 @@ func (vm *VM) concatenate(s1, s2 string) {
 }
 
 func (vm *VM) stringMultiply(s string, x int) Value {
+
 	rv := ""
 	for i := 0; i < x; i++ {
 		rv += s
 	}
-	return makeObjectValue(MakeStringObject(rv), false)
+	return makeObjectValue(makeStringObject(rv), false)
 }

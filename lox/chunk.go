@@ -31,6 +31,9 @@ const (
 	OP_CREATE_LIST
 	OP_INDEX
 	OP_SLICE
+	OP_CLOSURE
+	OP_GET_UPVALUE
+	OP_SET_UPVALUE
 )
 
 type Chunk struct {
@@ -40,6 +43,7 @@ type Chunk struct {
 }
 
 func newChunk() *Chunk {
+
 	return &Chunk{
 		code:      []uint8{},
 		constants: []Value{},
@@ -48,6 +52,7 @@ func newChunk() *Chunk {
 }
 
 func (c *Chunk) writeOpCode(b uint8, line int) {
+
 	c.code = append(c.code, b)
 	c.lines = append(c.lines, line)
 }

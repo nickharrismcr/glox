@@ -1,6 +1,8 @@
 package lox
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var DebugTraceExecution = false
 var DebugPrintCode = false
@@ -52,6 +54,7 @@ var token_names = map[TokenType]string{
 }
 
 func (c *Chunk) disassemble(name string) {
+
 	fmt.Printf("=== %s ===\n", name)
 	offset := 0
 	for {
@@ -137,7 +140,34 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.simpleInstruction("OP_LIST_INDEX", offset)
 	case OP_SLICE:
 		return c.simpleInstruction("OP_SLICE", offset)
+	case OP_CLOSURE:
 
+		var s string
+
+		offset++
+		constant := c.code[offset]
+		offset++
+		fmt.Printf("%-16s %04d", "OP_CLOSURE", constant)
+		value := c.constants[constant]
+		fmt.Printf("  %s\n", value.String())
+		function := value.(ObjectValue).get().(*FunctionObject)
+		for j := 0; j < function.upvalueCount; j++ {
+			isLocal := c.code[offset]
+			offset++
+			index := c.code[offset]
+			offset++
+			if isLocal == 1 {
+				s = "local"
+			} else {
+				s = "upvalue"
+			}
+			fmt.Printf("%04d      |                     %s %d\n", offset-2, s, index)
+		}
+		return offset
+	case OP_GET_UPVALUE:
+		return c.byteInstruction("OP_GET_UPVALUE", offset)
+	case OP_SET_UPVALUE:
+		return c.byteInstruction("OP_SET_UPVALUE", offset)
 	default:
 		fmt.Printf("Unknown opcode %d", i)
 		return offset + 1
@@ -145,11 +175,13 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 }
 
 func (_ *Chunk) simpleInstruction(name string, offset int) int {
+
 	fmt.Printf("%s\n", name)
 	return offset + 1
 }
 
 func (c *Chunk) constantInstruction(name string, offset int) int {
+
 	constant := c.code[offset+1]
 	fmt.Printf("%-16s %04d", name, constant)
 	value := c.constants[constant]
@@ -158,6 +190,7 @@ func (c *Chunk) constantInstruction(name string, offset int) int {
 }
 
 func (c *Chunk) byteInstruction(name string, offset int) int {
+
 	slot := c.code[offset+1]
 	fmt.Printf("%-16s %04d\n", name, slot)
 	return offset + 2
@@ -178,6 +211,7 @@ func (c *Chunk) jumpInstruction(name string, sign int, offset int) int {
 }
 
 func (vm *VM) stackTrace() {
+
 	fmt.Printf("                                                         ")
 	for i := 0; i < vm.stackTop; i++ {
 		v := vm.stack[i]

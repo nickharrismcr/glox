@@ -8,6 +8,8 @@ import (
 	"os"
 )
 
+/* TODO continue with upvalues : https://craftinginterpreters.com/closures.html#upvalue-objects */
+
 /* additions to vanilla lox :
 
    declare constant  e.g  const a = 1;
@@ -59,6 +61,7 @@ func main() {
 			filename = arg
 		}
 	}
+
 	if do_repl {
 		repl(vm)
 	} else {

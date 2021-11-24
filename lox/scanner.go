@@ -1,6 +1,8 @@
 package lox
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type TokenType int
 
@@ -92,10 +94,12 @@ type Token struct {
 }
 
 func (t Token) lexeme() string {
+
 	return (*t.source)[t.start : t.start+t.length]
 }
 
 func NewScanner(source string) *Scanner {
+
 	return &Scanner{
 		source: source,
 		line:   1,
@@ -103,6 +107,7 @@ func NewScanner(source string) *Scanner {
 }
 
 func (s *Scanner) scanToken() Token {
+
 	s.skipWhiteSpace()
 	s.start = s.current
 	if s.isAtEnd() {
@@ -173,10 +178,12 @@ func (s *Scanner) scanToken() Token {
 }
 
 func (s *Scanner) isAtEnd() bool {
+
 	return s.current == len(s.source)
 }
 
 func (s *Scanner) makeToken(tokentype TokenType) Token {
+
 	return Token{
 		tokentype: tokentype,
 		start:     s.start,
@@ -187,6 +194,7 @@ func (s *Scanner) makeToken(tokentype TokenType) Token {
 }
 
 func (s *Scanner) errorToken(message string) Token {
+
 	return Token{
 		tokentype: TOKEN_ERROR,
 		start:     0,
@@ -203,6 +211,7 @@ func (s *Scanner) advance() string {
 }
 
 func (s *Scanner) match(expected string) bool {
+
 	if s.isAtEnd() {
 		return false
 	}
@@ -243,6 +252,7 @@ func (s *Scanner) skipWhiteSpace() {
 }
 
 func (s *Scanner) peek() string {
+
 	if s.current == len(s.source) {
 		return "\\0"
 	}
@@ -250,6 +260,7 @@ func (s *Scanner) peek() string {
 }
 
 func (s *Scanner) peekNext() string {
+
 	if s.current == len(s.source) {
 		return "\\0"
 	}
@@ -257,6 +268,7 @@ func (s *Scanner) peekNext() string {
 }
 
 func (s *Scanner) string() Token {
+
 	for s.peek() != "\"" && !s.isAtEnd() {
 		if s.peek() == "\n" {
 			s.line++
@@ -271,10 +283,12 @@ func (s *Scanner) string() Token {
 }
 
 func (s *Scanner) isDigit(c string) bool {
+
 	return (c >= "0") && (c <= "9")
 }
 
 func (s *Scanner) number() Token {
+
 	for s.isDigit(s.peek()) {
 		s.advance()
 	}
@@ -288,12 +302,14 @@ func (s *Scanner) number() Token {
 }
 
 func (s *Scanner) isAlpha(c string) bool {
+
 	return (c >= "a" && c <= "z") ||
 		(c >= "A" && c <= "Z") ||
 		(c == "_")
 }
 
 func (s *Scanner) identifier() Token {
+
 	for s.isAlpha(s.peek()) || s.isDigit(s.peek()) {
 		s.advance()
 	}
@@ -301,6 +317,7 @@ func (s *Scanner) identifier() Token {
 }
 
 func (s *Scanner) identifierType() TokenType {
+
 	id := s.source[s.start:s.current]
 	if tokentype, ok := keywords[id]; ok {
 		return tokentype

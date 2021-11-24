@@ -1,6 +1,8 @@
 package lox
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Value interface {
 	isVal()
@@ -9,10 +11,12 @@ type Value interface {
 }
 
 func printValue(v Value) {
+
 	fmt.Printf("%s\n", v.String())
 }
 
 func immutable(v Value) Value {
+
 	switch v.(type) {
 	case NumberValue:
 		return makeNumberValue(v.(NumberValue).get(), true)
@@ -25,6 +29,7 @@ func immutable(v Value) Value {
 }
 
 func mutable(v Value) Value {
+
 	switch v.(type) {
 	case NumberValue:
 		return makeNumberValue(v.(NumberValue).get(), false)
@@ -37,6 +42,7 @@ func mutable(v Value) Value {
 }
 
 func valuesEqual(a, b Value) bool {
+
 	switch a.(type) {
 	case BooleanValue:
 		switch b.(type) {
@@ -77,6 +83,7 @@ func valuesEqual(a, b Value) bool {
 }
 
 func getStringValue(v Value) string {
+
 	return v.(ObjectValue).stringObjectValue()
 }
 
@@ -89,6 +96,7 @@ type NumberValue struct {
 func (_ NumberValue) isVal() {}
 
 func makeNumberValue(v float64, immutable bool) NumberValue {
+
 	return NumberValue{
 		value:     v,
 		immutable: immutable,
@@ -96,14 +104,17 @@ func makeNumberValue(v float64, immutable bool) NumberValue {
 }
 
 func (nv NumberValue) Immutable() bool {
+
 	return nv.immutable
 }
 
 func (nv NumberValue) get() float64 {
+
 	return nv.value
 }
 
 func (nv NumberValue) String() string {
+
 	return fmt.Sprintf("%f", nv.value)
 }
 
@@ -116,6 +127,7 @@ type BooleanValue struct {
 func (_ BooleanValue) isVal() {}
 
 func makeBooleanValue(v bool, immutable bool) BooleanValue {
+
 	return BooleanValue{
 		value:     v,
 		immutable: immutable,
@@ -123,14 +135,17 @@ func makeBooleanValue(v bool, immutable bool) BooleanValue {
 }
 
 func (nv BooleanValue) Immutable() bool {
+
 	return nv.immutable
 }
 
 func (nv BooleanValue) get() bool {
+
 	return nv.value
 }
 
 func (nv BooleanValue) String() string {
+
 	if nv.value {
 		return "true"
 	}
@@ -145,20 +160,24 @@ type NilValue struct {
 func (_ NilValue) isVal() {}
 
 func makeNilValue() NilValue {
+
 	return NilValue{
 		value: false,
 	}
 }
 
 func (nv NilValue) Immutable() bool {
+
 	return false
 }
 
 func (nv NilValue) get() bool {
+
 	return nv.value
 }
 
 func (nv NilValue) String() string {
+
 	return "nil"
 }
 
@@ -171,6 +190,7 @@ type ObjectValue struct {
 func (_ ObjectValue) isVal() {}
 
 func makeObjectValue(obj Object, immutable bool) ObjectValue {
+
 	return ObjectValue{
 		value:     obj,
 		immutable: immutable,
@@ -178,31 +198,43 @@ func makeObjectValue(obj Object, immutable bool) ObjectValue {
 }
 
 func (nv ObjectValue) Immutable() bool {
+
 	return nv.immutable
 }
 
 func (ov ObjectValue) get() Object {
+
 	return ov.value
 }
 
 func (ov ObjectValue) String() string {
+
 	return ov.value.String()
 }
 
 func (ov ObjectValue) isStringObject() bool {
+
 	return ov.value.getType() == OBJECT_STRING
 }
 
 func (ov ObjectValue) stringObjectValue() string {
+
 	return ov.value.(StringObject).get()
 }
 
 func (ov ObjectValue) isFunctionObject() bool {
+
 	return ov.value.getType() == OBJECT_FUNCTION
 }
 
 func (ov ObjectValue) isNativeFunction() bool {
+
 	return ov.value.getType() == OBJECT_NATIVE
+}
+
+func (ov ObjectValue) isClosureObject() bool {
+
+	return ov.value.getType() == OBJECT_CLOSURE
 }
 
 //================================================================================================

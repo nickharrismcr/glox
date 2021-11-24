@@ -11,6 +11,8 @@ type ObjectType int
 const (
 	OBJECT_STRING ObjectType = iota
 	OBJECT_FUNCTION
+	OBJECT_CLOSURE
+	OBJECT_UPVALUE
 	OBJECT_NATIVE
 	OBJECT_LIST
 )
@@ -25,15 +27,17 @@ type NativeFn func(argCount int, args_stackptr int, vm *VM) Value
 
 //-------------------------------------------------------------------------------------------
 type FunctionObject struct {
-	arity int
-	chunk *Chunk
-	name  StringObject
+	arity        int
+	chunk        *Chunk
+	name         StringObject
+	upvalueCount int
 }
 
 func makeFunctionObject() *FunctionObject {
+
 	return &FunctionObject{
 		arity: 0,
-		name:  MakeStringObject(""),
+		name:  makeStringObject(""),
 		chunk: newChunk(),
 	}
 }
@@ -41,10 +45,12 @@ func makeFunctionObject() *FunctionObject {
 func (_ FunctionObject) isObject() {}
 
 func (_ FunctionObject) getType() ObjectType {
+
 	return OBJECT_FUNCTION
 }
 
 func (f *FunctionObject) String() string {
+
 	if f.name.get() == "" {
 		return "<script>"
 	}
@@ -52,12 +58,68 @@ func (f *FunctionObject) String() string {
 }
 
 //-------------------------------------------------------------------------------------------
+type ClosureObject struct {
+	function     *FunctionObject
+	upvalues     []*UpvalueObject
+	upvalueCount int
+}
 
+func makeClosureObject(function *FunctionObject) *ClosureObject {
+
+	rv := &ClosureObject{
+		function: function,
+		upvalues: []*UpvalueObject{},
+	}
+	for i := 0; i < function.upvalueCount; i++ {
+		rv.upvalues = append(rv.upvalues, nil)
+	}
+	rv.upvalueCount = function.upvalueCount
+	return rv
+}
+
+func (_ ClosureObject) isObject() {}
+
+func (_ ClosureObject) getType() ObjectType {
+
+	return OBJECT_CLOSURE
+}
+
+func (f *ClosureObject) String() string {
+
+	return f.function.String()
+}
+
+//-------------------------------------------------------------------------------------------
+type UpvalueObject struct {
+	location *Value
+}
+
+func makeUpvalueObject(slot *Value) *UpvalueObject {
+
+	return &UpvalueObject{
+		location: slot,
+	}
+}
+
+func (_ UpvalueObject) isObject() {}
+
+func (_ UpvalueObject) getType() ObjectType {
+
+	return OBJECT_UPVALUE
+}
+
+func (f *UpvalueObject) String() string {
+
+	return "Upvalue"
+}
+
+//-------------------------------------------------------------------------------------------
 type StringObject struct {
 	chars *string
 }
 
-func MakeStringObject(s string) StringObject {
+func makeStringObject(s string) StringObject {
+
 	return StringObject{
 		chars: &s,
 	}
@@ -66,14 +128,17 @@ func MakeStringObject(s string) StringObject {
 func (_ StringObject) isObject() {}
 
 func (_ StringObject) getType() ObjectType {
+
 	return OBJECT_STRING
 }
 
 func (s StringObject) get() string {
+
 	return *s.chars
 }
 
 func (s StringObject) String() string {
+
 	return fmt.Sprintf("\"%s\"", *s.chars)
 }
 
@@ -87,7 +152,7 @@ func (s StringObject) index(ix int) (Value, error) {
 		return NilValue{}, errors.New("List subscript out of range.")
 	}
 
-	so := MakeStringObject(string(s.get()[ix]))
+	so := makeStringObject(string(s.get()[ix]))
 	return makeObjectValue(so, false), nil
 }
 
@@ -108,7 +173,7 @@ func (s StringObject) slice(from_ix, to_ix int) (Value, error) {
 		return NilValue{}, errors.New("List subscript out of range.")
 	}
 
-	so := MakeStringObject(s.get()[from_ix:to_ix])
+	so := makeStringObject(s.get()[from_ix:to_ix])
 	return makeObjectValue(so, false), nil
 
 }
@@ -120,6 +185,7 @@ type NativeObject struct {
 }
 
 func makeNativeObject(function NativeFn) *NativeObject {
+
 	return &NativeObject{
 		function: function,
 	}
@@ -128,10 +194,12 @@ func makeNativeObject(function NativeFn) *NativeObject {
 func (_ NativeObject) isObject() {}
 
 func (_ NativeObject) getType() ObjectType {
+
 	return OBJECT_NATIVE
 }
 
 func (f *NativeObject) String() string {
+
 	return "<built-in>"
 }
 
@@ -142,6 +210,7 @@ type ListObject struct {
 }
 
 func makeListObject(items []Value) *ListObject {
+
 	return &ListObject{
 		items: items,
 	}
@@ -150,10 +219,12 @@ func makeListObject(items []Value) *ListObject {
 func (_ ListObject) isObject() {}
 
 func (_ ListObject) getType() ObjectType {
+
 	return OBJECT_LIST
 }
 
 func (s *ListObject) get() []Value {
+
 	return s.items
 }
 
@@ -168,6 +239,7 @@ func (s *ListObject) String() string {
 }
 
 func (s *ListObject) add(other *ListObject) *ListObject {
+
 	l := []Value{}
 	l = append(l, s.items...)
 	l = append(l, other.items...)

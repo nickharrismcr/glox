@@ -7,6 +7,7 @@ import (
 )
 
 func (vm *VM) defineNatives() {
+
 	vm.defineNative("clock", clockNative)
 	vm.defineNative("str", strNative)
 	vm.defineNative("len", lenNative)
@@ -15,12 +16,14 @@ func (vm *VM) defineNatives() {
 }
 
 func clockNative(argCount int, arg_stackptr int, vm *VM) Value {
+
 	elapsed := time.Since(vm.starttime)
 	return makeNumberValue(float64(elapsed.Seconds()), false)
 }
 
 // str(x)
 func strNative(argcount int, arg_stackptr int, vm *VM) Value {
+
 	if argcount != 1 {
 		vm.runTimeError("Single argument expected.")
 		return makeNilValue()
@@ -31,11 +34,11 @@ func strNative(argcount int, arg_stackptr int, vm *VM) Value {
 
 	case NumberValue:
 		s := arg.(NumberValue).String()
-		so := MakeStringObject(s)
+		so := makeStringObject(s)
 		return makeObjectValue(so, false)
 
 	case NilValue:
-		so := MakeStringObject("nil")
+		so := makeStringObject("nil")
 		return makeObjectValue(so, false)
 
 	case ObjectValue:
@@ -44,22 +47,23 @@ func strNative(argcount int, arg_stackptr int, vm *VM) Value {
 		case OBJECT_STRING:
 			return arg
 		case OBJECT_FUNCTION:
-			return makeObjectValue(MakeStringObject("<func>"), false)
+			return makeObjectValue(makeStringObject("<func>"), false)
 		case OBJECT_LIST:
-			return makeObjectValue(MakeStringObject(o.String()), false)
+			return makeObjectValue(makeStringObject(o.String()), false)
 		}
 
 	case BooleanValue:
 		s := fmt.Sprintf("%t", arg.(BooleanValue).get())
-		so := MakeStringObject(s)
+		so := makeStringObject(s)
 		return makeObjectValue(so, false)
 	}
 
-	return makeObjectValue(MakeStringObject(""), false)
+	return makeObjectValue(makeStringObject(""), false)
 }
 
 // len( string )
 func lenNative(argcount int, arg_stackptr int, vm *VM) Value {
+
 	if argcount != 1 {
 		vm.runTimeError("Invalid argument count to len.")
 		return makeNilValue()
@@ -84,6 +88,7 @@ func lenNative(argcount int, arg_stackptr int, vm *VM) Value {
 
 // sin(number)
 func sinNative(argcount int, arg_stackptr int, vm *VM) Value {
+
 	if argcount != 1 {
 		vm.runTimeError("Invalid argument count to sin.")
 		return makeNilValue()
@@ -101,6 +106,7 @@ func sinNative(argcount int, arg_stackptr int, vm *VM) Value {
 
 // cos(number)
 func cosNative(argcount int, arg_stackptr int, vm *VM) Value {
+
 	if argcount != 1 {
 		vm.runTimeError("Invalid argument count to cos.")
 		return makeNilValue()
