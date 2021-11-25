@@ -28,22 +28,24 @@ type CallFrame struct {
 }
 
 type VM struct {
-	chunk      *Chunk
-	ip         int
-	stack      [STACK_MAX]Value
-	stackTop   int
-	globals    map[string]Value
-	frames     [FRAMES_MAX]*CallFrame
-	frameCount int
-	starttime  time.Time
-	counter    int
+	chunk        *Chunk
+	ip           int
+	stack        [STACK_MAX]Value
+	stackTop     int
+	globals      map[string]Value
+	frames       [FRAMES_MAX]*CallFrame
+	frameCount   int
+	starttime    time.Time
+	counter      int
+	openUpValues *UpvalueObject // head of list
 }
 
 func NewVM() *VM {
 
 	vm := &VM{
-		globals:   map[string]Value{},
-		starttime: time.Now(),
+		globals:      map[string]Value{},
+		starttime:    time.Now(),
+		openUpValues: nil,
 	}
 	vm.resetStack()
 	vm.defineNatives()
@@ -153,9 +155,36 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 	vm.runTimeError("Can only call functions and classes.")
 	return false
 }
+
 func (vm *VM) captureUpvalue(slot int) *UpvalueObject {
 
-	return makeUpvalueObject(&(vm.stack[slot]))
+	var prevUpvalue *UpvalueObject = nil
+
+	upvalue := vm.openUpValues
+	for upvalue != nil && upvalue.slot > slot {
+		prevUpvalue = upvalue
+		upvalue = upvalue.next
+	}
+	if upvalue != nil && upvalue.slot == slot {
+		return upvalue
+	}
+	new := makeUpvalueObject(&(vm.stack[slot]), slot)
+	new.next = upvalue
+	if prevUpvalue == nil {
+		vm.openUpValues = new
+	} else {
+		prevUpvalue.next = new
+	}
+	return new
+}
+
+func (vm *VM) closeUpvalues(last int) {
+	for vm.openUpValues != nil && vm.openUpValues.slot >= last {
+		upvalue := vm.openUpValues
+		upvalue.closed = vm.stack[upvalue.slot]
+		upvalue.location = &upvalue.closed
+		vm.openUpValues = upvalue.next
+	}
 }
 
 func (vm *VM) call(closure *ClosureObject, argCount int) bool {
@@ -244,6 +273,7 @@ Loop:
 		case OP_RETURN:
 			// exit, return the value at stack top
 			result := vm.pop()
+			vm.closeUpvalues(frame.slots)
 			vm.frameCount--
 			if vm.frameCount == 0 {
 				vm.pop() // drop main script function obj
@@ -264,6 +294,10 @@ Loop:
 			slot := vm.getCode()[frame.ip]
 			frame.ip++
 			*(frame.closure.upvalues[slot].location) = vm.peek(0)
+
+		case OP_CLOSE_UPVALUE:
+			vm.closeUpvalues(vm.stackTop - 1)
+			vm.pop()
 
 		case OP_CONSTANT:
 			// get the constant indexed by operand and push it onto the stack

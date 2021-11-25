@@ -31,8 +31,10 @@ type ParseRule struct {
 }
 
 type Local struct {
-	name  Token
-	depth int
+	name       Token
+	lexeme     string
+	depth      int
+	isCaptured bool
 }
 
 type Loop struct {
@@ -62,7 +64,7 @@ type Compiler struct {
 	enclosing  *Compiler
 	function   *FunctionObject
 	type_      FunctionType
-	locals     [256]Local
+	locals     [256]*Local
 	localCount int
 	scopeDepth int
 	loop       *Loop
@@ -77,9 +79,11 @@ func NewCompiler(type_ FunctionType, parent *Compiler) *Compiler {
 		function:  makeFunctionObject(),
 	}
 	// slot 0 is for enclosing function
-	rv.locals[0] = Local{
-		depth: 0,
-		name:  Token{},
+	rv.locals[0] = &Local{
+		depth:      0,
+		name:       Token{},
+		lexeme:     "script",
+		isCaptured: false,
 	}
 	rv.localCount = 1
 	return rv
@@ -600,7 +604,11 @@ func (p *Parser) endScope() {
 
 	// drop local vars on stack
 	for c.localCount > 0 && c.locals[c.localCount-1].depth > c.scopeDepth {
-		p.emitByte(OP_POP)
+		if c.locals[c.localCount-1].isCaptured {
+			p.emitByte(OP_CLOSE_UPVALUE)
+		} else {
+			p.emitByte(OP_POP)
+		}
 		c.localCount--
 	}
 }
@@ -712,6 +720,7 @@ func (p *Parser) resolveUpvalue(compiler *Compiler, name Token) int {
 	}
 	local := p.resolveLocal(compiler.enclosing, name)
 	if local != -1 {
+		compiler.enclosing.locals[local].isCaptured = true
 		return p.addUpvalue(compiler, uint8(local), true)
 	}
 
@@ -861,9 +870,11 @@ func (p *Parser) addLocal(name Token) {
 		p.error("Too many variables in function")
 		return
 	}
-	local := Local{
-		name:  name,
-		depth: -1, // marks as uninitialised
+	local := &Local{
+		name:       name,
+		lexeme:     name.lexeme(),
+		depth:      -1, // marks as uninitialised
+		isCaptured: false,
 	}
 	p.currentCompiler.locals[p.currentCompiler.localCount] = local
 	p.currentCompiler.localCount++

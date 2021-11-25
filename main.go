@@ -8,8 +8,6 @@ import (
 	"os"
 )
 
-/* TODO continue with upvalues : https://craftinginterpreters.com/closures.html#upvalue-objects */
-
 /* additions to vanilla lox :
 
    declare constant  e.g  const a = 1;
@@ -17,12 +15,17 @@ import (
    loop break/continue
    string multiply by number ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
    native funcs :  str(number)   len(string)    sin(x)  cos(x)
-   lists  ( list literal initialisers (a=[1,2,3];),  indexing (a[x]),  slicing (a[x:y]))
+   lists :
+       list literal initialisers (a=[1,2,3];)
+	   indexing ( b=a[x] )
+	   slicing ( b=a[x:y] )
+	   adding ( list3=list1+list2 )
+	   appends ( append(list,val) )
+
    string slices   ( a = "abcd"; a[0]=="a", a[:2]=="ab", etc)
 
    TODO:
 
-   list + operator
    list index/slice assignment ( a[1]="a" or a[2:5] = [1,2,3] ),  list item del  (del a[b] or del a[b:c] - i.e assign nil )
 
       - parser currently won't allow assignment to slice
@@ -46,6 +49,8 @@ func main() {
 
 	fmt.Println("GLOX:")
 	vm := lox.NewVM()
+	//runFile("nod.lox", vm)
+	//os.Exit(0)
 
 	if len(os.Args) == 1 {
 		usage()

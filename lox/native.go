@@ -13,6 +13,7 @@ func (vm *VM) defineNatives() {
 	vm.defineNative("len", lenNative)
 	vm.defineNative("sin", sinNative)
 	vm.defineNative("cos", cosNative)
+	vm.defineNative("append", appendNative)
 }
 
 func clockNative(argCount int, arg_stackptr int, vm *VM) Value {
@@ -120,4 +121,29 @@ func cosNative(argcount int, arg_stackptr int, vm *VM) Value {
 	}
 	n := vn.get()
 	return makeNumberValue(math.Cos(n), false)
+}
+
+// append(obj,value)
+func appendNative(argcount int, arg_stackptr int, vm *VM) Value {
+
+	if argcount != 2 {
+		vm.runTimeError("Invalid argument count to append.")
+		return makeNilValue()
+	}
+	val := vm.stack[arg_stackptr]
+	vobj, ok := val.(ObjectValue)
+	if !ok {
+		vm.runTimeError("Argument 1 to append must be list.")
+		return makeNilValue()
+	}
+	val2 := vm.stack[arg_stackptr+1]
+	switch vobj.get().getType() {
+
+	case OBJECT_LIST:
+		l := vobj.get().(*ListObject)
+		l.append(val2)
+		return val
+	}
+	vm.runTimeError("Argument 1 to append must be list.")
+	return makeNilValue()
 }

@@ -92,12 +92,18 @@ func (f *ClosureObject) String() string {
 //-------------------------------------------------------------------------------------------
 type UpvalueObject struct {
 	location *Value
+	slot     int
+	next     *UpvalueObject
+	closed   Value
 }
 
-func makeUpvalueObject(slot *Value) *UpvalueObject {
+func makeUpvalueObject(value *Value, slot int) *UpvalueObject {
 
 	return &UpvalueObject{
-		location: slot,
+		location: value,
+		slot:     slot,
+		next:     nil,
+		closed:   makeNilValue(),
 	}
 }
 
@@ -223,56 +229,60 @@ func (_ ListObject) getType() ObjectType {
 	return OBJECT_LIST
 }
 
-func (s *ListObject) get() []Value {
+func (o *ListObject) get() []Value {
 
-	return s.items
+	return o.items
 }
 
-func (s *ListObject) String() string {
+func (o *ListObject) append(v Value) {
+	o.items = append(o.items, v)
+}
+
+func (o *ListObject) String() string {
 
 	list := []string{}
 
-	for _, v := range s.items {
+	for _, v := range o.items {
 		list = append(list, v.String())
 	}
 	return fmt.Sprintf("[ %s ]", strings.Join(list, " , "))
 }
 
-func (s *ListObject) add(other *ListObject) *ListObject {
+func (o *ListObject) add(other *ListObject) *ListObject {
 
 	l := []Value{}
-	l = append(l, s.items...)
+	l = append(l, o.items...)
 	l = append(l, other.items...)
 	return makeListObject(l)
 }
 
-func (s *ListObject) index(ix int) (Value, error) {
+func (o *ListObject) index(ix int) (Value, error) {
 
 	if ix < 0 {
-		ix = len(s.get()) + ix
+		ix = len(o.get()) + ix
 	}
 
-	if ix < 0 || ix > len(s.get()) {
+	if ix < 0 || ix > len(o.get()) {
 		return NilValue{}, errors.New("List subscript out of range.")
 	}
 
-	return s.get()[ix], nil
+	return o.get()[ix], nil
 }
 
-func (s *ListObject) slice(from_ix, to_ix int) (Value, error) {
+func (o *ListObject) slice(from_ix, to_ix int) (Value, error) {
 
 	if to_ix < 0 {
-		to_ix = len(s.items) + 1 + to_ix
+		to_ix = len(o.items) + 1 + to_ix
 	}
 	if from_ix < 0 {
-		from_ix = len(s.items) + 1 + from_ix
+		from_ix = len(o.items) + 1 + from_ix
 	}
 
-	if to_ix < 0 || to_ix > len(s.items) {
+	if to_ix < 0 || to_ix > len(o.items) {
 		return NilValue{}, errors.New("List subscript out of range.")
 	}
 
-	if from_ix < 0 || from_ix > len(s.items) {
+	if from_ix < 0 || from_ix > len(o.items) {
 		return NilValue{}, errors.New("List subscript out of range.")
 	}
 
@@ -280,6 +290,6 @@ func (s *ListObject) slice(from_ix, to_ix int) (Value, error) {
 		return NilValue{}, errors.New("Invalid slice indices.")
 	}
 
-	lo := makeListObject(s.items[from_ix:to_ix])
+	lo := makeListObject(o.items[from_ix:to_ix])
 	return makeObjectValue(lo, false), nil
 }
