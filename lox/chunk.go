@@ -39,6 +39,7 @@ const (
 	OP_SET_PROPERTY
 	OP_GET_PROPERTY
 	OP_METHOD
+	OP_INVOKE
 )
 
 type Chunk struct {

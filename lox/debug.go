@@ -178,6 +178,8 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.constantInstruction("OP_SET_PROPERTY", offset)
 	case OP_METHOD:
 		return c.constantInstruction("OP_METHOD", offset)
+	case OP_INVOKE:
+		return c.invokeInstruction("OP_INVOKE", offset)
 
 	default:
 		fmt.Printf("Unknown opcode %d", i)
@@ -218,6 +220,15 @@ func (c *Chunk) jumpInstruction(name string, sign int, offset int) int {
 	jump |= uint16(jump2)
 
 	fmt.Printf("%-16s %04d -> %d \n", name, offset, uint16(offset)+3+(uint16(sign)*jump))
+	return offset + 3
+}
+
+func (c *Chunk) invokeInstruction(name string, offset int) int {
+	constant := c.code[offset+1]
+	argCount := c.code[offset+2]
+	fmt.Printf("%-16s (%d args) %4d", name, argCount, constant)
+	value := c.constants[constant]
+	fmt.Printf("  %s\n", value.String())
 	return offset + 3
 }
 

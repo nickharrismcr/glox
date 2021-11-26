@@ -1116,6 +1116,10 @@ func dot(p *Parser, canAssign bool) {
 	if canAssign && p.match(TOKEN_EQUAL) {
 		p.expression()
 		p.emitBytes(OP_SET_PROPERTY, name)
+	} else if p.match(TOKEN_LEFT_PAREN) {
+		argCount := p.argumentList()
+		p.emitBytes(OP_INVOKE, name)
+		p.emitByte(argCount)
 	} else {
 		p.emitBytes(OP_GET_PROPERTY, name)
 	}

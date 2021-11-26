@@ -172,6 +172,26 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 	return false
 }
 
+func (vm *VM) invoke(name Value, argCount int) bool {
+	receiver := vm.peek(argCount)
+	if ov, ok := receiver.(ObjectValue); !ok || !ov.isInstanceObject() {
+		vm.runTimeError("Only instances have methods.")
+		return false
+	}
+	instance := receiver.(ObjectValue).asInstance()
+	return vm.invokeFromClass(instance.class, name, argCount)
+}
+
+func (vm *VM) invokeFromClass(class *ClassObject, name Value, argCount int) bool {
+	n := getStringValue(name)
+	method, ok := class.methods[n]
+	if !ok {
+		vm.runTimeError("Undefined method '%s'.", n)
+		return false
+	}
+	return vm.call(method.(ObjectValue).asClosure(), argCount)
+}
+
 func (vm *VM) bindMethod(class *ClassObject, name string) bool {
 	method, ok := class.methods[name]
 	if !ok {
@@ -284,6 +304,17 @@ Loop:
 
 		frame.ip++
 		switch inst {
+
+		case OP_INVOKE:
+			idx := vm.getCode()[frame.ip]
+			frame.ip++
+			method := frame.closure.function.chunk.constants[idx]
+			argCount := vm.getCode()[frame.ip]
+			frame.ip++
+			if !vm.invoke(method, int(argCount)) {
+				break Loop
+			}
+			frame = vm.frames[vm.frameCount-1]
 
 		case OP_CLOSURE:
 			// get the function indexed by operand from constants, wrap in a closure object and push onto stack
