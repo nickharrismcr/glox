@@ -84,23 +84,23 @@ func valuesEqual(a, b Value) bool {
 
 func getStringValue(v Value) string {
 
-	return v.(ObjectValue).stringObjectValue()
+	return v.(ObjectValue).asString()
 }
 
 func getFunctionObjectValue(v Value) *FunctionObject {
-	return v.(ObjectValue).functionObjectValue()
+	return v.(ObjectValue).asFunction()
 }
 
 func getClosureObjectValue(v Value) *ClosureObject {
-	return v.(ObjectValue).closureObjectValue()
+	return v.(ObjectValue).asClosure()
 }
 
 func getClassObjectValue(v Value) *ClassObject {
-	return v.(ObjectValue).classObjectValue()
+	return v.(ObjectValue).asClass()
 }
 
 func getInstanceObjectValue(v Value) *InstanceObject {
-	return v.(ObjectValue).instanceObjectValue()
+	return v.(ObjectValue).asInstance()
 }
 
 //================================================================================================
@@ -233,37 +233,37 @@ func (ov ObjectValue) isStringObject() bool {
 	return ov.value.getType() == OBJECT_STRING
 }
 
-func (ov ObjectValue) stringObjectValue() string {
+func (ov ObjectValue) asString() string {
 
 	return ov.value.(StringObject).get()
 }
 
-func (ov ObjectValue) functionObjectValue() *FunctionObject {
+func (ov ObjectValue) asFunction() *FunctionObject {
 
 	return ov.value.(*FunctionObject)
 }
 
-func (ov ObjectValue) nativeObjectValue() *NativeObject {
+func (ov ObjectValue) asNative() *NativeObject {
 
 	return ov.value.(*NativeObject)
 }
 
-func (ov ObjectValue) closureObjectValue() *ClosureObject {
+func (ov ObjectValue) asClosure() *ClosureObject {
 
 	return ov.value.(*ClosureObject)
 }
 
-func (ov ObjectValue) classObjectValue() *ClassObject {
+func (ov ObjectValue) asClass() *ClassObject {
 
 	return ov.value.(*ClassObject)
 }
 
-func (ov ObjectValue) instanceObjectValue() *InstanceObject {
+func (ov ObjectValue) asInstance() *InstanceObject {
 
 	return ov.value.(*InstanceObject)
 }
 
-func (ov ObjectValue) boundMethodObjectValue() *BoundMethodObject {
+func (ov ObjectValue) asBoundMethod() *BoundMethodObject {
 
 	return ov.value.(*BoundMethodObject)
 }

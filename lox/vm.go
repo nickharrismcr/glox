@@ -137,10 +137,12 @@ func (vm *VM) peek(dist int) Value {
 func (vm *VM) callValue(callee Value, argCount int) bool {
 
 	if ov, ok := callee.(ObjectValue); ok {
+
 		if ov.isClosureObject() {
 			return vm.call(getClosureObjectValue(callee), argCount)
+
 		} else if ov.isNativeFunction() {
-			nf := ov.nativeObjectValue()
+			nf := ov.asNative()
 			res := nf.function(argCount, vm.stackTop-argCount, vm)
 			if _, ok := res.(NilValue); ok { // error occurred
 				return false
@@ -148,12 +150,20 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 			vm.stackTop -= argCount + 1
 			vm.push(res)
 			return true
+
 		} else if ov.isClassObject() {
-			class := ov.classObjectValue()
+			class := ov.asClass()
 			vm.stack[vm.stackTop-argCount-1] = makeObjectValue(makeInstanceObject(class), false)
+			if initialiser, ok := class.methods["init"]; ok {
+				return vm.call(initialiser.(ObjectValue).asClosure(), argCount)
+			} else if argCount != 0 {
+				vm.runTimeError("Expected 0 arguments but got %d", argCount)
+				return false
+			}
 			return true
+
 		} else if ov.isBoundMethodObject() {
-			bound := ov.boundMethodObjectValue()
+			bound := ov.asBoundMethod()
 			vm.stack[vm.stackTop-argCount-1] = bound.receiver
 			return vm.call(bound.method, argCount)
 		}
@@ -168,7 +178,7 @@ func (vm *VM) bindMethod(class *ClassObject, name string) bool {
 		vm.runTimeError("Undefined property '%s'", name)
 		return false
 	}
-	bound := makeBoundMethodObject(vm.peek(0), method.(ObjectValue).closureObjectValue())
+	bound := makeBoundMethodObject(vm.peek(0), method.(ObjectValue).asClosure())
 	vm.pop()
 	vm.push(makeObjectValue(bound, false))
 	return true
@@ -207,7 +217,7 @@ func (vm *VM) closeUpvalues(last int) {
 
 func (vm *VM) defineMethod(name string) {
 	method := vm.peek(0)
-	class := vm.peek(1).(ObjectValue).classObjectValue()
+	class := vm.peek(1).(ObjectValue).asClass()
 	class.methods[name] = method
 	vm.pop()
 }
@@ -465,7 +475,7 @@ Loop:
 				a := v.(ObjectValue).get()
 				switch a.(type) {
 				case StringObject:
-					s = v.(ObjectValue).stringObjectValue()
+					s = v.(ObjectValue).asString()
 				case *FunctionObject:
 					s = v.String()
 				case *ListObject:
@@ -742,7 +752,7 @@ func (vm *VM) binaryAdd() bool {
 			}
 			ov1 := o1.value
 			if ov1.getType() == OBJECT_STRING {
-				so := makeStringObject(o1.stringObjectValue() + o2.stringObjectValue())
+				so := makeStringObject(o1.asString() + o2.asString())
 				vm.push(makeObjectValue(so, false))
 				return true
 			}

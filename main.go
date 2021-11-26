@@ -38,6 +38,7 @@ import (
 
 	Bob's classes chapter
 	 -  allow class __str__ magic method to define str()/print output
+	command line arguments (e.g sys.argv[])
 	list index/slice assignment ( a[1]="a" or a[2:5] = [1,2,3] )
 	list item del  (del a[b] or del a[b:c] - i.e assign nil )
 	- should be doable once the class stuff is in.

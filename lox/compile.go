@@ -59,6 +59,7 @@ const (
 	TYPE_FUNCTION FunctionType = iota
 	TYPE_SCRIPT
 	TYPE_METHOD
+	TYPE_INITIALIZER
 )
 
 type ClassCompiler struct {
@@ -356,6 +357,10 @@ func (p *Parser) method() {
 	p.consume(TOKEN_IDENTIFIER, "Expect method name.")
 	constant := p.identifierConstant(p.previous)
 	_type := TYPE_METHOD
+	if p.previous.lexeme() == "init" {
+		_type = TYPE_INITIALIZER
+
+	}
 	p.function(_type)
 	p.emitBytes(OP_METHOD, constant)
 }
@@ -422,6 +427,9 @@ func (p *Parser) returnStatement() {
 	if p.match(TOKEN_SEMICOLON) {
 		p.emitReturn()
 	} else {
+		if p.currentCompiler.type_ == TYPE_INITIALIZER {
+			p.error("Can't return from an initializer.")
+		}
 		p.expression()
 		p.consume(TOKEN_SEMICOLON, "Expect ';' after return value.")
 		p.emitByte(OP_RETURN)
@@ -952,7 +960,11 @@ func (p *Parser) makeConstant(value Value) uint8 {
 
 func (p *Parser) emitReturn() {
 
-	p.emitByte(OP_NIL)
+	if p.currentCompiler.type_ == TYPE_INITIALIZER {
+		p.emitBytes(OP_GET_LOCAL, 0)
+	} else {
+		p.emitByte(OP_NIL)
+	}
 	p.emitByte(OP_RETURN)
 }
 

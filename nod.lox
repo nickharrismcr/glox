@@ -1,14 +1,12 @@
-class A {
-    method1 (a) {
-        this.field1=a;
+class CoffeeMaker {
+    init(coffee) {
+        this.coffee = coffee;
     }
-    method2 () {
-        return this.field1;
+    brew() {
+        print "enjoy your cup of "+this.coffee;
+        this.coffee=nil;
     }
 }
- 
 
-var a = A ();
-a.method1 (111);
-print a.method2 ();
- 
+var maker = CoffeeMaker ("coffee and chicory");
+maker.brew ();
