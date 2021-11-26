@@ -58,7 +58,12 @@ type FunctionType int
 const (
 	TYPE_FUNCTION FunctionType = iota
 	TYPE_SCRIPT
+	TYPE_METHOD
 )
+
+type ClassCompiler struct {
+	enclosing *ClassCompiler
+}
 
 type Compiler struct {
 	enclosing  *Compiler
@@ -81,9 +86,12 @@ func NewCompiler(type_ FunctionType, parent *Compiler) *Compiler {
 	// slot 0 is for enclosing function
 	rv.locals[0] = &Local{
 		depth:      0,
-		name:       Token{},
-		lexeme:     "script",
 		isCaptured: false,
+	}
+	if type_ != TYPE_FUNCTION {
+		rv.locals[0].name = makeThisToken()
+	} else {
+		rv.locals[0].name = Token{}
 	}
 	rv.localCount = 1
 	return rv
@@ -95,6 +103,7 @@ type Parser struct {
 	hadError, panicMode bool
 	rules               map[TokenType]ParseRule
 	currentCompiler     *Compiler
+	currentClass        *ClassCompiler
 }
 
 func NewParser() *Parser {
@@ -170,7 +179,7 @@ func (p *Parser) setRules() {
 		TOKEN_PRINT:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_RETURN:        {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_SUPER:         {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_THIS:          {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_THIS:          {prefix: this, infix: nil, prec: PREC_NONE},
 		TOKEN_TRUE:          {prefix: literal, infix: nil, prec: PREC_NONE},
 		TOKEN_VAR:           {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_CONST:         {prefix: nil, infix: nil, prec: PREC_NONE},
@@ -320,13 +329,35 @@ func (p *Parser) function(type_ FunctionType) {
 
 func (p *Parser) classDeclaration() {
 	p.consume(TOKEN_IDENTIFIER, "Expect class name.")
+	className := p.previous
 	nameConstant := p.identifierConstant(p.previous)
 	p.declareVariable()
 
 	p.emitBytes(OP_CLASS, nameConstant)
 	p.defineVariable(nameConstant)
+
+	cc := &ClassCompiler{
+		enclosing: p.currentClass,
+	}
+	p.currentClass = cc
+
+	p.namedVariable(className, false)
 	p.consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.")
+	for !p.check(TOKEN_RIGHT_BRACE) && !p.check(TOKEN_EOF) {
+		p.method()
+	}
 	p.consume(TOKEN_RIGHT_BRACE, "Expect '{' after class body.")
+	p.emitByte(OP_POP)
+	p.currentClass = p.currentClass.enclosing
+}
+
+func (p *Parser) method() {
+
+	p.consume(TOKEN_IDENTIFIER, "Expect method name.")
+	constant := p.identifierConstant(p.previous)
+	_type := TYPE_METHOD
+	p.function(_type)
+	p.emitBytes(OP_METHOD, constant)
 }
 
 func (p *Parser) varDeclaration() {
@@ -1076,6 +1107,14 @@ func dot(p *Parser, canAssign bool) {
 	} else {
 		p.emitBytes(OP_GET_PROPERTY, name)
 	}
+}
+
+func this(p *Parser, canAssign bool) {
+	if p.currentClass == nil {
+		p.error("Can't use this outside of a class.")
+		return
+	}
+	variable(p, false)
 }
 
 func listLiteral(p *Parser, canAssign bool) {

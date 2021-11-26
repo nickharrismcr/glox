@@ -38,6 +38,7 @@ const (
 	OP_CLASS
 	OP_SET_PROPERTY
 	OP_GET_PROPERTY
+	OP_METHOD
 )
 
 type Chunk struct {

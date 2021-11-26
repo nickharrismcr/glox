@@ -324,3 +324,14 @@ func (s *Scanner) identifierType() TokenType {
 	}
 	return TOKEN_IDENTIFIER
 }
+
+func makeThisToken() Token {
+	src := "this"
+	return Token{
+		tokentype: TOKEN_THIS,
+		source:    &src,
+		start:     0,
+		length:    4,
+		line:      0,
+	}
+}

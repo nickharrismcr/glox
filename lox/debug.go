@@ -176,6 +176,8 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.constantInstruction("OP_GET_PROPERTY", offset)
 	case OP_SET_PROPERTY:
 		return c.constantInstruction("OP_SET_PROPERTY", offset)
+	case OP_METHOD:
+		return c.constantInstruction("OP_METHOD", offset)
 
 	default:
 		fmt.Printf("Unknown opcode %d", i)

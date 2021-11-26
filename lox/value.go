@@ -263,6 +263,11 @@ func (ov ObjectValue) instanceObjectValue() *InstanceObject {
 	return ov.value.(*InstanceObject)
 }
 
+func (ov ObjectValue) boundMethodObjectValue() *BoundMethodObject {
+
+	return ov.value.(*BoundMethodObject)
+}
+
 func (ov ObjectValue) isFunctionObject() bool {
 
 	return ov.value.getType() == OBJECT_FUNCTION
@@ -286,6 +291,11 @@ func (ov ObjectValue) isClassObject() bool {
 func (ov ObjectValue) isInstanceObject() bool {
 
 	return ov.value.getType() == OBJECT_INSTANCE
+}
+
+func (ov ObjectValue) isBoundMethodObject() bool {
+
+	return ov.value.getType() == OBJECT_BOUNDMETHOD
 }
 
 //================================================================================================

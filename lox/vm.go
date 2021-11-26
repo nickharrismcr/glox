@@ -152,12 +152,26 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 			class := ov.classObjectValue()
 			vm.stack[vm.stackTop-argCount-1] = makeObjectValue(makeInstanceObject(class), false)
 			return true
-
+		} else if ov.isBoundMethodObject() {
+			bound := ov.boundMethodObjectValue()
+			vm.stack[vm.stackTop-argCount-1] = bound.receiver
+			return vm.call(bound.method, argCount)
 		}
-
 	}
 	vm.runTimeError("Can only call functions and classes.")
 	return false
+}
+
+func (vm *VM) bindMethod(class *ClassObject, name string) bool {
+	method, ok := class.methods[name]
+	if !ok {
+		vm.runTimeError("Undefined property '%s'", name)
+		return false
+	}
+	bound := makeBoundMethodObject(vm.peek(0), method.(ObjectValue).closureObjectValue())
+	vm.pop()
+	vm.push(makeObjectValue(bound, false))
+	return true
 }
 
 func (vm *VM) captureUpvalue(slot int) *UpvalueObject {
@@ -189,6 +203,13 @@ func (vm *VM) closeUpvalues(last int) {
 		upvalue.location = &upvalue.closed
 		vm.openUpValues = upvalue.next
 	}
+}
+
+func (vm *VM) defineMethod(name string) {
+	method := vm.peek(0)
+	class := vm.peek(1).(ObjectValue).classObjectValue()
+	class.methods[name] = method
+	vm.pop()
 }
 
 func (vm *VM) call(closure *ClosureObject, argCount int) bool {
@@ -310,6 +331,12 @@ Loop:
 			constant := frame.closure.function.chunk.constants[idx]
 			vm.push(constant)
 
+		case OP_METHOD:
+			idx := vm.getCode()[frame.ip]
+			frame.ip++
+			name := frame.closure.function.chunk.constants[idx]
+			vm.defineMethod(getStringValue(name))
+
 		case OP_NEGATE:
 			// negate the value at stack top
 			if !vm.unaryNegate() {
@@ -381,8 +408,10 @@ Loop:
 				vm.pop()
 				vm.push(v)
 			} else {
-				vm.runTimeError("Undefined property %s", name)
-				break Loop
+				if !vm.bindMethod(instance.class, name) {
+					break Loop
+				}
+
 			}
 
 		case OP_SET_PROPERTY:

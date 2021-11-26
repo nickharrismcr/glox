@@ -17,6 +17,7 @@ const (
 	OBJECT_LIST
 	OBJECT_CLASS
 	OBJECT_INSTANCE
+	OBJECT_BOUNDMETHOD
 )
 
 type Object interface {
@@ -299,13 +300,15 @@ func (o *ListObject) slice(from_ix, to_ix int) (Value, error) {
 //-------------------------------------------------------------------------------------------
 
 type ClassObject struct {
-	name StringObject
+	name    StringObject
+	methods map[string]Value
 }
 
 func makeClassObject(name string) *ClassObject {
 
 	return &ClassObject{
-		name: makeStringObject(name),
+		name:    makeStringObject(name),
+		methods: map[string]Value{},
 	}
 }
 
@@ -346,6 +349,32 @@ func (_ InstanceObject) getType() ObjectType {
 func (f *InstanceObject) String() string {
 
 	return fmt.Sprintf("<instance %s>", f.class.name.get())
+}
+
+//-------------------------------------------------------------------------------------------
+type BoundMethodObject struct {
+	receiver Value
+	method   *ClosureObject
+}
+
+func makeBoundMethodObject(receiver Value, method *ClosureObject) *BoundMethodObject {
+
+	return &BoundMethodObject{
+		receiver: receiver,
+		method:   method,
+	}
+}
+
+func (_ BoundMethodObject) isObject() {}
+
+func (_ BoundMethodObject) getType() ObjectType {
+
+	return OBJECT_BOUNDMETHOD
+}
+
+func (f *BoundMethodObject) String() string {
+
+	return f.method.String()
 }
 
 //-------------------------------------------------------------------------------------------
