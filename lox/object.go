@@ -15,6 +15,8 @@ const (
 	OBJECT_UPVALUE
 	OBJECT_NATIVE
 	OBJECT_LIST
+	OBJECT_CLASS
+	OBJECT_INSTANCE
 )
 
 type Object interface {
@@ -293,3 +295,57 @@ func (o *ListObject) slice(from_ix, to_ix int) (Value, error) {
 	lo := makeListObject(o.items[from_ix:to_ix])
 	return makeObjectValue(lo, false), nil
 }
+
+//-------------------------------------------------------------------------------------------
+
+type ClassObject struct {
+	name StringObject
+}
+
+func makeClassObject(name string) *ClassObject {
+
+	return &ClassObject{
+		name: makeStringObject(name),
+	}
+}
+
+func (_ ClassObject) isObject() {}
+
+func (_ ClassObject) getType() ObjectType {
+
+	return OBJECT_CLASS
+}
+
+func (f *ClassObject) String() string {
+
+	return fmt.Sprintf("<class %s>", f.name.get())
+}
+
+//-------------------------------------------------------------------------------------------
+
+type InstanceObject struct {
+	class  *ClassObject
+	fields map[string]Value
+}
+
+func makeInstanceObject(class *ClassObject) *InstanceObject {
+
+	return &InstanceObject{
+		class:  class,
+		fields: map[string]Value{},
+	}
+}
+
+func (_ InstanceObject) isObject() {}
+
+func (_ InstanceObject) getType() ObjectType {
+
+	return OBJECT_INSTANCE
+}
+
+func (f *InstanceObject) String() string {
+
+	return fmt.Sprintf("<instance %s>", f.class.name.get())
+}
+
+//-------------------------------------------------------------------------------------------

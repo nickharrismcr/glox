@@ -95,6 +95,14 @@ func getClosureObjectValue(v Value) *ClosureObject {
 	return v.(ObjectValue).closureObjectValue()
 }
 
+func getClassObjectValue(v Value) *ClassObject {
+	return v.(ObjectValue).classObjectValue()
+}
+
+func getInstanceObjectValue(v Value) *InstanceObject {
+	return v.(ObjectValue).instanceObjectValue()
+}
+
 //================================================================================================
 type NumberValue struct {
 	value     float64
@@ -235,9 +243,24 @@ func (ov ObjectValue) functionObjectValue() *FunctionObject {
 	return ov.value.(*FunctionObject)
 }
 
+func (ov ObjectValue) nativeObjectValue() *NativeObject {
+
+	return ov.value.(*NativeObject)
+}
+
 func (ov ObjectValue) closureObjectValue() *ClosureObject {
 
 	return ov.value.(*ClosureObject)
+}
+
+func (ov ObjectValue) classObjectValue() *ClassObject {
+
+	return ov.value.(*ClassObject)
+}
+
+func (ov ObjectValue) instanceObjectValue() *InstanceObject {
+
+	return ov.value.(*InstanceObject)
 }
 
 func (ov ObjectValue) isFunctionObject() bool {
@@ -253,6 +276,16 @@ func (ov ObjectValue) isNativeFunction() bool {
 func (ov ObjectValue) isClosureObject() bool {
 
 	return ov.value.getType() == OBJECT_CLOSURE
+}
+
+func (ov ObjectValue) isClassObject() bool {
+
+	return ov.value.getType() == OBJECT_CLASS
+}
+
+func (ov ObjectValue) isInstanceObject() bool {
+
+	return ov.value.getType() == OBJECT_INSTANCE
 }
 
 //================================================================================================

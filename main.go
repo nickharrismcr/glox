@@ -8,38 +8,39 @@ import (
 	"os"
 )
 
-/* additions to vanilla lox :
+/*
+	todo https://craftinginterpreters.com/classes-and-instances.html#class-objects
 
-   declare constant  e.g  const a = 1;
-   modulus operator %
-   loop break/continue
-   string multiply by number ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
-   native funcs :  str(number)   len(string)    sin(x)  cos(x)
-   lists :
-       list literal initialisers (a=[1,2,3];)
-	   indexing ( b=a[x] )
-	   slicing ( b=a[x:y] )
-	   adding ( list3=list1+list2 )
-	   appends ( append(list,val) )
+	# GLOX
 
-   string slices   ( a = "abcd"; a[0]=="a", a[:2]=="ab", etc)
+	**Bob Nystroms clox bytecode interpreter implemented in Go**
+	Cop out : GC is handled by the Go runtime.
 
-   TODO:
+	**Additions to vanilla Lox:**
 
-   list index/slice assignment ( a[1]="a" or a[2:5] = [1,2,3] ),  list item del  (del a[b] or del a[b:c] - i.e assign nil )
+	immutable vars e.g  const a = 1;
+	modulus operator %
+	loop break/continue
+	string multiply by number ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
+	native funcs :  str(value)    len(string|list)      sin(x)    cos(x)     append(list,value)
 
-      - parser currently won't allow assignment to slice
-	  - a[i] is call precedence which prevents namedVariable from doing assign
-	  - NFI how to fix
+	lists :
+		initialiser (a=[]; a=[1,2,3];)
+		indexing ( b=a[x] )
+		slicing ( b=a[x:y]; b=a[:y]; b=a[x:]; b=a[:] )
+		adding ( list3=list1+list2 )
+		appends ( native append(list,val) )
 
-   *** wren has a subscript list setter a[1] = 2;  how is this implemented?
-     - compiles it as a method to the list type
-	 - need lox classes!
+	string slices   ( a = "abcd"; b=a[0], b=a[:2], etc)
+	renamed fun to func (!)
 
-   add switch statement
-   integer number type
-   maps
+	TODO:
 
+	Bob's classes chapter
+	 -  allow class __str__ magic method to define str()/print output
+	list index/slice assignment ( a[1]="a" or a[2:5] = [1,2,3] )
+	list item del  (del a[b] or del a[b:c] - i.e assign nil )
+	- should be doable once the class stuff is in.
 */
 
 func main() {

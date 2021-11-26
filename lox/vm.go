@@ -139,9 +139,8 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 	if ov, ok := callee.(ObjectValue); ok {
 		if ov.isClosureObject() {
 			return vm.call(getClosureObjectValue(callee), argCount)
-		}
-		if ov.isNativeFunction() {
-			nf := ov.get().(*NativeObject)
+		} else if ov.isNativeFunction() {
+			nf := ov.nativeObjectValue()
 			res := nf.function(argCount, vm.stackTop-argCount, vm)
 			if _, ok := res.(NilValue); ok { // error occurred
 				return false
@@ -149,6 +148,11 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 			vm.stackTop -= argCount + 1
 			vm.push(res)
 			return true
+		} else if ov.isClassObject() {
+			class := ov.classObjectValue()
+			vm.stack[vm.stackTop-argCount-1] = makeObjectValue(makeInstanceObject(class), false)
+			return true
+
 		}
 
 	}
@@ -360,6 +364,45 @@ Loop:
 			bv := vm.isFalsey(v)
 			vm.push(makeBooleanValue(bv, false))
 
+		case OP_GET_PROPERTY:
+			v := vm.peek(0)
+			ov, ok := v.(ObjectValue)
+			if !ok || !ov.isInstanceObject() {
+				vm.runTimeError("Only instances have properties.")
+				break Loop
+			}
+
+			instance := getInstanceObjectValue(v)
+			idx := vm.getCode()[frame.ip]
+			frame.ip++
+			nv := frame.closure.function.chunk.constants[idx]
+			name := getStringValue(nv)
+			if v, ok := instance.fields[name]; ok {
+				vm.pop()
+				vm.push(v)
+			} else {
+				vm.runTimeError("Undefined property %s", name)
+				break Loop
+			}
+
+		case OP_SET_PROPERTY:
+
+			val := vm.peek(0)
+			v := vm.peek(1)
+			ov, ok := v.(ObjectValue)
+			if !ok || !ov.isInstanceObject() {
+				vm.runTimeError("Only instances have fields.")
+				break Loop
+			}
+			instance := getInstanceObjectValue(v)
+			idx := vm.getCode()[frame.ip]
+			frame.ip++
+			name := getStringValue(frame.closure.function.chunk.constants[idx])
+			instance.fields[name] = val
+			tmp := vm.pop()
+			vm.pop()
+			vm.push(tmp)
+
 		case OP_EQUAL:
 			// pop 2 stack values, stack top = boolean
 			a := vm.pop()
@@ -398,7 +441,10 @@ Loop:
 					s = v.String()
 				case *ListObject:
 					s = v.String()
-
+				case *ClassObject:
+					s = v.String()
+				case *InstanceObject:
+					s = v.String()
 				}
 
 			}
@@ -498,6 +544,14 @@ Loop:
 				return INTERPRET_RUNTIME_ERROR, makeNilValue()
 			}
 			frame = vm.frame()
+
+		case OP_CLASS:
+			idx := vm.getCode()[frame.ip]
+			frame.ip++
+			name := getStringValue(frame.closure.function.chunk.constants[idx])
+			vm.push(makeObjectValue(makeClassObject(name), false))
+
+		// NJH added:
 
 		case OP_CREATE_LIST:
 			// item count is operand, expects items on stack,  list object will be stack top

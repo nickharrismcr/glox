@@ -170,6 +170,12 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.byteInstruction("OP_SET_UPVALUE", offset)
 	case OP_CLOSE_UPVALUE:
 		return c.simpleInstruction("OP_CLOSE_UPVALUE", offset)
+	case OP_CLASS:
+		return c.constantInstruction("OP_CLASS", offset)
+	case OP_GET_PROPERTY:
+		return c.constantInstruction("OP_GET_PROPERTY", offset)
+	case OP_SET_PROPERTY:
+		return c.constantInstruction("OP_SET_PROPERTY", offset)
 
 	default:
 		fmt.Printf("Unknown opcode %d", i)

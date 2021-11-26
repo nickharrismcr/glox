@@ -140,7 +140,7 @@ func (p *Parser) setRules() {
 		TOKEN_LEFT_BRACKET:  {prefix: listLiteral, infix: slice, prec: PREC_CALL},
 		TOKEN_RIGHT_BRACKET: {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_COMMA:         {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_DOT:           {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_DOT:           {prefix: nil, infix: dot, prec: PREC_CALL},
 		TOKEN_MINUS:         {prefix: unary, infix: binary, prec: PREC_TERM},
 		TOKEN_PLUS:          {prefix: nil, infix: binary, prec: PREC_TERM},
 		TOKEN_SEMICOLON:     {prefix: nil, infix: nil, prec: PREC_NONE},
@@ -214,7 +214,9 @@ func (p *Parser) getRule(tok TokenType) ParseRule {
 
 func (p *Parser) declaration() {
 
-	if p.match(TOKEN_FUNC) {
+	if p.match(TOKEN_CLASS) {
+		p.classDeclaration()
+	} else if p.match(TOKEN_FUNC) {
 		p.funcDeclaration()
 	} else if p.match(TOKEN_VAR) {
 		p.varDeclaration()
@@ -314,6 +316,17 @@ func (p *Parser) function(type_ FunctionType) {
 		}
 		p.emitByte(uv.index)
 	}
+}
+
+func (p *Parser) classDeclaration() {
+	p.consume(TOKEN_IDENTIFIER, "Expect class name.")
+	nameConstant := p.identifierConstant(p.previous)
+	p.declareVariable()
+
+	p.emitBytes(OP_CLASS, nameConstant)
+	p.defineVariable(nameConstant)
+	p.consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.")
+	p.consume(TOKEN_RIGHT_BRACE, "Expect '{' after class body.")
 }
 
 func (p *Parser) varDeclaration() {
@@ -1050,6 +1063,19 @@ func call(p *Parser, canAssign bool) {
 
 	argCount := p.argumentList()
 	p.emitBytes(OP_CALL, argCount)
+}
+
+func dot(p *Parser, canAssign bool) {
+
+	p.consume(TOKEN_IDENTIFIER, "Expect property name after '.'.")
+	name := p.identifierConstant(p.previous)
+
+	if canAssign && p.match(TOKEN_EQUAL) {
+		p.expression()
+		p.emitBytes(OP_SET_PROPERTY, name)
+	} else {
+		p.emitBytes(OP_GET_PROPERTY, name)
+	}
 }
 
 func listLiteral(p *Parser, canAssign bool) {
