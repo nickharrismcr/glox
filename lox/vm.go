@@ -28,8 +28,6 @@ type CallFrame struct {
 }
 
 type VM struct {
-	chunk        *Chunk
-	ip           int
 	stack        [STACK_MAX]Value
 	stackTop     int
 	globals      map[string]Value
@@ -87,8 +85,6 @@ func (vm *VM) runTimeError(format string, args ...interface{}) {
 
 	fmt.Fprintf(os.Stderr, format, args...)
 	fmt.Fprint(os.Stderr, "\n")
-	//line := vm.frame().function.chunk.lines[vm.frame().ip-1]
-	//fmt.Fprintf(os.Stderr, "[line %d] in script \n", line)
 
 	for i := vm.frameCount - 1; i >= 0; i-- {
 		frame := vm.frames[i]
@@ -274,13 +270,13 @@ func (vm *VM) readShort() uint16 {
 
 func (vm *VM) isFalsey(v Value) bool {
 
-	switch v.(type) {
+	switch v := v.(type) {
 	case NumberValue:
-		return v.(NumberValue).get() == 0
+		return v.get() == 0
 	case NilValue:
 		return true
 	case BooleanValue:
-		return !v.(BooleanValue).get()
+		return !v.get()
 	}
 	return true
 }
@@ -1052,10 +1048,6 @@ func (vm *VM) binaryLess() bool {
 
 	vm.push(makeBooleanValue(nv1.get() < nv2.get(), false))
 	return true
-}
-
-func (vm *VM) concatenate(s1, s2 string) {
-
 }
 
 func (vm *VM) stringMultiply(s string, x int) Value {

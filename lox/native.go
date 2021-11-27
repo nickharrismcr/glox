@@ -31,10 +31,10 @@ func strNative(argcount int, arg_stackptr int, vm *VM) Value {
 	}
 	arg := vm.stack[arg_stackptr]
 
-	switch arg.(type) {
+	switch arg := arg.(type) {
 
 	case NumberValue:
-		s := arg.(NumberValue).String()
+		s := arg.String()
 		so := makeStringObject(s)
 		return makeObjectValue(so, false)
 
@@ -43,7 +43,7 @@ func strNative(argcount int, arg_stackptr int, vm *VM) Value {
 		return makeObjectValue(so, false)
 
 	case ObjectValue:
-		o := arg.(ObjectValue)
+		o := arg
 		switch o.value.getType() {
 		case OBJECT_STRING:
 			return arg
@@ -58,7 +58,7 @@ func strNative(argcount int, arg_stackptr int, vm *VM) Value {
 		}
 
 	case BooleanValue:
-		s := fmt.Sprintf("%t", arg.(BooleanValue).get())
+		s := fmt.Sprintf("%t", arg.get())
 		so := makeStringObject(s)
 		return makeObjectValue(so, false)
 	}

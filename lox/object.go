@@ -45,9 +45,9 @@ func makeFunctionObject() *FunctionObject {
 	}
 }
 
-func (_ FunctionObject) isObject() {}
+func (FunctionObject) isObject() {}
 
-func (_ FunctionObject) getType() ObjectType {
+func (FunctionObject) getType() ObjectType {
 
 	return OBJECT_FUNCTION
 }
@@ -80,9 +80,9 @@ func makeClosureObject(function *FunctionObject) *ClosureObject {
 	return rv
 }
 
-func (_ ClosureObject) isObject() {}
+func (ClosureObject) isObject() {}
 
-func (_ ClosureObject) getType() ObjectType {
+func (ClosureObject) getType() ObjectType {
 
 	return OBJECT_CLOSURE
 }
@@ -110,9 +110,9 @@ func makeUpvalueObject(value *Value, slot int) *UpvalueObject {
 	}
 }
 
-func (_ UpvalueObject) isObject() {}
+func (UpvalueObject) isObject() {}
 
-func (_ UpvalueObject) getType() ObjectType {
+func (UpvalueObject) getType() ObjectType {
 
 	return OBJECT_UPVALUE
 }
@@ -134,9 +134,9 @@ func makeStringObject(s string) StringObject {
 	}
 }
 
-func (_ StringObject) isObject() {}
+func (StringObject) isObject() {}
 
-func (_ StringObject) getType() ObjectType {
+func (StringObject) getType() ObjectType {
 
 	return OBJECT_STRING
 }
@@ -158,7 +158,7 @@ func (s StringObject) index(ix int) (Value, error) {
 	}
 
 	if ix < 0 || ix > len(s.get()) {
-		return NilValue{}, errors.New("List subscript out of range.")
+		return NilValue{}, errors.New("list subscript out of range")
 	}
 
 	so := makeStringObject(string(s.get()[ix]))
@@ -175,11 +175,11 @@ func (s StringObject) slice(from_ix, to_ix int) (Value, error) {
 	}
 
 	if to_ix < 0 || to_ix > len(s.get()) {
-		return NilValue{}, errors.New("List subscript out of range.")
+		return NilValue{}, errors.New("list subscript out of range")
 	}
 
 	if from_ix < 0 || from_ix > len(s.get()) {
-		return NilValue{}, errors.New("List subscript out of range.")
+		return NilValue{}, errors.New("list subscript out of range")
 	}
 
 	so := makeStringObject(s.get()[from_ix:to_ix])
@@ -200,9 +200,9 @@ func makeNativeObject(function NativeFn) *NativeObject {
 	}
 }
 
-func (_ NativeObject) isObject() {}
+func (NativeObject) isObject() {}
 
-func (_ NativeObject) getType() ObjectType {
+func (NativeObject) getType() ObjectType {
 
 	return OBJECT_NATIVE
 }
@@ -225,9 +225,9 @@ func makeListObject(items []Value) *ListObject {
 	}
 }
 
-func (_ ListObject) isObject() {}
+func (ListObject) isObject() {}
 
-func (_ ListObject) getType() ObjectType {
+func (ListObject) getType() ObjectType {
 
 	return OBJECT_LIST
 }
@@ -266,7 +266,7 @@ func (o *ListObject) index(ix int) (Value, error) {
 	}
 
 	if ix < 0 || ix > len(o.get()) {
-		return NilValue{}, errors.New("List subscript out of range.")
+		return NilValue{}, errors.New("list subscript out of range")
 	}
 
 	return o.get()[ix], nil
@@ -282,15 +282,15 @@ func (o *ListObject) slice(from_ix, to_ix int) (Value, error) {
 	}
 
 	if to_ix < 0 || to_ix > len(o.items) {
-		return NilValue{}, errors.New("List subscript out of range.")
+		return NilValue{}, errors.New("list subscript out of range")
 	}
 
 	if from_ix < 0 || from_ix > len(o.items) {
-		return NilValue{}, errors.New("List subscript out of range.")
+		return NilValue{}, errors.New("list subscript out of range")
 	}
 
 	if from_ix > to_ix {
-		return NilValue{}, errors.New("Invalid slice indices.")
+		return NilValue{}, errors.New("invalid slice indices")
 	}
 
 	lo := makeListObject(o.items[from_ix:to_ix])
@@ -304,7 +304,7 @@ func (o *ListObject) assignToIndex(ix int, val Value) error {
 	}
 
 	if ix < 0 || ix > len(o.get()) {
-		return errors.New("List subscript out of range.")
+		return errors.New("list subscript out of range")
 	}
 
 	o.items[ix] = val
@@ -321,15 +321,15 @@ func (o *ListObject) assignToSlice(from_ix, to_ix int, val Value) error {
 	}
 
 	if to_ix < 0 || to_ix > len(o.items) {
-		return errors.New("List subscript out of range.")
+		return errors.New("list subscript out of range")
 	}
 
 	if from_ix < 0 || from_ix > len(o.items) {
-		return errors.New("List subscript out of range.")
+		return errors.New("list subscript out of range")
 	}
 
 	if from_ix > to_ix {
-		return errors.New("Invalid slice indices.")
+		return errors.New("invalid slice indices")
 	}
 
 	if ov, ok := val.(ObjectValue); ok {
@@ -344,7 +344,7 @@ func (o *ListObject) assignToSlice(from_ix, to_ix int, val Value) error {
 		}
 	}
 
-	return errors.New("Can only assign list to list slice.")
+	return errors.New("can only assign list to list slice")
 }
 
 //-------------------------------------------------------------------------------------------
@@ -362,9 +362,9 @@ func makeClassObject(name string) *ClassObject {
 	}
 }
 
-func (_ ClassObject) isObject() {}
+func (ClassObject) isObject() {}
 
-func (_ ClassObject) getType() ObjectType {
+func (ClassObject) getType() ObjectType {
 
 	return OBJECT_CLASS
 }
@@ -389,9 +389,9 @@ func makeInstanceObject(class *ClassObject) *InstanceObject {
 	}
 }
 
-func (_ InstanceObject) isObject() {}
+func (InstanceObject) isObject() {}
 
-func (_ InstanceObject) getType() ObjectType {
+func (InstanceObject) getType() ObjectType {
 
 	return OBJECT_INSTANCE
 }
@@ -415,9 +415,9 @@ func makeBoundMethodObject(receiver Value, method *ClosureObject) *BoundMethodOb
 	}
 }
 
-func (_ BoundMethodObject) isObject() {}
+func (BoundMethodObject) isObject() {}
 
-func (_ BoundMethodObject) getType() ObjectType {
+func (BoundMethodObject) getType() ObjectType {
 
 	return OBJECT_BOUNDMETHOD
 }

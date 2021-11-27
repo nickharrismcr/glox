@@ -38,7 +38,6 @@ type Local struct {
 }
 
 type Loop struct {
-	parent *Loop
 	start  int
 	break_ int
 }

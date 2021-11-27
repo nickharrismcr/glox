@@ -10,33 +10,28 @@ type Value interface {
 	Immutable() bool
 }
 
-func printValue(v Value) {
-
-	fmt.Printf("%s\n", v.String())
-}
-
 func immutable(v Value) Value {
 
-	switch v.(type) {
+	switch v := v.(type) {
 	case NumberValue:
-		return makeNumberValue(v.(NumberValue).get(), true)
+		return makeNumberValue(v.get(), true)
 	case BooleanValue:
-		return makeBooleanValue(v.(BooleanValue).get(), true)
+		return makeBooleanValue(v.get(), true)
 	case ObjectValue:
-		return makeObjectValue(v.(ObjectValue).get(), true)
+		return makeObjectValue(v.get(), true)
 	}
 	return makeNilValue()
 }
 
 func mutable(v Value) Value {
 
-	switch v.(type) {
+	switch v := v.(type) {
 	case NumberValue:
-		return makeNumberValue(v.(NumberValue).get(), false)
+		return makeNumberValue(v.get(), false)
 	case BooleanValue:
-		return makeBooleanValue(v.(BooleanValue).get(), false)
+		return makeBooleanValue(v.get(), false)
 	case ObjectValue:
-		return makeObjectValue(v.(ObjectValue).get(), false)
+		return makeObjectValue(v.get(), false)
 	}
 	return makeNilValue()
 }
@@ -109,7 +104,7 @@ type NumberValue struct {
 	immutable bool
 }
 
-func (_ NumberValue) isVal() {}
+func (NumberValue) isVal() {}
 
 func makeNumberValue(v float64, immutable bool) NumberValue {
 
@@ -140,7 +135,7 @@ type BooleanValue struct {
 	immutable bool
 }
 
-func (_ BooleanValue) isVal() {}
+func (BooleanValue) isVal() {}
 
 func makeBooleanValue(v bool, immutable bool) BooleanValue {
 
@@ -173,7 +168,7 @@ type NilValue struct {
 	value bool
 }
 
-func (_ NilValue) isVal() {}
+func (NilValue) isVal() {}
 
 func makeNilValue() NilValue {
 
@@ -187,11 +182,6 @@ func (nv NilValue) Immutable() bool {
 	return false
 }
 
-func (nv NilValue) get() bool {
-
-	return nv.value
-}
-
 func (nv NilValue) String() string {
 
 	return "nil"
@@ -203,7 +193,7 @@ type ObjectValue struct {
 	immutable bool
 }
 
-func (_ ObjectValue) isVal() {}
+func (ObjectValue) isVal() {}
 
 func makeObjectValue(obj Object, immutable bool) ObjectValue {
 

@@ -7,52 +7,6 @@ import (
 var DebugTraceExecution = false
 var DebugPrintCode = false
 
-var token_names = map[TokenType]string{
-	TOKEN_LEFT_PAREN:    "TOKEN_LEFT_PAREN ",
-	TOKEN_RIGHT_PAREN:   "TOKEN_RIGHT_PAREN",
-	TOKEN_LEFT_BRACE:    "TOKEN_LEFT_BRACE",
-	TOKEN_RIGHT_BRACE:   "TOKEN_RIGHT_BRACE",
-	TOKEN_COMMA:         "TOKEN_COMMA",
-	TOKEN_DOT:           "TOKEN_DOT",
-	TOKEN_MINUS:         "TOKEN_MINUS",
-	TOKEN_PLUS:          "TOKEN_PLUS",
-	TOKEN_SEMICOLON:     "TOKEN_SEMICOLON",
-	TOKEN_SLASH:         "TOKEN_SLASH",
-	TOKEN_STAR:          "TOKEN_STAR",
-	TOKEN_BANG:          "TOKEN_BANG",
-	TOKEN_BANG_EQUAL:    "TOKEN_BANG_EQUAL",
-	TOKEN_EQUAL:         "TOKEN_EQUAL",
-	TOKEN_EQUAL_EQUAL:   "TOKEN_EQUAL_EQUAL",
-	TOKEN_GREATER:       "TOKEN_GREATER",
-	TOKEN_GREATER_EQUAL: "TOKEN_GREATER_EQUAL",
-	TOKEN_LESS:          "TOKEN_LESS",
-	TOKEN_LESS_EQUAL:    "TOKEN_LESS_EQUAL",
-	TOKEN_IDENTIFIER:    "TOKEN_IDENTIFIER",
-	TOKEN_STRING:        "TOKEN_STRING",
-	TOKEN_NUMBER:        "TOKEN_NUMBER",
-	TOKEN_AND:           "TOKEN_AND",
-	TOKEN_CLASS:         "TOKEN_CLASS",
-	TOKEN_ELSE:          "TOKEN_ELSE",
-	TOKEN_FALSE:         "TOKEN_FALSE",
-	TOKEN_FOR:           "TOKEN_FOR",
-	TOKEN_FUNC:          "TOKEN_FUNC",
-	TOKEN_IF:            "TOKEN_IF",
-	TOKEN_NIL:           "TOKEN_NIL",
-	TOKEN_OR:            "TOKEN_OR",
-	TOKEN_PRINT:         "TOKEN_PRINT",
-	TOKEN_RETURN:        "TOKEN_RETURN",
-	TOKEN_SUPER:         "TOKEN_SUPER",
-	TOKEN_THIS:          "TOKEN_THIS",
-	TOKEN_TRUE:          "TOKEN_TRUE",
-	TOKEN_VAR:           "TOKEN_VAR",
-	TOKEN_WHILE:         "TOKEN_WHILE",
-	TOKEN_ERROR:         "TOKEN_ERROR",
-	TOKEN_EOF:           "TOKEN_EOF",
-	TOKEN_CONST:         "TOKEN_CONST",
-	TOKEN_BREAK:         "TOKEN_BREAK",
-	TOKEN_CONTINUE:      "TOKEN_CONTINUE",
-}
-
 func (c *Chunk) disassemble(name string) {
 
 	fmt.Printf("=== %s ===\n", name)
@@ -191,7 +145,7 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 	}
 }
 
-func (_ *Chunk) simpleInstruction(name string, offset int) int {
+func (*Chunk) simpleInstruction(name string, offset int) int {
 
 	fmt.Printf("%s\n", name)
 	return offset + 1
@@ -242,12 +196,7 @@ func (vm *VM) stackTrace() {
 	for i := 0; i < vm.stackTop; i++ {
 		v := vm.stack[i]
 		s := v.String()
-		switch v.(type) {
-		case ObjectValue:
-			if v.(ObjectValue).isStringObject() {
-				s = fmt.Sprintf("%s", s)
-			}
-		}
+
 		if v.Immutable() {
 			fmt.Printf("| %s(c) |", s)
 		} else {
