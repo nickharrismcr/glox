@@ -13,6 +13,8 @@ import (
 
 */
 
+var debugger = false
+
 func main() {
 
 	var do_repl bool
@@ -20,8 +22,13 @@ func main() {
 
 	fmt.Println("GLOX:")
 	vm := lox.NewVM()
-	//runFile("nod.lox", vm)
-	//os.Exit(0)
+
+	if debugger {
+		lox.DebugPrintCode = true
+		lox.DebugTraceExecution = true
+		runFile("nod.lox", vm)
+		os.Exit(0)
+	}
 
 	if len(os.Args) == 1 {
 		usage()

@@ -238,6 +238,11 @@ func (ov ObjectValue) asString() string {
 	return ov.value.(StringObject).get()
 }
 
+func (ov ObjectValue) asList() *ListObject {
+
+	return ov.value.(*ListObject)
+}
+
 func (ov ObjectValue) asFunction() *FunctionObject {
 
 	return ov.value.(*FunctionObject)
@@ -266,6 +271,11 @@ func (ov ObjectValue) asInstance() *InstanceObject {
 func (ov ObjectValue) asBoundMethod() *BoundMethodObject {
 
 	return ov.value.(*BoundMethodObject)
+}
+
+func (ov ObjectValue) isListObject() bool {
+
+	return ov.value.getType() == OBJECT_LIST
 }
 
 func (ov ObjectValue) isFunctionObject() bool {

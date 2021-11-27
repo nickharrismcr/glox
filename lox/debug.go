@@ -137,9 +137,13 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 	case OP_CREATE_LIST:
 		return c.byteInstruction("OP_CREATE_LIST", offset)
 	case OP_INDEX:
-		return c.simpleInstruction("OP_LIST_INDEX", offset)
+		return c.simpleInstruction("OP_INDEX", offset)
+	case OP_INDEX_ASSIGN:
+		return c.simpleInstruction("OP_INDEX_ASSIGN", offset)
 	case OP_SLICE:
 		return c.simpleInstruction("OP_SLICE", offset)
+	case OP_SLICE_ASSIGN:
+		return c.simpleInstruction("OP_SLICE_ASSIGN", offset)
 	case OP_CLOSURE:
 
 		var s string

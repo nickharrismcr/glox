@@ -968,6 +968,78 @@ func (p *Parser) emitReturn() {
 	p.emitByte(OP_RETURN)
 }
 
+func (p *Parser) slice1(canAssign bool, name uint8) {
+	// slice from -> stack
+	p.emitByte(OP_NIL)
+	if p.check(TOKEN_RIGHT_BRACKET) {
+		// [:]
+		if canAssign && p.match(TOKEN_EQUAL) {
+			// slice to -> stack
+			p.emitByte(OP_NIL)
+			// RHS -> stack
+			p.expression()
+			p.emitByte(OP_SLICE_ASSIGN)
+
+		} else {
+			p.emitByte(OP_NIL)
+			p.emitByte(OP_SLICE)
+		}
+	} else {
+		// [:exp]
+		// slice to -> stack
+		p.expression()
+		if canAssign && p.match(TOKEN_EQUAL) {
+			// RHS -> stack
+			p.expression()
+			p.emitByte(OP_SLICE_ASSIGN)
+
+		} else {
+			p.emitByte(OP_SLICE)
+		}
+	}
+}
+func (p *Parser) index(canAssign bool, name uint8) {
+
+	// [exp]
+	if canAssign && p.match(TOKEN_EQUAL) {
+		// RHS -> stack
+		p.expression()
+		p.emitByte(OP_INDEX_ASSIGN)
+
+	} else {
+		p.emitByte(OP_INDEX)
+	}
+}
+
+func (p *Parser) slice2(canAssign bool, name uint8) {
+
+	if p.match(TOKEN_RIGHT_BRACKET) {
+		// [exp:]
+
+		p.emitByte(OP_NIL)
+
+		if canAssign && p.match(TOKEN_EQUAL) {
+			// RHS -> stack
+			p.expression()
+			p.emitByte(OP_SLICE_ASSIGN)
+		} else {
+			p.emitByte(OP_SLICE)
+		}
+	} else {
+		// [exp:exp]
+		p.expression()
+		p.consume(TOKEN_RIGHT_BRACKET, "Expect ']' after expression")
+		if canAssign && p.match(TOKEN_EQUAL) {
+			// RHS -> stack
+			p.expression()
+			p.emitByte(OP_SLICE_ASSIGN)
+
+		} else {
+			p.emitByte(OP_SLICE)
+		}
+	}
+}
+
 func (p *Parser) errorAtCurrent(msg string) {
 
 	p.errorAt(p.current, msg)
@@ -1147,37 +1219,28 @@ func slice(p *Parser, canAssign bool) {
 		return
 	}
 
+	name := p.identifierConstant(p.previous)
+
 	// handle the slice variants : [exp], [:], [:exp], [exp:], [exp:exp]
 	if p.match(TOKEN_COLON) {
-		p.emitByte(OP_NIL)
-		if p.check(TOKEN_RIGHT_BRACKET) {
-			// [:]
-			p.emitByte(OP_NIL)
-			p.emitByte(OP_SLICE)
-		} else {
-			// [:exp]
-			p.expression()
-			p.emitByte(OP_SLICE)
-		}
+		//[:],[:exp]
+		p.slice1(canAssign, name)
+
 	} else {
+		// [exp],[exp:],[exp:exp]
+		// slice from/index -> stack
 		p.expression()
-		if p.check(TOKEN_RIGHT_BRACKET) {
-			// [exp]
-			p.emitByte(OP_INDEX)
+		if p.match(TOKEN_RIGHT_BRACKET) {
+			//[exp]
+			p.index(canAssign, name)
+			return
 		} else {
+			// [exp:],[exp:exp]
 			if p.match(TOKEN_COLON) {
-				if p.check(TOKEN_RIGHT_BRACKET) {
-					// [exp:]
-					p.emitByte(OP_NIL)
-					p.emitByte(OP_SLICE)
-				} else {
-					// [exp:exp]
-					p.expression()
-					p.emitByte(OP_SLICE)
-				}
+				p.slice2(canAssign, name)
+				return
 			}
 		}
 	}
-
 	p.consume(TOKEN_RIGHT_BRACKET, "Expect ']' after expression.")
 }

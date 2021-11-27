@@ -297,6 +297,20 @@ func (o *ListObject) slice(from_ix, to_ix int) (Value, error) {
 	return makeObjectValue(lo, false), nil
 }
 
+func (o *ListObject) assignToIndex(ix int, val Value) error {
+
+	if ix < 0 {
+		ix = len(o.get()) + ix
+	}
+
+	if ix < 0 || ix > len(o.get()) {
+		return errors.New("List subscript out of range.")
+	}
+
+	o.items[ix] = val
+	return nil
+}
+
 //-------------------------------------------------------------------------------------------
 
 type ClassObject struct {

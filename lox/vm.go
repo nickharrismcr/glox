@@ -634,6 +634,30 @@ Loop:
 				break Loop
 			}
 
+		case OP_INDEX_ASSIGN:
+			// list, index, RHS on stack
+			rhs := vm.pop()
+			index := vm.pop()
+			if nv, ok := index.(NumberValue); ok {
+				list := vm.pop()
+				if lv, ok := list.(ObjectValue); ok {
+					if lv.isListObject() {
+						if err := lv.asList().assignToIndex(int(nv.value), rhs); err != nil {
+							vm.runTimeError(err.Error())
+							break Loop
+						} else {
+							continue
+						}
+					}
+				}
+				vm.runTimeError("Can only assign to list index.")
+				break Loop
+
+			} else {
+				vm.runTimeError("List index must be number.")
+				break Loop
+			}
+
 		case OP_SLICE:
 			// list + from/to on stack. nil indicates from start/end.  new list at index -> stack top
 			if !vm.slice(frame) {
