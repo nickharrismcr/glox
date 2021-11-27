@@ -338,7 +338,7 @@ func (o *ListObject) assignToSlice(from_ix, to_ix int, val Value) error {
 			tmp := []Value{}
 			tmp = append(tmp, o.items[0:from_ix]...)
 			tmp = append(tmp, lv.items...)
-			tmp = append(tmp, o.items[to_ix+1:]...)
+			tmp = append(tmp, o.items[to_ix:]...)
 			o.items = tmp
 			return nil
 		}
