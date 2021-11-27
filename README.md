@@ -21,6 +21,8 @@ lists :
       initialiser (a=[]; a=[1,2,3];)
       
       indexing ( b=a[x] )
+
+      index assign ( a[x] = b )
       
       slicing ( b=a[x:y]; b=a[:y]; b=a[x:]; b=a[:] )
       
