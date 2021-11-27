@@ -311,6 +311,42 @@ func (o *ListObject) assignToIndex(ix int, val Value) error {
 	return nil
 }
 
+func (o *ListObject) assignToSlice(from_ix, to_ix int, val Value) error {
+
+	if to_ix < 0 {
+		to_ix = len(o.items) + 1 + to_ix
+	}
+	if from_ix < 0 {
+		from_ix = len(o.items) + 1 + from_ix
+	}
+
+	if to_ix < 0 || to_ix > len(o.items) {
+		return errors.New("List subscript out of range.")
+	}
+
+	if from_ix < 0 || from_ix > len(o.items) {
+		return errors.New("List subscript out of range.")
+	}
+
+	if from_ix > to_ix {
+		return errors.New("Invalid slice indices.")
+	}
+
+	if ov, ok := val.(ObjectValue); ok {
+		if ov.isListObject() {
+			lv := ov.asList()
+			tmp := []Value{}
+			tmp = append(tmp, o.items[0:from_ix]...)
+			tmp = append(tmp, lv.items...)
+			tmp = append(tmp, o.items[to_ix+1:]...)
+			o.items = tmp
+			return nil
+		}
+	}
+
+	return errors.New("Can only assign list to list slice.")
+}
+
 //-------------------------------------------------------------------------------------------
 
 type ClassObject struct {

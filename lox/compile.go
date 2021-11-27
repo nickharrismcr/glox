@@ -968,10 +968,11 @@ func (p *Parser) emitReturn() {
 	p.emitByte(OP_RETURN)
 }
 
+// a[:], a[:exp]
 func (p *Parser) slice1(canAssign bool, name uint8) {
 	// slice from -> stack
 	p.emitByte(OP_NIL)
-	if p.check(TOKEN_RIGHT_BRACKET) {
+	if p.match(TOKEN_RIGHT_BRACKET) {
 		// [:]
 		if canAssign && p.match(TOKEN_EQUAL) {
 			// slice to -> stack
@@ -979,7 +980,6 @@ func (p *Parser) slice1(canAssign bool, name uint8) {
 			// RHS -> stack
 			p.expression()
 			p.emitByte(OP_SLICE_ASSIGN)
-
 		} else {
 			p.emitByte(OP_NIL)
 			p.emitByte(OP_SLICE)
@@ -988,36 +988,35 @@ func (p *Parser) slice1(canAssign bool, name uint8) {
 		// [:exp]
 		// slice to -> stack
 		p.expression()
+		p.consume(TOKEN_RIGHT_BRACKET, "Expect ']' after expression.")
 		if canAssign && p.match(TOKEN_EQUAL) {
 			// RHS -> stack
 			p.expression()
 			p.emitByte(OP_SLICE_ASSIGN)
-
 		} else {
 			p.emitByte(OP_SLICE)
 		}
 	}
 }
+
+// a[exp]
 func (p *Parser) index(canAssign bool, name uint8) {
 
-	// [exp]
 	if canAssign && p.match(TOKEN_EQUAL) {
 		// RHS -> stack
 		p.expression()
 		p.emitByte(OP_INDEX_ASSIGN)
-
 	} else {
 		p.emitByte(OP_INDEX)
 	}
 }
 
+// a[exp:], a[exp:exp]
 func (p *Parser) slice2(canAssign bool, name uint8) {
 
 	if p.match(TOKEN_RIGHT_BRACKET) {
 		// [exp:]
-
 		p.emitByte(OP_NIL)
-
 		if canAssign && p.match(TOKEN_EQUAL) {
 			// RHS -> stack
 			p.expression()
@@ -1033,7 +1032,6 @@ func (p *Parser) slice2(canAssign bool, name uint8) {
 			// RHS -> stack
 			p.expression()
 			p.emitByte(OP_SLICE_ASSIGN)
-
 		} else {
 			p.emitByte(OP_SLICE)
 		}
@@ -1233,14 +1231,13 @@ func slice(p *Parser, canAssign bool) {
 		if p.match(TOKEN_RIGHT_BRACKET) {
 			//[exp]
 			p.index(canAssign, name)
-			return
+
 		} else {
 			// [exp:],[exp:exp]
 			if p.match(TOKEN_COLON) {
 				p.slice2(canAssign, name)
-				return
+
 			}
 		}
 	}
-	p.consume(TOKEN_RIGHT_BRACKET, "Expect ']' after expression.")
 }

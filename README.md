@@ -25,6 +25,8 @@ lists :
       index assign ( a[x] = b )
       
       slicing ( b=a[x:y]; b=a[:y]; b=a[x:]; b=a[:] )
+
+      slice assignment ( e.g a[2:5] = [1,2,3] )
       
       adding ( list3=list1+list2 )
       
@@ -42,8 +44,6 @@ Bob's classes chapter
 
 command line arguments (e.g sys.argv[])
 
-list index/slice assignment ( a[1]="a" or a[2:5] = [1,2,3] )
-
 list item del  (del a[b] or del a[b:c] - i.e assign nil )
   
-  - should be doable once the class stuff is in.
+  - sugar for a[b] = nil ? etc? 

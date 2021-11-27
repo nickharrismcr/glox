@@ -433,6 +433,7 @@ Loop:
 			vm.push(makeBooleanValue(bv, false))
 
 		case OP_GET_PROPERTY:
+
 			v := vm.peek(0)
 			ov, ok := v.(ObjectValue)
 			if !ok || !ov.isInstanceObject() {
@@ -625,7 +626,6 @@ Loop:
 
 		case OP_CREATE_LIST:
 			// item count is operand, expects items on stack,  list object will be stack top
-
 			vm.createList(frame)
 
 		case OP_INDEX:
@@ -635,32 +635,19 @@ Loop:
 			}
 
 		case OP_INDEX_ASSIGN:
-			// list, index, RHS on stack
-			rhs := vm.pop()
-			index := vm.pop()
-			if nv, ok := index.(NumberValue); ok {
-				list := vm.pop()
-				if lv, ok := list.(ObjectValue); ok {
-					if lv.isListObject() {
-						if err := lv.asList().assignToIndex(int(nv.value), rhs); err != nil {
-							vm.runTimeError(err.Error())
-							break Loop
-						} else {
-							continue
-						}
-					}
-				}
-				vm.runTimeError("Can only assign to list index.")
-				break Loop
-
-			} else {
-				vm.runTimeError("List index must be number.")
+			// list + index + RHS on stack,  list updated in place
+			if !vm.indexAssign() {
 				break Loop
 			}
 
 		case OP_SLICE:
 			// list + from/to on stack. nil indicates from start/end.  new list at index -> stack top
-			if !vm.slice(frame) {
+			if !vm.slice() {
+				break Loop
+			}
+		case OP_SLICE_ASSIGN:
+			// list + from/to + RHS on stack.  list updated in place
+			if !vm.sliceAssign() {
 				break Loop
 			}
 
@@ -723,7 +710,33 @@ func (vm *VM) index(frame *CallFrame) bool {
 	return false
 }
 
-func (vm *VM) slice(frame *CallFrame) bool {
+func (vm *VM) indexAssign() bool {
+
+	// list, index, RHS on stack
+	rhs := vm.pop()
+	index := vm.pop()
+	if nv, ok := index.(NumberValue); ok {
+		list := vm.pop()
+		if lv, ok := list.(ObjectValue); ok {
+			if lv.isListObject() {
+				if err := lv.asList().assignToIndex(int(nv.value), rhs); err != nil {
+					vm.runTimeError(err.Error())
+					return false
+				} else {
+					return true
+				}
+			}
+		}
+		vm.runTimeError("Can only assign to list index.")
+		return false
+
+	} else {
+		vm.runTimeError("List index must be number.")
+		return false
+	}
+}
+
+func (vm *VM) slice() bool {
 
 	var nv_from NumberValue
 	var nv_to NumberValue
@@ -775,6 +788,53 @@ func (vm *VM) slice(frame *CallFrame) bool {
 		}
 	}
 	vm.runTimeError("Invalid type for slice.")
+	return false
+}
+
+func (vm *VM) sliceAssign() bool {
+
+	var nv_from NumberValue
+	var nv_to NumberValue
+	var ov ObjectValue
+	var from_idx, to_idx int
+	var ok bool
+
+	val := vm.pop() // RHS
+
+	v_to := vm.pop()
+	if _, ok = v_to.(NilValue); ok {
+		to_idx = -1
+	} else if nv_to, ok = v_to.(NumberValue); !ok {
+		vm.runTimeError("Invalid type in slice expression.")
+		return false
+	} else {
+		to_idx = int(nv_to.get())
+	}
+
+	v_from := vm.pop()
+	if _, ok = v_from.(NilValue); ok {
+		from_idx = 0
+	} else if nv_from, ok = v_from.(NumberValue); !ok {
+		vm.runTimeError("Invalid type in slice expression.")
+		return false
+	} else {
+		from_idx = int(nv_from.get())
+	}
+
+	lv := vm.pop()
+	if ov, ok = lv.(ObjectValue); ok {
+
+		if ov.get().getType() == OBJECT_LIST {
+
+			err := ov.get().(*ListObject).assignToSlice(from_idx, to_idx, val)
+			if err != nil {
+				vm.runTimeError(err.Error())
+				return false
+			}
+			return true
+		}
+	}
+	vm.runTimeError("Can only assign to list slice.")
 	return false
 }
 
