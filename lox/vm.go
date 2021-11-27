@@ -16,9 +16,9 @@ const (
 )
 
 const (
-	FRAMES_MAX       int = 64
-	STACK_MAX        int = FRAMES_MAX * 256
-	GC_COLLECT_POINT int = 10000
+	FRAMES_MAX          int     = 64
+	STACK_MAX           int     = FRAMES_MAX * 256
+	GC_COLLECT_INTERVAL float64 = 5
 )
 
 type CallFrame struct {
@@ -36,7 +36,7 @@ type VM struct {
 	frames       [FRAMES_MAX]*CallFrame
 	frameCount   int
 	starttime    time.Time
-	counter      int
+	lastGC       time.Time
 	openUpValues *UpvalueObject // head of list
 }
 
@@ -45,6 +45,7 @@ func NewVM() *VM {
 	vm := &VM{
 		globals:      map[string]Value{},
 		starttime:    time.Now(),
+		lastGC:       time.Now(),
 		openUpValues: nil,
 	}
 	vm.resetStack()
@@ -290,10 +291,13 @@ func (vm *VM) run() (InterpretResult, Value) {
 	frame := vm.frame()
 Loop:
 	for {
-		vm.counter++
-		if vm.counter == GC_COLLECT_POINT {
+
+		elapsed := time.Since(vm.lastGC).Seconds()
+
+		if elapsed > GC_COLLECT_INTERVAL {
+			fmt.Println("GC")
 			runtime.GC()
-			vm.counter = 0
+			vm.lastGC = time.Now()
 		}
 		inst := vm.getCode()[frame.ip]
 
