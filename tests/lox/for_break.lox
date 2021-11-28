@@ -1,6 +1,6 @@
 // test break/continue
 
-for ( var a = 1 ; a < 10 ; a = a + 1  ) {
+for ( var a = 1.0 ; a < 10 ; a = a + 1  ) {
 
     var b = "B"; 
     var c = "C" ;

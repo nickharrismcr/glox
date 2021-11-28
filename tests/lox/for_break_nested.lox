@@ -6,12 +6,12 @@ for ( var a = 1 ; a < 10 ; a = a + 1  ) {
     var c = "C" ;
     b = "*";
     c = "C1";
-    print a;
+    print float(a);
 
     if ( a > 5 ){
         break;
     }
-    print a;
+    print float(a);
     b = "*"*a;
     c = "C2";
 

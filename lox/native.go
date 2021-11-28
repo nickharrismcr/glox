@@ -15,6 +15,8 @@ func (vm *VM) defineNativeFunctions() {
 	vm.defineNative("sin", sinNative)
 	vm.defineNative("cos", cosNative)
 	vm.defineNative("append", appendNative)
+	vm.defineNative("float", floatNative)
+	vm.defineNative("int", intNative)
 }
 
 func argsNative(argCount int, arg_stackptr int, vm *VM) Value {
@@ -27,10 +29,46 @@ func argsNative(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeObjectValue(list, false)
 }
 
+func floatNative(argcount int, arg_stackptr int, vm *VM) Value {
+
+	if argcount != 1 {
+		vm.runTimeError("Single argument expected.")
+		return makeNilValue()
+	}
+	arg := vm.stack[arg_stackptr]
+
+	switch arg.(type) {
+	case FloatValue:
+		return arg
+	case IntValue:
+		return makeFloatValue(float64(asInt(arg)), false)
+	}
+	vm.runTimeError("Argument must be number.")
+	return makeNilValue()
+}
+
+func intNative(argcount int, arg_stackptr int, vm *VM) Value {
+
+	if argcount != 1 {
+		vm.runTimeError("Single argument expected.")
+		return makeNilValue()
+	}
+	arg := vm.stack[arg_stackptr]
+
+	switch arg.(type) {
+	case IntValue:
+		return arg
+	case FloatValue:
+		return makeIntValue(int(asFloat(arg)), false)
+	}
+	vm.runTimeError("Argument must be number.")
+	return makeNilValue()
+}
+
 func clockNative(argCount int, arg_stackptr int, vm *VM) Value {
 
 	elapsed := time.Since(vm.starttime)
-	return makeNumberValue(float64(elapsed.Seconds()), false)
+	return makeFloatValue(float64(elapsed.Seconds()), false)
 }
 
 // str(x)
@@ -44,7 +82,12 @@ func strNative(argcount int, arg_stackptr int, vm *VM) Value {
 
 	switch arg := arg.(type) {
 
-	case NumberValue:
+	case FloatValue:
+		s := arg.String()
+		so := makeStringObject(s)
+		return makeObjectValue(so, false)
+
+	case IntValue:
 		s := arg.String()
 		so := makeStringObject(s)
 		return makeObjectValue(so, false)
@@ -93,10 +136,10 @@ func lenNative(argcount int, arg_stackptr int, vm *VM) Value {
 	switch vobj.get().getType() {
 	case OBJECT_STRING:
 		s := vobj.get().(StringObject).get()
-		return makeNumberValue(float64(len(s)), false)
+		return makeIntValue(len(s), false)
 	case OBJECT_LIST:
 		l := vobj.get().(*ListObject).get()
-		return makeNumberValue(float64(len(l)), false)
+		return makeIntValue(len(l), false)
 	}
 	vm.runTimeError("Invalid argument type to len.")
 	return makeNilValue()
@@ -111,13 +154,13 @@ func sinNative(argcount int, arg_stackptr int, vm *VM) Value {
 	}
 	vnum := vm.stack[arg_stackptr]
 
-	vn, ok := vnum.(NumberValue)
+	vn, ok := vnum.(FloatValue)
 	if !ok {
 		vm.runTimeError("Invalid argument type to sin.")
 		return makeNilValue()
 	}
 	n := vn.get()
-	return makeNumberValue(math.Sin(n), false)
+	return makeFloatValue(math.Sin(n), false)
 }
 
 // cos(number)
@@ -129,13 +172,13 @@ func cosNative(argcount int, arg_stackptr int, vm *VM) Value {
 	}
 	vnum := vm.stack[arg_stackptr]
 
-	vn, ok := vnum.(NumberValue)
+	vn, ok := vnum.(FloatValue)
 	if !ok {
 		vm.runTimeError("Invalid argument type to cos.")
 		return makeNilValue()
 	}
 	n := vn.get()
-	return makeNumberValue(math.Cos(n), false)
+	return makeFloatValue(math.Cos(n), false)
 }
 
 // append(obj,value)

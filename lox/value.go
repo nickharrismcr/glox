@@ -13,8 +13,10 @@ type Value interface {
 func immutable(v Value) Value {
 
 	switch v := v.(type) {
-	case NumberValue:
-		return makeNumberValue(v.get(), true)
+	case IntValue:
+		return makeIntValue(v.get(), true)
+	case FloatValue:
+		return makeFloatValue(v.get(), true)
 	case BooleanValue:
 		return makeBooleanValue(v.get(), true)
 	case ObjectValue:
@@ -26,8 +28,10 @@ func immutable(v Value) Value {
 func mutable(v Value) Value {
 
 	switch v := v.(type) {
-	case NumberValue:
-		return makeNumberValue(v.get(), false)
+	case IntValue:
+		return makeIntValue(v.get(), false)
+	case FloatValue:
+		return makeFloatValue(v.get(), false)
 	case BooleanValue:
 		return makeBooleanValue(v.get(), false)
 	case ObjectValue:
@@ -36,7 +40,7 @@ func mutable(v Value) Value {
 	return makeNilValue()
 }
 
-func valuesEqual(a, b Value) bool {
+func valuesEqual(a, b Value, typesMustMatch bool) bool {
 
 	switch a.(type) {
 	case BooleanValue:
@@ -46,10 +50,28 @@ func valuesEqual(a, b Value) bool {
 		default:
 			return false
 		}
-	case NumberValue:
+
+	case IntValue:
 		switch b.(type) {
-		case NumberValue:
-			return a.(NumberValue).get() == b.(NumberValue).get()
+		case IntValue:
+			return a.(IntValue).get() == b.(IntValue).get()
+		case FloatValue:
+			if typesMustMatch {
+				return false
+			}
+			return float64(a.(IntValue).get()) == b.(FloatValue).get()
+		default:
+			return false
+		}
+	case FloatValue:
+		switch b.(type) {
+		case IntValue:
+			if typesMustMatch {
+				return false
+			}
+			return a.(FloatValue).get() == float64(b.(IntValue).get())
+		case FloatValue:
+			return a.(FloatValue).get() == b.(FloatValue).get()
 		default:
 			return false
 		}
@@ -77,6 +99,43 @@ func valuesEqual(a, b Value) bool {
 	return false
 }
 
+func isInt(v Value) bool {
+	if _, ok := v.(IntValue); ok {
+		return true
+	}
+	return false
+}
+
+func isNumber(v Value) bool {
+	switch v.(type) {
+	case IntValue:
+		return true
+	case FloatValue:
+		return true
+	}
+	return false
+}
+
+func asFloat(v Value) float64 {
+	switch nv := v.(type) {
+	case IntValue:
+		return float64(nv.get())
+	case FloatValue:
+		return nv.get()
+	}
+	return 0.0
+}
+
+func asInt(v Value) int {
+	switch nv := v.(type) {
+	case IntValue:
+		return nv.get()
+	case FloatValue:
+		return int(nv.get())
+	}
+	return 0
+}
+
 func getStringValue(v Value) string {
 
 	return v.(ObjectValue).asString()
@@ -99,32 +158,63 @@ func getInstanceObjectValue(v Value) *InstanceObject {
 }
 
 //================================================================================================
-type NumberValue struct {
-	value     float64
+type IntValue struct {
+	value     int
 	immutable bool
 }
 
-func (NumberValue) isVal() {}
+func (IntValue) isVal() {}
 
-func makeNumberValue(v float64, immutable bool) NumberValue {
+func makeIntValue(v int, immutable bool) IntValue {
 
-	return NumberValue{
+	return IntValue{
 		value:     v,
 		immutable: immutable,
 	}
 }
 
-func (nv NumberValue) Immutable() bool {
+func (nv IntValue) Immutable() bool {
 
 	return nv.immutable
 }
 
-func (nv NumberValue) get() float64 {
+func (nv IntValue) get() int {
 
 	return nv.value
 }
 
-func (nv NumberValue) String() string {
+func (nv IntValue) String() string {
+
+	return fmt.Sprintf("%d", nv.value)
+}
+
+//================================================================================================
+type FloatValue struct {
+	value     float64
+	immutable bool
+}
+
+func (FloatValue) isVal() {}
+
+func makeFloatValue(v float64, immutable bool) FloatValue {
+
+	return FloatValue{
+		value:     v,
+		immutable: immutable,
+	}
+}
+
+func (nv FloatValue) Immutable() bool {
+
+	return nv.immutable
+}
+
+func (nv FloatValue) get() float64 {
+
+	return nv.value
+}
+
+func (nv FloatValue) String() string {
 
 	return fmt.Sprintf("%f", nv.value)
 }

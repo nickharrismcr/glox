@@ -277,7 +277,7 @@ func (vm *VM) readShort() uint16 {
 func (vm *VM) isFalsey(v Value) bool {
 
 	switch v := v.(type) {
-	case NumberValue:
+	case FloatValue:
 		return v.get() == 0
 	case NilValue:
 		return true
@@ -297,7 +297,6 @@ Loop:
 		elapsed := time.Since(vm.lastGC).Seconds()
 
 		if elapsed > GC_COLLECT_INTERVAL {
-			fmt.Println("GC")
 			runtime.GC()
 			vm.lastGC = time.Now()
 		}
@@ -484,7 +483,7 @@ Loop:
 			// pop 2 stack values, stack top = boolean
 			a := vm.pop()
 			b := vm.pop()
-			vm.push(makeBooleanValue(valuesEqual(a, b), false))
+			vm.push(makeBooleanValue(valuesEqual(a, b, false), false))
 
 		case OP_GREATER:
 			// pop 2 stack values, stack top = boolean
@@ -503,7 +502,9 @@ Loop:
 			v := vm.pop()
 			s := ""
 			switch v.(type) {
-			case NumberValue:
+			case FloatValue:
+				s = v.String()
+			case IntValue:
 				s = v.String()
 			case BooleanValue:
 				s = v.String()
@@ -680,16 +681,16 @@ func (vm *VM) createList(frame *CallFrame) {
 
 func (vm *VM) index(frame *CallFrame) bool {
 
-	var nv NumberValue
+	var nv IntValue
 	var ov ObjectValue
 	var ok bool
 
 	v := vm.pop()
-	if nv, ok = v.(NumberValue); !ok {
-		vm.runTimeError("Subscript must be a number.")
+	if nv, ok = v.(IntValue); !ok {
+		vm.runTimeError("Subscript must be an integer.")
 		return false
 	}
-	idx := int(nv.get())
+	idx := nv.get()
 	lv := vm.pop()
 	if ov, ok = lv.(ObjectValue); ok {
 		t := ov.get().getType()
@@ -721,11 +722,11 @@ func (vm *VM) indexAssign() bool {
 	// list, index, RHS on stack
 	rhs := vm.pop()
 	index := vm.pop()
-	if nv, ok := index.(NumberValue); ok {
+	if nv, ok := index.(IntValue); ok {
 		list := vm.pop()
 		if lv, ok := list.(ObjectValue); ok {
 			if lv.isListObject() {
-				if err := lv.asList().assignToIndex(int(nv.value), rhs); err != nil {
+				if err := lv.asList().assignToIndex(nv.value, rhs); err != nil {
 					vm.runTimeError(err.Error())
 					return false
 				} else {
@@ -737,15 +738,15 @@ func (vm *VM) indexAssign() bool {
 		return false
 
 	} else {
-		vm.runTimeError("List index must be number.")
+		vm.runTimeError("List index must an integer.")
 		return false
 	}
 }
 
 func (vm *VM) slice() bool {
 
-	var nv_from NumberValue
-	var nv_to NumberValue
+	var nv_from IntValue
+	var nv_to IntValue
 	var ov ObjectValue
 	var from_idx, to_idx int
 	var ok bool
@@ -753,21 +754,21 @@ func (vm *VM) slice() bool {
 	v_to := vm.pop()
 	if _, ok = v_to.(NilValue); ok {
 		to_idx = -1
-	} else if nv_to, ok = v_to.(NumberValue); !ok {
+	} else if nv_to, ok = v_to.(IntValue); !ok {
 		vm.runTimeError("Invalid type in slice expression.")
 		return false
 	} else {
-		to_idx = int(nv_to.get())
+		to_idx = nv_to.get()
 	}
 
 	v_from := vm.pop()
 	if _, ok = v_from.(NilValue); ok {
 		from_idx = 0
-	} else if nv_from, ok = v_from.(NumberValue); !ok {
+	} else if nv_from, ok = v_from.(IntValue); !ok {
 		vm.runTimeError("Invalid type in slice expression.")
 		return false
 	} else {
-		from_idx = int(nv_from.get())
+		from_idx = nv_from.get()
 	}
 
 	lv := vm.pop()
@@ -799,8 +800,8 @@ func (vm *VM) slice() bool {
 
 func (vm *VM) sliceAssign() bool {
 
-	var nv_from NumberValue
-	var nv_to NumberValue
+	var nv_from IntValue
+	var nv_to IntValue
 	var ov ObjectValue
 	var from_idx, to_idx int
 	var ok bool
@@ -810,21 +811,21 @@ func (vm *VM) sliceAssign() bool {
 	v_to := vm.pop()
 	if _, ok = v_to.(NilValue); ok {
 		to_idx = -1
-	} else if nv_to, ok = v_to.(NumberValue); !ok {
+	} else if nv_to, ok = v_to.(IntValue); !ok {
 		vm.runTimeError("Invalid type in slice expression.")
 		return false
 	} else {
-		to_idx = int(nv_to.get())
+		to_idx = nv_to.get()
 	}
 
 	v_from := vm.pop()
 	if _, ok = v_from.(NilValue); ok {
 		from_idx = 0
-	} else if nv_from, ok = v_from.(NumberValue); !ok {
+	} else if nv_from, ok = v_from.(IntValue); !ok {
 		vm.runTimeError("Invalid type in slice expression.")
 		return false
 	} else {
-		from_idx = int(nv_from.get())
+		from_idx = nv_from.get()
 	}
 
 	lv := vm.pop()
@@ -848,24 +849,39 @@ func (vm *VM) sliceAssign() bool {
 func (vm *VM) binaryAdd() bool {
 
 	v2 := vm.pop()
+	v1 := vm.pop()
+
 	switch v2.(type) {
-	case NumberValue:
-		nv2, _ := v2.(NumberValue)
-		v1 := vm.pop()
-		nv1, ok := v1.(NumberValue)
-		if !ok {
-			vm.runTimeError("Addition type mismatch")
-			return false
+	case IntValue:
+		switch v1.(type) {
+		case IntValue:
+			vm.push(makeIntValue(asInt(v1)+asInt(v2), false))
+			return true
+		case FloatValue:
+			vm.push(makeFloatValue(asFloat(v1)+asFloat(v2), false))
+			return true
 		}
-		vm.push(makeNumberValue(nv1.get()+nv2.get(), false))
-		return true
+		vm.runTimeError("Addition type mismatch")
+		return false
+
+	case FloatValue:
+		switch v1.(type) {
+		case IntValue:
+			vm.push(makeFloatValue(asFloat(v1)+asFloat(v2), false))
+			return true
+		case FloatValue:
+			vm.push(makeFloatValue(asFloat(v1)+asFloat(v2), false))
+			return true
+		}
+		vm.runTimeError("Addition type mismatch")
+		return false
 
 	case ObjectValue:
 		o2 := v2.(ObjectValue)
 		ov2 := o2.value
 		switch ov2.getType() {
 		case OBJECT_STRING:
-			v1 := vm.pop()
+
 			o1, ok := v1.(ObjectValue)
 			if !ok {
 				vm.runTimeError("Addition type mismatch")
@@ -879,7 +895,7 @@ func (vm *VM) binaryAdd() bool {
 			}
 
 		case OBJECT_LIST:
-			v1 := vm.pop()
+
 			o1, ok := v1.(ObjectValue)
 			if !ok {
 				vm.runTimeError("Addition type mismatch")
@@ -900,21 +916,32 @@ func (vm *VM) binaryAdd() bool {
 func (vm *VM) binarySubtract() bool {
 
 	v2 := vm.pop()
-	nv2, ok := v2.(NumberValue)
-	if !ok {
-		vm.runTimeError("Operands must be numbers")
-		return false
-	}
-
 	v1 := vm.pop()
-	nv1, ok := v1.(NumberValue)
-	if !ok {
-		vm.runTimeError("Operands must be numbers")
-		return false
+
+	switch v2.(type) {
+	case IntValue:
+		switch v1.(type) {
+		case IntValue:
+			vm.push(makeIntValue(asInt(v1)-asInt(v2), false))
+			return true
+		case FloatValue:
+			vm.push(makeFloatValue(asFloat(v1)-asFloat(v2), false))
+			return true
+		}
+
+	case FloatValue:
+		switch v1.(type) {
+		case IntValue:
+			vm.push(makeFloatValue(asFloat(v1)-asFloat(v2), false))
+			return true
+		case FloatValue:
+			vm.push(makeFloatValue(asFloat(v1)-asFloat(v2), false))
+			return true
+		}
 	}
 
-	vm.push(makeNumberValue(nv1.get()-nv2.get(), false))
-	return true
+	vm.runTimeError("Addition type mismatch")
+	return false
 }
 
 func (vm *VM) binaryMultiply() bool {
@@ -922,18 +949,30 @@ func (vm *VM) binaryMultiply() bool {
 	v2 := vm.pop()
 	v1 := vm.pop()
 
-	switch v2.(type) {
-	case NumberValue:
-		switch v1.(type) {
-		case NumberValue:
-			vm.push(makeNumberValue(v1.(NumberValue).get()*v2.(NumberValue).get(), false))
+	switch vt2 := v2.(type) {
+	case IntValue:
+		switch vt1 := v1.(type) {
+		case IntValue:
+			vm.push(makeIntValue(vt1.get()*vt2.get(), false))
+		case FloatValue:
+			vm.push(makeFloatValue(vt1.get()*asFloat(v2), false))
 		case ObjectValue:
-			if !v1.(ObjectValue).isStringObject() {
+			if !vt1.isStringObject() {
 				vm.runTimeError("Invalid operand for multiply.")
 				return false
 			}
-			s := v1.(ObjectValue).get().(StringObject).get()
-			vm.push(vm.stringMultiply(s, int(v2.(NumberValue).get())))
+			s := vt1.get().(StringObject).get()
+			vm.push(vm.stringMultiply(s, vt2.get()))
+		default:
+			vm.runTimeError("Invalid operand for multiply.")
+			return false
+		}
+	case FloatValue:
+		switch vt1 := v1.(type) {
+		case IntValue:
+			vm.push(makeFloatValue(asFloat(vt1)*vt2.get(), false))
+		case FloatValue:
+			vm.push(makeFloatValue(vt1.get()*vt2.get(), false))
 		default:
 			vm.runTimeError("Invalid operand for multiply.")
 			return false
@@ -943,12 +982,11 @@ func (vm *VM) binaryMultiply() bool {
 			vm.runTimeError("Invalid operand for multiply.")
 			return false
 		}
-		switch v1.(type) {
-		case NumberValue:
-			s := v2.(ObjectValue).get().(StringObject).get()
-			vm.push(vm.stringMultiply(s, int(v1.(NumberValue).get())))
+		switch vt1 := v1.(type) {
+		case IntValue:
+			s := vt2.asString()
+			vm.push(vm.stringMultiply(s, vt1.get()))
 		default:
-
 			vm.runTimeError("Invalid operand for multiply.")
 			return false
 		}
@@ -964,95 +1002,92 @@ func (vm *VM) binaryMultiply() bool {
 func (vm *VM) binaryDivide() bool {
 
 	v2 := vm.pop()
-	nv2, ok := v2.(NumberValue)
-	if !ok {
-		vm.runTimeError("Operands must be numbers")
-		return false
-	}
-
 	v1 := vm.pop()
-	nv1, ok := v1.(NumberValue)
-	if !ok {
-		vm.runTimeError("Operands must be numbers")
-		return false
+
+	switch v2.(type) {
+	case IntValue:
+		switch v1.(type) {
+		case IntValue:
+			vm.push(makeIntValue(asInt(v1)/asInt(v2), false))
+			return true
+		case FloatValue:
+			vm.push(makeFloatValue(asFloat(v1)/asFloat(v2), false))
+			return true
+		}
+
+	case FloatValue:
+		switch v1.(type) {
+		case IntValue:
+			vm.push(makeFloatValue(asFloat(v1)/asFloat(v2), false))
+			return true
+		case FloatValue:
+			vm.push(makeFloatValue(asFloat(v1)/asFloat(v2), false))
+			return true
+		}
 	}
 
-	vm.push(makeNumberValue(nv1.get()/nv2.get(), false))
-	return true
+	vm.runTimeError("Addition type mismatch")
+	return false
 }
 
 func (vm *VM) binaryModulus() bool {
 
 	v2 := vm.pop()
-	nv2, ok := v2.(NumberValue)
-	if !ok {
-		vm.runTimeError("Operands must be numbers")
-		return false
-	}
-
 	v1 := vm.pop()
-	nv1, ok := v1.(NumberValue)
-	if !ok {
-		vm.runTimeError("Operands must be numbers")
+
+	if !isInt(v1) || !isInt(v2) {
+		vm.runTimeError("Operands must be integers")
 		return false
 	}
-	iv1 := int(nv1.get())
-	iv2 := int(nv2.get())
-	ret := float64(iv1 % iv2)
-	vm.push(makeNumberValue(ret, false))
+	vm.push(makeIntValue(v1.(IntValue).get()%v2.(IntValue).get(), false))
+
 	return true
 }
 
 func (vm *VM) unaryNegate() bool {
 
 	v := vm.pop()
-	nv, ok := v.(NumberValue)
-	if !ok {
-		vm.runTimeError("Operand must be a number")
-		return false
+	switch nv := v.(type) {
+	case FloatValue:
+		f := nv.get()
+		vm.push(makeFloatValue(-f, false))
+		return true
+	case IntValue:
+		f := nv.get()
+		vm.push(makeIntValue(-f, false))
+		return true
 	}
-	f := nv.get()
-	vm.push(makeNumberValue(-f, false))
-	return true
+
+	vm.runTimeError("Operand must be a number")
+	return false
+
 }
 
 func (vm *VM) binaryGreater() bool {
 
 	v2 := vm.pop()
-	nv2, ok := v2.(NumberValue)
-	if !ok {
-		vm.runTimeError("Operands must be numbers")
-		return false
-	}
-
 	v1 := vm.pop()
-	nv1, ok := v1.(NumberValue)
-	if !ok {
+
+	if !isNumber(v1) || !isNumber(v2) {
 		vm.runTimeError("Operands must be numbers")
 		return false
 	}
 
-	vm.push(makeBooleanValue(nv1.get() > nv2.get(), false))
+	vm.push(makeBooleanValue(asFloat(v1) > asFloat(v2), false))
 	return true
 }
 
 func (vm *VM) binaryLess() bool {
 
 	v2 := vm.pop()
-	nv2, ok := v2.(NumberValue)
-	if !ok {
-		vm.runTimeError("Operands must be numbers")
-		return false
-	}
-
 	v1 := vm.pop()
-	nv1, ok := v1.(NumberValue)
-	if !ok {
+
+	if !isNumber(v1) || !isNumber(v2) {
 		vm.runTimeError("Operands must be numbers")
 		return false
 	}
 
-	vm.push(makeBooleanValue(nv1.get() < nv2.get(), false))
+	vm.push(makeBooleanValue(asFloat(v1) < asFloat(v2), false))
 	return true
 }
 

@@ -35,7 +35,8 @@ const (
 	// Literals.
 	TOKEN_IDENTIFIER
 	TOKEN_STRING
-	TOKEN_NUMBER
+	TOKEN_INT
+	TOKEN_FLOAT
 	// Keywords.
 	TOKEN_AND
 	TOKEN_CLASS
@@ -294,11 +295,13 @@ func (s *Scanner) number() Token {
 	}
 	if s.peek() == "." && s.isDigit(s.peekNext()) {
 		s.advance()
+	} else {
+		return s.makeToken(TOKEN_INT)
 	}
 	for s.isDigit(s.peek()) {
 		s.advance()
 	}
-	return s.makeToken(TOKEN_NUMBER)
+	return s.makeToken(TOKEN_FLOAT)
 }
 
 func (s *Scanner) isAlpha(c string) bool {

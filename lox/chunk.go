@@ -79,7 +79,7 @@ func (c *Chunk) addConstant(v Value) uint8 {
 func (c *Chunk) inConstants(v Value) (bool, uint8) {
 
 	for i, cv := range c.constants {
-		if valuesEqual(cv, v) {
+		if valuesEqual(cv, v, true) {
 			return true, uint8(i)
 		}
 	}

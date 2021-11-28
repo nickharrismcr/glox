@@ -9,6 +9,6 @@ class A {
  
 
 var a = A ();
-a.method1 (111);
+a.method1 (111.0);
 print a.method2 ();
  

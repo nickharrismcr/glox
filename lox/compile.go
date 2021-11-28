@@ -166,7 +166,8 @@ func (p *Parser) setRules() {
 		TOKEN_LESS_EQUAL:    {prefix: nil, infix: binary, prec: PREC_COMPARISON},
 		TOKEN_IDENTIFIER:    {prefix: variable, infix: nil, prec: PREC_NONE},
 		TOKEN_STRING:        {prefix: loxstring, infix: nil, prec: PREC_NONE},
-		TOKEN_NUMBER:        {prefix: number, infix: nil, prec: PREC_NONE},
+		TOKEN_FLOAT:         {prefix: float, infix: nil, prec: PREC_NONE},
+		TOKEN_INT:           {prefix: int_, infix: nil, prec: PREC_NONE},
 		TOKEN_AND:           {prefix: nil, infix: and_, prec: PREC_AND},
 		TOKEN_CLASS:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_ELSE:          {prefix: nil, infix: nil, prec: PREC_NONE},
@@ -1106,10 +1107,17 @@ func grouping(p *Parser, canAssign bool) {
 	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.")
 }
 
-func number(p *Parser, canAssign bool) {
+func float(p *Parser, canAssign bool) {
 
 	val, _ := strconv.ParseFloat(p.previous.lexeme(), 64)
-	p.emitConstant(makeNumberValue(val, false))
+	p.emitConstant(makeFloatValue(val, false))
+
+}
+
+func int_(p *Parser, canAssign bool) {
+
+	val, _ := strconv.ParseInt(p.previous.lexeme(), 10, 32)
+	p.emitConstant(makeIntValue(int(val), false))
 
 }
 
