@@ -54,3 +54,11 @@ marshal / unmarshal bytecode chunks to/from file
 list item del  (del a[b] or del a[b:c] - i.e assign nil )
   
   - sugar for a[b] = nil ? etc? 
+
+join ( list, string )    e.g join(["a","b"],"|") -> a|b
+
+list comprehensions 
+
+map/filter function
+
+etc etc 
