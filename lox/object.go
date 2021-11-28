@@ -265,7 +265,7 @@ func (o *ListObject) index(ix int) (Value, error) {
 		ix = len(o.get()) + ix
 	}
 
-	if ix < 0 || ix > len(o.get()) {
+	if ix < 0 || ix >= len(o.get()) {
 		return NilValue{}, errors.New("list subscript out of range")
 	}
 

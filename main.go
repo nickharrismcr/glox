@@ -18,7 +18,7 @@ var debugger = false
 func main() {
 
 	var do_repl bool
-	var filename string
+	var args = []string{}
 
 	fmt.Println("GLOX:")
 	vm := lox.NewVM()
@@ -33,7 +33,7 @@ func main() {
 	if len(os.Args) == 1 {
 		usage()
 	}
-	for _, arg := range os.Args {
+	for _, arg := range os.Args[1:] {
 		switch arg {
 		case "--debug":
 			lox.DebugPrintCode = true
@@ -41,17 +41,18 @@ func main() {
 		case "--repl":
 			do_repl = true
 		default:
-			filename = arg
+			args = append(args, arg)
 		}
 	}
 
 	if do_repl {
 		repl(vm)
 	} else {
-		if filename == "" {
+		if len(args) == 0 {
 			usage()
 		}
-		runFile(filename, vm)
+		vm.SetArgs(args)
+		runFile(args[0], vm)
 	}
 }
 

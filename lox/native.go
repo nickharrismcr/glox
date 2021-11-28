@@ -6,14 +6,25 @@ import (
 	"time"
 )
 
-func (vm *VM) defineNatives() {
+func (vm *VM) defineNativeFunctions() {
 
+	vm.defineNative("args", argsNative)
 	vm.defineNative("clock", clockNative)
 	vm.defineNative("str", strNative)
 	vm.defineNative("len", lenNative)
 	vm.defineNative("sin", sinNative)
 	vm.defineNative("cos", cosNative)
 	vm.defineNative("append", appendNative)
+}
+
+func argsNative(argCount int, arg_stackptr int, vm *VM) Value {
+
+	argvList := []Value{}
+	for _, a := range vm.args {
+		argvList = append(argvList, makeObjectValue(makeStringObject(a), true))
+	}
+	list := makeListObject(argvList)
+	return makeObjectValue(list, false)
 }
 
 func clockNative(argCount int, arg_stackptr int, vm *VM) Value {

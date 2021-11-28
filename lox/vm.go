@@ -36,6 +36,7 @@ type VM struct {
 	starttime    time.Time
 	lastGC       time.Time
 	openUpValues *UpvalueObject // head of list
+	args         []string
 }
 
 func NewVM() *VM {
@@ -45,11 +46,16 @@ func NewVM() *VM {
 		starttime:    time.Now(),
 		lastGC:       time.Now(),
 		openUpValues: nil,
+		args:         []string{},
 	}
 	vm.resetStack()
-	vm.defineNatives()
+	vm.defineNativeFunctions()
 
 	return vm
+}
+
+func (vm *VM) SetArgs(args []string) {
+	vm.args = args
 }
 
 func (vm *VM) Interpret(source string) (InterpretResult, string) {
