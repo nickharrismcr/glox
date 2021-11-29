@@ -90,6 +90,8 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.byteInstruction("OP_CALL", offset)
 	case OP_CREATE_LIST:
 		return c.byteInstruction("OP_CREATE_LIST", offset)
+	case OP_CREATE_DICT:
+		return c.byteInstruction("OP_CREATE_DICT", offset)
 	case OP_INDEX:
 		return c.simpleInstruction("OP_INDEX", offset)
 	case OP_INDEX_ASSIGN:

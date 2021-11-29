@@ -15,6 +15,7 @@ const (
 	OBJECT_UPVALUE
 	OBJECT_NATIVE
 	OBJECT_LIST
+	OBJECT_DICT
 	OBJECT_CLASS
 	OBJECT_INSTANCE
 	OBJECT_BOUNDMETHOD
@@ -369,6 +370,47 @@ func (o *ListObject) assignToSlice(from_ix, to_ix int, val Value) error {
 	}
 
 	return errors.New("can only assign list to list slice")
+}
+
+//-------------------------------------------------------------------------------------------
+
+type DictObject struct {
+	items map[string]Value
+}
+
+func makeDictObject(items map[string]Value) *DictObject {
+
+	return &DictObject{
+		items: items,
+	}
+}
+
+func (DictObject) isObject() {}
+
+func (DictObject) getType() ObjectType {
+	return OBJECT_DICT
+}
+
+func (o *DictObject) String() string {
+	s := "{"
+	for k, v := range o.items {
+		s = s + fmt.Sprintf("%s:%s,", k, v.String())
+	}
+	return s[:len(s)-1] + "}"
+}
+
+func (o *DictObject) set(key string, value Value) {
+
+	o.items[key] = value
+}
+
+func (o *DictObject) get(key string) (Value, error) {
+
+	rv, ok := o.items[key]
+	if !ok {
+		return makeNilValue(), errors.New("Key not found.")
+	}
+	return rv, nil
 }
 
 //-------------------------------------------------------------------------------------------

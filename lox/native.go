@@ -140,6 +140,8 @@ func strNative(argCount int, arg_stackptr int, vm *VM) Value {
 			return makeObjectValue(makeStringObject("<func>"), false)
 		case OBJECT_LIST:
 			return makeObjectValue(makeStringObject(o.String()), false)
+		case OBJECT_DICT:
+			return makeObjectValue(makeStringObject(o.String()), false)
 		case OBJECT_CLASS:
 			return makeObjectValue(makeStringObject(o.String()), false)
 		case OBJECT_INSTANCE:

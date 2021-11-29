@@ -144,7 +144,7 @@ func (p *Parser) setRules() {
 	p.rules = map[TokenType]ParseRule{
 		TOKEN_LEFT_PAREN:    {prefix: grouping, infix: call, prec: PREC_CALL},
 		TOKEN_RIGHT_PAREN:   {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_LEFT_BRACE:    {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_LEFT_BRACE:    {prefix: dictLiteral, infix: nil, prec: PREC_NONE},
 		TOKEN_RIGHT_BRACE:   {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_LEFT_BRACKET:  {prefix: listLiteral, infix: slice, prec: PREC_CALL},
 		TOKEN_RIGHT_BRACKET: {prefix: nil, infix: nil, prec: PREC_NONE},
@@ -858,6 +858,27 @@ func (p *Parser) parseList() uint8 {
 	return itemCount
 }
 
+func (p *Parser) parseDict() uint8 {
+
+	var itemCount uint8 = 0
+	if !p.check(TOKEN_RIGHT_BRACE) {
+		for {
+			p.expression()
+			p.consume(TOKEN_COLON, "Expect ':' after key.")
+			p.expression()
+			itemCount++
+			if itemCount == 255 {
+				p.error("Can't have more than 255 initialiser keys. ")
+			}
+			if !p.match(TOKEN_COMMA) {
+				break
+			}
+		}
+	}
+	p.consume(TOKEN_RIGHT_BRACE, "Expect '}' after dictionary items.")
+	return itemCount
+}
+
 func (p *Parser) defineConstVariable(global uint8) {
 
 	// if local, it will already be on the stack
@@ -1214,6 +1235,12 @@ func listLiteral(p *Parser, canAssign bool) {
 
 	listCount := p.parseList()
 	p.emitBytes(OP_CREATE_LIST, listCount)
+}
+
+func dictLiteral(p *Parser, canAssign bool) {
+
+	dictCount := p.parseDict()
+	p.emitBytes(OP_CREATE_DICT, dictCount)
 }
 
 // var[<expr>]

@@ -8,13 +8,11 @@ Cop out : GC is handled by the Go runtime.
 
 immutable vars e.g  const a = 1;
 
-integer number type 
+integer number type:
 
-modulus operator %   ( integers only )
+      modulus operator %  
 
 loop break/continue
-
-string multiply by integer ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
 
 native funcs :  
 
@@ -24,7 +22,6 @@ native funcs :
       len(string|list) -> int
       sin(float)    -> float
       cos(float)    -> float 
-      append(list,value)    
       args() - returns list of command line arguments - not ideal! 
 
 lists :
@@ -35,10 +32,18 @@ lists :
       slicing ( b=a[x:y]; b=a[:y]; b=a[x:]; b=a[:] )
       slice assignment ( e.g a[2:5] = [1,2,3] )
       adding ( list3=list1+list2 )
-      appends ( native append(list,val) )
-      join ( list, string )    e.g join(["a","b","c"],"|") -> "a|b|c"
+      append (list,val) (native)
+      join ( list, string )    e.g join(["a","b","c"],"|") -> "a|b|c"  (native)
 
-string slices   ( a = "abcd"; b=a[0], b=a[:2], etc)
+dictionaries: 
+      initialiser ( a = {}; a = { "b":"c","d":"e"}; )
+      get ( a[key])
+      set ( a[key]=b)
+
+strings :
+      
+      slices   ( a = "abcd"; b=a[0], b=a[:2], etc)
+      multiply by integer ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
 
 renamed fun to func!
 
@@ -51,8 +56,6 @@ Bob's classes chapter
 list item del  (del a[b] or del a[b:c] - i.e assign nil )
   
   - sugar for a[b] = nil ? etc? 
-
-
 
 allow class __str__ magic method to define str()/print output
 

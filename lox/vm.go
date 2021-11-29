@@ -519,6 +519,8 @@ Loop:
 					s = v.String()
 				case *ListObject:
 					s = v.String()
+				case *DictObject:
+					s = v.String()
 				case *ClassObject:
 					s = v.String()
 				case *InstanceObject:
@@ -635,8 +637,12 @@ Loop:
 			// item count is operand, expects items on stack,  list object will be stack top
 			vm.createList(frame)
 
+		case OP_CREATE_DICT:
+			// kay/pair item count is operand, expects keys/values on stack,  dict object will be stack top
+			vm.createDict(frame)
+
 		case OP_INDEX:
-			// list + index on stack,  item at index -> stack top
+			// list/map + index on stack,  item at index -> stack top
 			if !vm.index(frame) {
 				break Loop
 			}
@@ -679,6 +685,21 @@ func (vm *VM) createList(frame *CallFrame) {
 	vm.push(makeObjectValue(lo, false))
 }
 
+func (vm *VM) createDict(frame *CallFrame) {
+
+	itemCount := int(vm.getCode()[frame.ip])
+	frame.ip++
+	dict := map[string]Value{}
+
+	for i := 0; i < itemCount; i++ {
+		value := vm.pop()
+		key := vm.pop()
+		dict[key.String()] = value
+	}
+	do := makeDictObject(dict)
+	vm.push(makeObjectValue(do, false))
+}
+
 func (vm *VM) index(frame *CallFrame) bool {
 
 	var nv IntValue
@@ -686,16 +707,17 @@ func (vm *VM) index(frame *CallFrame) bool {
 	var ok bool
 
 	v := vm.pop()
-	if nv, ok = v.(IntValue); !ok {
-		vm.runTimeError("Subscript must be an integer.")
-		return false
-	}
-	idx := nv.get()
-	lv := vm.pop()
-	if ov, ok = lv.(ObjectValue); ok {
-		t := ov.get().getType()
-		if t == OBJECT_LIST {
-			lo, err := ov.get().(*ListObject).index(idx)
+
+	sv := vm.pop()
+	if ov, ok = sv.(ObjectValue); ok {
+		switch t := ov.value.(type) {
+		case *ListObject:
+			if nv, ok = v.(IntValue); !ok {
+				vm.runTimeError("Subscript must be an integer.")
+				return false
+			}
+			idx := nv.get()
+			lo, err := t.index(idx)
 			if err != nil {
 				vm.runTimeError(err.Error())
 				return false
@@ -703,8 +725,24 @@ func (vm *VM) index(frame *CallFrame) bool {
 			vm.push(lo)
 			return true
 
-		} else if t == OBJECT_STRING {
-			so, err := ov.get().(StringObject).index(idx)
+		case StringObject:
+			if nv, ok = v.(IntValue); !ok {
+				vm.runTimeError("Subscript must be an integer.")
+				return false
+			}
+			idx := nv.get()
+			so, err := t.index(idx)
+			if err != nil {
+				vm.runTimeError(err.Error())
+				return false
+			}
+			vm.push(so)
+			return true
+
+		case *DictObject:
+
+			key := v.String()
+			so, err := t.get(key)
 			if err != nil {
 				vm.runTimeError(err.Error())
 				return false
@@ -712,6 +750,7 @@ func (vm *VM) index(frame *CallFrame) bool {
 			vm.push(so)
 			return true
 		}
+
 	}
 	vm.runTimeError("Invalid type for subscript.")
 	return false
@@ -719,28 +758,31 @@ func (vm *VM) index(frame *CallFrame) bool {
 
 func (vm *VM) indexAssign() bool {
 
-	// list, index, RHS on stack
+	// collection, index, RHS on stack
 	rhs := vm.pop()
 	index := vm.pop()
-	if nv, ok := index.(IntValue); ok {
-		list := vm.pop()
-		if lv, ok := list.(ObjectValue); ok {
-			if lv.isListObject() {
-				if err := lv.asList().assignToIndex(nv.value, rhs); err != nil {
+	collection := vm.pop()
+	if cv, ok := collection.(ObjectValue); ok {
+		switch t := cv.value.(type) {
+		case *ListObject:
+			if nv, ok := index.(IntValue); ok {
+				if err := t.assignToIndex(nv.value, rhs); err != nil {
 					vm.runTimeError(err.Error())
 					return false
 				} else {
 					return true
 				}
+			} else {
+				vm.runTimeError("List index must an integer.")
+				return false
 			}
+		case *DictObject:
+			t.set(index.String(), rhs)
+			return true
 		}
-		vm.runTimeError("Can only assign to list index.")
-		return false
-
-	} else {
-		vm.runTimeError("List index must an integer.")
-		return false
 	}
+	vm.runTimeError("Can only assign to collection.")
+	return false
 }
 
 func (vm *VM) slice() bool {
