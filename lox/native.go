@@ -17,6 +17,41 @@ func (vm *VM) defineNativeFunctions() {
 	vm.defineNative("append", appendNative)
 	vm.defineNative("float", floatNative)
 	vm.defineNative("int", intNative)
+	vm.defineNative("join", joinNative)
+}
+
+func joinNative(argCount int, arg_stackptr int, vm *VM) Value {
+
+	var err string = ""
+
+	if argCount != 2 {
+		vm.runTimeError("Invalid argument count to join.")
+		return makeNilValue()
+	}
+	val := vm.stack[arg_stackptr]
+	err = "Argument 2 to join must be a string."
+
+	switch val := val.(type) {
+	case ObjectValue:
+		if val.isListObject() {
+			err = "Argument 2 to join must be a string."
+			l := val.asList()
+			val2 := vm.stack[arg_stackptr+1]
+			switch val2 := val2.(type) {
+			case ObjectValue:
+				if val2.isStringObject() {
+					rv, errj := l.join(val2.asString())
+					if errj == nil {
+						return rv
+					} else {
+						err = errj.Error()
+					}
+				}
+			}
+		}
+	}
+	vm.runTimeError(err)
+	return makeNilValue()
 }
 
 func argsNative(argCount int, arg_stackptr int, vm *VM) Value {
@@ -29,9 +64,9 @@ func argsNative(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeObjectValue(list, false)
 }
 
-func floatNative(argcount int, arg_stackptr int, vm *VM) Value {
+func floatNative(argCount int, arg_stackptr int, vm *VM) Value {
 
-	if argcount != 1 {
+	if argCount != 1 {
 		vm.runTimeError("Single argument expected.")
 		return makeNilValue()
 	}
@@ -47,9 +82,9 @@ func floatNative(argcount int, arg_stackptr int, vm *VM) Value {
 	return makeNilValue()
 }
 
-func intNative(argcount int, arg_stackptr int, vm *VM) Value {
+func intNative(argCount int, arg_stackptr int, vm *VM) Value {
 
-	if argcount != 1 {
+	if argCount != 1 {
 		vm.runTimeError("Single argument expected.")
 		return makeNilValue()
 	}
@@ -72,9 +107,9 @@ func clockNative(argCount int, arg_stackptr int, vm *VM) Value {
 }
 
 // str(x)
-func strNative(argcount int, arg_stackptr int, vm *VM) Value {
+func strNative(argCount int, arg_stackptr int, vm *VM) Value {
 
-	if argcount != 1 {
+	if argCount != 1 {
 		vm.runTimeError("Single argument expected.")
 		return makeNilValue()
 	}
@@ -121,9 +156,9 @@ func strNative(argcount int, arg_stackptr int, vm *VM) Value {
 }
 
 // len( string )
-func lenNative(argcount int, arg_stackptr int, vm *VM) Value {
+func lenNative(argCount int, arg_stackptr int, vm *VM) Value {
 
-	if argcount != 1 {
+	if argCount != 1 {
 		vm.runTimeError("Invalid argument count to len.")
 		return makeNilValue()
 	}
@@ -146,9 +181,9 @@ func lenNative(argcount int, arg_stackptr int, vm *VM) Value {
 }
 
 // sin(number)
-func sinNative(argcount int, arg_stackptr int, vm *VM) Value {
+func sinNative(argCount int, arg_stackptr int, vm *VM) Value {
 
-	if argcount != 1 {
+	if argCount != 1 {
 		vm.runTimeError("Invalid argument count to sin.")
 		return makeNilValue()
 	}
@@ -164,9 +199,9 @@ func sinNative(argcount int, arg_stackptr int, vm *VM) Value {
 }
 
 // cos(number)
-func cosNative(argcount int, arg_stackptr int, vm *VM) Value {
+func cosNative(argCount int, arg_stackptr int, vm *VM) Value {
 
-	if argcount != 1 {
+	if argCount != 1 {
 		vm.runTimeError("Invalid argument count to cos.")
 		return makeNilValue()
 	}
@@ -182,9 +217,9 @@ func cosNative(argcount int, arg_stackptr int, vm *VM) Value {
 }
 
 // append(obj,value)
-func appendNative(argcount int, arg_stackptr int, vm *VM) Value {
+func appendNative(argCount int, arg_stackptr int, vm *VM) Value {
 
-	if argcount != 2 {
+	if argCount != 2 {
 		vm.runTimeError("Invalid argument count to append.")
 		return makeNilValue()
 	}

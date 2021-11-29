@@ -241,6 +241,30 @@ func (o *ListObject) append(v Value) {
 	o.items = append(o.items, v)
 }
 
+func (o *ListObject) join(s string) (Value, error) {
+	rs := ""
+	ln := len(o.items)
+	if ln > 0 {
+		for _, v := range o.items[0:1] {
+			if isString(v) {
+				rs = getStringValue(v)
+			} else {
+				return makeNilValue(), errors.New("Non string in join list.")
+			}
+		}
+		if ln > 1 {
+			for _, v := range o.items[1:ln] {
+				if isString(v) {
+					rs = rs + s + getStringValue(v)
+				} else {
+					return makeNilValue(), errors.New("Non string in join list.")
+				}
+			}
+		}
+	}
+	return makeObjectValue(makeStringObject(rs), false), nil
+}
+
 func (o *ListObject) String() string {
 
 	list := []string{}

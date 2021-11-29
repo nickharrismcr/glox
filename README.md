@@ -36,33 +36,47 @@ lists :
       slice assignment ( e.g a[2:5] = [1,2,3] )
       adding ( list3=list1+list2 )
       appends ( native append(list,val) )
+      join ( list, string )    e.g join(["a","b","c"],"|") -> "a|b|c"
 
 string slices   ( a = "abcd"; b=a[0], b=a[:2], etc)
 
 renamed fun to func!
 
 **TODO:**
- 
+
+# EASY 
+
 Bob's classes chapter
-
--  allow class __str__ magic method to define str()/print output
-
-imports / dot for imported module access ( e.g sys.argv ) 
- 
-marshal / unmarshal bytecode chunks to/from file
 
 list item del  (del a[b] or del a[b:c] - i.e assign nil )
   
   - sugar for a[b] = nil ? etc? 
 
-join ( list, string )    e.g join(["a","b"],"|") -> a|b
 
+
+allow class __str__ magic method to define str()/print output
+
+dictionaries (maps)
+
+# MEDIUM
+
+module imports / dot for imported module access ( e.g sys.argv ) 
+ 
+marshal / unmarshal code chunks to/from .lxc files 
+
+# HARD
 
 map/filter function
 - can't do this as with native funcs as passed function is a closure object and needs to run bytecode 
-- need to be language functions with new opcodes
+- need to be language functions with new opcodes ? or vm function that manipulates stack 
+- python map takes variable number of args : 1 = function,  2+ = iterables, function arity must equal no of iterable args 
+
+- GENERAL : how to implement built ins that can take/run closure args ?
 
 list comprehensions 
 - build on map function ^^^
+
+exceptions 
+- try / catch 
 
 etc etc 

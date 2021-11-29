@@ -136,6 +136,14 @@ func asInt(v Value) int {
 	return 0
 }
 
+func isString(v Value) bool {
+	switch v := v.(type) {
+	case ObjectValue:
+		return v.value.getType() == OBJECT_STRING
+	}
+	return false
+}
+
 func isObject(v Value) bool {
 	switch v.(type) {
 	case ObjectValue:
