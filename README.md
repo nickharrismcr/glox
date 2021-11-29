@@ -57,8 +57,12 @@ list item del  (del a[b] or del a[b:c] - i.e assign nil )
 
 join ( list, string )    e.g join(["a","b"],"|") -> a|b
 
-list comprehensions 
 
 map/filter function
+- can't do this as with native funcs as passed function is a closure object and needs to run bytecode 
+- need to be language functions with new opcodes
+
+list comprehensions 
+- build on map function ^^^
 
 etc etc 
