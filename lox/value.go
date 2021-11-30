@@ -339,6 +339,11 @@ func (ov ObjectValue) asList() *ListObject {
 	return ov.value.(*ListObject)
 }
 
+func (ov ObjectValue) asDict() *DictObject {
+
+	return ov.value.(*DictObject)
+}
+
 func (ov ObjectValue) asFunction() *FunctionObject {
 
 	return ov.value.(*FunctionObject)
@@ -372,6 +377,11 @@ func (ov ObjectValue) asBoundMethod() *BoundMethodObject {
 func (ov ObjectValue) isListObject() bool {
 
 	return ov.value.getType() == OBJECT_LIST
+}
+
+func (ov ObjectValue) isDictObject() bool {
+
+	return ov.value.getType() == OBJECT_DICT
 }
 
 func (ov ObjectValue) isFunctionObject() bool {

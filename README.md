@@ -58,7 +58,7 @@ list item del  (del a[b] or del a[b:c] - i.e assign nil )
 
 allow class __str__ magic method to define str()/print output
 
-dictionaries (maps)
+dictionary get keys as list 
 
 # MEDIUM
 

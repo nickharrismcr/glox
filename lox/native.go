@@ -18,6 +18,26 @@ func (vm *VM) defineNativeFunctions() {
 	vm.defineNative("float", floatNative)
 	vm.defineNative("int", intNative)
 	vm.defineNative("join", joinNative)
+	vm.defineNative("keys", keysNative)
+}
+
+func keysNative(argCount int, arg_stackptr int, vm *VM) Value {
+
+	if argCount != 1 {
+		vm.runTimeError("Invalid argument count to keys.")
+		return makeNilValue()
+	}
+	val := vm.stack[arg_stackptr]
+
+	switch val := val.(type) {
+	case ObjectValue:
+		if val.isDictObject() {
+			d := val.asDict()
+			return d.keys()
+		}
+	}
+	vm.runTimeError("Argument to keys must be a dictionary.")
+	return makeNilValue()
 }
 
 func joinNative(argCount int, arg_stackptr int, vm *VM) Value {
