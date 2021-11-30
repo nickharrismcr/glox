@@ -9,9 +9,9 @@ import (
 )
 
 /*
-	todo https://craftinginterpreters.com/methods-and-initializers.html#invoking-fields
 
-*/
+
+ */
 
 var debugger = false
 

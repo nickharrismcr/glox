@@ -392,11 +392,11 @@ func (DictObject) getType() ObjectType {
 }
 
 func (o *DictObject) String() string {
-	s := "{"
+	s := "Dict({ "
 	for k, v := range o.items {
 		s = s + fmt.Sprintf("%s:%s,", k, v.String())
 	}
-	return s[:len(s)-1] + "}"
+	return s[:len(s)-1] + "})"
 }
 
 func (o *DictObject) set(key string, value Value) {

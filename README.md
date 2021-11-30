@@ -41,7 +41,6 @@ dictionaries:
       set ( a[key]=b)
 
 strings :
-      
       slices   ( a = "abcd"; b=a[0], b=a[:2], etc)
       multiply by integer ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
 

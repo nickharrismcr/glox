@@ -861,7 +861,7 @@ func (p *Parser) parseList() uint8 {
 func (p *Parser) parseDict() uint8 {
 
 	var itemCount uint8 = 0
-	if !p.check(TOKEN_RIGHT_BRACE) {
+	if !p.match(TOKEN_RIGHT_BRACE) {
 		for {
 			p.expression()
 			p.consume(TOKEN_COLON, "Expect ':' after key.")
@@ -874,8 +874,9 @@ func (p *Parser) parseDict() uint8 {
 				break
 			}
 		}
+		p.consume(TOKEN_RIGHT_BRACE, "Expect '}' after dictionary items.")
 	}
-	p.consume(TOKEN_RIGHT_BRACE, "Expect '}' after dictionary items.")
+
 	return itemCount
 }
 

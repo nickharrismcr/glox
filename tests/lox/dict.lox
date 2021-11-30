@@ -1,0 +1,12 @@
+var a = {"a":"1","b":"2"};
+print a;
+print a["a"];
+print a["b"];
+
+var c={};
+ 
+
+for (var i = 0; i < 20; i=i+1 ){
+    c[str(i)]=i;
+}
+print c;

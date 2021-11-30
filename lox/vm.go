@@ -761,7 +761,7 @@ func (vm *VM) indexAssign() bool {
 	// collection, index, RHS on stack
 	rhs := vm.pop()
 	index := vm.pop()
-	collection := vm.pop()
+	collection := vm.peek(0)
 	if cv, ok := collection.(ObjectValue); ok {
 		switch t := cv.value.(type) {
 		case *ListObject:
@@ -870,7 +870,7 @@ func (vm *VM) sliceAssign() bool {
 		from_idx = nv_from.get()
 	}
 
-	lv := vm.pop()
+	lv := vm.peek(0)
 	if ov, ok = lv.(ObjectValue); ok {
 
 		if ov.get().getType() == OBJECT_LIST {
