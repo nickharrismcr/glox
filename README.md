@@ -59,7 +59,7 @@ list item del  (del a[b] or del a[b:c] - i.e assign nil )
 allow class toString() magic method to define str()/print output
 
  - can't work while str() is implemented as a built-in as built in calls are expected to return a result to be pushed on to the stack
- - but str(class) needs to call a function in lox i.e new frame, run bytecode 
+ - but str(class) needs to call an instance method in lox i.e new frame, run bytecode 
  - maybe make it a keyword/opcode like print? 
 
 dictionary get keys as list 
