@@ -6,22 +6,22 @@ import (
 	"time"
 )
 
-func (vm *VM) defineNativeFunctions() {
+func (vm *VM) defineBuiltInFunctions() {
 
-	vm.defineNative("args", argsNative)
-	vm.defineNative("clock", clockNative)
-	vm.defineNative("str", strNative)
-	vm.defineNative("len", lenNative)
-	vm.defineNative("sin", sinNative)
-	vm.defineNative("cos", cosNative)
-	vm.defineNative("append", appendNative)
-	vm.defineNative("float", floatNative)
-	vm.defineNative("int", intNative)
-	vm.defineNative("join", joinNative)
-	vm.defineNative("keys", keysNative)
+	vm.defineBuiltIn("args", argsBuiltIn)
+	vm.defineBuiltIn("clock", clockBuiltIn)
+	vm.defineBuiltIn("str", strBuiltIn)
+	vm.defineBuiltIn("len", lenBuiltIn)
+	vm.defineBuiltIn("sin", sinBuiltIn)
+	vm.defineBuiltIn("cos", cosBuiltIn)
+	vm.defineBuiltIn("append", appendBuiltIn)
+	vm.defineBuiltIn("float", floatBuiltIn)
+	vm.defineBuiltIn("int", intBuiltIn)
+	vm.defineBuiltIn("join", joinBuiltIn)
+	vm.defineBuiltIn("keys", keysBuiltIn)
 }
 
-func keysNative(argCount int, arg_stackptr int, vm *VM) Value {
+func keysBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	if argCount != 1 {
 		vm.runTimeError("Invalid argument count to keys.")
@@ -40,7 +40,7 @@ func keysNative(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeNilValue()
 }
 
-func joinNative(argCount int, arg_stackptr int, vm *VM) Value {
+func joinBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	var err string = ""
 
@@ -74,7 +74,7 @@ func joinNative(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeNilValue()
 }
 
-func argsNative(argCount int, arg_stackptr int, vm *VM) Value {
+func argsBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	argvList := []Value{}
 	for _, a := range vm.args {
@@ -84,7 +84,7 @@ func argsNative(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeObjectValue(list, false)
 }
 
-func floatNative(argCount int, arg_stackptr int, vm *VM) Value {
+func floatBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	if argCount != 1 {
 		vm.runTimeError("Single argument expected.")
@@ -102,7 +102,7 @@ func floatNative(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeNilValue()
 }
 
-func intNative(argCount int, arg_stackptr int, vm *VM) Value {
+func intBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	if argCount != 1 {
 		vm.runTimeError("Single argument expected.")
@@ -120,14 +120,14 @@ func intNative(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeNilValue()
 }
 
-func clockNative(argCount int, arg_stackptr int, vm *VM) Value {
+func clockBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	elapsed := time.Since(vm.starttime)
 	return makeFloatValue(float64(elapsed.Seconds()), false)
 }
 
 // str(x)
-func strNative(argCount int, arg_stackptr int, vm *VM) Value {
+func strBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	if argCount != 1 {
 		vm.runTimeError("Single argument expected.")
@@ -178,7 +178,7 @@ func strNative(argCount int, arg_stackptr int, vm *VM) Value {
 }
 
 // len( string )
-func lenNative(argCount int, arg_stackptr int, vm *VM) Value {
+func lenBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	if argCount != 1 {
 		vm.runTimeError("Invalid argument count to len.")
@@ -203,7 +203,7 @@ func lenNative(argCount int, arg_stackptr int, vm *VM) Value {
 }
 
 // sin(number)
-func sinNative(argCount int, arg_stackptr int, vm *VM) Value {
+func sinBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	if argCount != 1 {
 		vm.runTimeError("Invalid argument count to sin.")
@@ -221,7 +221,7 @@ func sinNative(argCount int, arg_stackptr int, vm *VM) Value {
 }
 
 // cos(number)
-func cosNative(argCount int, arg_stackptr int, vm *VM) Value {
+func cosBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	if argCount != 1 {
 		vm.runTimeError("Invalid argument count to cos.")
@@ -239,7 +239,7 @@ func cosNative(argCount int, arg_stackptr int, vm *VM) Value {
 }
 
 // append(obj,value)
-func appendNative(argCount int, arg_stackptr int, vm *VM) Value {
+func appendBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	if argCount != 2 {
 		vm.runTimeError("Invalid argument count to append.")

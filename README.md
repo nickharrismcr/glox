@@ -56,7 +56,13 @@ list item del  (del a[b] or del a[b:c] - i.e assign nil )
   
   - sugar for a[b] = nil ? etc? 
 
-allow class __str__ magic method to define str()/print output
+allow class toString() magic method to define str()/print output
+
+ -    check toString method defined 
+ -    if not, return <instance <classname>>
+ -    if it is, we need to get the result of calling toString on the class. 
+ -    vm.call would just start a new stack frame ready to run the method  
+ -    but we need the result immediately in strBuiltIn? 
 
 dictionary get keys as list 
 

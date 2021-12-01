@@ -349,9 +349,9 @@ func (ov ObjectValue) asFunction() *FunctionObject {
 	return ov.value.(*FunctionObject)
 }
 
-func (ov ObjectValue) asNative() *NativeObject {
+func (ov ObjectValue) asBuiltIn() *BuiltInObject {
 
-	return ov.value.(*NativeObject)
+	return ov.value.(*BuiltInObject)
 }
 
 func (ov ObjectValue) asClosure() *ClosureObject {
@@ -389,7 +389,7 @@ func (ov ObjectValue) isFunctionObject() bool {
 	return ov.value.getType() == OBJECT_FUNCTION
 }
 
-func (ov ObjectValue) isNativeFunction() bool {
+func (ov ObjectValue) isBuiltInFunction() bool {
 
 	return ov.value.getType() == OBJECT_NATIVE
 }

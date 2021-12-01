@@ -49,7 +49,7 @@ func NewVM() *VM {
 		args:         []string{},
 	}
 	vm.resetStack()
-	vm.defineNativeFunctions()
+	vm.defineBuiltInFunctions()
 
 	return vm
 }
@@ -108,10 +108,10 @@ func (vm *VM) runTimeError(format string, args ...interface{}) {
 
 }
 
-func (vm *VM) defineNative(name string, function NativeFn) {
+func (vm *VM) defineBuiltIn(name string, function BuiltInFn) {
 
 	vm.push(makeObjectValue(makeStringObject(name), false))
-	vm.push(makeObjectValue(makeNativeObject(function), false))
+	vm.push(makeObjectValue(makeBuiltInObject(function), false))
 	vm.globals[name] = vm.stack[1]
 	vm.pop()
 	vm.pop()
@@ -144,8 +144,8 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 		if ov.isClosureObject() {
 			return vm.call(getClosureObjectValue(callee), argCount)
 
-		} else if ov.isNativeFunction() {
-			nf := ov.asNative()
+		} else if ov.isBuiltInFunction() {
+			nf := ov.asBuiltIn()
 			res := nf.function(argCount, vm.stackTop-argCount, vm)
 			if _, ok := res.(NilValue); ok { // error occurred
 				return false

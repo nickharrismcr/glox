@@ -27,7 +27,7 @@ type Object interface {
 	String() string
 }
 
-type NativeFn func(argCount int, args_stackptr int, vm *VM) Value
+type BuiltInFn func(argCount int, args_stackptr int, vm *VM) Value
 
 //-------------------------------------------------------------------------------------------
 type FunctionObject struct {
@@ -190,25 +190,25 @@ func (s StringObject) slice(from_ix, to_ix int) (Value, error) {
 
 //-------------------------------------------------------------------------------------------
 
-type NativeObject struct {
-	function NativeFn
+type BuiltInObject struct {
+	function BuiltInFn
 }
 
-func makeNativeObject(function NativeFn) *NativeObject {
+func makeBuiltInObject(function BuiltInFn) *BuiltInObject {
 
-	return &NativeObject{
+	return &BuiltInObject{
 		function: function,
 	}
 }
 
-func (NativeObject) isObject() {}
+func (BuiltInObject) isObject() {}
 
-func (NativeObject) getType() ObjectType {
+func (BuiltInObject) getType() ObjectType {
 
 	return OBJECT_NATIVE
 }
 
-func (f *NativeObject) String() string {
+func (f *BuiltInObject) String() string {
 
 	return "<built-in>"
 }

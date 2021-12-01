@@ -13,7 +13,7 @@ import (
 
  */
 
-var debugger = false
+var debugger = true
 
 func main() {
 
