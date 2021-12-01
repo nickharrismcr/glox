@@ -58,11 +58,9 @@ list item del  (del a[b] or del a[b:c] - i.e assign nil )
 
 allow class toString() magic method to define str()/print output
 
- -    check toString method defined 
- -    if not, return <instance <classname>>
- -    if it is, we need to get the result of calling toString on the class. 
- -    vm.call would just start a new stack frame ready to run the method  
- -    but we need the result immediately in strBuiltIn? 
+ - can't work while str() is implemented as a built-in as built in calls are expected to return a result to be pushed on to the stack
+ - but str(class) needs to call a function in lox i.e new frame, run bytecode 
+ - maybe make it a keyword/opcode like print? 
 
 dictionary get keys as list 
 
