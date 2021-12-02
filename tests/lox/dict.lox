@@ -1,5 +1,5 @@
 var a = {"a":"1","b":"2"};
-print a;
+//print a;
 print a["a"];
 print a["b"];
 
@@ -18,8 +18,8 @@ print len(keys(c));
 
 
 var e={"a":{"b":"c","d":[1,2,3,{"e":"f"}]}};
-print e;
-print e["a"];
+print len(keys(e));
+print len(keys(e["a"]));
 print e["a"]["b"];
 print e["a"]["d"];
 print e["a"]["d"][0];

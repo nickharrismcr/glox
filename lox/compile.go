@@ -187,6 +187,7 @@ func (p *Parser) setRules() {
 		TOKEN_WHILE:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_ERROR:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_EOF:           {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_STR:           {prefix: str_, infix: nil, prec: PREC_NONE},
 	}
 }
 
@@ -547,6 +548,7 @@ func (p *Parser) printStatement() {
 
 	p.expression()
 	p.consume(TOKEN_SEMICOLON, "Expect ';' after value.")
+	p.emitByte(OP_STR)
 	p.emitByte(OP_PRINT)
 }
 func (p *Parser) synchronize() {
@@ -1275,4 +1277,11 @@ func slice(p *Parser, canAssign bool) {
 			}
 		}
 	}
+}
+
+func str_(p *Parser, canAssign bool) {
+	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after str.")
+	p.expression()
+	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.")
+	p.emitByte(OP_STR)
 }

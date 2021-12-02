@@ -66,6 +66,8 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.simpleInstruction("OP_LESS", offset)
 	case OP_PRINT:
 		return c.simpleInstruction("OP_PRINT", offset)
+	case OP_STR:
+		return c.simpleInstruction("OP_STR", offset)
 	case OP_POP:
 		return c.simpleInstruction("OP_POP", offset)
 	case OP_DEFINE_GLOBAL:

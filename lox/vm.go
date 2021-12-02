@@ -497,38 +497,34 @@ Loop:
 				break Loop
 			}
 
-		case OP_PRINT:
-			// pop 1 stack value and print it
-			v := vm.pop()
-			s := ""
+		case OP_STR:
+
+			// replace stack top with string repr. of it
+			v := vm.peek(0) // may be needed for class toString
+			s := v.String()
 			switch v.(type) {
-			case FloatValue:
-				s = v.String()
-			case IntValue:
-				s = v.String()
-			case BooleanValue:
-				s = v.String()
-			case NilValue:
-				s = v.String()
 			case ObjectValue:
-				a := v.(ObjectValue).get()
-				switch a.(type) {
+				ov := v.(ObjectValue).get()
+				switch ot := ov.(type) {
 				case StringObject:
-					s = v.(ObjectValue).asString()
-				case *FunctionObject:
-					s = v.String()
-				case *ListObject:
-					s = v.String()
-				case *DictObject:
-					s = v.String()
-				case *ClassObject:
-					s = v.String()
+					s = ot.get()
 				case *InstanceObject:
+					// get string repr of class by calling asString() method if present
+					if toString, ok := ot.class.methods["toString"]; ok {
+						vm.call(toString.(ObjectValue).asClosure(), 0)
+						frame = vm.frame()
+						continue
+					}
 					s = v.String()
 				}
-
 			}
-			fmt.Printf("%s\n", s)
+			vm.pop()
+			vm.push(makeObjectValue(makeStringObject(s), false))
+
+		case OP_PRINT:
+			// compiler ensures stack top will be a string object via OP_STR
+			v := vm.pop()
+			fmt.Printf("%s\n", v.(ObjectValue).asString())
 
 		case OP_POP:
 			// pop 1 stack value and discard

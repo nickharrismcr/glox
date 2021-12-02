@@ -39,12 +39,16 @@ dictionaries:
       initialiser ( a = {}; a = { "b":"c","d":"e"}; )
       get ( a[key])
       set ( a[key]=b)
+      keys(dict)   get list of keys 
 
 strings :
       slices   ( a = "abcd"; b=a[0], b=a[:2], etc)
       multiply by integer ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
 
 renamed fun to func!
+
+class toString() magic method
+- if present and returns a string, will be used for print class / str(class)
 
 **TODO:**
 
@@ -56,13 +60,6 @@ list item del  (del a[b] or del a[b:c] - i.e assign nil )
   
   - sugar for a[b] = nil ? etc? 
 
-allow class toString() magic method to define str()/print output
-
- - can't work while str() is implemented as a built-in as built in calls are expected to return a result to be pushed on to the stack
- - but str(class) needs to call an instance method in lox i.e new frame, run bytecode 
- - maybe make it a keyword/opcode like print? 
-
-dictionary get keys as list 
 
 # MEDIUM
 
@@ -78,6 +75,7 @@ map/filter function
 - python map takes variable number of args : 1 = function,  2+ = iterables, function arity must equal no of iterable args 
 
 - GENERAL : how to implement built ins that can take/run closure args ?
+- - iterators? 
 
 list comprehensions 
 - build on map function ^^^
