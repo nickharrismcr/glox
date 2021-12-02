@@ -1,7 +1,6 @@
 package lox
 
 import (
-	"fmt"
 	"math"
 	"time"
 )
@@ -10,7 +9,6 @@ func (vm *VM) defineBuiltInFunctions() {
 
 	vm.defineBuiltIn("args", argsBuiltIn)
 	vm.defineBuiltIn("clock", clockBuiltIn)
-	vm.defineBuiltIn("str", strBuiltIn)
 	vm.defineBuiltIn("len", lenBuiltIn)
 	vm.defineBuiltIn("sin", sinBuiltIn)
 	vm.defineBuiltIn("cos", cosBuiltIn)
@@ -124,57 +122,6 @@ func clockBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	elapsed := time.Since(vm.starttime)
 	return makeFloatValue(float64(elapsed.Seconds()), false)
-}
-
-// str(x)
-func strBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
-
-	if argCount != 1 {
-		vm.runTimeError("Single argument expected.")
-		return makeNilValue()
-	}
-	arg := vm.stack[arg_stackptr]
-
-	switch arg := arg.(type) {
-
-	case FloatValue:
-		s := arg.String()
-		so := makeStringObject(s)
-		return makeObjectValue(so, false)
-
-	case IntValue:
-		s := arg.String()
-		so := makeStringObject(s)
-		return makeObjectValue(so, false)
-
-	case NilValue:
-		so := makeStringObject("nil")
-		return makeObjectValue(so, false)
-
-	case ObjectValue:
-		o := arg
-		switch o.value.getType() {
-		case OBJECT_STRING:
-			return arg
-		case OBJECT_FUNCTION:
-			return makeObjectValue(makeStringObject("<func>"), false)
-		case OBJECT_LIST:
-			return makeObjectValue(makeStringObject(o.String()), false)
-		case OBJECT_DICT:
-			return makeObjectValue(makeStringObject(o.String()), false)
-		case OBJECT_CLASS:
-			return makeObjectValue(makeStringObject(o.String()), false)
-		case OBJECT_INSTANCE:
-			return makeObjectValue(makeStringObject(o.String()), false)
-		}
-
-	case BooleanValue:
-		s := fmt.Sprintf("%t", arg.get())
-		so := makeStringObject(s)
-		return makeObjectValue(so, false)
-	}
-
-	return makeObjectValue(makeStringObject(""), false)
 }
 
 // len( string )
