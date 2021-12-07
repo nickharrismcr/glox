@@ -11,4 +11,5 @@ class B < A {
 }
 
 var b = B();
+b.output();
 b.suboutput();

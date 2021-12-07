@@ -624,8 +624,8 @@ Loop:
 			if vo, ok := superclass.(ObjectValue); ok {
 				if vo.isClassObject() {
 					sco := vo.asClass()
-					for k, v := range subclass.methods {
-						sco.methods[k] = v
+					for k, v := range sco.methods {
+						subclass.methods[k] = v
 					}
 					vm.pop()
 					continue
