@@ -146,6 +146,8 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.simpleInstruction("OP_INHERIT", offset)
 	case OP_GET_SUPER:
 		return c.constantInstruction("OP_INHERIT", offset)
+	case OP_SUPER_INVOKE:
+		return c.invokeInstruction("OP_SUPER_INVOKE", offset)
 
 	default:
 		fmt.Printf("Unknown opcode %d", i)

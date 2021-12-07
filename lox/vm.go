@@ -646,6 +646,18 @@ Loop:
 				return INTERPRET_RUNTIME_ERROR, makeNilValue()
 			}
 
+		case OP_SUPER_INVOKE:
+			idx := vm.getCode()[frame.ip]
+			frame.ip++
+			method := frame.closure.function.chunk.constants[idx]
+			argCount := vm.getCode()[frame.ip]
+			frame.ip++
+			superclass := vm.pop().(ObjectValue).asClass()
+			if !vm.invokeFromClass(superclass, method, int(argCount)) {
+				return INTERPRET_RUNTIME_ERROR, makeNilValue()
+			}
+			frame = vm.frames[vm.frameCount-1]
+
 		// NJH added:
 
 		case OP_STR:

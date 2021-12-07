@@ -57,7 +57,7 @@ class toString() magic method
 
 # EASY 
 
-Bob's classes chapter
+Bob's optimisation chapter
 
 list item del  (del a[b] or del a[b:c] - i.e assign nil )
   

@@ -1263,9 +1263,15 @@ func super(p *Parser, canAssign bool) {
 	p.consume(TOKEN_IDENTIFIER, "Expect superclass method name.")
 	name := p.identifierConstant(p.previous)
 	p.namedVariable(syntheticToken("this"), false)
-	p.namedVariable(syntheticToken("super"), false)
-	p.emitBytes(OP_GET_SUPER, name)
-
+	if p.match(TOKEN_LEFT_PAREN) {
+		argCount := p.argumentList()
+		p.namedVariable(syntheticToken("super"), false)
+		p.emitBytes(OP_SUPER_INVOKE, name)
+		p.emitByte(argCount)
+	} else {
+		p.namedVariable(syntheticToken("super"), false)
+		p.emitBytes(OP_GET_SUPER, name)
+	}
 }
 
 func listLiteral(p *Parser, canAssign bool) {
