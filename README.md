@@ -73,12 +73,8 @@ marshal / unmarshal code chunks to/from .lxc files
 # HARD
 
 map/filter function
-- can't do this as with native funcs as passed function is a closure object and needs to run bytecode 
-- need to be language functions with new opcodes ? or vm function that manipulates stack 
-- python map takes variable number of args : 1 = function,  2+ = iterables, function arity must equal no of iterable args 
-
-- GENERAL : how to implement built ins that can take/run closure args ?
-- - iterators? 
+- implement in lox and make available as library? - needs module import function
+- move to native? 
 
 list comprehensions 
 - build on map function ^^^
