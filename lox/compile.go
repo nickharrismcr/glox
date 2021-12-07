@@ -62,7 +62,8 @@ const (
 )
 
 type ClassCompiler struct {
-	enclosing *ClassCompiler
+	enclosing     *ClassCompiler
+	hasSuperClass bool
 }
 
 type Compiler struct {
@@ -89,7 +90,7 @@ func NewCompiler(type_ FunctionType, parent *Compiler) *Compiler {
 		isCaptured: false,
 	}
 	if type_ != TYPE_FUNCTION {
-		rv.locals[0].name = makeThisToken()
+		rv.locals[0].name = syntheticToken("this")
 	} else {
 		rv.locals[0].name = Token{}
 	}
@@ -179,7 +180,7 @@ func (p *Parser) setRules() {
 		TOKEN_OR:            {prefix: nil, infix: or_, prec: PREC_OR},
 		TOKEN_PRINT:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_RETURN:        {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_SUPER:         {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_SUPER:         {prefix: super, infix: nil, prec: PREC_NONE},
 		TOKEN_THIS:          {prefix: this, infix: nil, prec: PREC_NONE},
 		TOKEN_TRUE:          {prefix: literal, infix: nil, prec: PREC_NONE},
 		TOKEN_VAR:           {prefix: nil, infix: nil, prec: PREC_NONE},
@@ -330,6 +331,7 @@ func (p *Parser) function(type_ FunctionType) {
 }
 
 func (p *Parser) classDeclaration() {
+
 	p.consume(TOKEN_IDENTIFIER, "Expect class name.")
 	className := p.previous
 	nameConstant := p.identifierConstant(p.previous)
@@ -339,9 +341,24 @@ func (p *Parser) classDeclaration() {
 	p.defineVariable(nameConstant)
 
 	cc := &ClassCompiler{
-		enclosing: p.currentClass,
+		enclosing:     p.currentClass,
+		hasSuperClass: false,
 	}
 	p.currentClass = cc
+
+	if p.match(TOKEN_LESS) {
+		p.consume(TOKEN_IDENTIFIER, "Expect superclass name.")
+		variable(p, false)
+		if p.identifiersEqual(className, p.previous) {
+			p.error("A class cannot inherit from itself.")
+		}
+		p.beginScope()
+		p.addLocal(syntheticToken("super"))
+		p.defineVariable(0)
+		p.namedVariable(className, false)
+		p.emitByte(OP_INHERIT)
+		p.currentClass.hasSuperClass = true
+	}
 
 	p.namedVariable(className, false)
 	p.consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.")
@@ -1232,6 +1249,23 @@ func this(p *Parser, canAssign bool) {
 		return
 	}
 	variable(p, false)
+}
+
+func super(p *Parser, canAssign bool) {
+
+	if p.currentClass == nil {
+		p.error("Cannot use 'super' outside of a class.")
+	} else if !p.currentClass.hasSuperClass {
+		p.error("Cannot use 'super' in a class with no superclass.")
+	}
+
+	p.consume(TOKEN_DOT, "Expect '.' after super.")
+	p.consume(TOKEN_IDENTIFIER, "Expect superclass method name.")
+	name := p.identifierConstant(p.previous)
+	p.namedVariable(syntheticToken("this"), false)
+	p.namedVariable(syntheticToken("super"), false)
+	p.emitBytes(OP_GET_SUPER, name)
+
 }
 
 func listLiteral(p *Parser, canAssign bool) {

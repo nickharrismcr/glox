@@ -8,51 +8,38 @@ import (
 	"os"
 )
 
-/*
-
-
- */
-
-var debugger = false
+type Options struct {
+	debug  bool
+	doRepl bool
+	args   []string
+}
 
 func main() {
-
-	var do_repl bool
-	var args = []string{}
 
 	fmt.Println("GLOX:")
 	vm := lox.NewVM()
 
-	if debugger {
+	opts := &Options{
+		debug: false,
+	}
+
+	if opts.debug {
 		lox.DebugPrintCode = true
 		lox.DebugTraceExecution = true
-		runFile("nod.lox", vm)
+		runFile("dbg.lox", vm)
 		os.Exit(0)
 	}
 
-	if len(os.Args) == 1 {
-		usage()
-	}
-	for _, arg := range os.Args[1:] {
-		switch arg {
-		case "--debug":
-			lox.DebugPrintCode = true
-			lox.DebugTraceExecution = true
-		case "--repl":
-			do_repl = true
-		default:
-			args = append(args, arg)
-		}
-	}
+	handleArgs(opts)
 
-	if do_repl {
+	if opts.doRepl {
 		repl(vm)
 	} else {
-		if len(args) == 0 {
+		if len(opts.args) == 0 {
 			usage()
 		}
-		vm.SetArgs(args)
-		runFile(args[0], vm)
+		vm.SetArgs(opts.args)
+		runFile(opts.args[0], vm)
 	}
 }
 
@@ -92,6 +79,31 @@ func runFile(path string, vm *lox.VM) {
 		os.Exit(70)
 	}
 	fmt.Println(result)
+}
+
+func handleArgs(opts *Options) {
+
+	if len(os.Args) == 1 {
+		usage()
+	}
+
+	opts.args = []string{}
+
+	for _, arg := range os.Args[1:] {
+		if arg[0] == '-' {
+			switch arg {
+			case "--debug":
+				lox.DebugPrintCode = true
+				lox.DebugTraceExecution = true
+			case "--repl":
+				opts.doRepl = true
+			default:
+				usage()
+			}
+		} else {
+			opts.args = append(opts.args, arg)
+		}
+	}
 }
 
 func usage() {

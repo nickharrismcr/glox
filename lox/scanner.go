@@ -330,8 +330,8 @@ func (s *Scanner) identifierType() TokenType {
 	return TOKEN_IDENTIFIER
 }
 
-func makeThisToken() Token {
-	src := "this"
+func syntheticToken(src string) Token {
+
 	return Token{
 		tokentype: TOKEN_THIS,
 		source:    &src,

@@ -39,6 +39,12 @@ type VM struct {
 	args         []string
 }
 
+//------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------
+
 func NewVM() *VM {
 
 	vm := &VM{
@@ -49,7 +55,7 @@ func NewVM() *VM {
 		args:         []string{},
 	}
 	vm.resetStack()
-	vm.defineBuiltInFunctions()
+	vm.defineBuiltIns()
 
 	return vm
 }
@@ -70,6 +76,14 @@ func (vm *VM) Interpret(source string) (InterpretResult, string) {
 	res, val := vm.run()
 	return res, val.String()
 }
+
+//------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) frame() *CallFrame {
 
@@ -175,6 +189,7 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 	return false
 }
 
+// optimised method call
 func (vm *VM) invoke(name Value, argCount int) bool {
 	receiver := vm.peek(argCount)
 	if ov, ok := receiver.(ObjectValue); !ok || !ov.isInstanceObject() {
@@ -497,30 +512,6 @@ Loop:
 				break Loop
 			}
 
-		case OP_STR:
-
-			// replace stack top with string repr. of it
-			v := vm.peek(0) // may be needed for class toString
-			s := v.String()
-			switch v.(type) {
-			case ObjectValue:
-				ov := v.(ObjectValue).get()
-				switch ot := ov.(type) {
-				case StringObject:
-					s = ot.get()
-				case *InstanceObject:
-					// get string repr of class by calling asString() method if present
-					if toString, ok := ot.class.methods["toString"]; ok {
-						vm.call(toString.(ObjectValue).asClosure(), 0)
-						frame = vm.frame()
-						continue
-					}
-					s = v.String()
-				}
-			}
-			vm.pop()
-			vm.push(makeObjectValue(makeStringObject(s), false))
-
 		case OP_PRINT:
 			// compiler ensures stack top will be a string object via OP_STR
 			v := vm.pop()
@@ -627,7 +618,59 @@ Loop:
 			name := getStringValue(frame.closure.function.chunk.constants[idx])
 			vm.push(makeObjectValue(makeClassObject(name), false))
 
+		case OP_INHERIT:
+			superclass := vm.peek(1)
+			subclass := vm.peek(0).(ObjectValue).asClass()
+			if vo, ok := superclass.(ObjectValue); ok {
+				if vo.isClassObject() {
+					sco := vo.asClass()
+					for k, v := range subclass.methods {
+						sco.methods[k] = v
+					}
+					vm.pop()
+					continue
+				}
+			}
+
+			vm.runTimeError("Superclass must be a class.")
+			return INTERPRET_RUNTIME_ERROR, makeNilValue()
+
+		case OP_GET_SUPER:
+			idx := vm.getCode()[frame.ip]
+			frame.ip++
+			name := getStringValue(frame.closure.function.chunk.constants[idx])
+			v := vm.pop()
+			superclass := v.(ObjectValue).asClass()
+
+			if !vm.bindMethod(superclass, name) {
+				return INTERPRET_RUNTIME_ERROR, makeNilValue()
+			}
+
 		// NJH added:
+
+		case OP_STR:
+
+			// replace stack top with string repr of it
+			v := vm.peek(0) // may be needed for class toString so don't pop now
+			s := v.String()
+			switch v.(type) {
+			case ObjectValue:
+				ov := v.(ObjectValue).get()
+				switch ot := ov.(type) {
+				case StringObject:
+					s = ot.get()
+				case *InstanceObject:
+					// get string repr of class by calling asString() method if present
+					if toString, ok := ot.class.methods["toString"]; ok {
+						vm.call(toString.(ObjectValue).asClosure(), 0)
+						frame = vm.frame()
+						continue
+					}
+					s = v.String()
+				}
+			}
+			vm.pop()
+			vm.push(makeObjectValue(makeStringObject(s), false))
 
 		case OP_CREATE_LIST:
 			// item count is operand, expects items on stack,  list object will be stack top

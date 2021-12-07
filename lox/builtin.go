@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func (vm *VM) defineBuiltInFunctions() {
+func (vm *VM) defineBuiltIns() {
 
 	vm.defineBuiltIn("args", argsBuiltIn)
 	vm.defineBuiltIn("clock", clockBuiltIn)
