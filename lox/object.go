@@ -19,6 +19,7 @@ const (
 	OBJECT_CLASS
 	OBJECT_INSTANCE
 	OBJECT_BOUNDMETHOD
+	OBJECT_MODULE
 )
 
 type Object interface {
@@ -504,5 +505,33 @@ func (f *BoundMethodObject) String() string {
 
 	return f.method.String()
 }
+
+//-------------------------------------------------------------------------------------------
+type ModuleObject struct {
+	name     string
+	function *ClosureObject
+}
+
+func makeModuleObject(name string, function *ClosureObject) *ModuleObject {
+
+	return &ModuleObject{
+		name:     name,
+		function: function,
+	}
+}
+
+func (ModuleObject) isObject() {}
+
+func (ModuleObject) getType() ObjectType {
+
+	return OBJECT_MODULE
+}
+
+func (f *ModuleObject) String() string {
+
+	return f.name
+}
+
+//-------------------------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------------------------

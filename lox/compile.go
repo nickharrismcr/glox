@@ -246,6 +246,8 @@ func (p *Parser) statement() {
 
 	if p.match(TOKEN_PRINT) {
 		p.printStatement()
+	} else if p.match(TOKEN_IMPORT) {
+		p.importStatement()
 	} else if p.match(TOKEN_BREAK) {
 		p.breakStatement()
 	} else if p.match(TOKEN_CONTINUE) {
@@ -266,7 +268,19 @@ func (p *Parser) statement() {
 		p.expressionStatement()
 	}
 }
-
+func (p *Parser) importStatement() {
+	c := 0
+	for {
+		p.consume(TOKEN_IDENTIFIER, "Expect module name.")
+		nameConstant := p.identifierConstant(p.previous)
+		c = c + 1
+		p.emitBytes(OP_IMPORT, nameConstant)
+		if !p.match(TOKEN_COMMA) {
+			break
+		}
+	}
+	p.consume(TOKEN_SEMICOLON, "Expect ';' after import list.")
+}
 func (p *Parser) expression() {
 
 	p.parsePredence(PREC_ASSIGNMENT)

@@ -60,6 +60,7 @@ const (
 	TOKEN_BREAK
 	TOKEN_CONTINUE
 	TOKEN_STR
+	TOKEN_IMPORT
 )
 
 var keywords = map[string]TokenType{
@@ -83,6 +84,7 @@ var keywords = map[string]TokenType{
 	"break":    TOKEN_BREAK,
 	"continue": TOKEN_CONTINUE,
 	"str":      TOKEN_STR,
+	"import":   TOKEN_IMPORT,
 }
 
 type Scanner struct {

@@ -47,6 +47,7 @@ const (
 	OP_INHERIT
 	OP_GET_SUPER
 	OP_SUPER_INVOKE
+	OP_IMPORT
 )
 
 type Chunk struct {

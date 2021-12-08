@@ -2,8 +2,10 @@ package lox
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -189,15 +191,26 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 	return false
 }
 
-// optimised method call
+// optimised method call/module access
 func (vm *VM) invoke(name Value, argCount int) bool {
 	receiver := vm.peek(argCount)
-	if ov, ok := receiver.(ObjectValue); !ok || !ov.isInstanceObject() {
-		vm.runTimeError("Only instances have methods.")
+	ov, ok := receiver.(ObjectValue)
+	if !ok {
+		vm.runTimeError("Invalid use of '.' operator")
 		return false
 	}
-	instance := receiver.(ObjectValue).asInstance()
-	return vm.invokeFromClass(instance.class, name, argCount)
+	switch ov.value.getType() {
+	case OBJECT_INSTANCE:
+		instance := receiver.(ObjectValue).asInstance()
+		return vm.invokeFromClass(instance.class, name, argCount)
+	case OBJECT_MODULE:
+		fmt.Printf("module property call %s", name.String())
+		// TODO make this work!
+	default:
+		vm.runTimeError("Invalid use of '.' operator")
+		return false
+	}
+	return true
 }
 
 func (vm *VM) invokeFromClass(class *ClassObject, name Value, argCount int) bool {
@@ -660,6 +673,16 @@ Loop:
 
 		// NJH added:
 
+		case OP_IMPORT:
+
+			idx := vm.getCode()[frame.ip]
+			frame.ip++
+			mv := frame.closure.function.chunk.constants[idx]
+			module := mv.(ObjectValue).asString()
+			if vm.importModule(module) == INTERPRET_COMPILE_ERROR {
+				return INTERPRET_COMPILE_ERROR, makeNilValue()
+			}
+
 		case OP_STR:
 
 			// replace stack top with string repr of it
@@ -721,6 +744,35 @@ Loop:
 		}
 	}
 	return INTERPRET_RUNTIME_ERROR, makeNilValue()
+}
+
+func (vm *VM) importModule(module string) InterpretResult {
+	// this function should look for a file named <module>.lox in the same directory
+	// as the lox file being currently interpreted. if not found an interpreter error will be thrown.
+	// if found, it should compile the contents of the file and create a ModuleObject
+	// which contains the bytecode and constants of the compiled lox.
+	// this will be placed in the current vm globals with name = <module>.
+	// functions, classes and variables in this module will be accessible in the current
+	// script using <module>.<item>
+	//
+	// opcodes INVOKE,SET_PROPERTY, GET_PROPERTY need to handle module receivers
+
+	searchPath := getPath(vm.args, module) + ".lox"
+	fmt.Println(searchPath)
+	bytes, err := ioutil.ReadFile(searchPath)
+	if err != nil {
+		fmt.Printf("Could not find module %s.", searchPath)
+		os.Exit(1)
+	}
+	function := vm.compile(string(bytes))
+	if function == nil {
+		return INTERPRET_COMPILE_ERROR
+	}
+	closure := makeClosureObject(function)
+	mo := makeModuleObject(module, closure)
+	v := makeObjectValue(mo, false)
+	vm.globals[module] = v
+	return INTERPRET_OK
 }
 
 func (vm *VM) createList(frame *CallFrame) {
@@ -1191,4 +1243,17 @@ func (vm *VM) stringMultiply(s string, x int) Value {
 		rv += s
 	}
 	return makeObjectValue(makeStringObject(rv), false)
+}
+
+func getPath(args []string, module string) string {
+	if len(args) == 0 {
+		return module
+	}
+	path := args[0]
+	if strings.Contains(path, "/") {
+		list := strings.Split(path, "/")
+		searchPath := list[0 : len(list)-1]
+		return strings.Join(searchPath, "/") + "/" + module
+	}
+	return module
 }
