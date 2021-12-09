@@ -74,10 +74,10 @@ func (c *Chunk) writeOpCode(b uint8, line int) {
 func (c *Chunk) addConstant(v Value) uint8 {
 
 	// if constant is already in list, reuse it
-	ok, idx := c.inConstants(v)
-	if ok {
-		return idx
-	}
+	//ok, idx := c.inConstants(v)
+	//if ok {
+	//	return idx
+	//}
 	c.constants = append(c.constants, v)
 	return uint8(len(c.constants) - 1)
 }
