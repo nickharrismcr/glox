@@ -10,6 +10,17 @@ var DebugPrintCode = false
 func (c *Chunk) disassemble(name string) {
 
 	fmt.Printf("=== %s ===\n", name)
+	idx := 0
+	s := ""
+	for {
+		constant := c.constants[idx]
+		s = s + fmt.Sprintf("[ %s ]", constant.String())
+		idx++
+		if idx == len(c.constants) {
+			break
+		}
+	}
+	fmt.Println(s)
 	offset := 0
 	for {
 		instr := c.code[offset]
