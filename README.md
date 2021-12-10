@@ -2,6 +2,9 @@
 
 **Bob Nystroms clox bytecode interpreter implemented in Go**
 
+# TODO
+- fix class access in imported module  ( func / var access seems ok )
+
 Cop out : GC is handled by the Go runtime.  
 
 **Additions to vanilla Lox:**

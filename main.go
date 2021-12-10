@@ -26,6 +26,7 @@ func main() {
 	if opts.debug {
 		lox.DebugPrintCode = true
 		lox.DebugTraceExecution = true
+		lox.DebugShowGlobals = true
 		runFile("dbg.lox", vm)
 		os.Exit(0)
 	}
@@ -95,6 +96,7 @@ func handleArgs(opts *Options) {
 			case "--debug":
 				lox.DebugPrintCode = true
 				lox.DebugTraceExecution = true
+				lox.DebugShowGlobals = true
 			case "--repl":
 				opts.doRepl = true
 			default:

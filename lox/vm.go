@@ -39,6 +39,7 @@ type VM struct {
 	lastGC       time.Time
 	openUpValues *UpvalueObject // head of list
 	args         []string
+	modules      map[string]bool
 }
 
 //------------------------------------------------------------------------------------------
@@ -55,6 +56,7 @@ func NewVM() *VM {
 		lastGC:       time.Now(),
 		openUpValues: nil,
 		args:         []string{},
+		modules:      map[string]bool{},
 	}
 	vm.resetStack()
 	vm.defineBuiltIns()
@@ -204,8 +206,8 @@ func (vm *VM) invoke(name Value, argCount int) bool {
 		instance := receiver.(ObjectValue).asInstance()
 		return vm.invokeFromClass(instance.class, name, argCount)
 	case OBJECT_MODULE:
-		fmt.Printf("module property call %s", name.String())
-		// TODO make this work!
+		module := receiver.(ObjectValue).asModule()
+		return vm.invokeFromModule(module, name, argCount)
 	default:
 		vm.runTimeError("Invalid use of '.' operator")
 		return false
@@ -221,6 +223,16 @@ func (vm *VM) invokeFromClass(class *ClassObject, name Value, argCount int) bool
 		return false
 	}
 	return vm.call(method.(ObjectValue).asClosure(), argCount)
+}
+
+func (vm *VM) invokeFromModule(module *ModuleObject, name Value, argCount int) bool {
+	n := getStringValue(name)
+	fn, ok := module.globals[n]
+	if !ok {
+		vm.runTimeError("Undefined module property '%s'.", n)
+		return false
+	}
+	return vm.call(fn.(ObjectValue).asClosure(), argCount)
 }
 
 func (vm *VM) bindMethod(class *ClassObject, name string) bool {
@@ -331,6 +343,9 @@ Loop:
 		inst := vm.getCode()[frame.ip]
 
 		if DebugTraceExecution {
+			if DebugShowGlobals {
+				vm.showGlobals()
+			}
 			vm.stackTrace()
 			_ = frame.closure.function.chunk.disassembleInstruction(inst, frame.ip)
 		}
@@ -469,24 +484,34 @@ Loop:
 
 			v := vm.peek(0)
 			ov, ok := v.(ObjectValue)
-			if !ok || !ov.isInstanceObject() {
-				vm.runTimeError("Only instances have properties.")
+			if !ok {
+				vm.runTimeError("Property not found.")
 				break Loop
 			}
 
-			instance := getInstanceObjectValue(v)
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			nv := frame.closure.function.chunk.constants[idx]
 			name := getStringValue(nv)
-			if v, ok := instance.fields[name]; ok {
-				vm.pop()
-				vm.push(v)
-			} else {
-				if !vm.bindMethod(instance.class, name) {
-					break Loop
-				}
 
+			switch ot := ov.value.(type) {
+			case *InstanceObject:
+				if v, ok := ot.fields[name]; ok {
+					vm.pop()
+					vm.push(v)
+				} else {
+					if !vm.bindMethod(ot.class, name) {
+						break Loop
+					}
+				}
+			case *ModuleObject:
+				if v, ok := ot.globals[name]; ok {
+					vm.pop()
+					vm.push(v)
+				}
+			default:
+				vm.runTimeError("Property not found.")
+				break Loop
 			}
 
 		case OP_SET_PROPERTY:
@@ -494,18 +519,28 @@ Loop:
 			val := vm.peek(0)
 			v := vm.peek(1)
 			ov, ok := v.(ObjectValue)
-			if !ok || !ov.isInstanceObject() {
-				vm.runTimeError("Only instances have fields.")
+			if !ok {
+				vm.runTimeError("Property not found.")
 				break Loop
 			}
-			instance := getInstanceObjectValue(v)
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			name := getStringValue(frame.closure.function.chunk.constants[idx])
-			instance.fields[name] = val
-			tmp := vm.pop()
-			vm.pop()
-			vm.push(tmp)
+			switch ot := ov.value.(type) {
+			case *InstanceObject:
+				ot.fields[name] = val
+				tmp := vm.pop()
+				vm.pop()
+				vm.push(tmp)
+			case *ModuleObject:
+				ot.globals[name] = val
+				tmp := vm.pop()
+				vm.pop()
+				vm.push(tmp)
+			default:
+				vm.runTimeError("Property not found.")
+				break Loop
+			}
 
 		case OP_EQUAL:
 			// pop 2 stack values, stack top = boolean
@@ -679,7 +714,12 @@ Loop:
 			frame.ip++
 			mv := frame.closure.function.chunk.constants[idx]
 			module := mv.(ObjectValue).asString()
-			if vm.importModule(module) == INTERPRET_COMPILE_ERROR {
+			// if already imported do nothing
+			if ok := vm.modules[module]; ok {
+				continue
+			}
+			status := vm.importModule(module)
+			if status == INTERPRET_COMPILE_ERROR {
 				return INTERPRET_COMPILE_ERROR, makeNilValue()
 			}
 
@@ -754,22 +794,24 @@ func (vm *VM) importModule(module string) InterpretResult {
 	// this will be placed in the current vm globals with name = <module>.
 	// functions, classes and variables in this module will be accessible in the current
 	// script using <module>.<item>
-	//
+
+	// module code needs to be run on import?  where will this place vars/funcs/classes in module? locals?
 	// opcodes INVOKE,SET_PROPERTY, GET_PROPERTY need to handle module receivers
 
 	searchPath := getPath(vm.args, module) + ".lox"
-	fmt.Println(searchPath)
+
 	bytes, err := ioutil.ReadFile(searchPath)
 	if err != nil {
 		fmt.Printf("Could not find module %s.", searchPath)
 		os.Exit(1)
 	}
-	function := vm.compile(string(bytes))
-	if function == nil {
-		return INTERPRET_COMPILE_ERROR
+	subvm := NewVM()
+	res, _ := subvm.Interpret(string(bytes))
+	if res != INTERPRET_OK {
+		return res
 	}
-	closure := makeClosureObject(function)
-	mo := makeModuleObject(module, closure)
+
+	mo := makeModuleObject(module, subvm.globals)
 	v := makeObjectValue(mo, false)
 	vm.globals[module] = v
 	return INTERPRET_OK

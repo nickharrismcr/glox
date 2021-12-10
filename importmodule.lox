@@ -1,0 +1,16 @@
+func module_func(a){
+    print "mf1 "+str(a);
+} 
+
+func module_func2(a){
+    print "mf2 "+str(a);
+}
+
+var module_var;
+var module_var2 = "mv2";
+
+class module_class {
+    init() {
+        print "module_class init";
+    }
+}

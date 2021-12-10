@@ -508,15 +508,15 @@ func (f *BoundMethodObject) String() string {
 
 //-------------------------------------------------------------------------------------------
 type ModuleObject struct {
-	name     string
-	function *ClosureObject
+	name    string
+	globals map[string]Value
 }
 
-func makeModuleObject(name string, function *ClosureObject) *ModuleObject {
+func makeModuleObject(name string, globals map[string]Value) *ModuleObject {
 
 	return &ModuleObject{
-		name:     name,
-		function: function,
+		name:    name,
+		globals: globals,
 	}
 }
 
@@ -529,7 +529,7 @@ func (ModuleObject) getType() ObjectType {
 
 func (f *ModuleObject) String() string {
 
-	return f.name
+	return fmt.Sprintf("<module %s>", f.name)
 }
 
 //-------------------------------------------------------------------------------------------

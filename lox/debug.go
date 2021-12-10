@@ -6,19 +6,20 @@ import (
 
 var DebugTraceExecution = false
 var DebugPrintCode = false
+var DebugShowGlobals = false
 
 func (c *Chunk) disassemble(name string) {
 
 	fmt.Printf("=== %s ===\n", name)
-	idx := 0
+	idx := -1
 	s := ""
 	for {
-		constant := c.constants[idx]
-		s = s + fmt.Sprintf("[ %s ]", constant.String())
 		idx++
 		if idx == len(c.constants) {
 			break
 		}
+		constant := c.constants[idx]
+		s = s + fmt.Sprintf("[ %s ]", constant.String())
 	}
 	fmt.Println(s)
 	offset := 0
@@ -210,6 +211,16 @@ func (c *Chunk) invokeInstruction(name string, offset int) int {
 	value := c.constants[constant]
 	fmt.Printf("  %s\n", value.String())
 	return offset + 3
+}
+
+func (vm *VM) showGlobals() {
+	fmt.Printf("globals:\n")
+	for k, v := range vm.globals {
+		if v.String() == "<built-in>" {
+			continue
+		}
+		fmt.Printf("%s -> %s  \n", k, v)
+	}
 }
 
 func (vm *VM) stackTrace() {

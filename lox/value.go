@@ -369,6 +369,11 @@ func (ov ObjectValue) asInstance() *InstanceObject {
 	return ov.value.(*InstanceObject)
 }
 
+func (ov ObjectValue) asModule() *ModuleObject {
+
+	return ov.value.(*ModuleObject)
+}
+
 func (ov ObjectValue) asBoundMethod() *BoundMethodObject {
 
 	return ov.value.(*BoundMethodObject)
