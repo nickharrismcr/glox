@@ -30,6 +30,7 @@ type CallFrame struct {
 }
 
 type VM struct {
+	script       string
 	stack        [STACK_MAX]Value
 	stackTop     int
 	globals      map[string]Value
@@ -48,9 +49,10 @@ type VM struct {
 //------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------
 
-func NewVM() *VM {
+func NewVM(script string) *VM {
 
 	vm := &VM{
+		script:       script,
 		globals:      map[string]Value{},
 		starttime:    time.Now(),
 		lastGC:       time.Now(),
@@ -116,7 +118,7 @@ func (vm *VM) runTimeError(format string, args ...interface{}) {
 
 		fmt.Fprintf(os.Stderr, "[line %d] in ", function.chunk.lines[frame.ip])
 		if function.name.get() == "" {
-			fmt.Fprintf(os.Stderr, "script \n")
+			fmt.Fprintf(os.Stderr, "%s \n", vm.script)
 		} else {
 			fmt.Fprintf(os.Stderr, "%s \n", function.name.get())
 		}
@@ -508,6 +510,9 @@ Loop:
 				if val, ok := ot.globals[name]; ok {
 					vm.pop()
 					vm.push(val)
+				} else {
+					vm.runTimeError("Property %s not found.", name)
+					break Loop
 				}
 			default:
 				vm.runTimeError("Property not found.")
@@ -719,8 +724,8 @@ Loop:
 				continue
 			}
 			status := vm.importModule(module)
-			if status == INTERPRET_COMPILE_ERROR {
-				return INTERPRET_COMPILE_ERROR, makeNilValue()
+			if status != INTERPRET_OK {
+				return status, makeNilValue()
 			}
 
 		case OP_STR:
@@ -787,25 +792,15 @@ Loop:
 }
 
 func (vm *VM) importModule(module string) InterpretResult {
-	// this function should look for a file named <module>.lox in the same directory
-	// as the lox file being currently interpreted. if not found an interpreter error will be thrown.
-	// if found, it should compile the contents of the file and create a ModuleObject
-	// which contains the bytecode and constants of the compiled lox.
-	// this will be placed in the current vm globals with name = <module>.
-	// functions, classes and variables in this module will be accessible in the current
-	// script using <module>.<item>
-
-	// module code needs to be run on import?  where will this place vars/funcs/classes in module? locals?
-	// opcodes INVOKE,SET_PROPERTY, GET_PROPERTY need to handle module receivers
 
 	searchPath := getPath(vm.args, module) + ".lox"
-
 	bytes, err := ioutil.ReadFile(searchPath)
 	if err != nil {
 		fmt.Printf("Could not find module %s.", searchPath)
 		os.Exit(1)
 	}
-	subvm := NewVM()
+	subvm := NewVM(searchPath)
+	subvm.SetArgs(vm.args)
 	res, _ := subvm.Interpret(string(bytes))
 	if res != INTERPRET_OK {
 		return res
@@ -1296,6 +1291,11 @@ func getPath(args []string, module string) string {
 		list := strings.Split(path, "/")
 		searchPath := list[0 : len(list)-1]
 		return strings.Join(searchPath, "/") + "/" + module
+	}
+	if strings.Contains(path, "\\") {
+		list := strings.Split(path, "\\")
+		searchPath := list[0 : len(list)-1]
+		return strings.Join(searchPath, "\\") + "\\" + module
 	}
 	return module
 }

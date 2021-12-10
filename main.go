@@ -9,38 +9,34 @@ import (
 )
 
 type Options struct {
-	debug  bool
-	doRepl bool
-	args   []string
+	debugger bool
+	doRepl   bool
+	args     []string
 }
 
 func main() {
 
 	fmt.Println("GLOX:")
-	vm := lox.NewVM()
 
 	opts := &Options{
-		debug: false,
+		debugger: false,
 	}
 
-	if opts.debug {
-		lox.DebugPrintCode = true
-		lox.DebugTraceExecution = true
-		lox.DebugShowGlobals = true
-		runFile("dbg.lox", vm)
+	if opts.debugger {
+		runFile([]string{"dbg.lox"})
 		os.Exit(0)
 	}
 
 	handleArgs(opts)
 
 	if opts.doRepl {
+		vm := lox.NewVM("repl")
 		repl(vm)
 	} else {
 		if len(opts.args) == 0 {
 			usage()
 		}
-		vm.SetArgs(opts.args)
-		runFile(opts.args[0], vm)
+		runFile(opts.args)
 	}
 }
 
@@ -65,7 +61,11 @@ func repl(vm *lox.VM) {
 	}
 }
 
-func runFile(path string, vm *lox.VM) {
+func runFile(args []string) {
+
+	path := args[0]
+	vm := lox.NewVM(path)
+	vm.SetArgs(args)
 
 	bytes, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -96,7 +96,7 @@ func handleArgs(opts *Options) {
 			case "--debug":
 				lox.DebugPrintCode = true
 				lox.DebugTraceExecution = true
-				lox.DebugShowGlobals = true
+				lox.DebugShowGlobals = false
 			case "--repl":
 				opts.doRepl = true
 			default:

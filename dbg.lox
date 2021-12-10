@@ -1,4 +1,0 @@
-import importmodule;
-
-importmodule.module_func();
-

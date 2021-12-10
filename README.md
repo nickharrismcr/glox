@@ -2,12 +2,13 @@
 
 **Bob Nystroms clox bytecode interpreter implemented in Go**
 
-# TODO
-- fix class access in imported module  ( func / var access seems ok )
-
 Cop out : GC is handled by the Go runtime.  
 
 **Additions to vanilla Lox:**
+
+module imports
+
+- e.g import othermodule;
 
 immutable vars e.g  const a = 1;
 
@@ -68,8 +69,6 @@ list item del  (del a[b] or del a[b:c] - i.e assign nil )
 
 
 # MEDIUM
-
-module imports / dot for imported module access ( e.g sys.argv ) 
  
 marshal / unmarshal code chunks to/from .lxc files 
 

@@ -1,0 +1,9 @@
+GLOX:
+mf1 hello
+mf2 hello
+nil
+2mv2
+mv1
+setclass
+b=2mv2
+nil
