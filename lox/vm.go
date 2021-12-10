@@ -232,7 +232,7 @@ func (vm *VM) invokeFromModule(module *ModuleObject, name Value, argCount int) b
 		vm.runTimeError("Undefined module property '%s'.", n)
 		return false
 	}
-	return vm.call(fn.(ObjectValue).asClosure(), argCount)
+	return vm.callValue(fn, argCount)
 }
 
 func (vm *VM) bindMethod(class *ClassObject, name string) bool {
@@ -496,18 +496,18 @@ Loop:
 
 			switch ot := ov.value.(type) {
 			case *InstanceObject:
-				if v, ok := ot.fields[name]; ok {
+				if val, ok := ot.fields[name]; ok {
 					vm.pop()
-					vm.push(v)
+					vm.push(val)
 				} else {
 					if !vm.bindMethod(ot.class, name) {
 						break Loop
 					}
 				}
 			case *ModuleObject:
-				if v, ok := ot.globals[name]; ok {
+				if val, ok := ot.globals[name]; ok {
 					vm.pop()
-					vm.push(v)
+					vm.push(val)
 				}
 			default:
 				vm.runTimeError("Property not found.")
