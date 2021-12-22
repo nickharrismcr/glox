@@ -63,6 +63,13 @@ func repl(vm *lox.VM) {
 
 func runFile(args []string) {
 
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println(r)
+			os.Exit(1)
+		}
+	}()
+
 	path := args[0]
 	vm := lox.NewVM(path)
 	vm.SetArgs(args)

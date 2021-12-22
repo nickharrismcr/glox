@@ -40,7 +40,6 @@ type VM struct {
 	lastGC       time.Time
 	openUpValues *UpvalueObject // head of list
 	args         []string
-	modules      map[string]bool
 }
 
 //------------------------------------------------------------------------------------------
@@ -48,6 +47,8 @@ type VM struct {
 //------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------
+
+var globalModules = map[string]bool{}
 
 func NewVM(script string) *VM {
 
@@ -58,7 +59,6 @@ func NewVM(script string) *VM {
 		lastGC:       time.Now(),
 		openUpValues: nil,
 		args:         []string{},
-		modules:      map[string]bool{},
 	}
 	vm.resetStack()
 	vm.defineBuiltIns()
@@ -720,8 +720,8 @@ Loop:
 			mv := frame.closure.function.chunk.constants[idx]
 			module := mv.(ObjectValue).asString()
 			// if already imported do nothing
-			if ok := vm.modules[module]; ok {
-				continue
+			if ok := globalModules[module]; ok {
+				panic("Import cycle detected.")
 			}
 			status := vm.importModule(module)
 			if status != INTERPRET_OK {
@@ -793,6 +793,7 @@ Loop:
 
 func (vm *VM) importModule(module string) InterpretResult {
 
+	globalModules[module] = true
 	searchPath := getPath(vm.args, module) + ".lox"
 	bytes, err := ioutil.ReadFile(searchPath)
 	if err != nil {
@@ -809,6 +810,7 @@ func (vm *VM) importModule(module string) InterpretResult {
 	mo := makeModuleObject(module, subvm.globals)
 	v := makeObjectValue(mo, false)
 	vm.globals[module] = v
+
 	return INTERPRET_OK
 }
 
