@@ -159,34 +159,33 @@ func (vm *VM) peek(dist int) Value {
 
 func (vm *VM) callValue(callee Value, argCount int) bool {
 
-	if ov, ok := callee.(ObjectValue); ok {
-
-		if ov.isClosureObject() {
+	if callee.Type == VAL_OBJ {
+		if callee.isClosureObject() {
 			return vm.call(getClosureObjectValue(callee), argCount)
 
-		} else if ov.isBuiltInFunction() {
-			nf := ov.asBuiltIn()
+		} else if callee.isBuiltInFunction() {
+			nf := callee.asBuiltIn()
 			res := nf.function(argCount, vm.stackTop-argCount, vm)
-			if _, ok := res.(NilValue); ok { // error occurred
+			if res.Type == VAL_NIL { // error occurred
 				return false
 			}
 			vm.stackTop -= argCount + 1
 			vm.push(res)
 			return true
 
-		} else if ov.isClassObject() {
-			class := ov.asClass()
+		} else if callee.isClassObject() {
+			class := callee.asClass()
 			vm.stack[vm.stackTop-argCount-1] = makeObjectValue(makeInstanceObject(class), false)
 			if initialiser, ok := class.methods["init"]; ok {
-				return vm.call(initialiser.(ObjectValue).asClosure(), argCount)
+				return vm.call(initialiser.asClosure(), argCount)
 			} else if argCount != 0 {
 				vm.runTimeError("Expected 0 arguments but got %d", argCount)
 				return false
 			}
 			return true
 
-		} else if ov.isBoundMethodObject() {
-			bound := ov.asBoundMethod()
+		} else if callee.isBoundMethodObject() {
+			bound := callee.asBoundMethod()
 			vm.stack[vm.stackTop-argCount-1] = bound.receiver
 			return vm.call(bound.method, argCount)
 		}
@@ -198,17 +197,16 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 // optimised method call/module access
 func (vm *VM) invoke(name Value, argCount int) bool {
 	receiver := vm.peek(argCount)
-	ov, ok := receiver.(ObjectValue)
-	if !ok {
+	if receiver.Type != VAL_OBJ {
 		vm.runTimeError("Invalid use of '.' operator")
 		return false
 	}
-	switch ov.value.getType() {
+	switch receiver.Obj.getType() {
 	case OBJECT_INSTANCE:
-		instance := receiver.(ObjectValue).asInstance()
+		instance := receiver.asInstance()
 		return vm.invokeFromClass(instance.class, name, argCount)
 	case OBJECT_MODULE:
-		module := receiver.(ObjectValue).asModule()
+		module := receiver.asModule()
 		return vm.invokeFromModule(module, name, argCount)
 	default:
 		vm.runTimeError("Invalid use of '.' operator")
@@ -224,7 +222,7 @@ func (vm *VM) invokeFromClass(class *ClassObject, name Value, argCount int) bool
 		vm.runTimeError("Undefined method '%s'.", n)
 		return false
 	}
-	return vm.call(method.(ObjectValue).asClosure(), argCount)
+	return vm.call(method.asClosure(), argCount)
 }
 
 func (vm *VM) invokeFromModule(module *ModuleObject, name Value, argCount int) bool {
@@ -243,7 +241,7 @@ func (vm *VM) bindMethod(class *ClassObject, name string) bool {
 		vm.runTimeError("Undefined property '%s'", name)
 		return false
 	}
-	bound := makeBoundMethodObject(vm.peek(0), method.(ObjectValue).asClosure())
+	bound := makeBoundMethodObject(vm.peek(0), method.asClosure())
 	vm.pop()
 	vm.push(makeObjectValue(bound, false))
 	return true
@@ -282,7 +280,7 @@ func (vm *VM) closeUpvalues(last int) {
 
 func (vm *VM) defineMethod(name string) {
 	method := vm.peek(0)
-	class := vm.peek(1).(ObjectValue).asClass()
+	class := vm.peek(1).asClass()
 	class.methods[name] = method
 	vm.pop()
 }
@@ -318,13 +316,13 @@ func (vm *VM) readShort() uint16 {
 
 func (vm *VM) isFalsey(v Value) bool {
 
-	switch v := v.(type) {
-	case FloatValue:
-		return v.get() == 0
-	case NilValue:
+	switch v.Type {
+	case VAL_FLOAT:
+		return v.Float == 0
+	case VAL_NIL:
 		return true
-	case BooleanValue:
-		return !v.get()
+	case VAL_BOOL:
+		return !v.Bool
 	}
 	return true
 }
@@ -485,8 +483,7 @@ Loop:
 		case OP_GET_PROPERTY:
 
 			v := vm.peek(0)
-			ov, ok := v.(ObjectValue)
-			if !ok {
+			if v.Type != VAL_OBJ {
 				vm.runTimeError("Property not found.")
 				break Loop
 			}
@@ -496,8 +493,9 @@ Loop:
 			nv := frame.closure.function.chunk.constants[idx]
 			name := getStringValue(nv)
 
-			switch ot := ov.value.(type) {
-			case *InstanceObject:
+			switch v.Obj.getType() {
+			case OBJECT_INSTANCE:
+				ot := v.Obj.(*InstanceObject)
 				if val, ok := ot.fields[name]; ok {
 					vm.pop()
 					vm.push(val)
@@ -506,7 +504,8 @@ Loop:
 						break Loop
 					}
 				}
-			case *ModuleObject:
+			case OBJECT_MODULE:
+				ot := v.Obj.(*ModuleObject)
 				if val, ok := ot.globals[name]; ok {
 					vm.pop()
 					vm.push(val)
@@ -523,21 +522,22 @@ Loop:
 
 			val := vm.peek(0)
 			v := vm.peek(1)
-			ov, ok := v.(ObjectValue)
-			if !ok {
+			if v.Type != VAL_OBJ {
 				vm.runTimeError("Property not found.")
 				break Loop
 			}
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			name := getStringValue(frame.closure.function.chunk.constants[idx])
-			switch ot := ov.value.(type) {
-			case *InstanceObject:
+			switch v.Obj.getType() {
+			case OBJECT_INSTANCE:
+				ot := v.Obj.(*InstanceObject)
 				ot.fields[name] = val
 				tmp := vm.pop()
 				vm.pop()
 				vm.push(tmp)
-			case *ModuleObject:
+			case OBJECT_MODULE:
+				ot := v.Obj.(*ModuleObject)
 				ot.globals[name] = val
 				tmp := vm.pop()
 				vm.pop()
@@ -568,7 +568,7 @@ Loop:
 		case OP_PRINT:
 			// compiler ensures stack top will be a string object via OP_STR
 			v := vm.pop()
-			fmt.Printf("%s\n", v.(ObjectValue).asString())
+			fmt.Printf("%s\n", v.asString())
 
 		case OP_POP:
 			// pop 1 stack value and discard
@@ -673,10 +673,10 @@ Loop:
 
 		case OP_INHERIT:
 			superclass := vm.peek(1)
-			subclass := vm.peek(0).(ObjectValue).asClass()
-			if vo, ok := superclass.(ObjectValue); ok {
-				if vo.isClassObject() {
-					sco := vo.asClass()
+			subclass := vm.peek(0).asClass()
+			if superclass.Type == VAL_OBJ {
+				if superclass.isClassObject() {
+					sco := superclass.asClass()
 					for k, v := range sco.methods {
 						subclass.methods[k] = v
 					}
@@ -693,7 +693,7 @@ Loop:
 			frame.ip++
 			name := getStringValue(frame.closure.function.chunk.constants[idx])
 			v := vm.pop()
-			superclass := v.(ObjectValue).asClass()
+			superclass := v.asClass()
 
 			if !vm.bindMethod(superclass, name) {
 				return INTERPRET_RUNTIME_ERROR, makeNilValue()
@@ -705,7 +705,7 @@ Loop:
 			method := frame.closure.function.chunk.constants[idx]
 			argCount := vm.getCode()[frame.ip]
 			frame.ip++
-			superclass := vm.pop().(ObjectValue).asClass()
+			superclass := vm.pop().asClass()
 			if !vm.invokeFromClass(superclass, method, int(argCount)) {
 				return INTERPRET_RUNTIME_ERROR, makeNilValue()
 			}
@@ -718,7 +718,7 @@ Loop:
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			mv := frame.closure.function.chunk.constants[idx]
-			module := mv.(ObjectValue).asString()
+			module := mv.asString()
 			// if already imported do nothing
 			if ok := globalModules[module]; ok {
 				panic("Import cycle detected.")
@@ -733,16 +733,18 @@ Loop:
 			// replace stack top with string repr of it
 			v := vm.peek(0) // may be needed for class toString so don't pop now
 			s := v.String()
-			switch v.(type) {
-			case ObjectValue:
-				ov := v.(ObjectValue).get()
-				switch ot := ov.(type) {
-				case StringObject:
+			switch v.Type {
+			case VAL_OBJ:
+				ov := v.Obj
+				switch ov.getType() {
+				case OBJECT_STRING:
+					ot := ov.(StringObject)
 					s = ot.get()
-				case *InstanceObject:
+				case OBJECT_INSTANCE:
 					// get string repr of class by calling asString() method if present
+					ot := ov.(*InstanceObject)
 					if toString, ok := ot.class.methods["toString"]; ok {
-						vm.call(toString.(ObjectValue).asClosure(), 0)
+						vm.call(toString.asClosure(), 0)
 						frame = vm.frame()
 						continue
 					}
@@ -844,21 +846,18 @@ func (vm *VM) createDict(frame *CallFrame) {
 
 func (vm *VM) index(frame *CallFrame) bool {
 
-	var nv IntValue
-	var ov ObjectValue
-	var ok bool
-
 	v := vm.pop()
-
 	sv := vm.pop()
-	if ov, ok = sv.(ObjectValue); ok {
-		switch t := ov.value.(type) {
-		case *ListObject:
-			if nv, ok = v.(IntValue); !ok {
+
+	if sv.Type == VAL_OBJ {
+		switch sv.Obj.getType() {
+		case OBJECT_LIST:
+			if v.Type != VAL_INT {
 				vm.runTimeError("Subscript must be an integer.")
 				return false
 			}
-			idx := nv.get()
+			t := sv.Obj.(*ListObject)
+			idx := v.Int
 			lo, err := t.index(idx)
 			if err != nil {
 				vm.runTimeError(err.Error())
@@ -867,12 +866,13 @@ func (vm *VM) index(frame *CallFrame) bool {
 			vm.push(lo)
 			return true
 
-		case StringObject:
-			if nv, ok = v.(IntValue); !ok {
+		case OBJECT_STRING:
+			if v.Type != VAL_INT {
 				vm.runTimeError("Subscript must be an integer.")
 				return false
 			}
-			idx := nv.get()
+			idx := v.Int
+			t := sv.Obj.(*StringObject)
 			so, err := t.index(idx)
 			if err != nil {
 				vm.runTimeError(err.Error())
@@ -881,9 +881,10 @@ func (vm *VM) index(frame *CallFrame) bool {
 			vm.push(so)
 			return true
 
-		case *DictObject:
+		case OBJECT_DICT:
 
 			key := v.String()
+			t := sv.Obj.(*DictObject)
 			so, err := t.get(key)
 			if err != nil {
 				vm.runTimeError(err.Error())
@@ -904,11 +905,12 @@ func (vm *VM) indexAssign() bool {
 	rhs := vm.pop()
 	index := vm.pop()
 	collection := vm.peek(0)
-	if cv, ok := collection.(ObjectValue); ok {
-		switch t := cv.value.(type) {
-		case *ListObject:
-			if nv, ok := index.(IntValue); ok {
-				if err := t.assignToIndex(nv.value, rhs); err != nil {
+	if collection.Type == VAL_OBJ {
+		switch collection.Obj.getType() {
+		case OBJECT_LIST:
+			if index.Type == VAL_INT {
+				t := collection.Obj.(*ListObject)
+				if err := t.assignToIndex(index.Int, rhs); err != nil {
 					vm.runTimeError(err.Error())
 					return false
 				} else {
@@ -918,7 +920,8 @@ func (vm *VM) indexAssign() bool {
 				vm.runTimeError("List index must an integer.")
 				return false
 			}
-		case *DictObject:
+		case OBJECT_DICT:
+			t := collection.Obj.(*DictObject)
 			t.set(index.String(), rhs)
 			return true
 		}
@@ -929,38 +932,32 @@ func (vm *VM) indexAssign() bool {
 
 func (vm *VM) slice() bool {
 
-	var nv_from IntValue
-	var nv_to IntValue
-	var ov ObjectValue
 	var from_idx, to_idx int
-	var ok bool
 
 	v_to := vm.pop()
-	if _, ok = v_to.(NilValue); ok {
+	if v_to.Type == VAL_NIL {
 		to_idx = -1
-	} else if nv_to, ok = v_to.(IntValue); !ok {
+	} else if v_to.Type != VAL_INT {
 		vm.runTimeError("Invalid type in slice expression.")
 		return false
 	} else {
-		to_idx = nv_to.get()
+		to_idx = v_to.Int
 	}
 
 	v_from := vm.pop()
-	if _, ok = v_from.(NilValue); ok {
+	if v_from.Type == VAL_NIL {
 		from_idx = 0
-	} else if nv_from, ok = v_from.(IntValue); !ok {
+	} else if v_from.Type != VAL_INT {
 		vm.runTimeError("Invalid type in slice expression.")
 		return false
 	} else {
-		from_idx = nv_from.get()
+		from_idx = v_from.Int
 	}
 
 	lv := vm.pop()
-	if ov, ok = lv.(ObjectValue); ok {
-
-		if ov.get().getType() == OBJECT_LIST {
-
-			lo, err := ov.get().(*ListObject).slice(from_idx, to_idx)
+	if lv.Type == VAL_OBJ {
+		if lv.Obj.getType() == OBJECT_LIST {
+			lo, err := lv.Obj.(*ListObject).slice(from_idx, to_idx)
 			if err != nil {
 				vm.runTimeError(err.Error())
 				return false
@@ -968,8 +965,8 @@ func (vm *VM) slice() bool {
 			vm.push(lo)
 			return true
 
-		} else if ov.get().getType() == OBJECT_STRING {
-			so, err := ov.get().(StringObject).slice(from_idx, to_idx)
+		} else if lv.Obj.getType() == OBJECT_STRING {
+			so, err := lv.Obj.(StringObject).slice(from_idx, to_idx)
 			if err != nil {
 				vm.runTimeError(err.Error())
 				return false
@@ -984,40 +981,36 @@ func (vm *VM) slice() bool {
 
 func (vm *VM) sliceAssign() bool {
 
-	var nv_from IntValue
-	var nv_to IntValue
-	var ov ObjectValue
 	var from_idx, to_idx int
-	var ok bool
 
 	val := vm.pop() // RHS
 
 	v_to := vm.pop()
-	if _, ok = v_to.(NilValue); ok {
+	if v_to.Type == VAL_NIL {
 		to_idx = -1
-	} else if nv_to, ok = v_to.(IntValue); !ok {
+	} else if v_to.Type != VAL_INT {
 		vm.runTimeError("Invalid type in slice expression.")
 		return false
 	} else {
-		to_idx = nv_to.get()
+		to_idx = v_to.Int
 	}
 
 	v_from := vm.pop()
-	if _, ok = v_from.(NilValue); ok {
+	if v_from.Type == VAL_NIL {
 		from_idx = 0
-	} else if nv_from, ok = v_from.(IntValue); !ok {
+	} else if v_from.Type != VAL_INT {
 		vm.runTimeError("Invalid type in slice expression.")
 		return false
 	} else {
-		from_idx = nv_from.get()
+		from_idx = v_from.Int
 	}
 
 	lv := vm.peek(0)
-	if ov, ok = lv.(ObjectValue); ok {
+	if lv.Type == VAL_OBJ {
 
-		if ov.get().getType() == OBJECT_LIST {
+		if lv.Obj.getType() == OBJECT_LIST {
 
-			err := ov.get().(*ListObject).assignToSlice(from_idx, to_idx, val)
+			err := lv.Obj.(*ListObject).assignToSlice(from_idx, to_idx, val)
 			if err != nil {
 				vm.runTimeError(err.Error())
 				return false
@@ -1035,57 +1028,53 @@ func (vm *VM) binaryAdd() bool {
 	v2 := vm.pop()
 	v1 := vm.pop()
 
-	switch v2.(type) {
-	case IntValue:
-		switch v1.(type) {
-		case IntValue:
-			vm.push(makeIntValue(asInt(v1)+asInt(v2), false))
+	switch v2.Type {
+	case VAL_INT:
+		switch v1.Type {
+		case VAL_INT:
+			vm.push(makeIntValue(v1.Int+v2.Int, false))
 			return true
-		case FloatValue:
-			vm.push(makeFloatValue(asFloat(v1)+asFloat(v2), false))
-			return true
-		}
-		vm.runTimeError("Addition type mismatch")
-		return false
-
-	case FloatValue:
-		switch v1.(type) {
-		case IntValue:
-			vm.push(makeFloatValue(asFloat(v1)+asFloat(v2), false))
-			return true
-		case FloatValue:
-			vm.push(makeFloatValue(asFloat(v1)+asFloat(v2), false))
+		case VAL_FLOAT:
+			vm.push(makeFloatValue(v1.Float+float64(v2.Int), false))
 			return true
 		}
 		vm.runTimeError("Addition type mismatch")
 		return false
 
-	case ObjectValue:
-		o2 := v2.(ObjectValue)
-		ov2 := o2.value
+	case VAL_FLOAT:
+		switch v1.Type {
+		case VAL_INT:
+			vm.push(makeFloatValue(float64(v1.Int)+v2.Float, false))
+			return true
+		case VAL_FLOAT:
+			vm.push(makeFloatValue(v1.Float+v2.Float, false))
+			return true
+		}
+		vm.runTimeError("Addition type mismatch")
+		return false
+
+	case VAL_OBJ:
+		ov2 := v2.Obj
 		switch ov2.getType() {
 		case OBJECT_STRING:
-
-			o1, ok := v1.(ObjectValue)
-			if !ok {
+			if v1.Type != VAL_OBJ {
 				vm.runTimeError("Addition type mismatch")
 				return false
 			}
-			ov1 := o1.value
+			ov1 := v1.Obj
 			if ov1.getType() == OBJECT_STRING {
-				so := makeStringObject(o1.asString() + o2.asString())
+				so := makeStringObject(v1.asString() + v2.asString())
 				vm.push(makeObjectValue(so, false))
 				return true
 			}
 
 		case OBJECT_LIST:
 
-			o1, ok := v1.(ObjectValue)
-			if !ok {
+			if v1.Type != VAL_OBJ {
 				vm.runTimeError("Addition type mismatch")
 				return false
 			}
-			ov1 := o1.value
+			ov1 := v1.Obj
 			if ov1.getType() == OBJECT_LIST {
 				lo := ov1.(*ListObject).add(ov2.(*ListObject))
 				vm.push(makeObjectValue(lo, false))
@@ -1102,24 +1091,24 @@ func (vm *VM) binarySubtract() bool {
 	v2 := vm.pop()
 	v1 := vm.pop()
 
-	switch v2.(type) {
-	case IntValue:
-		switch v1.(type) {
-		case IntValue:
-			vm.push(makeIntValue(asInt(v1)-asInt(v2), false))
+	switch v2.Type {
+	case VAL_INT:
+		switch v1.Type {
+		case VAL_INT:
+			vm.push(makeIntValue(v1.Int-v2.Int, false))
 			return true
-		case FloatValue:
-			vm.push(makeFloatValue(asFloat(v1)-asFloat(v2), false))
+		case VAL_FLOAT:
+			vm.push(makeFloatValue(v1.Float-float64(v2.Int), false))
 			return true
 		}
 
-	case FloatValue:
-		switch v1.(type) {
-		case IntValue:
-			vm.push(makeFloatValue(asFloat(v1)-asFloat(v2), false))
+	case VAL_FLOAT:
+		switch v1.Type {
+		case VAL_INT:
+			vm.push(makeFloatValue(float64(v1.Int)-v2.Float, false))
 			return true
-		case FloatValue:
-			vm.push(makeFloatValue(asFloat(v1)-asFloat(v2), false))
+		case VAL_FLOAT:
+			vm.push(makeFloatValue(v1.Float-v2.Float, false))
 			return true
 		}
 	}
@@ -1133,43 +1122,43 @@ func (vm *VM) binaryMultiply() bool {
 	v2 := vm.pop()
 	v1 := vm.pop()
 
-	switch vt2 := v2.(type) {
-	case IntValue:
-		switch vt1 := v1.(type) {
-		case IntValue:
-			vm.push(makeIntValue(vt1.get()*vt2.get(), false))
-		case FloatValue:
-			vm.push(makeFloatValue(vt1.get()*asFloat(v2), false))
-		case ObjectValue:
-			if !vt1.isStringObject() {
+	switch v2.Type {
+	case VAL_INT:
+		switch v1.Type {
+		case VAL_INT:
+			vm.push(makeIntValue(v1.Int*v2.Int, false))
+		case VAL_FLOAT:
+			vm.push(makeFloatValue(v1.Float*float64(v2.Int), false))
+		case VAL_OBJ:
+			if !v1.isStringObject() {
 				vm.runTimeError("Invalid operand for multiply.")
 				return false
 			}
-			s := vt1.get().(StringObject).get()
-			vm.push(vm.stringMultiply(s, vt2.get()))
+			s := v1.Obj.(StringObject).get()
+			vm.push(vm.stringMultiply(s, v2.Int))
 		default:
 			vm.runTimeError("Invalid operand for multiply.")
 			return false
 		}
-	case FloatValue:
-		switch vt1 := v1.(type) {
-		case IntValue:
-			vm.push(makeFloatValue(asFloat(vt1)*vt2.get(), false))
-		case FloatValue:
-			vm.push(makeFloatValue(vt1.get()*vt2.get(), false))
+	case VAL_FLOAT:
+		switch v1.Type {
+		case VAL_INT:
+			vm.push(makeFloatValue(float64(v1.Int)*v2.Float, false))
+		case VAL_FLOAT:
+			vm.push(makeFloatValue(v1.Float*v2.Float, false))
 		default:
 			vm.runTimeError("Invalid operand for multiply.")
 			return false
 		}
-	case ObjectValue:
-		if !v2.(ObjectValue).isStringObject() {
+	case VAL_OBJ:
+		if !v2.isStringObject() {
 			vm.runTimeError("Invalid operand for multiply.")
 			return false
 		}
-		switch vt1 := v1.(type) {
-		case IntValue:
-			s := vt2.asString()
-			vm.push(vm.stringMultiply(s, vt1.get()))
+		switch v1.Type {
+		case VAL_INT:
+			s := v2.asString()
+			vm.push(vm.stringMultiply(s, v1.Int))
 		default:
 			vm.runTimeError("Invalid operand for multiply.")
 			return false
@@ -1188,24 +1177,24 @@ func (vm *VM) binaryDivide() bool {
 	v2 := vm.pop()
 	v1 := vm.pop()
 
-	switch v2.(type) {
-	case IntValue:
-		switch v1.(type) {
-		case IntValue:
-			vm.push(makeIntValue(asInt(v1)/asInt(v2), false))
+	switch v2.Type {
+	case VAL_INT:
+		switch v1.Type {
+		case VAL_INT:
+			vm.push(makeIntValue(v1.Int/v2.Int, false))
 			return true
-		case FloatValue:
-			vm.push(makeFloatValue(asFloat(v1)/asFloat(v2), false))
+		case VAL_FLOAT:
+			vm.push(makeFloatValue(v1.Float/float64(v2.Int), false))
 			return true
 		}
 
-	case FloatValue:
-		switch v1.(type) {
-		case IntValue:
-			vm.push(makeFloatValue(asFloat(v1)/asFloat(v2), false))
+	case VAL_FLOAT:
+		switch v1.Type {
+		case VAL_INT:
+			vm.push(makeFloatValue(float64(v1.Int)/v2.Float, false))
 			return true
-		case FloatValue:
-			vm.push(makeFloatValue(asFloat(v1)/asFloat(v2), false))
+		case VAL_FLOAT:
+			vm.push(makeFloatValue(v1.Float/v2.Float, false))
 			return true
 		}
 	}
@@ -1219,11 +1208,11 @@ func (vm *VM) binaryModulus() bool {
 	v2 := vm.pop()
 	v1 := vm.pop()
 
-	if !isInt(v1) || !isInt(v2) {
+	if !v1.isInt() || !v2.isInt() {
 		vm.runTimeError("Operands must be integers")
 		return false
 	}
-	vm.push(makeIntValue(v1.(IntValue).get()%v2.(IntValue).get(), false))
+	vm.push(makeIntValue(v1.Int%v2.Int, false))
 
 	return true
 }
@@ -1231,13 +1220,13 @@ func (vm *VM) binaryModulus() bool {
 func (vm *VM) unaryNegate() bool {
 
 	v := vm.pop()
-	switch nv := v.(type) {
-	case FloatValue:
-		f := nv.get()
+	switch v.Type {
+	case VAL_FLOAT:
+		f := v.Float
 		vm.push(makeFloatValue(-f, false))
 		return true
-	case IntValue:
-		f := nv.get()
+	case VAL_INT:
+		f := v.Int
 		vm.push(makeIntValue(-f, false))
 		return true
 	}
@@ -1252,12 +1241,12 @@ func (vm *VM) binaryGreater() bool {
 	v2 := vm.pop()
 	v1 := vm.pop()
 
-	if !isNumber(v1) || !isNumber(v2) {
+	if !v1.isNumber() || !v2.isNumber() {
 		vm.runTimeError("Operands must be numbers")
 		return false
 	}
 
-	vm.push(makeBooleanValue(asFloat(v1) > asFloat(v2), false))
+	vm.push(makeBooleanValue(v1.asFloat() > v2.asFloat(), false))
 	return true
 }
 
@@ -1266,12 +1255,12 @@ func (vm *VM) binaryLess() bool {
 	v2 := vm.pop()
 	v1 := vm.pop()
 
-	if !isNumber(v1) || !isNumber(v2) {
+	if !v1.isNumber() || !v2.isNumber() {
 		vm.runTimeError("Operands must be numbers")
 		return false
 	}
 
-	vm.push(makeBooleanValue(asFloat(v1) < asFloat(v2), false))
+	vm.push(makeBooleanValue(v1.asFloat() < v2.asFloat(), false))
 	return true
 }
 

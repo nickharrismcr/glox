@@ -27,8 +27,8 @@ func keysBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	}
 	val := vm.stack[arg_stackptr]
 
-	switch val := val.(type) {
-	case ObjectValue:
+	switch val.Type {
+	case VAL_OBJ:
 		if val.isDictObject() {
 			d := val.asDict()
 			return d.keys()
@@ -49,14 +49,14 @@ func joinBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	val := vm.stack[arg_stackptr]
 	err = "Argument 2 to join must be a string."
 
-	switch val := val.(type) {
-	case ObjectValue:
+	switch val.Type {
+	case VAL_OBJ:
 		if val.isListObject() {
 			err = "Argument 2 to join must be a string."
 			l := val.asList()
 			val2 := vm.stack[arg_stackptr+1]
-			switch val2 := val2.(type) {
-			case ObjectValue:
+			switch val2.Type {
+			case VAL_OBJ:
 				if val2.isStringObject() {
 					rv, errj := l.join(val2.asString())
 					if errj == nil {
@@ -90,11 +90,11 @@ func floatBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	}
 	arg := vm.stack[arg_stackptr]
 
-	switch arg.(type) {
-	case FloatValue:
+	switch arg.Type {
+	case VAL_FLOAT:
 		return arg
-	case IntValue:
-		return makeFloatValue(float64(asInt(arg)), false)
+	case VAL_INT:
+		return makeFloatValue(float64(arg.Int), false)
 	}
 	vm.runTimeError("Argument must be number.")
 	return makeNilValue()
@@ -108,11 +108,11 @@ func intBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	}
 	arg := vm.stack[arg_stackptr]
 
-	switch arg.(type) {
-	case IntValue:
+	switch arg.Type {
+	case VAL_INT:
 		return arg
-	case FloatValue:
-		return makeIntValue(int(asFloat(arg)), false)
+	case VAL_FLOAT:
+		return makeIntValue(int(arg.Float), false)
 	}
 	vm.runTimeError("Argument must be number.")
 	return makeNilValue()
@@ -132,17 +132,16 @@ func lenBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 		return makeNilValue()
 	}
 	val := vm.stack[arg_stackptr]
-	vobj, ok := val.(ObjectValue)
-	if !ok {
+	if val.Type != VAL_OBJ {
 		vm.runTimeError("Invalid argument type to len.")
 		return makeNilValue()
 	}
-	switch vobj.get().getType() {
+	switch val.Obj.getType() {
 	case OBJECT_STRING:
-		s := vobj.get().(StringObject).get()
+		s := val.Obj.(StringObject).get()
 		return makeIntValue(len(s), false)
 	case OBJECT_LIST:
-		l := vobj.get().(*ListObject).get()
+		l := val.Obj.(*ListObject).get()
 		return makeIntValue(len(l), false)
 	}
 	vm.runTimeError("Invalid argument type to len.")
@@ -158,12 +157,11 @@ func sinBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	}
 	vnum := vm.stack[arg_stackptr]
 
-	vn, ok := vnum.(FloatValue)
-	if !ok {
+	if vnum.Type != VAL_FLOAT {
 		vm.runTimeError("Invalid argument type to sin.")
 		return makeNilValue()
 	}
-	n := vn.get()
+	n := vnum.Float
 	return makeFloatValue(math.Sin(n), false)
 }
 
@@ -176,12 +174,12 @@ func cosBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	}
 	vnum := vm.stack[arg_stackptr]
 
-	vn, ok := vnum.(FloatValue)
-	if !ok {
+	if vnum.Type != VAL_FLOAT {
+
 		vm.runTimeError("Invalid argument type to cos.")
 		return makeNilValue()
 	}
-	n := vn.get()
+	n := vnum.Float
 	return makeFloatValue(math.Cos(n), false)
 }
 
@@ -193,16 +191,15 @@ func appendBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 		return makeNilValue()
 	}
 	val := vm.stack[arg_stackptr]
-	vobj, ok := val.(ObjectValue)
-	if !ok {
+	if val.Type != VAL_OBJ {
 		vm.runTimeError("Argument 1 to append must be list.")
 		return makeNilValue()
 	}
 	val2 := vm.stack[arg_stackptr+1]
-	switch vobj.get().getType() {
+	switch val.Obj.getType() {
 
 	case OBJECT_LIST:
-		l := vobj.get().(*ListObject)
+		l := val.Obj.(*ListObject)
 		l.append(val2)
 		return val
 	}

@@ -76,7 +76,7 @@ func runFile(args []string) {
 
 	bytes, err := ioutil.ReadFile(path)
 	if err != nil {
-		fmt.Printf("Could not open file %s.", path)
+		fmt.Printf("Could not open file %s : %s", path, err)
 		os.Exit(1)
 	}
 	status, result := vm.Interpret(string(bytes))

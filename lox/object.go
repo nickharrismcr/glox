@@ -30,7 +30,7 @@ type Object interface {
 
 type BuiltInFn func(argCount int, args_stackptr int, vm *VM) Value
 
-//-------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
 type FunctionObject struct {
 	arity        int
 	chunk        *Chunk
@@ -62,7 +62,7 @@ func (f *FunctionObject) String() string {
 	return fmt.Sprintf("<fn %s>", f.name)
 }
 
-//-------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
 type ClosureObject struct {
 	function     *FunctionObject
 	upvalues     []*UpvalueObject
@@ -94,7 +94,7 @@ func (f *ClosureObject) String() string {
 	return f.function.String()
 }
 
-//-------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
 type UpvalueObject struct {
 	location *Value
 	slot     int
@@ -124,7 +124,7 @@ func (f *UpvalueObject) String() string {
 	return "Upvalue"
 }
 
-//-------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
 type StringObject struct {
 	chars *string
 }
@@ -160,7 +160,7 @@ func (s StringObject) index(ix int) (Value, error) {
 	}
 
 	if ix < 0 || ix > len(s.get()) {
-		return NilValue{}, errors.New("list subscript out of range")
+		return makeNilValue(), errors.New("list subscript out of range")
 	}
 
 	so := makeStringObject(string(s.get()[ix]))
@@ -177,11 +177,11 @@ func (s StringObject) slice(from_ix, to_ix int) (Value, error) {
 	}
 
 	if to_ix < 0 || to_ix > len(s.get()) {
-		return NilValue{}, errors.New("list subscript out of range")
+		return makeNilValue(), errors.New("list subscript out of range")
 	}
 
 	if from_ix < 0 || from_ix > len(s.get()) {
-		return NilValue{}, errors.New("list subscript out of range")
+		return makeNilValue(), errors.New("list subscript out of range")
 	}
 
 	so := makeStringObject(s.get()[from_ix:to_ix])
@@ -292,7 +292,7 @@ func (o *ListObject) index(ix int) (Value, error) {
 	}
 
 	if ix < 0 || ix >= len(o.get()) {
-		return NilValue{}, errors.New("list subscript out of range")
+		return makeNilValue(), errors.New("list subscript out of range")
 	}
 
 	return o.get()[ix], nil
@@ -308,15 +308,15 @@ func (o *ListObject) slice(from_ix, to_ix int) (Value, error) {
 	}
 
 	if to_ix < 0 || to_ix > len(o.items) {
-		return NilValue{}, errors.New("list subscript out of range")
+		return makeNilValue(), errors.New("list subscript out of range")
 	}
 
 	if from_ix < 0 || from_ix > len(o.items) {
-		return NilValue{}, errors.New("list subscript out of range")
+		return makeNilValue(), errors.New("list subscript out of range")
 	}
 
 	if from_ix > to_ix {
-		return NilValue{}, errors.New("invalid slice indices")
+		return makeNilValue(), errors.New("invalid slice indices")
 	}
 
 	lo := makeListObject(o.items[from_ix:to_ix])
@@ -358,9 +358,10 @@ func (o *ListObject) assignToSlice(from_ix, to_ix int, val Value) error {
 		return errors.New("invalid slice indices")
 	}
 
-	if ov, ok := val.(ObjectValue); ok {
-		if ov.isListObject() {
-			lv := ov.asList()
+	if val.Type == VAL_OBJ {
+
+		if val.isListObject() {
+			lv := val.asList()
 			tmp := []Value{}
 			tmp = append(tmp, o.items[0:from_ix]...)
 			tmp = append(tmp, lv.items...)
@@ -480,7 +481,7 @@ func (f *InstanceObject) String() string {
 	return fmt.Sprintf("<instance %s>", f.class.name.get())
 }
 
-//-------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
 type BoundMethodObject struct {
 	receiver Value
 	method   *ClosureObject
@@ -506,7 +507,7 @@ func (f *BoundMethodObject) String() string {
 	return f.method.String()
 }
 
-//-------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
 type ModuleObject struct {
 	name    string
 	globals map[string]Value

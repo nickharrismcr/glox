@@ -4,90 +4,102 @@ import (
 	"fmt"
 )
 
-type Value interface {
-	isVal()
-	String() string
-	Immutable() bool
+type ValueType int
+
+const (
+	VAL_NIL ValueType = iota
+	VAL_BOOL
+	VAL_INT
+	VAL_FLOAT
+	VAL_OBJ
+)
+
+type Value struct {
+	Type  ValueType
+	Int   int
+	Float float64
+	Bool  bool
+	Obj   Object // your Object interface stays polymorphic
+	Immut bool
 }
 
 func immutable(v Value) Value {
 
-	switch v := v.(type) {
-	case IntValue:
-		return makeIntValue(v.get(), true)
-	case FloatValue:
-		return makeFloatValue(v.get(), true)
-	case BooleanValue:
-		return makeBooleanValue(v.get(), true)
-	case ObjectValue:
-		return makeObjectValue(v.get(), true)
+	switch v.Type {
+	case VAL_INT:
+		return makeIntValue(v.Int, true)
+	case VAL_FLOAT:
+		return makeFloatValue(v.Float, true)
+	case VAL_BOOL:
+		return makeBooleanValue(v.Bool, true)
+	case VAL_OBJ:
+		return makeObjectValue(v.Obj, true)
 	}
 	return makeNilValue()
 }
 
 func mutable(v Value) Value {
-
-	switch v := v.(type) {
-	case IntValue:
-		return makeIntValue(v.get(), false)
-	case FloatValue:
-		return makeFloatValue(v.get(), false)
-	case BooleanValue:
-		return makeBooleanValue(v.get(), false)
-	case ObjectValue:
-		return makeObjectValue(v.get(), false)
+	switch v.Type {
+	case VAL_INT:
+		return makeIntValue(v.Int, false)
+	case VAL_FLOAT:
+		return makeFloatValue(v.Float, false)
+	case VAL_BOOL:
+		return makeBooleanValue(v.Bool, false)
+	case VAL_OBJ:
+		return makeObjectValue(v.Obj, false)
 	}
 	return makeNilValue()
 }
 
 func valuesEqual(a, b Value, typesMustMatch bool) bool {
 
-	switch a.(type) {
-	case BooleanValue:
-		switch b.(type) {
-		case BooleanValue:
-			return a.(BooleanValue).get() == b.(BooleanValue).get()
+	switch a.Type {
+	case VAL_BOOL:
+		switch b.Type {
+		case VAL_BOOL:
+			return a.Bool == b.Bool
 		default:
 			return false
 		}
 
-	case IntValue:
-		switch b.(type) {
-		case IntValue:
-			return a.(IntValue).get() == b.(IntValue).get()
-		case FloatValue:
+	case VAL_INT:
+		switch b.Type {
+		case VAL_INT:
+			return a.Int == b.Int
+		case VAL_FLOAT:
 			if typesMustMatch {
 				return false
 			}
-			return float64(a.(IntValue).get()) == b.(FloatValue).get()
+			return float64(a.Int) == b.Float
 		default:
 			return false
 		}
-	case FloatValue:
-		switch b.(type) {
-		case IntValue:
+	case VAL_FLOAT:
+		switch b.Type {
+		case VAL_INT:
 			if typesMustMatch {
 				return false
 			}
-			return a.(FloatValue).get() == float64(b.(IntValue).get())
-		case FloatValue:
-			return a.(FloatValue).get() == b.(FloatValue).get()
+			return a.Float == float64(b.Int)
+		case VAL_FLOAT:
+			return a.Float == b.Float
 		default:
 			return false
 		}
 
-	case NilValue:
-		switch b.(type) {
-		case NilValue:
+	case VAL_NIL:
+		switch b.Type {
+		case VAL_NIL:
 			return true
 		default:
 			return false
 		}
-	case ObjectValue:
-		switch b.(type) {
-		case ObjectValue:
-			av := a.(ObjectValue).value
-			bv := b.(ObjectValue).value
+	case VAL_OBJ:
+		switch b.Type {
+		case VAL_OBJ:
+			av := a.Obj
+			bv := b.Obj
 			if av.getType() != bv.getType() {
 				return false
 			}
@@ -99,54 +111,45 @@ func valuesEqual(a, b Value, typesMustMatch bool) bool {
 	return false
 }
 
-func isInt(v Value) bool {
-	if _, ok := v.(IntValue); ok {
-		return true
+func (v Value) isInt() bool    { return v.Type == VAL_INT }
+func (v Value) isFloat() bool  { return v.Type == VAL_FLOAT }
+func (v Value) isNumber() bool { return v.Type == VAL_INT || v.Type == VAL_FLOAT }
+func (v Value) isNil() bool    { return v.Type == VAL_NIL }
+func (v Value) isObj() bool    { return v.Type == VAL_OBJ }
+
+func (v Value) asFloat() float64 {
+	switch v.Type {
+	case VAL_INT:
+		return float64(v.Int)
+	case VAL_FLOAT:
+		return v.Float
+	default:
+		return 0.0
 	}
-	return false
 }
 
-func isNumber(v Value) bool {
-	switch v.(type) {
-	case IntValue:
-		return true
-	case FloatValue:
-		return true
+func (v Value) asInt() int {
+	switch v.Type {
+	case VAL_INT:
+		return v.Int
+	case VAL_FLOAT:
+		return int(v.Float)
+	default:
+		return 0
 	}
-	return false
-}
-
-func asFloat(v Value) float64 {
-	switch nv := v.(type) {
-	case IntValue:
-		return float64(nv.get())
-	case FloatValue:
-		return nv.get()
-	}
-	return 0.0
-}
-
-func asInt(v Value) int {
-	switch nv := v.(type) {
-	case IntValue:
-		return nv.get()
-	case FloatValue:
-		return int(nv.get())
-	}
-	return 0
 }
 
 func isString(v Value) bool {
-	switch v := v.(type) {
-	case ObjectValue:
-		return v.value.getType() == OBJECT_STRING
+	switch v.Type {
+	case VAL_OBJ:
+		return v.Obj.getType() == OBJECT_STRING
 	}
 	return false
 }
 
 func isObject(v Value) bool {
-	switch v.(type) {
-	case ObjectValue:
+	switch v.Type {
+	case VAL_OBJ:
 		return true
 	}
 	return false
@@ -154,269 +157,165 @@ func isObject(v Value) bool {
 
 func getStringValue(v Value) string {
 
-	return v.(ObjectValue).asString()
+	return v.asString()
 }
 
 func getFunctionObjectValue(v Value) *FunctionObject {
-	return v.(ObjectValue).asFunction()
+	return v.asFunction()
 }
 
 func getClosureObjectValue(v Value) *ClosureObject {
-	return v.(ObjectValue).asClosure()
+	return v.asClosure()
 }
 
 func getClassObjectValue(v Value) *ClassObject {
-	return v.(ObjectValue).asClass()
+	return v.asClass()
 }
 
 func getInstanceObjectValue(v Value) *InstanceObject {
-	return v.(ObjectValue).asInstance()
+	return v.asInstance()
+}
+
+// ================================================================================================
+func makeIntValue(i int, immut bool) Value {
+	return Value{Type: VAL_INT, Int: i, Immut: immut}
+}
+
+func makeFloatValue(f float64, immut bool) Value {
+	return Value{Type: VAL_FLOAT, Float: f, Immut: immut}
+}
+
+func makeBooleanValue(b bool, immut bool) Value {
+	return Value{Type: VAL_BOOL, Bool: b, Immut: immut}
+}
+
+func makeNilValue() Value {
+	return Value{Type: VAL_NIL}
+}
+
+func makeObjectValue(obj Object, immut bool) Value {
+	return Value{Type: VAL_OBJ, Obj: obj, Immut: immut}
+}
+
+func (v Value) String() string {
+	switch v.Type {
+	case VAL_INT:
+		return fmt.Sprintf("%d", v.Int)
+	case VAL_FLOAT:
+		return fmt.Sprintf("%g", v.Float)
+	case VAL_BOOL:
+		if v.Bool {
+			return "true"
+		}
+		return "false"
+	case VAL_NIL:
+		return "nil"
+	case VAL_OBJ:
+		return v.Obj.String()
+	default:
+		return "<unknown>"
+	}
+}
+
+func (v Value) Immutable() bool {
+	return v.Immut
 }
 
 //================================================================================================
-type IntValue struct {
-	value     int
-	immutable bool
+
+func (v Value) isStringObject() bool {
+
+	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_STRING
 }
 
-func (IntValue) isVal() {}
+func (v Value) asString() string {
 
-func makeIntValue(v int, immutable bool) IntValue {
-
-	return IntValue{
-		value:     v,
-		immutable: immutable,
-	}
+	return v.Obj.(StringObject).get()
 }
 
-func (nv IntValue) Immutable() bool {
+func (v Value) asList() *ListObject {
 
-	return nv.immutable
+	return v.Obj.(*ListObject)
 }
 
-func (nv IntValue) get() int {
+func (v Value) asDict() *DictObject {
 
-	return nv.value
+	return v.Obj.(*DictObject)
 }
 
-func (nv IntValue) String() string {
+func (v Value) asFunction() *FunctionObject {
 
-	return fmt.Sprintf("%d", nv.value)
+	return v.Obj.(*FunctionObject)
 }
 
-//================================================================================================
-type FloatValue struct {
-	value     float64
-	immutable bool
+func (v Value) asBuiltIn() *BuiltInObject {
+
+	return v.Obj.(*BuiltInObject)
 }
 
-func (FloatValue) isVal() {}
+func (v Value) asClosure() *ClosureObject {
 
-func makeFloatValue(v float64, immutable bool) FloatValue {
-
-	return FloatValue{
-		value:     v,
-		immutable: immutable,
-	}
+	return v.Obj.(*ClosureObject)
 }
 
-func (nv FloatValue) Immutable() bool {
+func (v Value) asClass() *ClassObject {
 
-	return nv.immutable
+	return v.Obj.(*ClassObject)
 }
 
-func (nv FloatValue) get() float64 {
+func (v Value) asInstance() *InstanceObject {
 
-	return nv.value
+	return v.Obj.(*InstanceObject)
 }
 
-func (nv FloatValue) String() string {
+func (v Value) asModule() *ModuleObject {
 
-	return fmt.Sprintf("%f", nv.value)
+	return v.Obj.(*ModuleObject)
 }
 
-//================================================================================================
-type BooleanValue struct {
-	value     bool
-	immutable bool
+func (v Value) asBoundMethod() *BoundMethodObject {
+
+	return v.Obj.(*BoundMethodObject)
 }
 
-func (BooleanValue) isVal() {}
+func (v Value) isListObject() bool {
 
-func makeBooleanValue(v bool, immutable bool) BooleanValue {
-
-	return BooleanValue{
-		value:     v,
-		immutable: immutable,
-	}
+	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_LIST
 }
 
-func (nv BooleanValue) Immutable() bool {
+func (v Value) isDictObject() bool {
 
-	return nv.immutable
+	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_DICT
 }
 
-func (nv BooleanValue) get() bool {
+func (v Value) isFunctionObject() bool {
 
-	return nv.value
+	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_FUNCTION
 }
 
-func (nv BooleanValue) String() string {
+func (v Value) isBuiltInFunction() bool {
 
-	if nv.value {
-		return "true"
-	}
-	return "false"
+	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_NATIVE
 }
 
-//================================================================================================
-type NilValue struct {
-	value bool
+func (v Value) isClosureObject() bool {
+
+	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_CLOSURE
 }
 
-func (NilValue) isVal() {}
+func (v Value) isClassObject() bool {
 
-func makeNilValue() NilValue {
-
-	return NilValue{
-		value: false,
-	}
+	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_CLASS
 }
 
-func (nv NilValue) Immutable() bool {
+func (v Value) isInstanceObject() bool {
 
-	return false
+	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_INSTANCE
 }
 
-func (nv NilValue) String() string {
+func (v Value) isBoundMethodObject() bool {
 
-	return "nil"
-}
-
-//================================================================================================
-type ObjectValue struct {
-	value     Object
-	immutable bool
-}
-
-func (ObjectValue) isVal() {}
-
-func makeObjectValue(obj Object, immutable bool) ObjectValue {
-
-	return ObjectValue{
-		value:     obj,
-		immutable: immutable,
-	}
-}
-
-func (nv ObjectValue) Immutable() bool {
-
-	return nv.immutable
-}
-
-func (ov ObjectValue) get() Object {
-
-	return ov.value
-}
-
-func (ov ObjectValue) String() string {
-
-	return ov.value.String()
-}
-
-func (ov ObjectValue) isStringObject() bool {
-
-	return ov.value.getType() == OBJECT_STRING
-}
-
-func (ov ObjectValue) asString() string {
-
-	return ov.value.(StringObject).get()
-}
-
-func (ov ObjectValue) asList() *ListObject {
-
-	return ov.value.(*ListObject)
-}
-
-func (ov ObjectValue) asDict() *DictObject {
-
-	return ov.value.(*DictObject)
-}
-
-func (ov ObjectValue) asFunction() *FunctionObject {
-
-	return ov.value.(*FunctionObject)
-}
-
-func (ov ObjectValue) asBuiltIn() *BuiltInObject {
-
-	return ov.value.(*BuiltInObject)
-}
-
-func (ov ObjectValue) asClosure() *ClosureObject {
-
-	return ov.value.(*ClosureObject)
-}
-
-func (ov ObjectValue) asClass() *ClassObject {
-
-	return ov.value.(*ClassObject)
-}
-
-func (ov ObjectValue) asInstance() *InstanceObject {
-
-	return ov.value.(*InstanceObject)
-}
-
-func (ov ObjectValue) asModule() *ModuleObject {
-
-	return ov.value.(*ModuleObject)
-}
-
-func (ov ObjectValue) asBoundMethod() *BoundMethodObject {
-
-	return ov.value.(*BoundMethodObject)
-}
-
-func (ov ObjectValue) isListObject() bool {
-
-	return ov.value.getType() == OBJECT_LIST
-}
-
-func (ov ObjectValue) isDictObject() bool {
-
-	return ov.value.getType() == OBJECT_DICT
-}
-
-func (ov ObjectValue) isFunctionObject() bool {
-
-	return ov.value.getType() == OBJECT_FUNCTION
-}
-
-func (ov ObjectValue) isBuiltInFunction() bool {
-
-	return ov.value.getType() == OBJECT_NATIVE
-}
-
-func (ov ObjectValue) isClosureObject() bool {
-
-	return ov.value.getType() == OBJECT_CLOSURE
-}
-
-func (ov ObjectValue) isClassObject() bool {
-
-	return ov.value.getType() == OBJECT_CLASS
-}
-
-func (ov ObjectValue) isInstanceObject() bool {
-
-	return ov.value.getType() == OBJECT_INSTANCE
-}
-
-func (ov ObjectValue) isBoundMethodObject() bool {
-
-	return ov.value.getType() == OBJECT_BOUNDMETHOD
+	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_BOUNDMETHOD
 }
 
 //================================================================================================
