@@ -1,4 +1,4 @@
-import sys, glob,subprocess,difflib
+import sys, glob,subprocess,difflib,argparse
  
 
 def run(fname):
@@ -41,17 +41,15 @@ def process(fname,write,verbose):
 write=False
 verbose=False
 
-if len(sys.argv) > 1 :
-    if sys.argv[1] in ("--read","--write"):
-        write=True if sys.argv[1]=="--write" else False
-        del(sys.argv[1])
-    if sys.argv[1] == "--verbose":
-        verbose=True
-        del(sys.argv[1])
+parser = argparse.ArgumentParser(description="Process .lox files with optional write and verbose modes.")
+parser.add_argument("file", nargs="?", help="File to process (optional; if not provided, all lox/*lox files will be processed)")
+parser.add_argument("--write", action="store_true", help="Enable write mode")
+parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 
-if len(sys.argv) > 1 :
-    process(sys.argv[1],write,verbose)
+args = parser.parse_args()
+
+if args.file:
+    process(args.file, args.write, args.verbose)
 else:
     for f in glob.glob("lox/*lox"):
-        process(f,write,verbose)
-    
+        process(f, args.write, args.verbose)

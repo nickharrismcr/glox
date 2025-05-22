@@ -872,7 +872,7 @@ func (vm *VM) index(frame *CallFrame) bool {
 				return false
 			}
 			idx := v.Int
-			t := sv.Obj.(*StringObject)
+			t := sv.Obj.(StringObject)
 			so, err := t.index(idx)
 			if err != nil {
 				vm.runTimeError(err.Error())
