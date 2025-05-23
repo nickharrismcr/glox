@@ -17,6 +17,7 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("int", intBuiltIn)
 	vm.defineBuiltIn("join", joinBuiltIn)
 	vm.defineBuiltIn("keys", keysBuiltIn)
+	vm.defineBuiltIn("lox_mandel", mandelBuiltIn)
 }
 
 func keysBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
@@ -205,4 +206,46 @@ func appendBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	}
 	vm.runTimeError("Argument 1 to append must be list.")
 	return makeNilValue()
+}
+
+func mandelBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+
+	if argCount != 5 {
+		vm.runTimeError("Invalid argument count to lox_mandel.")
+		return makeNilValue()
+	}
+	ii := vm.stack[arg_stackptr]
+	jj := vm.stack[arg_stackptr+1]
+	h := vm.stack[arg_stackptr+2]
+	w := vm.stack[arg_stackptr+3]
+	max := vm.stack[arg_stackptr+4]
+
+	if ii.Type != VAL_INT || jj.Type != VAL_INT || h.Type != VAL_INT || w.Type != VAL_INT || max.Type != VAL_INT {
+		vm.runTimeError("Invalid arguments to lox_mandel")
+		return makeNilValue()
+	}
+
+	i := ii.Int
+	j := jj.Int
+	height := h.Int
+	width := w.Int
+	maxIteration := max.Int
+
+	x0 := 4.0*(float64(i)-float64(height)/2)/float64(height) - 1.0
+	y0 := 4.0 * (float64(j) - float64(width)/2) / float64(width)
+	x, y := 0.0, 0.0
+	iteration := 0
+
+	for (x*x+y*y <= 4) && (iteration < maxIteration) {
+		xtemp := x*x - y*y + x0
+		y = 2*x*y + y0
+		x = xtemp
+		iteration++
+	}
+
+	if iteration == maxIteration {
+		return makeIntValue(0, false)
+	}
+	return makeIntValue(iteration, false)
+
 }
