@@ -1,0 +1,1 @@
+go build -o glox.exe main.go
