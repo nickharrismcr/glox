@@ -330,18 +330,21 @@ func (vm *VM) isFalsey(v Value) bool {
 // main interpreter loop
 func (vm *VM) run() (InterpretResult, Value) {
 
+	counter := 0
 	frame := vm.frame()
 Loop:
 	for {
 
-		elapsed := time.Since(vm.lastGC).Seconds()
-
-		if elapsed > GC_COLLECT_INTERVAL {
-			runtime.GC()
-			vm.lastGC = time.Now()
+		counter++
+		if counter%100000 == 0 {
+			elapsed := time.Since(vm.lastGC).Seconds()
+			if elapsed > GC_COLLECT_INTERVAL {
+				runtime.GC()
+				vm.lastGC = time.Now()
+			}
 		}
-		inst := vm.getCode()[frame.ip]
 
+		inst := vm.getCode()[frame.ip]
 		if DebugTraceExecution {
 			if DebugShowGlobals {
 				vm.showGlobals()
