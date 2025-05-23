@@ -1,0 +1,20 @@
+//fast mandelbrot 
+
+func mandelbrot() {
+
+    const max_iteration = 2000;
+    const width=180;
+    const height=120;
+    const chars=" .,-:;i+hHM$*#@";
+
+    for (var i = 0; i < height; i=i+1) { 
+        var line="";
+        for (var j = 0; j < width; j=j+1) { 
+            var iters=lox_mandel(i,j,height,width,max_iteration);
+            var idx=iters%15;
+            line=line+chars[idx:idx+1];
+        }
+        print line;
+    }
+}
+mandelbrot();
