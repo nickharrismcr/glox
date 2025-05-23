@@ -10,10 +10,18 @@ def basename(path):
  
     if "\\" in path:
         return path.split("\\")[-1]
+    if "/" in path:
+        return path.split("/")[-1]
     return path
+
+def format(s):
+
+    return "\n".join([ str(i.decode("ascii")) for i in s.splitlines() ])
+
 
 def process(fname,write,verbose):
 
+    print(basename(fname))
     pipe = run(fname)
     testdatafile="output/%s.testoutput" % basename(fname)
  
@@ -30,11 +38,16 @@ def process(fname,write,verbose):
                 print ("Test %-30s : PASS" % fname)
             else:
                 print ("Test %-30s : FAIL" % fname)
-                if verbose:
-                    a=res[0].decode('ascii').splitlines()
-                    b=data.decode('ascii').splitlines()
-                    d=difflib.context_diff(a,b)
-                    print ('\n'.join(d))
+            if verbose:
+               
+                print (f'expecting:\n'+format(data))
+                print (f'got:\n'+format(res[0]))
+
+                a=res[0].decode('ascii').splitlines()
+                b=data.decode('ascii').splitlines()
+    
+                d=difflib.context_diff(a,b)
+                print ('\n'.join(d))
 
 ######################################################################################################################
 
