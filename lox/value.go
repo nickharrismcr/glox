@@ -111,6 +111,24 @@ func valuesEqual(a, b Value, typesMustMatch bool) bool {
 	return false
 }
 
+func (v Value) typeName() string {
+
+	switch v.Type {
+
+	case VAL_INT:
+		return "i"
+	case VAL_FLOAT:
+		return "f"
+	case VAL_BOOL:
+		return "b"
+	case VAL_OBJ:
+		return "o"
+	case VAL_NIL:
+		return "n"
+	}
+	return ""
+}
+
 func (v Value) isInt() bool    { return v.Type == VAL_INT }
 func (v Value) isFloat() bool  { return v.Type == VAL_FLOAT }
 func (v Value) isNumber() bool { return v.Type == VAL_INT || v.Type == VAL_FLOAT }

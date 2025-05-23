@@ -229,11 +229,11 @@ func (vm *VM) stackTrace() {
 	for i := 0; i < vm.stackTop; i++ {
 		v := vm.stack[i]
 		s := v.String()
-
+		t := v.typeName()
 		if v.Immutable() {
-			fmt.Printf("| %s(c) |", s)
+			fmt.Printf("| %s %s(c) |", t, s)
 		} else {
-			fmt.Printf("| %s |", s)
+			fmt.Printf("| %s %s |", t, s)
 		}
 	}
 	fmt.Printf("\n")
