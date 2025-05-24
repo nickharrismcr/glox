@@ -21,7 +21,7 @@ def format(s):
 
 def process(fname,write,verbose):
 
-    print(basename(fname))
+    
     pipe = run(fname)
     testdatafile="output/%s.testoutput" % basename(fname)
  

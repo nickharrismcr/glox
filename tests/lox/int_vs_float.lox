@@ -12,7 +12,7 @@ test(1.0,2);
 
 var a="test string";
 print a[1];
-print a[int(1.0)]
+print a[int(1.0)];
 
 print 1;
 print float(1);
