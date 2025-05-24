@@ -176,10 +176,14 @@ func (p *Parser) setRules() {
 		TOKEN_FOR:           {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_FUNC:          {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_IF:            {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_TRY:           {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_EXCEPT:        {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_FINALLY:       {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_NIL:           {prefix: literal, infix: nil, prec: PREC_NONE},
 		TOKEN_OR:            {prefix: nil, infix: or_, prec: PREC_OR},
 		TOKEN_PRINT:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_RETURN:        {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_RAISE:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_SUPER:         {prefix: super, infix: nil, prec: PREC_NONE},
 		TOKEN_THIS:          {prefix: this, infix: nil, prec: PREC_NONE},
 		TOKEN_TRUE:          {prefix: literal, infix: nil, prec: PREC_NONE},
@@ -252,6 +256,10 @@ func (p *Parser) statement() {
 		p.breakStatement()
 	} else if p.match(TOKEN_CONTINUE) {
 		p.continueStatement()
+	} else if p.match(TOKEN_TRY) {
+		p.tryExceptStatement()
+	} else if p.match(TOKEN_RAISE) {
+		p.raiseStatement()
 	} else if p.match(TOKEN_FOR) {
 		p.forStatement()
 	} else if p.match(TOKEN_IF) {
@@ -268,6 +276,40 @@ func (p *Parser) statement() {
 		p.expressionStatement()
 	}
 }
+
+func (p *Parser) tryExceptStatement() {
+
+	p.consume(TOKEN_LEFT_BRACE, "Expect left brace.")
+	exceptTry := p.emitTry()
+	p.beginScope()
+	p.block()
+	p.endScope()
+	endTryJump := p.emitJump(OP_END_TRY)
+	p.consume(TOKEN_EXCEPT, "Expect except.")
+	p.consume(TOKEN_IDENTIFIER, "Expect Exception type.")
+	idx := p.identifierConstant(p.previous)
+	p.patchTry(exceptTry)
+	p.consume(TOKEN_AS, "Expect as")
+	ev := p.parseVariable("Expect exception variable name.")
+	p.defineVariable(ev)
+	p.consume(TOKEN_LEFT_BRACE, "Expect left brace.")
+	p.emitByte(OP_EXCEPT)
+	p.emitByte(idx)
+	p.beginScope()
+	p.block()
+	p.endScope()
+	p.emitByte(OP_END_EXCEPT)
+	p.patchJump(endTryJump)
+
+}
+
+func (p *Parser) raiseStatement() {
+
+	p.expression() // this includes constructor calls
+	p.consume(TOKEN_SEMICOLON, "Expect ';' after throw expression.")
+	p.emitByte(OP_RAISE)
+}
+
 func (p *Parser) importStatement() {
 	c := 0
 	for {
@@ -652,6 +694,14 @@ func (p *Parser) emitJump(instr uint8) int {
 	return len(p.currentChunk().code) - 2
 }
 
+func (p *Parser) emitTry() int {
+
+	p.emitByte(OP_TRY)
+	p.emitByte(0xff)
+	p.emitByte(0xff)
+	return len(p.currentChunk().code) - 2
+}
+
 func (p *Parser) currentChunk() *Chunk {
 
 	return p.currentCompiler.function.chunk
@@ -1003,10 +1053,17 @@ func (p *Parser) patchJump(offset int) {
 
 }
 
+func (p *Parser) patchTry(offset int) {
+
+	address := len(p.currentChunk().code)
+	p.currentChunk().code[offset] = uint8((address >> 8) & 0xff)
+	p.currentChunk().code[offset+1] = uint8(address & 0xff)
+}
+
 func (p *Parser) makeConstant(value Value) uint8 {
 
 	constidx := p.currentChunk().addConstant(value)
-	if constidx > 255 {
+	if constidx > 254 {
 		p.error("Too many constants in one chunk")
 		return 0
 	}

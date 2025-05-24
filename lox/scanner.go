@@ -61,6 +61,11 @@ const (
 	TOKEN_CONTINUE
 	TOKEN_STR
 	TOKEN_IMPORT
+	TOKEN_TRY
+	TOKEN_EXCEPT
+	TOKEN_AS
+	TOKEN_FINALLY
+	TOKEN_RAISE
 )
 
 var keywords = map[string]TokenType{
@@ -85,6 +90,11 @@ var keywords = map[string]TokenType{
 	"continue": TOKEN_CONTINUE,
 	"str":      TOKEN_STR,
 	"import":   TOKEN_IMPORT,
+	"try":      TOKEN_TRY,
+	"except":   TOKEN_EXCEPT,
+	"finally":  TOKEN_FINALLY,
+	"raise":    TOKEN_RAISE,
+	"as":       TOKEN_AS,
 }
 
 type Scanner struct {

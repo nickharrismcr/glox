@@ -249,3 +249,6 @@ func mandelBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeIntValue(iteration, false)
 
 }
+
+// predefine an Exception class using Lox source - this gets prepended to the user source
+const ExceptionSource = `class Exception {init(msg) {this.msg = msg;this.name = "Exception";  }toString() {return this.msg;}}`

@@ -162,6 +162,16 @@ func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
 		return c.invokeInstruction("OP_SUPER_INVOKE", offset)
 	case OP_IMPORT:
 		return c.constantInstruction("OP_IMPORT", offset)
+	case OP_TRY:
+		return c.addressInstruction("OP_TRY", offset)
+	case OP_END_TRY:
+		return c.jumpInstruction("OP_END_TRY", 1, offset)
+	case OP_EXCEPT:
+		return c.constantInstruction("OP_EXCEPT", offset)
+	case OP_RAISE:
+		return c.simpleInstruction("OP_RAISE", offset)
+	case OP_END_EXCEPT:
+		return c.simpleInstruction("OP_END_EXCEPT", offset)
 	default:
 		fmt.Printf("Unknown opcode %d", i)
 		return offset + 1
@@ -201,6 +211,20 @@ func (c *Chunk) jumpInstruction(name string, sign int, offset int) int {
 	jump |= uint16(jump2)
 
 	fmt.Printf("%-16s %04d -> %d \n", name, offset, uint16(offset)+3+(uint16(sign)*jump))
+	return offset + 3
+}
+
+func (c *Chunk) addressInstruction(name string, offset int) int {
+
+	var address uint16
+
+	addr1 := uint16(c.code[offset+1])
+	addr2 := uint16(c.code[offset+2])
+
+	address = uint16(addr1 << 8)
+	address |= uint16(addr2)
+
+	fmt.Printf("%-16s %04d -> %d  \n", name, offset, address)
 	return offset + 3
 }
 

@@ -24,9 +24,10 @@ const (
 )
 
 type CallFrame struct {
-	closure *ClosureObject
-	ip      int
-	slots   int // start of vm stack for this frame
+	closure  *ClosureObject
+	ip       int
+	slots    int // start of vm stack for this frame
+	handlers *ExceptionHandler
 }
 
 type VM struct {
@@ -40,6 +41,13 @@ type VM struct {
 	lastGC       time.Time
 	openUpValues *UpvalueObject // head of list
 	args         []string
+}
+
+type ExceptionHandler struct {
+	catchIP   uint16
+	stackTop  int
+	className string
+	prev      *ExceptionHandler
 }
 
 //------------------------------------------------------------------------------------------
@@ -62,7 +70,6 @@ func NewVM(script string) *VM {
 	}
 	vm.resetStack()
 	vm.defineBuiltIns()
-
 	return vm
 }
 
@@ -292,9 +299,10 @@ func (vm *VM) call(closure *ClosureObject, argCount int) bool {
 		return false
 	}
 	frame := &CallFrame{
-		closure: closure,
-		ip:      0,
-		slots:   vm.stackTop - argCount - 1,
+		closure:  closure,
+		ip:       0,
+		slots:    vm.stackTop - argCount - 1,
+		handlers: nil,
 	}
 	vm.frames[vm.frameCount] = frame
 	vm.frameCount++
@@ -659,6 +667,47 @@ Loop:
 			offset := vm.readShort()
 			frame.ip -= int(offset)
 
+		// entered a try block, push an exception handler with the IP of the except block
+		// encoded in the next 2 instructions
+		case OP_TRY:
+			catchIP := vm.readShort()
+			frame.handlers = &ExceptionHandler{
+				catchIP:  catchIP,
+				stackTop: vm.stackTop,
+				prev:     frame.handlers,
+			}
+
+		// ended a try block OK, so pop the handler block
+		case OP_END_TRY:
+			frame.handlers = frame.handlers.prev
+
+		case OP_EXCEPT:
+
+			vm.frame().ip += 1
+			idx := vm.getCode()[vm.frame().ip-1]
+			name := getStringValue(frame.closure.function.chunk.constants[idx])
+			_ = name
+
+		case OP_END_EXCEPT:
+
+		case OP_RAISE:
+			err := vm.pop()
+			for {
+				handler := frame.handlers
+				if handler != nil {
+					vm.stackTop = handler.stackTop
+					vm.push(err)
+					frame.ip = int(handler.catchIP)
+					frame.handlers = handler.prev
+					break
+				}
+				if !vm.popFrame() {
+					vm.runTimeError("Uncaught exception: %s", err.String())
+					return INTERPRET_RUNTIME_ERROR, makeNilValue()
+				}
+				frame = vm.frame()
+			}
+
 		case OP_CALL:
 			// arg count is operand, callable object is on stack after arguments, result will be stack top
 			argCount := vm.getCode()[frame.ip]
@@ -794,6 +843,15 @@ Loop:
 		}
 	}
 	return INTERPRET_RUNTIME_ERROR, makeNilValue()
+}
+
+func (vm *VM) popFrame() bool {
+	if vm.frameCount == 0 {
+		return false
+	}
+	vm.frameCount--
+	vm.stackTop = vm.frames[vm.frameCount].slots
+	return true
 }
 
 func (vm *VM) importModule(module string) InterpretResult {
