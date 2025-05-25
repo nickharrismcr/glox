@@ -119,7 +119,7 @@ func NewParser() *Parser {
 
 func (vm *VM) compile(source string) *FunctionObject {
 
-	if DebugTraceExecution {
+	if DebugTraceExecution && !DebugSuppress {
 		fmt.Println("Compiling...")
 	}
 	parser := NewParser()
@@ -131,7 +131,7 @@ func (vm *VM) compile(source string) *FunctionObject {
 	}
 	parser.consume(TOKEN_EOF, "Expect end of expression")
 	function := parser.endCompiler()
-	if DebugTraceExecution {
+	if DebugTraceExecution && !DebugSuppress {
 		fmt.Println("Compile done.")
 	}
 	if parser.hadError {
@@ -717,7 +717,7 @@ func (p *Parser) endCompiler() *FunctionObject {
 
 	p.emitReturn()
 	function := p.currentCompiler.function
-	if DebugPrintCode {
+	if DebugPrintCode && !DebugSuppress {
 		if !p.hadError {
 			s := ""
 			if function.name.get() == "" {

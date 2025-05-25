@@ -7,6 +7,7 @@ import (
 
 func (vm *VM) defineBuiltIns() {
 
+	// native functions
 	vm.defineBuiltIn("args", argsBuiltIn)
 	vm.defineBuiltIn("clock", clockBuiltIn)
 	vm.defineBuiltIn("len", lenBuiltIn)
@@ -18,6 +19,10 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("join", joinBuiltIn)
 	vm.defineBuiltIn("keys", keysBuiltIn)
 	vm.defineBuiltIn("lox_mandel", mandelBuiltIn)
+
+	// lox built ins e.g Exception classes
+	vm.loadBuiltInModule(exceptionSource)
+
 }
 
 func keysBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
@@ -250,5 +255,15 @@ func mandelBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 }
 
-// predefine an Exception class using Lox source - this gets prepended to the user source
-const ExceptionSource = `class Exception {init(msg) {this.msg = msg;this.name = "Exception";  }toString() {return this.msg;}}`
+func (vm *VM) loadBuiltInModule(source string) {
+	subvm := NewVM("", false)
+	DebugSuppress = true
+	_, _ = subvm.Interpret(source)
+	for k, v := range subvm.globals {
+		vm.globals[k] = v
+	}
+	DebugSuppress = false
+}
+
+// predefine an Exception class using Lox source
+const exceptionSource = `class Exception {init(msg) {this.msg = msg;this.name = "Exception";  }toString() {return this.msg;}}`

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"glox/lox"
-	"io/ioutil"
 	"os"
 	"runtime/debug"
 )
@@ -31,7 +30,7 @@ func main() {
 	handleArgs(opts)
 
 	if opts.doRepl {
-		vm := lox.NewVM("repl")
+		vm := lox.NewVM("repl", true)
 		repl(vm)
 	} else {
 		if len(opts.args) == 0 {
@@ -73,15 +72,15 @@ func runFile(args []string) {
 	}()
 
 	path := args[0]
-	vm := lox.NewVM(path)
+	vm := lox.NewVM(path, true)
 	vm.SetArgs(args)
 
-	bytes, err := ioutil.ReadFile(path)
+	bytes, err := os.ReadFile(path)
 	if err != nil {
 		fmt.Printf("Could not open file %s : %s", path, err)
 		os.Exit(1)
 	}
-	source := lox.ExceptionSource + string(bytes)
+	source := string(bytes)
 	status, result := vm.Interpret(source)
 	if status == lox.INTERPRET_COMPILE_ERROR {
 		os.Exit(65)

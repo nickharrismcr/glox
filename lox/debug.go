@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+var DebugSuppress = false
 var DebugTraceExecution = false
 var DebugPrintCode = false
 var DebugShowGlobals = false

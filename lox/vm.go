@@ -44,10 +44,9 @@ type VM struct {
 }
 
 type ExceptionHandler struct {
-	exceptIP  uint16
-	stackTop  int
-	className string
-	prev      *ExceptionHandler
+	exceptIP uint16
+	stackTop int
+	prev     *ExceptionHandler
 }
 
 //------------------------------------------------------------------------------------------
@@ -58,7 +57,7 @@ type ExceptionHandler struct {
 
 var globalModules = map[string]bool{}
 
-func NewVM(script string) *VM {
+func NewVM(script string, defineBuiltIns bool) *VM {
 
 	vm := &VM{
 		script:       script,
@@ -69,7 +68,9 @@ func NewVM(script string) *VM {
 		args:         []string{},
 	}
 	vm.resetStack()
-	vm.defineBuiltIns()
+	if defineBuiltIns {
+		vm.defineBuiltIns()
+	}
 	return vm
 }
 
@@ -353,7 +354,7 @@ Loop:
 		}
 
 		inst := vm.getCode()[frame.ip]
-		if DebugTraceExecution {
+		if DebugTraceExecution && !DebugSuppress {
 			if DebugShowGlobals {
 				vm.showGlobals()
 			}
@@ -898,7 +899,7 @@ func (vm *VM) importModule(module string) InterpretResult {
 		fmt.Printf("Could not find module %s.", searchPath)
 		os.Exit(1)
 	}
-	subvm := NewVM(searchPath)
+	subvm := NewVM(searchPath, true)
 	subvm.SetArgs(vm.args)
 	res, _ := subvm.Interpret(string(bytes))
 	if res != INTERPRET_OK {
