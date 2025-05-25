@@ -6,6 +6,7 @@ import (
 	"glox/lox"
 	"io/ioutil"
 	"os"
+	"runtime/debug"
 )
 
 type Options struct {
@@ -66,6 +67,7 @@ func runFile(args []string) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println(r)
+			debug.PrintStack()
 			os.Exit(1)
 		}
 	}()
@@ -79,7 +81,8 @@ func runFile(args []string) {
 		fmt.Printf("Could not open file %s : %s", path, err)
 		os.Exit(1)
 	}
-	status, result := vm.Interpret(string(bytes))
+	source := lox.ExceptionSource + string(bytes)
+	status, result := vm.Interpret(source)
 	if status == lox.INTERPRET_COMPILE_ERROR {
 		os.Exit(65)
 	}
@@ -103,7 +106,8 @@ func handleArgs(opts *Options) {
 			case "--debug":
 				lox.DebugPrintCode = true
 				lox.DebugTraceExecution = true
-				lox.DebugShowGlobals = false
+			case "--globals":
+				lox.DebugShowGlobals = true
 			case "--repl":
 				opts.doRepl = true
 			default:
@@ -116,6 +120,6 @@ func handleArgs(opts *Options) {
 }
 
 func usage() {
-	fmt.Println("Usage : glox [--debug][--repl] filename")
+	fmt.Println("Usage : glox [--debug][--globals][--repl] filename")
 	os.Exit(1)
 }
