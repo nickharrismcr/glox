@@ -10,8 +10,13 @@ try {
     var a=1;
     var b=2;
     print "hello";
-    print "raising MyException (something happened)";
-    raise MyException("something happened");
+    print "raising Exception (something happened)";
+    raise Exception("something happened");
+}
+except MyException as e {
+    var x=2;
+    print "in MyException handler";
+    print "oops "+e.name+" "+str(e);
 }
 except Exception as e {
     var x=2;
