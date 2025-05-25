@@ -285,20 +285,26 @@ func (p *Parser) tryExceptStatement() {
 	p.block()
 	p.endScope()
 	endTryJump := p.emitJump(OP_END_TRY)
-	p.consume(TOKEN_EXCEPT, "Expect except.")
-	p.consume(TOKEN_IDENTIFIER, "Expect Exception type.")
-	idx := p.identifierConstant(p.previous)
-	p.patchTry(exceptTry)
-	p.consume(TOKEN_AS, "Expect as")
-	ev := p.parseVariable("Expect exception variable name.")
-	p.defineVariable(ev)
-	p.consume(TOKEN_LEFT_BRACE, "Expect left brace.")
-	p.emitByte(OP_EXCEPT)
-	p.emitByte(idx)
-	p.beginScope()
-	p.block()
-	p.endScope()
-	p.emitByte(OP_END_EXCEPT)
+	for {
+		p.consume(TOKEN_EXCEPT, "Expect except.")
+		p.consume(TOKEN_IDENTIFIER, "Expect Exception type.")
+		p.beginScope()
+		idx := p.identifierConstant(p.previous)
+		p.patchTry(exceptTry)
+		p.consume(TOKEN_AS, "Expect as")
+		ev := p.parseVariable("Expect exception variable name.")
+		p.defineVariable(ev)
+		p.consume(TOKEN_LEFT_BRACE, "Expect left brace.")
+		p.emitByte(OP_EXCEPT)
+		p.emitByte(idx)
+		p.block()
+		p.endScope()
+		p.emitByte(OP_END_EXCEPT)
+		if !p.check(TOKEN_EXCEPT) {
+			break
+		}
+	}
+
 	p.patchJump(endTryJump)
 
 }

@@ -44,7 +44,7 @@ type VM struct {
 }
 
 type ExceptionHandler struct {
-	catchIP   uint16
+	exceptIP  uint16
 	stackTop  int
 	className string
 	prev      *ExceptionHandler
@@ -667,12 +667,12 @@ Loop:
 			offset := vm.readShort()
 			frame.ip -= int(offset)
 
-		// entered a try block, push an exception handler with the IP of the except block
-		// encoded in the next 2 instructions
+		// entered a try block, IP of the except block is encoded in the next 2 instructions
+		// push an exception handler storing that info
 		case OP_TRY:
-			catchIP := vm.readShort()
+			exceptIP := vm.readShort()
 			frame.handlers = &ExceptionHandler{
-				catchIP:  catchIP,
+				exceptIP: exceptIP,
 				stackTop: vm.stackTop,
 				prev:     frame.handlers,
 			}
@@ -681,25 +681,44 @@ Loop:
 		case OP_END_TRY:
 			frame.handlers = frame.handlers.prev
 
+		// marks the start of an exception handler block.  index of exception classname is in next instruction
 		case OP_EXCEPT:
 
-			vm.frame().ip += 1
-			idx := vm.getCode()[vm.frame().ip-1]
-			name := getStringValue(frame.closure.function.chunk.constants[idx])
-			_ = name
-
+		// marks the end of an exception handler block
 		case OP_END_EXCEPT:
 
+		// 1 pop the thrown exception instance from the stack
+		// 2 get the top frame exception handler - this has the IP of the first handler OP_EXCEPT.
+		//   next instruction is an index to the exception classname in constants.
+		//
 		case OP_RAISE:
 			err := vm.pop()
+		outer:
 			for {
 				handler := frame.handlers
 				if handler != nil {
 					vm.stackTop = handler.stackTop
 					vm.push(err)
-					frame.ip = int(handler.catchIP)
-					frame.handlers = handler.prev
-					break
+					// jump to handler
+					frame.ip = int(handler.exceptIP)
+				inner:
+					for {
+						// get handler classname
+						frame.ip += 2
+						idx := vm.getCode()[frame.ip-1]
+						name := getStringValue(frame.closure.function.chunk.constants[idx])
+						handler_class := vm.globals[name].asClass()
+						err_class := getInstanceObjectValue(err).class
+						// is error a subclass of handler
+						if err_class.IsSubclassOf(handler_class) {
+							// yes, continue in handler block
+							frame.handlers = handler.prev
+							break outer
+						}
+						if !vm.nextHandler() {
+							break inner
+						}
+					}
 				}
 				if !vm.popFrame() {
 					vm.runTimeError("Uncaught exception: %s", err.String())
@@ -732,6 +751,7 @@ Loop:
 					for k, v := range sco.methods {
 						subclass.methods[k] = v
 					}
+					subclass.super = superclass.asClass()
 					vm.pop()
 					continue
 				}
@@ -845,8 +865,23 @@ Loop:
 	return INTERPRET_RUNTIME_ERROR, makeNilValue()
 }
 
+func (vm *VM) nextHandler() bool {
+
+	for {
+		vm.frame().ip++
+		if vm.getCode()[vm.frame().ip] == OP_END_EXCEPT {
+			if vm.getCode()[vm.frame().ip+1] == OP_EXCEPT {
+				vm.frame().ip++
+				return true
+			}
+			break
+		}
+	}
+	return false
+}
+
 func (vm *VM) popFrame() bool {
-	if vm.frameCount == 0 {
+	if vm.frameCount == 1 {
 		return false
 	}
 	vm.frameCount--
