@@ -1,0 +1,10 @@
+GLOX:
+hello
+hello inner
+inner raising MyException (something happened)
+in inner MyException handler
+oops MyException inner something happened
+raising MyException (outer something happened)
+in outer MyException handler
+oops MyException outer something happened
+nil
