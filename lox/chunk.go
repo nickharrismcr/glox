@@ -79,11 +79,28 @@ func (c *Chunk) writeOpCode(b uint8, line int) {
 
 func (c *Chunk) addConstant(v Value) uint8 {
 
-	// if constant is already in list, reuse it
-	//ok, idx := c.inConstants(v)
-	//if ok {
-	//	return idx
-	//}
+	// if constant is already in list, reuse it - but not if a function/method
+	ok, idx := c.inConstants(v)
+	if ok {
+		return idx
+	}
 	c.constants = append(c.constants, v)
 	return uint8(len(c.constants) - 1)
+}
+
+func (c *Chunk) inConstants(v Value) (bool, uint8) {
+
+	if v.Type == VAL_OBJ {
+		t := v.Obj.getType()
+		if t == OBJECT_BOUNDMETHOD || t == OBJECT_CLOSURE || t == OBJECT_FUNCTION {
+			return false, 0
+		}
+	}
+
+	for i, cv := range c.constants {
+		if valuesEqual(v, cv, true) {
+			return true, uint8(i)
+		}
+	}
+	return false, 0
 }
