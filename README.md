@@ -8,6 +8,7 @@ Is slow compared to CLox. VM
 - uses slow map[string] for globals - function code runs much quicker 
 - uses interface{} for objects ( values are tagged union structs for speed but contain a pointer for objects ) 
 - GC is handled by the Go runtime. 
+
 but hey-ho. 
 
 **Additions to vanilla Lox:**
