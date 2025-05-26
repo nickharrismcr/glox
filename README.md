@@ -59,6 +59,9 @@ strings :
 - multiply by integer ( a la python, e.g  `"@" * 3`,  `3 * "@"` = `"@@@"` )
 - slices   ( `a = "abcd"; b=a[0], b=a[:2]`, etc )
 
+foreach : 
+- iterate lists/strings with `foreach ( var i in iterable ) { block }`
+
 renamed fun to func
 
 class `toString()` magic method
@@ -86,6 +89,5 @@ i/o
 - marshal / unmarshal code chunks to/from .lxc files 
 - from module import [*|name] 
 - import module as <namespace> 
-- foreach <iterator>
 - etc.
  
