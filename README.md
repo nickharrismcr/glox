@@ -57,31 +57,20 @@ class toString() magic method
 
 - if present and returns a string, will be used for print class / str(class)
 
+exceptions
+
+- built in Exception class, subclass custom exception classes 
+- try {block} except [exception type] as [instance] {handler} 
+- can specify multiple handlers for different exception types
+- raise [exception instance] statement 
+
+i/o
+
+- file open, close, readln, write 
+- readln throws EOFError on eof 
+
 **TODO:**
 
-# EASY 
-
-Bob's optimisation chapter
-
-list item del  (del a[b] or del a[b:c] - i.e assign nil )
-  
-  - sugar for a[b] = nil ? etc? 
-
-
-# MEDIUM
- 
+more runtime exception types 
 marshal / unmarshal code chunks to/from .lxc files 
-
-# HARD
-
-map/filter function
-- implement in lox and make available as library? - needs module import function
-- move to native? 
-
-list comprehensions 
-- build on map function ^^^
-
-exceptions 
-- try / catch 
-
-etc etc 
+ 
