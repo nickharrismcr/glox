@@ -26,13 +26,14 @@ loop break/continue
 
 native funcs :  
 
-- int(number)     - conversion
-- float(number)   - conversion 
-- str(value)      - conversion 
-- len(string|list) -> int
-- sin(float)    -> float
-- cos(float)    -> float 
-- args() - returns list of command line arguments  
+- `int(number)`    - conversion
+- `float(number)`   - conversion 
+- `str(value)`     - conversion 
+- `len(string|list)` -> int
+- `sin(float)`    -> float
+- `cos(float)`    -> float 
+- `args()` - returns list of command line arguments  
+- `replace(string,old,new)` -> string  - replace substring of string  
 
 lists :
 
@@ -43,7 +44,7 @@ lists :
 - slicing ( b=a[x:y]; b=a[:y]; b=a[x:]; b=a[:] )
 - slice assignment ( e.g a[2:5] = [1,2,3] )
 - adding ( list3=list1+list2 )
-- join ( list, string )    e.g join(["a","b","c"],"|") -> "a|b|c"   
+- `join ( list, string )`    e.g join(["a","b","c"],"|") -> "a|b|c"   
 
 dictionaries:
 
