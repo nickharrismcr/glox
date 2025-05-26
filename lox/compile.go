@@ -38,8 +38,10 @@ type Local struct {
 }
 
 type Loop struct {
-	start  int
-	break_ int
+	start     int
+	break_    int
+	foreach   bool
+	continue_ int
 }
 
 type Upvalue struct {
@@ -534,10 +536,10 @@ func (p *Parser) whileStatement() {
 	exitJump := p.emitJump(OP_JUMP_IF_FALSE)
 	p.emitByte(OP_POP)
 	p.statement()
+	p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
 	if p.currentCompiler.loop.break_ != 0 {
 		p.patchJump(p.currentCompiler.loop.break_)
 	}
-	p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
 	p.patchJump(exitJump)
 	p.emitByte(OP_POP)
 
@@ -625,13 +627,19 @@ func (p *Parser) continueStatement() {
 			p.emitByte(OP_POP)
 		}
 	}
-	p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
+	if p.currentCompiler.loop.foreach {
+		p.currentCompiler.loop.continue_ = p.emitJump(OP_JUMP)
+	} else {
+		p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
+	}
+
 }
 
 func (p *Parser) foreachStatement() {
 
 	loopSave := p.currentCompiler.loop
 	p.currentCompiler.loop = NewLoop()
+	p.currentCompiler.loop.foreach = true // so continue knows to jump to next
 
 	p.beginScope()
 	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after for.")
@@ -646,13 +654,14 @@ func (p *Parser) foreachStatement() {
 	jumpToEnd := p.emitForeach(uint8(slot))
 
 	p.statement()
-	if p.currentCompiler.loop.break_ != 0 {
-		p.patchJump(p.currentCompiler.loop.break_)
-	}
+	p.patchJump(p.currentCompiler.loop.continue_)
 	p.emitLoop(OP_NEXT, p.currentCompiler.loop.start)
 
 	p.patchForeach(jumpToEnd)
 	p.emitByte(OP_END_FOREACH)
+	if p.currentCompiler.loop.break_ != 0 {
+		p.patchJump(p.currentCompiler.loop.break_)
+	}
 	p.endScope()
 	p.currentCompiler.loop = loopSave
 }

@@ -874,13 +874,13 @@ Loop:
 				}
 
 			case OBJECT_STRING:
-				t := iterable.Obj.(*ListObject)
-				if idx >= len(t.items) {
+				t := iterable.Obj.(StringObject)
+				if idx >= len(t.get()) {
 					vm.pop()
 					vm.pop()
 					frame.ip += int(jumpToEnd)
 				} else {
-					val := t.get()[idx]
+					val, _ := t.index(idx)
 					vm.stack[frame.slots+int(slot)] = val
 				}
 
