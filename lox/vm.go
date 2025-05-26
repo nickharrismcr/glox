@@ -28,6 +28,7 @@ type CallFrame struct {
 	ip       int
 	slots    int // start of vm stack for this frame
 	handlers *ExceptionHandler
+	depth    int
 }
 
 type VM struct {
@@ -310,6 +311,7 @@ func (vm *VM) call(closure *ClosureObject, argCount int) bool {
 		ip:       0,
 		slots:    vm.stackTop - argCount - 1,
 		handlers: nil,
+		depth:    vm.frameCount + 1,
 	}
 	vm.frames[vm.frameCount] = frame
 	vm.frameCount++
@@ -365,7 +367,7 @@ Loop:
 				vm.showGlobals()
 			}
 			vm.showStack()
-			_ = frame.closure.function.chunk.disassembleInstruction(vm.frameCount, inst, frame.ip)
+			_ = frame.closure.function.chunk.disassembleInstruction(frame, inst, frame.ip)
 		}
 
 		frame.ip++

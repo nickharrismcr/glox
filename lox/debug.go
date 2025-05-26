@@ -33,7 +33,7 @@ func (c *Chunk) disassemble(name string) {
 	offset := 0
 	for {
 		instr := c.code[offset]
-		offset = c.disassembleInstruction(0, instr, offset)
+		offset = c.disassembleInstruction(nil, instr, offset)
 		if offset >= len(c.code) {
 			break
 		}
@@ -42,9 +42,17 @@ func (c *Chunk) disassemble(name string) {
 
 var lastoffset int = 0
 
-func (c *Chunk) disassembleInstruction(calldepth int, i uint8, offset int) int {
+func (c *Chunk) disassembleInstruction(frame *CallFrame, i uint8, offset int) int {
 
-	fmt.Printf("%02d : %04d ", calldepth, offset)
+	if frame != nil {
+		name := "script"
+		if frame.depth > 1 {
+			name = frame.closure.function.name.get()
+		}
+
+		fmt.Printf("%02d : [%-10s] : ", frame.depth, name)
+	}
+	fmt.Printf("%04d ", offset)
 	if offset > 0 && c.lines[offset] == lastoffset {
 		fmt.Printf("   | ")
 
