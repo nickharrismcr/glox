@@ -14,15 +14,15 @@ but hey-ho.
 
 module imports
 
-- e.g import othermodule;
+- e.g `import othermodule;`
 
-immutable vars e.g  const a = 1;
+immutable vars e.g  `const a = 1;`
 
 integer number type:
 
 - modulus operator %  
 
-loop break/continue
+loop `break`/`continue`
 
 native funcs :  
 
@@ -37,40 +37,40 @@ native funcs :
 
 lists :
 
-- initialiser (a=[]; a=[1,2,3];)
-- append (list,val)  
-- indexing ( b=a[int] )
-- index assign ( a[int] = b )
-- slicing ( b=a[x:y]; b=a[:y]; b=a[x:]; b=a[:] )
-- slice assignment ( e.g a[2:5] = [1,2,3] )
-- adding ( list3=list1+list2 )
-- `join ( list, string )`    e.g join(["a","b","c"],"|") -> "a|b|c"   
+- initialiser (`a=[]; a=[1,2,3];`)
+- `append (list,val)`  
+- indexing ( `b=a[int]` )
+- index assign ( `a[int] = b` )
+- slicing (`b=a[x:y]; b=a[:y]; b=a[x:]; b=a[:];` )
+- slice assignment ( e.g `a[2:5] = [1,2,3];` )
+- adding ( `list3=list1+list2;` )
+- `join ( list, string )`    e.g `join(["a","b","c"],"|");` -> "a|b|c"   
 
 dictionaries:
 
-- initialiser ( a = {}; a = { "b":"c","d":"e"}; )
-- get ( a[key])
-- set ( a[key]=b)
-- keys(dict)   get list of keys 
+- initialiser ( `a = {}; a = { "b":"c","d":"e"};` )
+- get ( `a[key]`)
+- set ( `a[key]=b`)
+- `keys(dict)`   get list of keys 
 
 strings :
 
-- multiply by integer ( a la python, e.g  "@" * 3 ,  3 * "@" = "@@@" )
-- slices   ( a = "abcd"; b=a[0], b=a[:2], etc )
+- multiply by integer ( a la python, e.g  `"@" * 3`,  `3 * "@"` = "@@@" )
+- slices   ( `a = "abcd"; b=a[0], b=a[:2]`, etc )
 
 renamed fun to func
 
-class toString() magic method
+class `toString()` magic method
 
 - if present and returns a string, will be used for print class / str(class)
 
 exceptions
 
 - built in Exception class, subclass custom exception classes from it
-- try {block} except [exception type] as [instance var] {handler} 
+- `try {block} except [exception type] as [instance var] {handler}` 
 - can nest try...excepts 
 - can specify multiple handlers for different exception types
-- raise [exception instance] statement 
+- `raise [exception instance]` statement 
 - runtime can raise catchable exceptions e.g EOFError
 
 i/o
