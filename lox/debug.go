@@ -130,6 +130,12 @@ func (c *Chunk) disassembleInstruction(frame *CallFrame, i uint8, offset int) in
 		return c.simpleInstruction("OP_SLICE", offset)
 	case OP_SLICE_ASSIGN:
 		return c.simpleInstruction("OP_SLICE_ASSIGN", offset)
+	case OP_FOREACH:
+		return c.foreachInstruction(offset)
+	case OP_NEXT:
+		return c.jumpInstruction("OP_NEXT", -1, offset)
+	case OP_END_FOREACH:
+		return c.simpleInstruction("OP_END_FOREACH", offset)
 	case OP_CLOSURE:
 
 		var s string
@@ -228,6 +234,19 @@ func (c *Chunk) jumpInstruction(name string, sign int, offset int) int {
 
 	fmt.Printf("%-16s %04d -> %d \n", name, offset, uint16(offset)+3+(uint16(sign)*jump))
 	return offset + 3
+}
+func (c *Chunk) foreachInstruction(offset int) int {
+
+	var jump uint16
+	slot := c.code[offset+1]
+	jump1 := uint16(c.code[offset+2])
+	jump2 := uint16(c.code[offset+3])
+
+	jump = uint16(jump1 << 8)
+	jump |= uint16(jump2)
+
+	fmt.Printf("%-16s %04d %04d -> %d \n", "OP_FOREACH", slot, offset, uint16(offset)+4+jump)
+	return offset + 4
 }
 
 func (c *Chunk) addressInstruction(name string, offset int) int {

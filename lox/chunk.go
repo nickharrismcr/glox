@@ -54,6 +54,9 @@ const (
 	OP_END_EXCEPT
 	OP_FINALLY
 	OP_RAISE
+	OP_FOREACH
+	OP_NEXT
+	OP_END_FOREACH
 )
 
 type Chunk struct {

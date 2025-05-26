@@ -66,6 +66,8 @@ const (
 	TOKEN_AS
 	TOKEN_FINALLY
 	TOKEN_RAISE
+	TOKEN_FOREACH
+	TOKEN_IN
 )
 
 var keywords = map[string]TokenType{
@@ -95,6 +97,8 @@ var keywords = map[string]TokenType{
 	"finally":  TOKEN_FINALLY,
 	"raise":    TOKEN_RAISE,
 	"as":       TOKEN_AS,
+	"foreach":  TOKEN_FOREACH,
+	"in":       TOKEN_IN,
 }
 
 type Scanner struct {

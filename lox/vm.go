@@ -172,6 +172,11 @@ func (vm *VM) peek(dist int) Value {
 	return vm.stack[(vm.stackTop-1)-dist]
 }
 
+func (vm *VM) set(dist int, val Value) {
+
+	vm.stack[(vm.stackTop-1)-dist] = val
+}
+
 func (vm *VM) callValue(callee Value, argCount int) bool {
 
 	if callee.Type == VAL_OBJ {
@@ -329,6 +334,12 @@ func (vm *VM) readShort() uint16 {
 	b1 := uint16(vm.getCode()[vm.frame().ip-2])
 	b2 := uint16(vm.getCode()[vm.frame().ip-1])
 	return uint16(b1<<8 | b2)
+}
+
+func (vm *VM) readByte() uint8 {
+
+	vm.frame().ip += 1
+	return vm.getCode()[vm.frame().ip-1]
 }
 
 func (vm *VM) isFalsey(v Value) bool {
@@ -840,6 +851,53 @@ Loop:
 				break Loop
 			}
 
+		// local slot, end of foreach in next 3 instructions
+		case OP_FOREACH:
+			slot := vm.readByte()
+			jumpToEnd := vm.readShort()
+			iterable := vm.peek(1)
+			if iterable.Type != VAL_OBJ {
+				vm.runTimeError("Iterable in foreach must be list or string.")
+				break Loop
+			}
+			idx := vm.peek(0).Int
+			switch iterable.Obj.getType() {
+			case OBJECT_LIST:
+				t := iterable.Obj.(*ListObject)
+				if idx >= len(t.items) {
+					vm.pop()
+					vm.pop()
+					frame.ip += int(jumpToEnd)
+				} else {
+					val := t.get()[idx]
+					vm.stack[frame.slots+int(slot)] = val
+				}
+
+			case OBJECT_STRING:
+				t := iterable.Obj.(*ListObject)
+				if idx >= len(t.items) {
+					vm.pop()
+					vm.pop()
+					frame.ip += int(jumpToEnd)
+				} else {
+					val := t.get()[idx]
+					vm.stack[frame.slots+int(slot)] = val
+				}
+
+			default:
+				vm.runTimeError("Iterable in foreach must be list or string.")
+				break Loop
+			}
+
+		case OP_NEXT:
+
+			jumpToStart := vm.readShort()
+			index := vm.pop().Int
+			vm.push(makeIntValue(index+1, false))
+			frame.ip -= int(jumpToStart)
+
+		case OP_END_FOREACH:
+
 		default:
 			vm.runTimeError("Invalid Opcode")
 			break Loop
@@ -977,18 +1035,18 @@ func (vm *VM) createDict(frame *CallFrame) {
 
 func (vm *VM) index(frame *CallFrame) bool {
 
-	v := vm.pop()
+	iv := vm.pop()
 	sv := vm.pop()
 
 	if sv.Type == VAL_OBJ {
 		switch sv.Obj.getType() {
 		case OBJECT_LIST:
-			if v.Type != VAL_INT {
+			if iv.Type != VAL_INT {
 				vm.runTimeError("Subscript must be an integer.")
 				return false
 			}
 			t := sv.Obj.(*ListObject)
-			idx := v.Int
+			idx := iv.Int
 			lo, err := t.index(idx)
 			if err != nil {
 				vm.runTimeError(err.Error())
@@ -998,11 +1056,11 @@ func (vm *VM) index(frame *CallFrame) bool {
 			return true
 
 		case OBJECT_STRING:
-			if v.Type != VAL_INT {
+			if iv.Type != VAL_INT {
 				vm.runTimeError("Subscript must be an integer.")
 				return false
 			}
-			idx := v.Int
+			idx := iv.Int
 			t := sv.Obj.(StringObject)
 			so, err := t.index(idx)
 			if err != nil {
@@ -1014,7 +1072,7 @@ func (vm *VM) index(frame *CallFrame) bool {
 
 		case OBJECT_DICT:
 
-			key := v.String()
+			key := iv.String()
 			t := sv.Obj.(*DictObject)
 			so, err := t.get(key)
 			if err != nil {

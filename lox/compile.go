@@ -174,6 +174,7 @@ func (p *Parser) setRules() {
 		TOKEN_ELSE:          {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_FALSE:         {prefix: literal, infix: nil, prec: PREC_NONE},
 		TOKEN_FOR:           {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_FOREACH:       {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_FUNC:          {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_IF:            {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_TRY:           {prefix: nil, infix: nil, prec: PREC_NONE},
@@ -235,7 +236,7 @@ func (p *Parser) declaration() {
 	} else if p.match(TOKEN_FUNC) {
 		p.funcDeclaration()
 	} else if p.match(TOKEN_VAR) {
-		p.varDeclaration()
+		p.varDeclaration(false)
 	} else if p.match(TOKEN_CONST) {
 		p.constDeclaration()
 	} else {
@@ -262,6 +263,8 @@ func (p *Parser) statement() {
 		p.raiseStatement()
 	} else if p.match(TOKEN_FOR) {
 		p.forStatement()
+	} else if p.match(TOKEN_FOREACH) {
+		p.foreachStatement()
 	} else if p.match(TOKEN_IF) {
 		p.ifStatement()
 	} else if p.match(TOKEN_RETURN) {
@@ -445,7 +448,7 @@ func (p *Parser) method() {
 	p.emitBytes(OP_METHOD, constant)
 }
 
-func (p *Parser) varDeclaration() {
+func (p *Parser) varDeclaration(in_foreach bool) {
 
 	global := p.parseVariable("Expect variable name")
 
@@ -454,7 +457,9 @@ func (p *Parser) varDeclaration() {
 	} else {
 		p.emitByte(OP_NIL)
 	}
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration")
+	if !in_foreach {
+		p.consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration")
+	}
 
 	p.defineVariable(global)
 }
@@ -532,7 +537,7 @@ func (p *Parser) whileStatement() {
 	if p.currentCompiler.loop.break_ != 0 {
 		p.patchJump(p.currentCompiler.loop.break_)
 	}
-	p.emitLoop(p.currentCompiler.loop.start)
+	p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
 	p.patchJump(exitJump)
 	p.emitByte(OP_POP)
 
@@ -549,7 +554,7 @@ func (p *Parser) forStatement() {
 	// initialiser
 	if p.match(TOKEN_SEMICOLON) {
 	} else if p.match(TOKEN_VAR) {
-		p.varDeclaration()
+		p.varDeclaration(false)
 	} else {
 		p.expressionStatement()
 	}
@@ -570,7 +575,7 @@ func (p *Parser) forStatement() {
 		p.expression()
 		p.emitByte(OP_POP)
 		p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.")
-		p.emitLoop(p.currentCompiler.loop.start)
+		p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
 		p.currentCompiler.loop.start = incrementStart
 		p.patchJump(bodyJump)
 	}
@@ -578,7 +583,7 @@ func (p *Parser) forStatement() {
 	if p.currentCompiler.loop.break_ != 0 {
 		p.patchJump(p.currentCompiler.loop.break_)
 	}
-	p.emitLoop(p.currentCompiler.loop.start)
+	p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
 
 	if exitJump != -1 {
 		p.patchJump(exitJump)
@@ -620,7 +625,36 @@ func (p *Parser) continueStatement() {
 			p.emitByte(OP_POP)
 		}
 	}
-	p.emitLoop(p.currentCompiler.loop.start)
+	p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
+}
+
+func (p *Parser) foreachStatement() {
+
+	loopSave := p.currentCompiler.loop
+	p.currentCompiler.loop = NewLoop()
+
+	p.beginScope()
+	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after for.")
+	p.consume(TOKEN_VAR, "Expect var declaration")
+	p.varDeclaration(true)
+	slot := p.currentCompiler.localCount - 1
+	p.consume(TOKEN_IN, "Expect in after foreach variable.")
+	p.expression()
+	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after iterable.")
+	p.emitConstant(makeIntValue(0, false)) //initial index = 0 on stack
+	p.currentCompiler.loop.start = len(p.currentChunk().code)
+	jumpToEnd := p.emitForeach(uint8(slot))
+
+	p.statement()
+	if p.currentCompiler.loop.break_ != 0 {
+		p.patchJump(p.currentCompiler.loop.break_)
+	}
+	p.emitLoop(OP_NEXT, p.currentCompiler.loop.start)
+
+	p.patchForeach(jumpToEnd)
+	p.emitByte(OP_END_FOREACH)
+	p.endScope()
+	p.currentCompiler.loop = loopSave
 }
 
 func (p *Parser) printStatement() {
@@ -679,9 +713,9 @@ func (p *Parser) emitBytes(byte1, byte2 uint8) {
 	p.emitByte(byte2)
 }
 
-func (p *Parser) emitLoop(loopStart int) {
+func (p *Parser) emitLoop(instr uint8, loopStart int) {
 
-	p.emitByte(OP_LOOP)
+	p.emitByte(instr)
 
 	offset := len(p.currentChunk().code) - loopStart + 2
 	if offset >= int(^uint16(0)) {
@@ -698,6 +732,14 @@ func (p *Parser) emitJump(instr uint8) int {
 	p.emitByte(0xff)
 	p.emitByte(0xff)
 	return len(p.currentChunk().code) - 2
+}
+func (p *Parser) emitForeach(slot uint8) int {
+
+	p.emitByte(OP_FOREACH)
+	p.emitByte(slot)
+	p.emitByte(0xff)
+	p.emitByte(0xff)
+	return len(p.currentChunk().code) - 3
 }
 
 func (p *Parser) emitTry() int {
@@ -1056,6 +1098,16 @@ func (p *Parser) patchJump(offset int) {
 	}
 	p.currentChunk().code[offset] = uint8((jump >> 8) & 0xff)
 	p.currentChunk().code[offset+1] = uint8(jump & 0xff)
+
+}
+func (p *Parser) patchForeach(offset int) {
+
+	jump := len(p.currentChunk().code) - offset - 2
+	if uint16(jump) > ^uint16(0) {
+		p.error("Jump overflow")
+	}
+	p.currentChunk().code[offset+1] = uint8((jump >> 8) & 0xff)
+	p.currentChunk().code[offset+2] = uint8(jump & 0xff)
 
 }
 
