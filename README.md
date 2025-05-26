@@ -2,7 +2,13 @@
 
 **Bob Nystroms clox bytecode interpreter implemented in Go**
 
-Cop out : GC is handled by the Go runtime.  
+Is slow compared to CLox. VM 
+- does a lot of function calls in place of C macros, not all of which get inlined
+- has a large switch/case inner loop which Go compiler doesn't optimise well and isn't cache friendly 
+- uses slow map[string] for globals - function code runs much quicker 
+- uses interface{} for objects ( values are tagged union structs for speed but contain a pointer for objects ) 
+- GC is handled by the Go runtime. 
+but hey-ho. 
 
 **Additions to vanilla Lox:**
 
@@ -26,7 +32,7 @@ native funcs :
 - len(string|list) -> int
 - sin(float)    -> float
 - cos(float)    -> float 
-- args() - returns list of command line arguments - not ideal! 
+- args() - returns list of command line arguments  
 
 lists :
 
@@ -59,10 +65,12 @@ class toString() magic method
 
 exceptions
 
-- built in Exception class, subclass custom exception classes 
-- try {block} except [exception type] as [instance] {handler} 
+- built in Exception class, subclass custom exception classes from it
+- try {block} except [exception type] as [instance var] {handler} 
+- can nest try...excepts 
 - can specify multiple handlers for different exception types
 - raise [exception instance] statement 
+- runtime can raise catchable exceptions e.g EOFError
 
 i/o
 
