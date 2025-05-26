@@ -9,6 +9,13 @@ var DebugTraceExecution = false
 var DebugPrintCode = false
 var DebugShowGlobals = false
 
+func Debug(s string) {
+	println(s)
+}
+func Debugf(format string, args ...interface{}) {
+	fmt.Printf(format+"\n", args...)
+}
+
 func (c *Chunk) disassemble(name string) {
 
 	fmt.Printf("=== %s ===\n", name)
@@ -26,7 +33,7 @@ func (c *Chunk) disassemble(name string) {
 	offset := 0
 	for {
 		instr := c.code[offset]
-		offset = c.disassembleInstruction(instr, offset)
+		offset = c.disassembleInstruction(0, instr, offset)
 		if offset >= len(c.code) {
 			break
 		}
@@ -35,9 +42,9 @@ func (c *Chunk) disassemble(name string) {
 
 var lastoffset int = 0
 
-func (c *Chunk) disassembleInstruction(i uint8, offset int) int {
+func (c *Chunk) disassembleInstruction(calldepth int, i uint8, offset int) int {
 
-	fmt.Printf("%04d ", offset)
+	fmt.Printf("%02d : %04d ", calldepth, offset)
 	if offset > 0 && c.lines[offset] == lastoffset {
 		fmt.Printf("   | ")
 
@@ -248,7 +255,7 @@ func (vm *VM) showGlobals() {
 	}
 }
 
-func (vm *VM) stackTrace() {
+func (vm *VM) showStack() {
 
 	fmt.Printf("                                                         ")
 	for i := 0; i < vm.stackTop; i++ {

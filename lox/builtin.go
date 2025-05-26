@@ -1,7 +1,9 @@
 package lox
 
 import (
+	"fmt"
 	"math"
+	"os"
 	"time"
 )
 
@@ -19,9 +21,15 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("join", joinBuiltIn)
 	vm.defineBuiltIn("keys", keysBuiltIn)
 	vm.defineBuiltIn("lox_mandel", mandelBuiltIn)
+	vm.defineBuiltIn("replace", replaceBuiltIn)
+	vm.defineBuiltIn("open", openBuiltIn)
+	vm.defineBuiltIn("close", closeBuiltIn)
+	vm.defineBuiltIn("readln", readlnBuiltIn)
+	vm.defineBuiltIn("write", writeBuiltIn)
 
 	// lox built ins e.g Exception classes
 	vm.loadBuiltInModule(exceptionSource)
+	vm.loadBuiltInModule(eofErrorSource)
 
 }
 
@@ -255,15 +263,149 @@ func mandelBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 }
 
+// replace( string|list )
+func replaceBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+
+	if argCount != 3 {
+		vm.runTimeError("Invalid argument count to replace.")
+		return makeNilValue()
+	}
+	target := vm.stack[arg_stackptr]
+	from := vm.stack[arg_stackptr+1]
+	to := vm.stack[arg_stackptr+2]
+
+	if target.Type != VAL_OBJ || target.Obj.getType() != OBJECT_STRING {
+		vm.runTimeError("Invalid argument type to replace.")
+		return makeNilValue()
+	}
+
+	s := target.Obj.(StringObject)
+	return s.replace(from, to)
+}
+
+// return a FileObject
+func openBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+
+	if argCount != 2 {
+		vm.runTimeError("Invalid argument count to open.")
+		return makeNilValue()
+	}
+	path := vm.stack[arg_stackptr]
+	mode := vm.stack[arg_stackptr+1]
+
+	if path.Type != VAL_OBJ || path.Obj.getType() != OBJECT_STRING ||
+		mode.Type != VAL_OBJ || mode.Obj.getType() != OBJECT_STRING {
+		vm.runTimeError("Invalid argument type to open.")
+		return makeNilValue()
+	}
+
+	s_path := path.asString()
+	s_mode := mode.asString()
+	fp, err := openFile(s_path, s_mode)
+	if err != nil {
+		vm.runTimeError(fmt.Sprintf("%s", err))
+		return makeNilValue()
+	}
+	file := makeObjectValue(makeFileObject(fp), true)
+	return file
+
+}
+
+func closeBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+
+	if argCount != 1 {
+		vm.runTimeError("Invalid argument count to close.")
+		return makeNilValue()
+	}
+	fov := vm.stack[arg_stackptr]
+
+	if fov.Type != VAL_OBJ || fov.Obj.getType() != OBJECT_FILE {
+		vm.runTimeError("Invalid argument type to close.")
+		return makeNilValue()
+	}
+
+	fo := fov.Obj.(*FileObject)
+	fo.close()
+	return makeBooleanValue(true, false)
+}
+
+func readlnBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+
+	if argCount != 1 {
+		vm.runTimeError("Invalid argument count to readln.")
+		return makeNilValue()
+	}
+	fov := vm.stack[arg_stackptr]
+
+	if fov.Type != VAL_OBJ || fov.Obj.getType() != OBJECT_FILE {
+		vm.runTimeError("Invalid argument type to readln.")
+		return makeNilValue()
+	}
+
+	fo := fov.Obj.(*FileObject)
+	if fo.closed {
+		vm.runTimeError("readln attempted on closed file.")
+		return makeNilValue()
+	}
+
+	rv := fo.readLine()
+	if rv.Type == VAL_NIL {
+		vm.raiseExceptionByName("EOFError", "End of file reached")
+		return makeBooleanValue(true, false)
+	}
+	return rv
+}
+
+func writeBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+
+	if argCount != 2 {
+		vm.runTimeError("Invalid argument count to writeln.")
+		return makeNilValue()
+	}
+	fov := vm.stack[arg_stackptr]
+	str := vm.stack[arg_stackptr+1]
+
+	if fov.Type != VAL_OBJ || fov.Obj.getType() != OBJECT_FILE {
+		vm.runTimeError("Invalid argument type to writeln.")
+		return makeNilValue()
+	}
+	if str.Type != VAL_OBJ || str.Obj.getType() != OBJECT_STRING {
+		vm.runTimeError("Invalid argument type to writeln.")
+		return makeNilValue()
+	}
+
+	fo := fov.Obj.(*FileObject)
+	if fo.closed {
+		vm.runTimeError("writeln attempted on closed file.")
+		return makeNilValue()
+	}
+
+	fo.write(str)
+	return makeBooleanValue(true, false)
+}
+
+func openFile(path string, mode string) (*os.File, error) {
+	switch mode {
+	case "r":
+		return os.Open(path) // Read-only
+	case "w":
+		return os.Create(path) // Write (truncate if exists)
+	case "a":
+		return os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644) // Append
+	default:
+		return nil, fmt.Errorf("invalid mode: %s", mode)
+	}
+}
+
 func (vm *VM) loadBuiltInModule(source string) {
 	subvm := NewVM("", false)
+	subvm.SetGlobals(vm.globals)
 	DebugSuppress = true
 	_, _ = subvm.Interpret(source)
-	for k, v := range subvm.globals {
-		vm.globals[k] = v
-	}
+	vm.SetGlobals(subvm.globals)
 	DebugSuppress = false
 }
 
 // predefine an Exception class using Lox source
 const exceptionSource = `class Exception {init(msg) {this.msg = msg;this.name = "Exception";  }toString() {return this.msg;}}`
+const eofErrorSource = `class EOFError < Exception {init(msg) {this.msg = msg;this.name = "EOFError";  }toString() {return this.msg;}}`

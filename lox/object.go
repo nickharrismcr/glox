@@ -1,8 +1,10 @@
 package lox
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -20,6 +22,7 @@ const (
 	OBJECT_INSTANCE
 	OBJECT_BOUNDMETHOD
 	OBJECT_MODULE
+	OBJECT_FILE
 )
 
 type Object interface {
@@ -146,6 +149,14 @@ func (StringObject) getType() ObjectType {
 func (s StringObject) get() string {
 
 	return *s.chars
+}
+
+func (s StringObject) replace(from Value, to Value) Value {
+
+	old := from.asString()
+	new := to.asString()
+	rv := strings.Replace(*s.chars, old, new, -1)
+	return makeObjectValue(makeStringObject(rv), false)
 }
 
 func (s StringObject) String() string {
@@ -542,6 +553,71 @@ func (f *ModuleObject) String() string {
 
 	return fmt.Sprintf("<module %s>", f.name)
 }
+
+// -------------------------------------------------------------------------------------------
+type FileObject struct {
+	file   *os.File
+	closed bool
+	eof    bool
+	reader *bufio.Reader
+	writer *bufio.Writer
+}
+
+func makeFileObject(file *os.File) *FileObject {
+
+	return &FileObject{
+		file:   file,
+		reader: bufio.NewReader(file),
+		writer: bufio.NewWriter(file),
+	}
+}
+
+func (FileObject) isObject() {}
+
+func (FileObject) getType() ObjectType {
+
+	return OBJECT_FILE
+}
+
+func (f *FileObject) String() string {
+
+	return "<file>"
+}
+
+func (f *FileObject) close() {
+	f.writer.Flush()
+	f.file.Close()
+	f.closed = true
+}
+
+func (f *FileObject) readLine() Value {
+
+	if f.eof {
+		return makeNilValue()
+	}
+
+	line, err := f.reader.ReadString('\n')
+	line = strings.TrimRight(line, "\r\n")
+	if err != nil {
+		if err.Error() == "EOF" {
+			f.eof = true
+			if len(line) > 0 {
+				return makeObjectValue(makeStringObject(line), false)
+			}
+		}
+	}
+	return makeObjectValue(makeStringObject(line), false)
+}
+
+func (f *FileObject) write(str Value) {
+
+	s := str.asString()
+	s = strings.ReplaceAll(s, `\n`, "\n")
+	f.writer.WriteString(s)
+
+}
+
+//-------------------------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------------------------
 

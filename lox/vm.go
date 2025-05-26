@@ -78,6 +78,12 @@ func (vm *VM) SetArgs(args []string) {
 	vm.args = args
 }
 
+func (vm *VM) SetGlobals(globals map[string]Value) {
+	for k, v := range globals {
+		vm.globals[k] = v
+	}
+}
+
 func (vm *VM) Interpret(source string) (InterpretResult, string) {
 
 	function := vm.compile(source)
@@ -358,8 +364,8 @@ Loop:
 			if DebugShowGlobals {
 				vm.showGlobals()
 			}
-			vm.stackTrace()
-			_ = frame.closure.function.chunk.disassembleInstruction(inst, frame.ip)
+			vm.showStack()
+			_ = frame.closure.function.chunk.disassembleInstruction(vm.frameCount, inst, frame.ip)
 		}
 
 		frame.ip++
@@ -684,6 +690,7 @@ Loop:
 
 		// marks the start of an exception handler block.  index of exception classname is in next instruction
 		case OP_EXCEPT:
+			frame.ip++
 
 		// marks the end of an exception handler block
 		case OP_END_EXCEPT:
@@ -694,39 +701,10 @@ Loop:
 		//
 		case OP_RAISE:
 			err := vm.pop()
-		outer:
-			for {
-				handler := frame.handlers
-				if handler != nil {
-					vm.stackTop = handler.stackTop
-					vm.push(err)
-					// jump to handler
-					frame.ip = int(handler.exceptIP)
-				inner:
-					for {
-						// get handler classname
-						frame.ip += 2
-						idx := vm.getCode()[frame.ip-1]
-						name := getStringValue(frame.closure.function.chunk.constants[idx])
-						handler_class := vm.globals[name].asClass()
-						err_class := getInstanceObjectValue(err).class
-						// is error a subclass of handler
-						if err_class.IsSubclassOf(handler_class) {
-							// yes, continue in handler block
-							frame.handlers = handler.prev
-							break outer
-						}
-						if !vm.nextHandler() {
-							break inner
-						}
-					}
-				}
-				if !vm.popFrame() {
-					vm.runTimeError("Uncaught exception: %s", err.String())
-					return INTERPRET_RUNTIME_ERROR, makeNilValue()
-				}
-				frame = vm.frame()
+			if !vm.raiseException(err) {
+				return INTERPRET_RUNTIME_ERROR, makeNilValue()
 			}
+			frame = vm.frame()
 
 		case OP_CALL:
 			// arg count is operand, callable object is on stack after arguments, result will be stack top
@@ -866,13 +844,60 @@ Loop:
 	return INTERPRET_RUNTIME_ERROR, makeNilValue()
 }
 
+func (vm *VM) raiseExceptionByName(name string, msg string) {
+
+	classVal := vm.globals[name]
+	classObj := classVal.Obj
+	instance := makeInstanceObject(classObj.(*ClassObject))
+	instance.fields["msg"] = makeObjectValue(makeStringObject("EOF"), false)
+	vm.raiseException(makeObjectValue(instance, false))
+}
+
+func (vm *VM) raiseException(err Value) bool {
+
+	for {
+		handler := vm.frame().handlers
+		if handler != nil {
+			vm.stackTop = handler.stackTop
+			vm.push(err)
+			// jump to handler IP
+			vm.frame().ip = int(handler.exceptIP)
+		inner:
+			for {
+				// get handler classname
+				vm.frame().ip += 2
+				idx := vm.getCode()[vm.frame().ip-1]
+				name := getStringValue(vm.frame().closure.function.chunk.constants[idx])
+				handler_class := vm.globals[name].asClass()
+				err_class := getInstanceObjectValue(err).class
+				// is error a subclass of handler
+				if err_class.IsSubclassOf(handler_class) {
+					// yes, continue in handler block
+					vm.frame().handlers = handler.prev
+					return true
+				}
+				// skip to start of next handler if exists
+				if !vm.nextHandler() {
+					break inner
+				}
+			}
+		}
+		// no more handlers in this call frame. if top level, exit
+		// else unwind call stack and repeat
+		if !vm.popFrame() {
+			vm.runTimeError("Uncaught exception: %s", err.String())
+			return false
+		}
+	}
+}
+
 func (vm *VM) nextHandler() bool {
 
 	for {
 		vm.frame().ip++
 		if vm.getCode()[vm.frame().ip] == OP_END_EXCEPT {
 			if vm.getCode()[vm.frame().ip+1] == OP_EXCEPT {
-				vm.frame().ip++
+				vm.frame().ip += 1
 				return true
 			}
 			break
