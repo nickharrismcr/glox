@@ -66,11 +66,14 @@ exceptions
 
 i/o
 
-- file open, close, readln, write 
+- native file open, close, readln, write 
 - readln throws EOFError on eof 
 
 **TODO:**
 
 more runtime exception types 
 marshal / unmarshal code chunks to/from .lxc files 
+from module import [*|name] 
+import module as <namespace> 
+foreach <iterator>
  
