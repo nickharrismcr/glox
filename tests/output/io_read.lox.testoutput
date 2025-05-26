@@ -1,0 +1,19 @@
+GLOX:
+reading
+1 var fp = open("lox/io_read.lox","r");
+2 print "reading";
+3 var i=1;
+4 try {
+5     while (true) {
+6         var s = readln(fp);
+7         print str(i)+" "+s;
+8         i=i+1;
+9     }
+10 } except EOFError as e {
+11     print "in EOFError handler";
+12 }
+13 close(fp);
+14 print "file closed";
+15 var s = readln(fp);
+in EOFError handler
+file closed
