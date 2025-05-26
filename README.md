@@ -55,7 +55,7 @@ dictionaries:
 
 strings :
 
-- multiply by integer ( a la python, e.g  `"@" * 3`,  `3 * "@"` = "@@@" )
+- multiply by integer ( a la python, e.g  `"@" * 3`,  `3 * "@"` = `"@@@"` )
 - slices   ( `a = "abcd"; b=a[0], b=a[:2]`, etc )
 
 renamed fun to func
