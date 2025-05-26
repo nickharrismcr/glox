@@ -700,7 +700,9 @@ Loop:
 		// 1 pop the thrown exception instance from the stack
 		// 2 get the top frame exception handler - this has the IP of the first handler OP_EXCEPT.
 		//   next instruction is an index to the exception classname in constants.
-		//
+		//   if the thrown exception name matches the handler, run the handler
+		//   else skip to the next handler if it exists, or unwind the call stack and retry.
+		//   we'll either hit a matching hander or exit the vm with an unhandled exception error.
 		case OP_RAISE:
 			err := vm.pop()
 			if !vm.raiseException(err) {
@@ -846,12 +848,17 @@ Loop:
 	return INTERPRET_RUNTIME_ERROR, makeNilValue()
 }
 
+// natively raise an exception given a name:
+// - get the class object for the name from globals
+// - make an instance of the class and set the message on it
+// - pass the instance to raiseException
+// used for vm raising errors that can be handled in lox e.g EOFError when reading a file
 func (vm *VM) raiseExceptionByName(name string, msg string) {
 
 	classVal := vm.globals[name]
 	classObj := classVal.Obj
 	instance := makeInstanceObject(classObj.(*ClassObject))
-	instance.fields["msg"] = makeObjectValue(makeStringObject("EOF"), false)
+	instance.fields["msg"] = makeObjectValue(makeStringObject(msg), false)
 	vm.raiseException(makeObjectValue(instance, false))
 }
 
