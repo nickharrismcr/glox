@@ -4,7 +4,7 @@
 
 Is slow compared to CLox. VM 
 - does a lot of function calls in place of C macros, not all of which get inlined
-- has a large switch/case inner loop which Go compiler doesn't optimise well and isn't cache friendly 
+- has a large switch/case inner loop which Go compiler doesn't optimise well  
 - uses slow map[string] for globals - function code runs much quicker 
 - uses interface{} for objects ( values are tagged union structs for speed but contain a pointer for objects ) 
 - GC is handled by the Go runtime. 
