@@ -1,6 +1,6 @@
 # GLOX
 
-**Bob Nystroms Clox bytecode interpreter implemented in Go**
+**Bob Nystroms CLox bytecode interpreter implemented in Go**
 
 The aim of this project is to learn more deeply about programming in Go and the crafting of interpreters by way of implementing Bobs CLox interpreter in Go, adding Python-inspired extensions to Lox along the way.
 The extensions to the language include enhanced string operations, lists, dictionaries, exception handling, module imports, string and list iteration, and I/O.  
