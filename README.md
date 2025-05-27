@@ -2,14 +2,17 @@
 
 **Bob Nystroms clox bytecode interpreter implemented in Go**
 
-Is slow compared to CLox. VM 
+The aim of this project is to learn more deeply about programming in Go and the crafting of interpreters by way of implementing Bobs CLox interpreter in Go, adding Python-inspired extensions along the way.
+The extensions to the language include enhanced string operations, lists, dictionaries, exception handling, module imports, string and list iteration, and I/O.  
+
+My implementation is very slow compared to CLox. The VM 
 - does a lot of function calls in place of C macros, not all of which get inlined
 - has a large switch/case inner loop which Go compiler doesn't optimise well  
 - uses slow map[string] for globals - function code runs much quicker 
 - uses interface{} for objects ( values are tagged union structs for speed but contain a pointer for objects ) 
 - GC is handled by the Go runtime. 
 
-but hey-ho. 
+but hey-ho. This is a learning exercise, the Go code is probably not very ideomatic. The fun is in figuring out how to get the interpreter to do new language stuff. 
 
 **Additions to vanilla Lox:**
 
