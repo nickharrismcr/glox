@@ -3,7 +3,7 @@ import sys, glob,subprocess,difflib,argparse
 
 def run(fname):
 
-    res = subprocess.Popen(["..\glox.exe","%s" % fname],stdout=subprocess.PIPE)
+    res = subprocess.Popen(["../glox.exe","%s" % fname],stdout=subprocess.PIPE)
     return res
 
 def basename(path):
