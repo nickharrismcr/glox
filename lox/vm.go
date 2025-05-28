@@ -45,6 +45,7 @@ type VM struct {
 	args         []string
 	ErrorMsg     string
 	stackTrace   []string
+	ScriptName   string
 }
 
 type ExceptionHandler struct {
@@ -96,6 +97,10 @@ func (vm *VM) Interpret(source string) (InterpretResult, string) {
 	function := vm.compile(source)
 	if function == nil {
 		return INTERPRET_COMPILE_ERROR, ""
+	}
+	if vm.ScriptName != "" {
+		serialised := function.chunk.serialise()
+		writeToLxc(vm, serialised)
 	}
 	closure := makeClosureObject(function)
 	vm.push(makeObjectValue(closure, false))

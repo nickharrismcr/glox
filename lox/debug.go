@@ -19,15 +19,9 @@ func Debugf(format string, args ...interface{}) {
 func (c *Chunk) disassemble(name string) {
 
 	fmt.Printf("=== %s ===\n", name)
-	idx := -1
 	s := ""
-	for {
-		idx++
-		if idx == len(c.constants) {
-			break
-		}
-		constant := c.constants[idx]
-		s = s + fmt.Sprintf("[ %s ]", constant.String())
+	for _, v := range c.constants {
+		s = s + fmt.Sprintf("[ %s ]", v.String())
 	}
 	fmt.Println(s)
 	offset := 0

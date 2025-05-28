@@ -74,6 +74,7 @@ func runFile(args []string) {
 	path := args[0]
 	vm := lox.NewVM(path, true)
 	vm.SetArgs(args)
+	vm.ScriptName = path
 
 	bytes, err := os.ReadFile(path)
 	if err != nil {

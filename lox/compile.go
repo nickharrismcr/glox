@@ -768,14 +768,14 @@ func (p *Parser) endCompiler() *FunctionObject {
 
 	p.emitReturn()
 	function := p.currentCompiler.function
+	s := ""
+	if function.name.get() == "" {
+		s = "<script>"
+	} else {
+		s = function.name.get()
+	}
 	if DebugPrintCode && !DebugSuppress {
 		if !p.hadError {
-			s := ""
-			if function.name.get() == "" {
-				s = "<script>"
-			} else {
-				s = function.name.get()
-			}
 			p.currentChunk().disassemble(s)
 		}
 	}
