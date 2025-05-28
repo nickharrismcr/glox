@@ -33,6 +33,7 @@ type CallFrame struct {
 
 type VM struct {
 	script       string
+	source       string
 	stack        [STACK_MAX]Value
 	stackTop     int
 	globals      map[string]Value
@@ -42,6 +43,8 @@ type VM struct {
 	lastGC       time.Time
 	openUpValues *UpvalueObject // head of list
 	args         []string
+	ErrorMsg     string
+	stackTrace   []string
 }
 
 type ExceptionHandler struct {
@@ -67,6 +70,8 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 		lastGC:       time.Now(),
 		openUpValues: nil,
 		args:         []string{},
+		ErrorMsg:     "",
+		stackTrace:   []string{},
 	}
 	vm.resetStack()
 	if defineBuiltIns {
@@ -87,6 +92,7 @@ func (vm *VM) SetGlobals(globals map[string]Value) {
 
 func (vm *VM) Interpret(source string) (InterpretResult, string) {
 
+	vm.source = source
 	function := vm.compile(source)
 	if function == nil {
 		return INTERPRET_COMPILE_ERROR, ""
@@ -124,7 +130,10 @@ func (vm *VM) resetStack() {
 
 func (vm *VM) runTimeError(format string, args ...interface{}) {
 
-	fmt.Fprintf(os.Stderr, format, args...)
+	vm.ErrorMsg = fmt.Sprintf(format, args...)
+
+	//vm.raiseExceptionByName("RunTimeError", err)
+	/* fmt.Fprintf(os.Stderr, format, args...)
 	fmt.Fprint(os.Stderr, "\n")
 
 	for i := vm.frameCount - 1; i >= 0; i-- {
@@ -140,7 +149,7 @@ func (vm *VM) runTimeError(format string, args ...interface{}) {
 	}
 
 	vm.resetStack()
-
+	*/
 }
 
 func (vm *VM) defineBuiltIn(name string, function BuiltInFn) {
@@ -359,10 +368,10 @@ func (vm *VM) isFalsey(v Value) bool {
 func (vm *VM) run() (InterpretResult, Value) {
 
 	counter := 0
-	frame := vm.frame()
-Loop:
-	for {
+	vm.ErrorMsg = ""
 
+	for {
+		frame := vm.frame()
 		counter++
 		if counter%100000 == 0 {
 			elapsed := time.Since(vm.lastGC).Seconds()
@@ -391,7 +400,7 @@ Loop:
 			argCount := vm.getCode()[frame.ip]
 			frame.ip++
 			if !vm.invoke(method, int(argCount)) {
-				break Loop
+				goto End
 			}
 			frame = vm.frames[vm.frameCount-1]
 
@@ -460,37 +469,37 @@ Loop:
 		case OP_NEGATE:
 			// negate the value at stack top
 			if !vm.unaryNegate() {
-				break Loop
+				goto End
 			}
 
 		case OP_ADD:
 			// pop 2 stack values, add them and push onto the stack
 			if !vm.binaryAdd() {
-				break Loop
+				goto End
 			}
 
 		case OP_SUBTRACT:
 			// pop 2 stack values, subtract and push onto the stack
 			if !vm.binarySubtract() {
-				break Loop
+				goto End
 			}
 
 		case OP_MULTIPLY:
 			// pop 2 stack values, multiply and push onto the stack
 			if !vm.binaryMultiply() {
-				break Loop
+				goto End
 			}
 
 		case OP_MODULUS:
 			// pop 2 stack values, take modulus and push onto the stack
 			if !vm.binaryModulus() {
-				break Loop
+				goto End
 			}
 
 		case OP_DIVIDE:
 			// pop 2 stack values, divide and push onto the stack
 			if !vm.binaryDivide() {
-				break Loop
+				goto End
 			}
 
 		case OP_NIL:
@@ -516,7 +525,7 @@ Loop:
 			v := vm.peek(0)
 			if v.Type != VAL_OBJ {
 				vm.runTimeError("Property not found.")
-				break Loop
+				goto End
 			}
 
 			idx := vm.getCode()[frame.ip]
@@ -532,7 +541,7 @@ Loop:
 					vm.push(val)
 				} else {
 					if !vm.bindMethod(ot.class, name) {
-						break Loop
+						goto End
 					}
 				}
 			case OBJECT_MODULE:
@@ -542,11 +551,11 @@ Loop:
 					vm.push(val)
 				} else {
 					vm.runTimeError("Property %s not found.", name)
-					break Loop
+					goto End
 				}
 			default:
 				vm.runTimeError("Property not found.")
-				break Loop
+				goto End
 			}
 
 		case OP_SET_PROPERTY:
@@ -555,7 +564,7 @@ Loop:
 			v := vm.peek(1)
 			if v.Type != VAL_OBJ {
 				vm.runTimeError("Property not found.")
-				break Loop
+				goto End
 			}
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
@@ -575,7 +584,7 @@ Loop:
 				vm.push(tmp)
 			default:
 				vm.runTimeError("Property not found.")
-				break Loop
+				goto End
 			}
 
 		case OP_EQUAL:
@@ -587,13 +596,13 @@ Loop:
 		case OP_GREATER:
 			// pop 2 stack values, stack top = boolean
 			if !vm.binaryGreater() {
-				break Loop
+				goto End
 			}
 
 		case OP_LESS:
 			// pop 2 stack values, stack top = boolean
 			if !vm.binaryLess() {
-				break Loop
+				goto End
 			}
 
 		case OP_PRINT:
@@ -633,7 +642,7 @@ Loop:
 			value, ok := vm.globals[name]
 			if !ok {
 				vm.runTimeError("Undefined variable %s\n", name)
-				break Loop
+				goto End
 			}
 			vm.push(value)
 
@@ -645,11 +654,11 @@ Loop:
 			name := getStringValue(frame.closure.function.chunk.constants[idx])
 			if _, ok := vm.globals[name]; !ok {
 				vm.runTimeError("Undefined variable %s\n", name)
-				break Loop
+				goto End
 			}
 			if vm.globals[name].Immutable() {
 				vm.runTimeError("Cannot assign to const %s\n", name)
-				break Loop
+				goto End
 			}
 			vm.globals[name] = mutable(vm.peek(0)) // in case of assignment of const
 
@@ -666,7 +675,7 @@ Loop:
 			frame.ip++
 			if vm.stack[frame.slots+slot_idx].Immutable() {
 				vm.runTimeError("Cannot assign to const local.\n")
-				break Loop
+				goto End
 			}
 			vm.stack[frame.slots+slot_idx] = mutable(val)
 
@@ -726,7 +735,7 @@ Loop:
 			argCount := vm.getCode()[frame.ip]
 			frame.ip++
 			if !vm.callValue(vm.peek(int(argCount)), int(argCount)) {
-				return INTERPRET_RUNTIME_ERROR, makeNilValue()
+				goto End
 			}
 			frame = vm.frame()
 
@@ -831,24 +840,24 @@ Loop:
 		case OP_INDEX:
 			// list/map + index on stack,  item at index -> stack top
 			if !vm.index(frame) {
-				break Loop
+				goto End
 			}
 
 		case OP_INDEX_ASSIGN:
 			// list + index + RHS on stack,  list updated in place
 			if !vm.indexAssign() {
-				break Loop
+				goto End
 			}
 
 		case OP_SLICE:
 			// list + from/to on stack. nil indicates from start/end.  new list at index -> stack top
 			if !vm.slice() {
-				break Loop
+				goto End
 			}
 		case OP_SLICE_ASSIGN:
 			// list + from/to + RHS on stack.  list updated in place
 			if !vm.sliceAssign() {
-				break Loop
+				goto End
 			}
 
 		// local slot, end of foreach in next 3 instructions
@@ -858,7 +867,7 @@ Loop:
 			iterable := vm.peek(1)
 			if iterable.Type != VAL_OBJ {
 				vm.runTimeError("Iterable in foreach must be list or string.")
-				break Loop
+				goto End
 			}
 			idx := vm.peek(0).Int
 			switch iterable.Obj.getType() {
@@ -886,7 +895,7 @@ Loop:
 
 			default:
 				vm.runTimeError("Iterable in foreach must be list or string.")
-				break Loop
+				goto End
 			}
 
 		case OP_NEXT:
@@ -900,10 +909,17 @@ Loop:
 
 		default:
 			vm.runTimeError("Invalid Opcode")
-			break Loop
+			goto End
+		}
+	End:
+
+		if vm.ErrorMsg != "" {
+			if !vm.raiseExceptionByName("RunTimeError", vm.ErrorMsg) {
+				return INTERPRET_RUNTIME_ERROR, makeNilValue()
+			}
 		}
 	}
-	return INTERPRET_RUNTIME_ERROR, makeNilValue()
+	//return INTERPRET_RUNTIME_ERROR, makeNilValue()
 }
 
 // natively raise an exception given a name:
@@ -911,20 +927,22 @@ Loop:
 // - make an instance of the class and set the message on it
 // - pass the instance to raiseException
 // used for vm raising errors that can be handled in lox e.g EOFError when reading a file
-func (vm *VM) raiseExceptionByName(name string, msg string) {
+func (vm *VM) raiseExceptionByName(name string, msg string) bool {
 
 	classVal := vm.globals[name]
 	classObj := classVal.Obj
 	instance := makeInstanceObject(classObj.(*ClassObject))
 	instance.fields["msg"] = makeObjectValue(makeStringObject(msg), false)
-	vm.raiseException(makeObjectValue(instance, false))
+	return vm.raiseException(makeObjectValue(instance, false))
 }
 
 func (vm *VM) raiseException(err Value) bool {
 
 	for {
+		vm.appendStackTrace()
 		handler := vm.frame().handlers
 		if handler != nil {
+
 			vm.stackTop = handler.stackTop
 			vm.push(err)
 			// jump to handler IP
@@ -940,7 +958,10 @@ func (vm *VM) raiseException(err Value) bool {
 				// is error a subclass of handler
 				if err_class.IsSubclassOf(handler_class) {
 					// yes, continue in handler block
+					vm.ErrorMsg = ""
+					vm.stackTrace = []string{}
 					vm.frame().handlers = handler.prev
+
 					return true
 				}
 				// skip to start of next handler if exists
@@ -951,8 +972,10 @@ func (vm *VM) raiseException(err Value) bool {
 		}
 		// no more handlers in this call frame. if top level, exit
 		// else unwind call stack and repeat
+
 		if !vm.popFrame() {
-			vm.runTimeError("Uncaught exception: %s", err.String())
+			exc := err.Obj.(*InstanceObject)
+			vm.runTimeError("Uncaught exception: %s : %s ", exc.class, exc.fields["msg"])
 			return false
 		}
 	}
@@ -980,6 +1003,38 @@ func (vm *VM) popFrame() bool {
 	vm.frameCount--
 	vm.stackTop = vm.frames[vm.frameCount].slots
 	return true
+}
+
+func (vm *VM) appendStackTrace() {
+
+	frame := vm.frame()
+	function := frame.closure.function
+	where := ""
+	if function.name.get() == "" {
+		where = vm.script
+	} else {
+		where = function.name.get()
+	}
+	line := function.chunk.lines[frame.ip]
+	s := fmt.Sprintf("[line %d] in %s ", line, where)
+	vm.stackTrace = append(vm.stackTrace, s)
+	codeline := vm.sourceLine(line)
+	vm.stackTrace = append(vm.stackTrace, codeline)
+}
+
+func (vm *VM) PrintStackTrace() {
+	for _, v := range vm.stackTrace {
+		fmt.Fprintf(os.Stderr, "%s\n", v)
+	}
+}
+
+func (vm *VM) sourceLine(line int) string {
+
+	lines := strings.Split(vm.source, "\r\n")
+	if line > 0 && line <= len(lines) {
+		return lines[line-1]
+	}
+	return ""
 }
 
 func (vm *VM) importModule(module string) InterpretResult {

@@ -86,6 +86,8 @@ func runFile(args []string) {
 		os.Exit(65)
 	}
 	if status == lox.INTERPRET_RUNTIME_ERROR {
+		fmt.Println(vm.ErrorMsg)
+		vm.PrintStackTrace()
 		os.Exit(70)
 	}
 	fmt.Println(result)

@@ -30,6 +30,7 @@ func (vm *VM) defineBuiltIns() {
 	// lox built ins e.g Exception classes
 	vm.loadBuiltInModule(exceptionSource)
 	vm.loadBuiltInModule(eofErrorSource)
+	vm.loadBuiltInModule(runTimeErrorSource)
 
 }
 
@@ -409,3 +410,4 @@ func (vm *VM) loadBuiltInModule(source string) {
 // predefine an Exception class using Lox source
 const exceptionSource = `class Exception {init(msg) {this.msg = msg;this.name = "Exception";  }toString() {return this.msg;}}`
 const eofErrorSource = `class EOFError < Exception {init(msg) {this.msg = msg;this.name = "EOFError";  }toString() {return this.msg;}}`
+const runTimeErrorSource = `class RunTimeError < Exception {init(msg) {this.msg = msg;this.name = "RunTimeError";  }toString() {return this.msg;}}`
