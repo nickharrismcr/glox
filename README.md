@@ -78,7 +78,7 @@ exceptions
 - can nest try...excepts 
 - can specify multiple handlers for different exception types
 - `raise [exception instance]` statement 
-- runtime can raise catchable exceptions e.g EOFError
+- runtime can raise catchable exceptions e.g RunTimeError, EOFError
 
 i/o
 
