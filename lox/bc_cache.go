@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -12,9 +13,25 @@ import (
 
 func writeToLxc(vm *VM, serialised string) {
 
-	fp, _ := os.Create(strings.ReplaceAll(vm.ScriptName, ".lox", ".lxc"))
-	fmt.Fprintln(fp, serialised)
+	dir := filepath.Dir(vm.ScriptName)
 
+	// Create the cache subdirectory
+	cacheDir := filepath.Join(dir, "__loxcache__")
+	err := os.MkdirAll(cacheDir, 0755)
+	if err != nil {
+		panic(fmt.Errorf("failed to create cache dir: %w", err))
+	}
+
+	// Remove .lox extension from filename
+	base := filepath.Base(vm.ScriptName)
+	name := strings.TrimSuffix(base, ".lox")
+	cacheFile := filepath.Join(cacheDir, name+".lxc")
+
+	// Write to file
+	err = os.WriteFile(cacheFile, []byte(serialised), 0644)
+	if err != nil {
+		panic(fmt.Errorf("failed to write cache file: %w", err))
+	}
 }
 
 func (c *Chunk) serialise() string {
@@ -71,5 +88,7 @@ func (v *Value) serialise(b *strings.Builder) {
 }
 
 func escape(s string) string {
-	return strings.ReplaceAll(s, "|", "\\|")
+	s = strings.ReplaceAll(s, "|", "\\|")
+	s = strings.ReplaceAll(s, `"`, "")
+	return s
 }
