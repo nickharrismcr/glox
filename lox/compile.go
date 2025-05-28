@@ -654,7 +654,9 @@ func (p *Parser) foreachStatement() {
 	jumpToEnd := p.emitForeach(uint8(slot))
 
 	p.statement()
-	p.patchJump(p.currentCompiler.loop.continue_)
+	if p.currentCompiler.loop.continue_ != 0 {
+		p.patchJump(p.currentCompiler.loop.continue_)
+	}
 	p.emitLoop(OP_NEXT, p.currentCompiler.loop.start)
 
 	p.patchForeach(jumpToEnd)
