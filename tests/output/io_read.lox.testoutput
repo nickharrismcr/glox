@@ -17,3 +17,4 @@ reading
 15 var s = readln(fp);
 in EOFError handler
 file closed
+Uncaught exception: <class RunTimeError> : "readln attempted on closed file." 
