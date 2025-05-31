@@ -97,7 +97,6 @@ i/o
 
 - more runtime exception types 
 - exception stack trace 
-- marshal / unmarshal code chunks to/from .lxc files 
 - from module import [*|name] 
 - import module as <namespace> 
 - etc.
