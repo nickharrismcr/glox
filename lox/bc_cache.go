@@ -163,7 +163,6 @@ func readChunk(reader io.Reader) *Chunk {
 	readMarker(reader)
 
 	chunk := &Chunk{code: code, lines: lines, constants: constants}
-	chunk.disassemble("lxc")
 	return chunk
 }
 
