@@ -43,7 +43,7 @@ native funcs :
 
 lists :
 
-- initialiser (`a=[]; a=[1,2,3];`)
+- initialiser (`var a=[]; var a=[1,2,3];`)
 - `append (list,val)`  
 - indexing ( `b=a[int]` )
 - index assign ( `a[int] = b` )
@@ -52,9 +52,15 @@ lists :
 - adding ( `list3=list1+list2;` )
 - `join ( list, string )`    e.g `join(["a","b","c"],"|");` -> "a|b|c"   
 
+tuples : 
+
+- immutable lists
+- `var a = (1,2,3);` 
+- allows same operations as list but no append or assignment allowed.
+
 dictionaries:
 
-- initialiser ( `a = {}; a = { "b":"c","d":"e"};` )
+- initialiser ( `var a = {}; var a = { "b":"c","d":"e"};` )
 - get ( `a[key]`)
 - set ( `a[key]=b`)
 - `keys(dict)`   get list of keys 
