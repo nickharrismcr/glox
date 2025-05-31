@@ -19,7 +19,7 @@ but hey-ho. This is a learning exercise, the Go code is probably not very ideoma
 module imports
 
 - e.g `import othermodule;`
-- importing modules will cache the compiled bytecode in __loxcache__/<module>.lxc, subsequent imports will load from this cache unless the source is newer in which 
+- importing modules will cache the compiled bytecode in `__loxcache__/<module>.lxc`, subsequent imports will load from this cache unless the source is newer in which 
   case the module will be recompiled. 
 
 immutable vars e.g  `const a = 1;`
