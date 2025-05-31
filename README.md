@@ -3,7 +3,7 @@
 **Bob Nystroms CLox bytecode interpreter implemented in Go**
 
 The aim of this project is to learn more deeply about programming in Go and the crafting of interpreters by way of implementing Bobs CLox interpreter in Go, adding Python-inspired extensions to Lox along the way.
-The extensions to the language include enhanced string operations, lists, dictionaries, exception handling, module imports, string and list iteration, and I/O.  
+The extensions to the language include enhanced string operations, lists, dictionaries, exception handling, module imports with bytecode caching, string and list iteration, and I/O.  
 
 My implementation is very slow compared to CLox. The VM 
 - does a lot of function calls in place of C macros, not all of which get inlined
@@ -19,6 +19,8 @@ but hey-ho. This is a learning exercise, the Go code is probably not very ideoma
 module imports
 
 - e.g `import othermodule;`
+- importing modules will cache the compiled bytecode in __loxcache__/<module>.lxc, subsequent imports will load from this cache unless the source is newer in which 
+  case the module will be recompiled. 
 
 immutable vars e.g  `const a = 1;`
 
