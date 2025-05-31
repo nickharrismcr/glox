@@ -10,10 +10,15 @@ var DebugPrintCode = false
 var DebugShowGlobals = false
 
 func Debug(s string) {
-	println(s)
+	if DebugTraceExecution {
+		println(s)
+	}
 }
+
 func Debugf(format string, args ...interface{}) {
-	fmt.Printf(format+"\n", args...)
+	if DebugTraceExecution {
+		fmt.Printf(format+"\n", args...)
+	}
 }
 
 func (c *Chunk) disassemble(name string) {

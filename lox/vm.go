@@ -1,8 +1,8 @@
 package lox
 
 import (
+	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"runtime"
 	"strings"
@@ -45,7 +45,7 @@ type VM struct {
 	args         []string
 	ErrorMsg     string
 	stackTrace   []string
-	ScriptName   string
+	ModuleImport bool
 }
 
 type ExceptionHandler struct {
@@ -98,15 +98,26 @@ func (vm *VM) Interpret(source string) (InterpretResult, string) {
 	if function == nil {
 		return INTERPRET_COMPILE_ERROR, ""
 	}
-	if vm.ScriptName != "" {
-		serialised := function.chunk.serialise()
-		writeToLxc(vm, serialised)
+	if vm.ModuleImport {
+		b := new(bytes.Buffer)
+		function.chunk.serialise(b)
+		writeToLxc(vm, b)
 	}
 	closure := makeClosureObject(function)
 	vm.push(makeObjectValue(closure, false))
 	vm.call(closure, 0)
 	res, val := vm.run()
 	return res, val.String()
+}
+func (vm *VM) callLoadedChunk(name string, chunk *Chunk) {
+
+	function := makeFunctionObject()
+	function.chunk = chunk
+	function.name = makeStringObject(name)
+	closure := makeClosureObject(function)
+	vm.push(makeObjectValue(closure, false))
+	vm.call(closure, 0)
+	_, _ = vm.run()
 }
 
 //------------------------------------------------------------------------------------------
@@ -1042,26 +1053,32 @@ func (vm *VM) sourceLine(line int) string {
 	return ""
 }
 
-func (vm *VM) importModule(module string) InterpretResult {
+func (vm *VM) importModule(moduleName string) InterpretResult {
 
-	globalModules[module] = true
-	searchPath := getPath(vm.args, module) + ".lox"
-	bytes, err := ioutil.ReadFile(searchPath)
+	globalModules[moduleName] = true
+	searchPath := getPath(vm.args, moduleName) + ".lox"
+	bytes, err := os.ReadFile(searchPath)
 	if err != nil {
 		fmt.Printf("Could not find module %s.", searchPath)
 		os.Exit(1)
 	}
+
 	subvm := NewVM(searchPath, true)
 	subvm.SetArgs(vm.args)
-	res, _ := subvm.Interpret(string(bytes))
-	if res != INTERPRET_OK {
-		return res
+	subvm.ModuleImport = true
+	// see if we can load lxc bytecode file for the module.
+	// if not, load the module source and compile it.
+	if loadedChunk, ok := loadLxc(searchPath); ok {
+		subvm.callLoadedChunk(moduleName, loadedChunk)
+	} else {
+		res, _ := subvm.Interpret(string(bytes))
+		if res != INTERPRET_OK {
+			return res
+		}
 	}
-
-	mo := makeModuleObject(module, subvm.globals)
+	mo := makeModuleObject(moduleName, subvm.globals)
 	v := makeObjectValue(mo, false)
-	vm.globals[module] = v
-
+	vm.globals[moduleName] = v
 	return INTERPRET_OK
 }
 

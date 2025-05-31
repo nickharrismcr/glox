@@ -1,19 +1,20 @@
 package lox
 
 import (
-	"encoding/hex"
+	"bytes"
+	bin "encoding/binary"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
 //functions for cacheing and retrieval of compiled bytecode in .lxc files
 
-func writeToLxc(vm *VM, serialised string) {
+func writeToLxc(vm *VM, serialised *bytes.Buffer) {
 
-	dir := filepath.Dir(vm.ScriptName)
+	dir := filepath.Dir(vm.script)
 
 	// Create the cache subdirectory
 	cacheDir := filepath.Join(dir, "__loxcache__")
@@ -23,72 +24,209 @@ func writeToLxc(vm *VM, serialised string) {
 	}
 
 	// Remove .lox extension from filename
-	base := filepath.Base(vm.ScriptName)
+	base := filepath.Base(vm.script)
 	name := strings.TrimSuffix(base, ".lox")
 	cacheFile := filepath.Join(cacheDir, name+".lxc")
 
 	// Write to file
-	err = os.WriteFile(cacheFile, []byte(serialised), 0644)
+	err = os.WriteFile(cacheFile, serialised.Bytes(), 0644)
 	if err != nil {
 		panic(fmt.Errorf("failed to write cache file: %w", err))
 	}
 }
 
-func (c *Chunk) serialise() string {
+func loadLxc(scriptPath string) (*Chunk, bool) {
 
-	var b strings.Builder
+	//Debugf("Attempting to load lxc for %s", scriptPath)
 
-	// Encode code bytes
-	b.WriteString("CHUNK|")
-	b.WriteString(hex.EncodeToString(c.code))
-	b.WriteString("|")
+	// Determine cache path
+	dir := filepath.Dir(scriptPath)
+	cacheDir := filepath.Join(dir, "__loxcache__")
+	base := strings.TrimSuffix(filepath.Base(scriptPath), ".lox")
+	cachePath := filepath.Join(cacheDir, base+".lxc")
 
-	// Encode line numbers
-	lineStrs := make([]string, len(c.lines))
-	for i, l := range c.lines {
-		lineStrs[i] = strconv.Itoa(l)
-	}
-	b.WriteString(strings.Join(lineStrs, ","))
-	b.WriteString("|")
-	b.WriteString(strconv.Itoa(len(c.constants)))
-	b.WriteString("\n")
-
-	// Write constants
-	for _, v := range c.constants {
-		v.serialise(&b)
+	// Check timestamps
+	sourceInfo, err := os.Stat(scriptPath)
+	if err != nil {
+		Debug("lxc not found.")
+		return nil, false
 	}
 
-	return b.String()
+	cacheInfo, err := os.Stat(cachePath)
+	useCache := err == nil && cacheInfo.ModTime().After(sourceInfo.ModTime())
+
+	if useCache {
+		// Load from cache
+		reader, err := os.Open(cachePath)
+		if err != nil {
+			Debug("lxc not found.")
+			return nil, false
+		}
+		Debug("lxc loaded.")
+		chunk := readChunk(reader)
+		return chunk, true
+	}
+	return nil, false
 }
 
-func (v *Value) serialise(b *strings.Builder) {
+func (c *Chunk) serialise(b *bytes.Buffer) {
+
+	writeMarker(b)
+	bin.Write(b, bin.LittleEndian, uint32(len(c.code)))
+	b.Write(c.code)
+	writeMarker(b)
+	bin.Write(b, bin.LittleEndian, uint32(len(c.lines)))
+	for _, line := range c.lines {
+		bin.Write(b, bin.LittleEndian, uint32(line))
+	}
+	writeMarker(b)
+	bin.Write(b, bin.LittleEndian, uint32(len(c.constants)))
+	for _, v := range c.constants {
+		v.serialise(b)
+	}
+	writeMarker(b)
+}
+
+func (v *Value) serialise(buffer *bytes.Buffer) {
 
 	switch v.Type {
 	case VAL_FLOAT:
-		fmt.Fprintf(b, "VAL|NUMBER|%f\n", v.Float)
+		buffer.Write([]byte{0x01})
+		bin.Write(buffer, bin.LittleEndian, v.Float)
 	case VAL_INT:
-		fmt.Fprintf(b, "VAL|NUMBER|%d\n", v.Int)
+		buffer.Write([]byte{0x02})
+		bin.Write(buffer, bin.LittleEndian, uint32(v.Int))
 	case VAL_OBJ:
 		switch v.Obj.getType() {
 		case OBJECT_STRING:
-			fmt.Fprintf(b, "VAL|STRING|%s\n", escape(v.Obj.String()))
+			buffer.Write([]byte{0x03})
+			s := v.Obj.(StringObject).get()
+			bin.Write(buffer, bin.LittleEndian, uint32(len(s)))
+			buffer.Write([]byte(s))
+
 		case OBJECT_FUNCTION:
 			fo := v.Obj.(*FunctionObject)
-			fmt.Fprintf(b, "VAL|FUNC|%s|%d\n", escape(fo.name.String()), fo.arity)
-			b.WriteString(fo.chunk.serialise())
-			b.WriteString("END_FUNC\n")
+			buffer.Write([]byte{0x04})
+			writeString(buffer, fo.name.get())
+			bin.Write(buffer, bin.LittleEndian, uint32(fo.arity))
+			fo.chunk.serialise(buffer)
+		default:
+			panic("serialise object value not handled")
 		}
 	case VAL_BOOL:
-		fmt.Fprintf(b, "VAL|BOOL|%v\n", v.Bool)
+		buffer.Write([]byte{0x05})
+		b := byte(0)
+		if v.Bool {
+			b = byte(1)
+		}
+		buffer.Write([]byte{b})
 	case VAL_NIL:
-		b.WriteString("VAL|NIL|\n")
+		buffer.Write([]byte{0x06})
 	default:
 		panic("serialise value not handled")
 	}
 }
 
-func escape(s string) string {
-	s = strings.ReplaceAll(s, "|", "\\|")
-	s = strings.ReplaceAll(s, `"`, "")
-	return s
+func writeString(b *bytes.Buffer, s string) {
+	bin.Write(b, bin.LittleEndian, uint32(len(s)))
+	b.Write([]byte(s))
+}
+
+func readChunk(reader io.Reader) *Chunk {
+
+	var codeLen uint32
+	readMarker(reader)
+	bin.Read(reader, bin.LittleEndian, &codeLen)
+	//Debugf("Code len %d", codeLen)
+	code := make([]byte, codeLen)
+	io.ReadFull(reader, code)
+	readMarker(reader)
+
+	var lineCount uint32
+	bin.Read(reader, bin.LittleEndian, &lineCount)
+	//Debugf("Line count %d", lineCount)
+	lines := make([]int, lineCount)
+	for i := range lines {
+		var l uint32
+		bin.Read(reader, bin.LittleEndian, &l)
+		lines[i] = int(l)
+	}
+	readMarker(reader)
+
+	var constCount uint32
+	bin.Read(reader, bin.LittleEndian, &constCount)
+	//Debugf("Const count %d", constCount)
+	constants := make([]Value, constCount)
+	for i := range constants {
+		constants[i] = readValue(reader)
+	}
+	readMarker(reader)
+
+	chunk := &Chunk{code: code, lines: lines, constants: constants}
+	chunk.disassemble("lxc")
+	return chunk
+}
+
+func readValue(r io.Reader) Value {
+	var tag [1]byte
+	r.Read(tag[:])
+	//Debugf("Tag : %d", tag[0])
+	switch tag[0] {
+	case 0x01:
+		var n float64
+		bin.Read(r, bin.LittleEndian, &n)
+		//Debugf("Float %f", n)
+		return makeFloatValue(n, false)
+	case 0x02:
+		var n int
+		bin.Read(r, bin.LittleEndian, &n)
+		//Debugf("Int %d", n)
+		return makeIntValue(n, false)
+	case 0x03:
+		var len uint32
+		bin.Read(r, bin.LittleEndian, &len)
+		buf := make([]byte, len)
+		r.Read(buf)
+		//Debugf("String %s ", string(buf))
+		return makeObjectValue(makeStringObject(string(buf)), false)
+	case 0x04:
+		s := readString(r)
+		name := makeStringObject(s)
+		//Debugf("Function %s", s)
+		var arity uint32
+		bin.Read(r, bin.LittleEndian, &arity)
+		//Debugf("Arity %d", arity)
+		chunk := readChunk(r)
+		return makeObjectValue(&FunctionObject{name: name, arity: int(arity), chunk: chunk}, false)
+	case 0x05:
+		var b [1]byte
+		r.Read(b[:])
+		//Debugf("Bool %s", b[0] == 1)
+		return makeBooleanValue(b[0] == 1, false)
+	case 0x06:
+		//Debugf("Nil")
+		return makeNilValue()
+	default:
+		panic("unknown tag")
+	}
+}
+
+func writeMarker(b *bytes.Buffer) {
+	b.Write([]byte{0xFF})
+}
+
+func readMarker(r io.Reader) {
+	buf := make([]byte, 1)
+	r.Read(buf)
+	if buf[0] != 0xFF {
+		panic(fmt.Sprintf("Expected marker, got %d", buf[0]))
+	}
+}
+
+func readString(r io.Reader) string {
+	var len uint32
+	bin.Read(r, bin.LittleEndian, &len)
+	buf := make([]byte, len)
+	r.Read(buf)
+	return string(buf)
 }
