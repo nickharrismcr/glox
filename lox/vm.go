@@ -849,13 +849,17 @@ func (vm *VM) run() (InterpretResult, Value) {
 			// item count is operand, expects items on stack,  list object will be stack top
 			vm.createList(frame)
 
+		case OP_CREATE_TUPLE:
+			// item count is operand, expects items on stack,  list object will be stack top
+			vm.createTuple(frame)
+
 		case OP_CREATE_DICT:
-			// kay/pair item count is operand, expects keys/values on stack,  dict object will be stack top
+			// key/pair item count is operand, expects keys/values on stack,  dict object will be stack top
 			vm.createDict(frame)
 
 		case OP_INDEX:
 			// list/map + index on stack,  item at index -> stack top
-			if !vm.index(frame) {
+			if !vm.index() {
 				goto End
 			}
 
@@ -1091,8 +1095,21 @@ func (vm *VM) createList(frame *CallFrame) {
 	for i := 0; i < itemCount; i++ {
 		list = append([]Value{vm.pop()}, list...) // reverse order
 	}
-	lo := makeListObject(list)
+	lo := makeListObject(list, false)
 	vm.push(makeObjectValue(lo, false))
+}
+
+func (vm *VM) createTuple(frame *CallFrame) {
+
+	itemCount := int(vm.getCode()[frame.ip])
+	frame.ip++
+	list := []Value{}
+
+	for i := 0; i < itemCount; i++ {
+		list = append([]Value{vm.pop()}, list...) // reverse order
+	}
+	lo := makeListObject(list, true)
+	vm.push(makeObjectValue(lo, true))
 }
 
 func (vm *VM) createDict(frame *CallFrame) {
@@ -1110,7 +1127,7 @@ func (vm *VM) createDict(frame *CallFrame) {
 	vm.push(makeObjectValue(do, false))
 }
 
-func (vm *VM) index(frame *CallFrame) bool {
+func (vm *VM) index() bool {
 
 	iv := vm.pop()
 	sv := vm.pop()
@@ -1174,8 +1191,12 @@ func (vm *VM) indexAssign() bool {
 	if collection.Type == VAL_OBJ {
 		switch collection.Obj.getType() {
 		case OBJECT_LIST:
+			t := collection.Obj.(*ListObject)
+			if t.tuple {
+				vm.runTimeError("Tuples are immutable.")
+				return false
+			}
 			if index.Type == VAL_INT {
-				t := collection.Obj.(*ListObject)
 				if err := t.assignToIndex(index.Int, rhs); err != nil {
 					vm.runTimeError(err.Error())
 					return false
@@ -1275,8 +1296,12 @@ func (vm *VM) sliceAssign() bool {
 	if lv.Type == VAL_OBJ {
 
 		if lv.Obj.getType() == OBJECT_LIST {
-
-			err := lv.Obj.(*ListObject).assignToSlice(from_idx, to_idx, val)
+			lst := lv.Obj.(*ListObject)
+			if lst.tuple {
+				vm.runTimeError("Tuples are immutable")
+				return false
+			}
+			err := lst.assignToSlice(from_idx, to_idx, val)
 			if err != nil {
 				vm.runTimeError(err.Error())
 				return false

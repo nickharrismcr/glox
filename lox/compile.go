@@ -1285,7 +1285,21 @@ func binary(p *Parser, canAssign bool) {
 func grouping(p *Parser, canAssign bool) {
 
 	p.expression()
-	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.")
+	if p.match(TOKEN_COMMA) {
+		arity := 1
+		for {
+			p.expression()
+			arity++
+			if !p.match(TOKEN_COMMA) {
+				break
+			}
+		}
+		p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after tuple.")
+		p.emitByte(OP_CREATE_TUPLE)
+		p.emitByte(uint8(arity))
+	} else {
+		p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.")
+	}
 }
 
 func float(p *Parser, canAssign bool) {

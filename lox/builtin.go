@@ -93,7 +93,7 @@ func argsBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	for _, a := range vm.args {
 		argvList = append(argvList, makeObjectValue(makeStringObject(a), true))
 	}
-	list := makeListObject(argvList)
+	list := makeListObject(argvList, false)
 	return makeObjectValue(list, false)
 }
 
@@ -215,6 +215,10 @@ func appendBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	case OBJECT_LIST:
 		l := val.Obj.(*ListObject)
+		if l.tuple {
+			vm.runTimeError("Tuples are immutable")
+			return makeNilValue()
+		}
 		l.append(val2)
 		return val
 	}

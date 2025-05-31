@@ -229,12 +229,14 @@ func (f *BuiltInObject) String() string {
 
 type ListObject struct {
 	items []Value
+	tuple bool
 }
 
-func makeListObject(items []Value) *ListObject {
+func makeListObject(items []Value, isTuple bool) *ListObject {
 
 	return &ListObject{
 		items: items,
+		tuple: isTuple,
 	}
 }
 
@@ -285,6 +287,9 @@ func (o *ListObject) String() string {
 	for _, v := range o.items {
 		list = append(list, v.String())
 	}
+	if o.tuple {
+		return fmt.Sprintf("( %s )", strings.Join(list, " , "))
+	}
 	return fmt.Sprintf("[ %s ]", strings.Join(list, " , "))
 }
 
@@ -293,7 +298,7 @@ func (o *ListObject) add(other *ListObject) *ListObject {
 	l := []Value{}
 	l = append(l, o.items...)
 	l = append(l, other.items...)
-	return makeListObject(l)
+	return makeListObject(l, false)
 }
 
 func (o *ListObject) index(ix int) (Value, error) {
@@ -330,7 +335,7 @@ func (o *ListObject) slice(from_ix, to_ix int) (Value, error) {
 		return makeNilValue(), errors.New("invalid slice indices")
 	}
 
-	lo := makeListObject(o.items[from_ix:to_ix])
+	lo := makeListObject(o.items[from_ix:to_ix], false)
 	return makeObjectValue(lo, false), nil
 }
 
@@ -421,7 +426,7 @@ func (o *DictObject) get(key string) (Value, error) {
 
 	rv, ok := o.items[key]
 	if !ok {
-		return makeNilValue(), errors.New("Key not found.")
+		return makeNilValue(), errors.New("key not found")
 	}
 	return rv, nil
 }
@@ -435,7 +440,7 @@ func (o *DictObject) keys() Value {
 		v := makeObjectValue(so, false)
 		keys = append(keys, v)
 	}
-	return makeObjectValue(makeListObject(keys), false)
+	return makeObjectValue(makeListObject(keys, false), false)
 }
 
 //-------------------------------------------------------------------------------------------

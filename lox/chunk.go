@@ -57,6 +57,7 @@ const (
 	OP_FOREACH
 	OP_NEXT
 	OP_END_FOREACH
+	OP_CREATE_TUPLE
 )
 
 type Chunk struct {
