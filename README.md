@@ -100,5 +100,6 @@ i/o
 - exception stack trace 
 - from module import [*|name] 
 - import module as <namespace> 
+- `if (key in iterable)` or `if (key not in interable)`
 - etc.
  
