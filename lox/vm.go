@@ -418,7 +418,6 @@ func (vm *VM) run() (InterpretResult, Value) {
 			if !vm.invoke(method, int(argCount)) {
 				goto End
 			}
-			frame = vm.frames[vm.frameCount-1]
 
 		case OP_CLOSURE:
 			// get the function indexed by operand from constants, wrap in a closure object and push onto stack
@@ -452,7 +451,6 @@ func (vm *VM) run() (InterpretResult, Value) {
 			}
 			vm.stackTop = frame.slots
 			vm.push(result)
-			frame = vm.frames[vm.frameCount-1]
 
 		case OP_GET_UPVALUE:
 			slot := vm.getCode()[frame.ip]
@@ -744,7 +742,6 @@ func (vm *VM) run() (InterpretResult, Value) {
 			if !vm.raiseException(err) {
 				return INTERPRET_RUNTIME_ERROR, makeNilValue()
 			}
-			frame = vm.frame()
 
 		case OP_CALL:
 			// arg count is operand, callable object is on stack after arguments, result will be stack top
@@ -753,7 +750,6 @@ func (vm *VM) run() (InterpretResult, Value) {
 			if !vm.callValue(vm.peek(int(argCount)), int(argCount)) {
 				goto End
 			}
-			frame = vm.frame()
 
 		case OP_CLASS:
 			idx := vm.getCode()[frame.ip]
@@ -800,7 +796,6 @@ func (vm *VM) run() (InterpretResult, Value) {
 			if !vm.invokeFromClass(superclass, method, int(argCount)) {
 				return INTERPRET_RUNTIME_ERROR, makeNilValue()
 			}
-			frame = vm.frames[vm.frameCount-1]
 
 		// NJH added:
 
@@ -836,7 +831,6 @@ func (vm *VM) run() (InterpretResult, Value) {
 					ot := ov.(*InstanceObject)
 					if toString, ok := ot.class.methods["toString"]; ok {
 						vm.call(toString.asClosure(), 0)
-						frame = vm.frame()
 						continue
 					}
 					s = v.String()
@@ -1132,7 +1126,7 @@ func (vm *VM) index() bool {
 	iv := vm.pop()
 	sv := vm.pop()
 
-	if sv.Type == VAL_OBJ {
+	if sv.isObj() {
 		switch sv.Obj.getType() {
 		case OBJECT_LIST:
 			if iv.Type != VAL_INT {
@@ -1242,7 +1236,7 @@ func (vm *VM) slice() bool {
 	}
 
 	lv := vm.pop()
-	if lv.Type == VAL_OBJ {
+	if lv.isObj() {
 		if lv.Obj.getType() == OBJECT_LIST {
 			lo, err := lv.Obj.(*ListObject).slice(from_idx, to_idx)
 			if err != nil {
@@ -1293,7 +1287,7 @@ func (vm *VM) sliceAssign() bool {
 	}
 
 	lv := vm.peek(0)
-	if lv.Type == VAL_OBJ {
+	if lv.isObj() {
 
 		if lv.Obj.getType() == OBJECT_LIST {
 			lst := lv.Obj.(*ListObject)
