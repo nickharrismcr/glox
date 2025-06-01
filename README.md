@@ -40,6 +40,7 @@ native funcs :
 - `cos(float)`    -> float 
 - `args()` - returns list of command line arguments  
 - `replace(string,old,new)` -> string  - replace substring of string  
+- `type(var)` -> string - return type of variable e.g int,float,string,list,dict,class,instance,closure,file etc 
 
 lists :
 

@@ -12,6 +12,7 @@ func (vm *VM) defineBuiltIns() {
 	// native functions
 	vm.defineBuiltIn("args", argsBuiltIn)
 	vm.defineBuiltIn("clock", clockBuiltIn)
+	vm.defineBuiltIn("type", typeBuiltIn)
 	vm.defineBuiltIn("len", lenBuiltIn)
 	vm.defineBuiltIn("sin", sinBuiltIn)
 	vm.defineBuiltIn("cos", cosBuiltIn)
@@ -85,6 +86,49 @@ func joinBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	}
 	vm.runTimeError(err)
 	return makeNilValue()
+}
+
+func typeBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+
+	if argCount != 1 {
+		vm.runTimeError("Single argument expected.")
+		return makeNilValue()
+	}
+	val := vm.stack[arg_stackptr]
+	var val_type string
+
+	switch val.Type {
+	case VAL_INT:
+		val_type = "int"
+	case VAL_FLOAT:
+		val_type = "float"
+	case VAL_BOOL:
+		val_type = "boolean"
+	case VAL_OBJ:
+		switch val.Obj.getType() {
+		case OBJECT_STRING:
+			val_type = "string"
+		case OBJECT_FUNCTION:
+			val_type = "function"
+		case OBJECT_CLOSURE:
+			val_type = "closure"
+		case OBJECT_LIST:
+			val_type = "list"
+		case OBJECT_DICT:
+			val_type = "dict"
+		case OBJECT_CLASS:
+			val_type = "class"
+		case OBJECT_INSTANCE:
+			val_type = "instance"
+		case OBJECT_MODULE:
+			val_type = "module"
+		case OBJECT_FILE:
+			val_type = "file"
+		}
+	case VAL_NIL:
+		val_type = "nil"
+	}
+	return makeObjectValue(makeStringObject(val_type), true)
 }
 
 func argsBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
