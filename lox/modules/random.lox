@@ -1,0 +1,6 @@
+import math;
+
+// Returns an integer between min and max (inclusive)
+func randint(min, max) {
+    return min + math.floor(rand() * (max - min + 1));
+}

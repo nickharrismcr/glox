@@ -1,0 +1,14 @@
+func split(s,delim) {
+    var rv=[];
+    var w="";
+
+    foreach (var c in s) {
+        if (c==delim) {
+            append(rv,w);
+            w="";
+        } else {
+            w=w+c;
+        }
+    }
+    return rv;
+}

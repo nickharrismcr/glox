@@ -1,0 +1,6 @@
+func floor(n) {
+  if (n < 0 and n != int(n)) {
+    return int(n) - 1;
+  }
+  return int(n);
+} 
