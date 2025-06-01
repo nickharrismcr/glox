@@ -3,6 +3,7 @@ package lox
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"time"
 )
@@ -27,6 +28,7 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("close", closeBuiltIn)
 	vm.defineBuiltIn("readln", readlnBuiltIn)
 	vm.defineBuiltIn("write", writeBuiltIn)
+	vm.defineBuiltIn("rand", randBuiltIn)
 
 	// lox built ins e.g Exception classes
 	vm.loadBuiltInModule(exceptionSource)
@@ -181,6 +183,11 @@ func clockBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	elapsed := time.Since(vm.starttime)
 	return makeFloatValue(float64(elapsed.Seconds()), false)
+}
+
+func randBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+
+	return makeFloatValue(rand.Float64(), false)
 }
 
 // len( string )
@@ -448,10 +455,10 @@ func openFile(path string, mode string) (*os.File, error) {
 
 func (vm *VM) loadBuiltInModule(source string) {
 	subvm := NewVM("", false)
-	subvm.SetGlobals(vm.globals)
+	subvm.environments.vars = vm.environments.vars
 	DebugSuppress = true
 	_, _ = subvm.Interpret(source)
-	vm.SetGlobals(subvm.globals)
+	vm.updateEnvironment(*subvm.environments)
 	DebugSuppress = false
 }
 

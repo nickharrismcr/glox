@@ -31,12 +31,18 @@ type CallFrame struct {
 	depth    int
 }
 
+type Environment struct {
+	vars     map[string]Value
+	builtins map[string]Value
+	prev     *Environment
+}
+
 type VM struct {
 	script       string
 	source       string
 	stack        [STACK_MAX]Value
 	stackTop     int
-	globals      map[string]Value
+	environments *Environment
 	frames       [FRAMES_MAX]*CallFrame
 	frameCount   int
 	starttime    time.Time
@@ -66,7 +72,7 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 
 	vm := &VM{
 		script:       script,
-		globals:      map[string]Value{},
+		environments: newEnvironment(nil),
 		starttime:    time.Now(),
 		lastGC:       time.Now(),
 		openUpValues: nil,
@@ -81,13 +87,25 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 	return vm
 }
 
+func newEnvironment(prev *Environment) *Environment {
+	return &Environment{
+		vars:     map[string]Value{},
+		builtins: map[string]Value{},
+		prev:     prev,
+	}
+}
+
+func (vm *VM) popEnvironment() {
+	vm.environments = vm.environments.prev
+}
+
 func (vm *VM) SetArgs(args []string) {
 	vm.args = args
 }
 
-func (vm *VM) SetGlobals(globals map[string]Value) {
-	for k, v := range globals {
-		vm.globals[k] = v
+func (vm *VM) updateEnvironment(env Environment) {
+	for k, v := range env.vars {
+		vm.environments.vars[k] = v
 	}
 }
 
@@ -172,7 +190,7 @@ func (vm *VM) defineBuiltIn(name string, function BuiltInFn) {
 
 	vm.push(makeObjectValue(makeStringObject(name), false))
 	vm.push(makeObjectValue(makeBuiltInObject(function), false))
-	vm.globals[name] = vm.stack[1]
+	vm.environments.builtins[name] = vm.stack[1]
 	vm.pop()
 	vm.pop()
 }
@@ -272,11 +290,15 @@ func (vm *VM) invokeFromClass(class *ClassObject, name Value, argCount int) bool
 
 func (vm *VM) invokeFromModule(module *ModuleObject, name Value, argCount int) bool {
 	n := getStringValue(name)
-	fn, ok := module.globals[n]
+	fn, ok := module.environment.vars[n]
 	if !ok {
 		vm.runTimeError("Undefined module property '%s'.", n)
 		return false
 	}
+	env := newEnvironment(vm.environments.prev)
+	env.vars = module.environment.vars
+	env.builtins = module.environment.builtins
+	vm.environments = env
 	return vm.callValue(fn, argCount)
 }
 
@@ -403,7 +425,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 				vm.showGlobals()
 			}
 			vm.showStack()
-			_ = frame.closure.function.chunk.disassembleInstruction(frame, inst, frame.ip)
+			_ = frame.closure.function.chunk.disassembleInstruction(vm.script, frame, inst, frame.ip)
 		}
 
 		frame.ip++
@@ -451,6 +473,9 @@ func (vm *VM) run() (InterpretResult, Value) {
 			}
 			vm.stackTop = frame.slots
 			vm.push(result)
+			if vm.environments.prev != nil {
+				vm.environments = vm.environments.prev
+			}
 
 		case OP_GET_UPVALUE:
 			slot := vm.getCode()[frame.ip]
@@ -560,7 +585,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 				}
 			case OBJECT_MODULE:
 				ot := v.asModule()
-				if val, ok := ot.globals[name]; ok {
+				if val, ok := ot.environment.vars[name]; ok {
 					vm.pop()
 					vm.push(val)
 				} else {
@@ -592,7 +617,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 				vm.push(tmp)
 			case OBJECT_MODULE:
 				ot := v.asModule()
-				ot.globals[name] = val
+				ot.environment.vars[name] = val
 				tmp := vm.pop()
 				vm.pop()
 				vm.push(tmp)
@@ -634,7 +659,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			name := getStringValue(frame.closure.function.chunk.constants[idx])
-			vm.globals[name] = vm.peek(0)
+			vm.environments.vars[name] = vm.peek(0)
 			vm.pop()
 
 		case OP_DEFINE_GLOBAL_CONST:
@@ -643,8 +668,8 @@ func (vm *VM) run() (InterpretResult, Value) {
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			name := getStringValue(frame.closure.function.chunk.constants[idx])
-			vm.globals[name] = vm.peek(0)
-			vm.globals[name] = immutable(vm.globals[name])
+			vm.environments.vars[name] = vm.peek(0)
+			vm.environments.vars[name] = immutable(vm.environments.vars[name])
 			vm.pop()
 
 		case OP_GET_GLOBAL:
@@ -653,10 +678,13 @@ func (vm *VM) run() (InterpretResult, Value) {
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			name := getStringValue(frame.closure.function.chunk.constants[idx])
-			value, ok := vm.globals[name]
+			value, ok := vm.environments.vars[name]
 			if !ok {
-				vm.runTimeError("Undefined variable %s\n", name)
-				goto End
+				value, ok = vm.environments.builtins[name]
+				if !ok {
+					vm.runTimeError("Undefined variable %s\n", name)
+					goto End
+				}
 			}
 			vm.push(value)
 
@@ -666,15 +694,15 @@ func (vm *VM) run() (InterpretResult, Value) {
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			name := getStringValue(frame.closure.function.chunk.constants[idx])
-			if _, ok := vm.globals[name]; !ok {
+			if _, ok := vm.environments.vars[name]; !ok {
 				vm.runTimeError("Undefined variable %s\n", name)
 				goto End
 			}
-			if vm.globals[name].Immutable() {
+			if vm.environments.vars[name].Immutable() {
 				vm.runTimeError("Cannot assign to const %s\n", name)
 				goto End
 			}
-			vm.globals[name] = mutable(vm.peek(0)) // in case of assignment of const
+			vm.environments.vars[name] = mutable(vm.peek(0)) // in case of assignment of const
 
 		case OP_GET_LOCAL:
 			// get local from stack at position = operand and push on stack top
@@ -943,7 +971,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 // used for vm raising errors that can be handled in lox e.g EOFError when reading a file
 func (vm *VM) raiseExceptionByName(name string, msg string) bool {
 
-	classVal := vm.globals[name]
+	classVal := vm.environments.vars[name]
 	classObj := classVal.Obj
 	instance := makeInstanceObject(classObj.(*ClassObject))
 	instance.fields["msg"] = makeObjectValue(makeStringObject(msg), false)
@@ -967,7 +995,7 @@ func (vm *VM) raiseException(err Value) bool {
 				vm.frame().ip += 2
 				idx := vm.getCode()[vm.frame().ip-1]
 				name := getStringValue(vm.frame().closure.function.chunk.constants[idx])
-				handler_class := vm.globals[name].asClass()
+				handler_class := vm.environments.vars[name].asClass()
 				err_class := getInstanceObjectValue(err).class
 				// is error a subclass of handler
 				if err_class.IsSubclassOf(handler_class) {
@@ -1074,9 +1102,11 @@ func (vm *VM) importModule(moduleName string) InterpretResult {
 			return res
 		}
 	}
-	mo := makeModuleObject(moduleName, subvm.globals)
+	env := &Environment{vars: subvm.environments.vars}
+	env.builtins = subvm.environments.builtins
+	mo := makeModuleObject(moduleName, *env)
 	v := makeObjectValue(mo, false)
-	vm.globals[moduleName] = v
+	vm.environments.vars[moduleName] = v
 	return INTERPRET_OK
 }
 

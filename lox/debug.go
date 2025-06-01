@@ -32,7 +32,7 @@ func (c *Chunk) disassemble(name string) {
 	offset := 0
 	for {
 		instr := c.code[offset]
-		offset = c.disassembleInstruction(nil, instr, offset)
+		offset = c.disassembleInstruction(name, nil, instr, offset)
 		if offset >= len(c.code) {
 			break
 		}
@@ -41,10 +41,9 @@ func (c *Chunk) disassemble(name string) {
 
 var lastoffset int = 0
 
-func (c *Chunk) disassembleInstruction(frame *CallFrame, i uint8, offset int) int {
+func (c *Chunk) disassembleInstruction(name string, frame *CallFrame, i uint8, offset int) int {
 
 	if frame != nil {
-		name := "script"
 		if frame.depth > 1 {
 			name = frame.closure.function.name.get()
 		}
@@ -273,10 +272,13 @@ func (c *Chunk) invokeInstruction(name string, offset int) int {
 
 func (vm *VM) showGlobals() {
 	fmt.Printf("globals:\n")
-	for k, v := range vm.globals {
+	for k, v := range vm.environments.vars {
 		if v.String() == "<built-in>" {
 			continue
 		}
+		fmt.Printf("%s -> %s  \n", k, v)
+	}
+	for k, v := range vm.environments.builtins {
 		fmt.Printf("%s -> %s  \n", k, v)
 	}
 }

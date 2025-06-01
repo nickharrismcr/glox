@@ -5,15 +5,15 @@ import (
 )
 
 type ModuleObject struct {
-	name    string
-	globals map[string]Value
+	name        string
+	environment Environment
 }
 
-func makeModuleObject(name string, globals map[string]Value) *ModuleObject {
+func makeModuleObject(name string, environment Environment) *ModuleObject {
 
 	return &ModuleObject{
-		name:    name,
-		globals: globals,
+		name:        name,
+		environment: environment,
 	}
 }
 
