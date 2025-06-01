@@ -243,7 +243,7 @@ func (v Value) Immutable() bool {
 
 func (v Value) isStringObject() bool {
 
-	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_STRING
+	return v.isObj() && v.Obj.getType() == OBJECT_STRING
 }
 
 func (v Value) asString() string {
@@ -298,42 +298,42 @@ func (v Value) asBoundMethod() *BoundMethodObject {
 
 func (v Value) isListObject() bool {
 
-	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_LIST
+	return v.isObj() && v.Obj.getType() == OBJECT_LIST
 }
 
 func (v Value) isDictObject() bool {
 
-	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_DICT
+	return v.isObj() && v.Obj.getType() == OBJECT_DICT
 }
 
 func (v Value) isFunctionObject() bool {
 
-	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_FUNCTION
+	return v.isObj() && v.Obj.getType() == OBJECT_FUNCTION
 }
 
 func (v Value) isBuiltInFunction() bool {
 
-	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_NATIVE
+	return v.isObj() && v.Obj.getType() == OBJECT_NATIVE
 }
 
 func (v Value) isClosureObject() bool {
 
-	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_CLOSURE
+	return v.isObj() && v.Obj.getType() == OBJECT_CLOSURE
 }
 
 func (v Value) isClassObject() bool {
 
-	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_CLASS
+	return v.isObj() && v.Obj.getType() == OBJECT_CLASS
 }
 
 func (v Value) isInstanceObject() bool {
 
-	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_INSTANCE
+	return v.isObj() && v.Obj.getType() == OBJECT_INSTANCE
 }
 
 func (v Value) isBoundMethodObject() bool {
 
-	return v.Type == VAL_OBJ && v.Obj.getType() == OBJECT_BOUNDMETHOD
+	return v.isObj() && v.Obj.getType() == OBJECT_BOUNDMETHOD
 }
 
 //================================================================================================

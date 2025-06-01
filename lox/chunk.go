@@ -94,7 +94,7 @@ func (c *Chunk) addConstant(v Value) uint8 {
 
 func (c *Chunk) inConstants(v Value) (bool, uint8) {
 
-	if v.Type == VAL_OBJ {
+	if v.isObj() {
 		t := v.Obj.getType()
 		if t == OBJECT_BOUNDMETHOD || t == OBJECT_CLOSURE || t == OBJECT_FUNCTION {
 			return false, 0
