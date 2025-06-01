@@ -42,6 +42,9 @@ native funcs :
 - `replace(string,old,new)` -> string  - replace substring of string  
 - `type(var)` -> string - return type of variable e.g int,float,string,list,dict,class,instance,closure,file etc 
 
+built-in lox modules:
+-  iterator tools, function tools, string utils 
+
 lists :
 
 - initialiser (`var a=[]; var a=[1,2,3];`)
