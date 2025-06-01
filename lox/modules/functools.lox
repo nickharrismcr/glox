@@ -1,0 +1,8 @@
+func map(list,function) {
+    var rv = []; 
+    foreach ( var a in list ){
+        print function(a);
+        append(rv,function(a));
+    }
+    return rv;
+}
