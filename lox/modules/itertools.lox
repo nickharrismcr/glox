@@ -1,0 +1,20 @@
+func reverse(s) {
+
+    func _reverse(iter) {
+         var rv=[];
+        for ( var i=len(s)-1; i >= 0; i=i-1) {
+            append(rv,s[i]);
+        }
+        return rv;
+    }
+
+    if (type(s) == "string"){
+        return join(_reverse(s),"");
+    }
+    if (type(s) == "list") {
+        return _reverse(s);
+    }
+    raise RunTimeError("Invalid argument to reverse().");
+}
+   
+    
