@@ -1564,7 +1564,22 @@ func (vm *VM) stringMultiply(s string, x int) Value {
 	return makeObjectValue(makeStringObject(rv), false)
 }
 
+// return the path to the given module.
+// first, will look in lox/modules in the lox installation directory defined in LOX_PATH environment var.
+// if not found will look in the directory containing the main module being run
 func getPath(args []string, module string) string {
+
+	lox_inst_dir := os.Getenv("LOX_PATH")
+
+	if lox_inst_dir != "" {
+		lox_inst_module_dir := lox_inst_dir + "/lox/modules"
+		path := lox_inst_module_dir + "/" + module
+		_, err := os.Stat(path + ".lox")
+		if err == nil {
+			return path
+		}
+	}
+
 	if len(args) == 0 {
 		return module
 	}
