@@ -10,5 +10,8 @@ func split(s,delim) {
             w=w+c;
         }
     }
+    if (w!=""){
+        append(rv,w);
+    }
     return rv;
 }
