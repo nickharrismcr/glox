@@ -549,7 +549,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 
 			switch v.Obj.getType() {
 			case OBJECT_INSTANCE:
-				ot := v.Obj.(*InstanceObject)
+				ot := v.asInstance()
 				if val, ok := ot.fields[name]; ok {
 					vm.pop()
 					vm.push(val)
@@ -559,7 +559,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 					}
 				}
 			case OBJECT_MODULE:
-				ot := v.Obj.(*ModuleObject)
+				ot := v.asModule()
 				if val, ok := ot.globals[name]; ok {
 					vm.pop()
 					vm.push(val)
@@ -585,13 +585,13 @@ func (vm *VM) run() (InterpretResult, Value) {
 			name := getStringValue(frame.closure.function.chunk.constants[idx])
 			switch v.Obj.getType() {
 			case OBJECT_INSTANCE:
-				ot := v.Obj.(*InstanceObject)
+				ot := v.asInstance()
 				ot.fields[name] = val
 				tmp := vm.pop()
 				vm.pop()
 				vm.push(tmp)
 			case OBJECT_MODULE:
-				ot := v.Obj.(*ModuleObject)
+				ot := v.asModule()
 				ot.globals[name] = val
 				tmp := vm.pop()
 				vm.pop()
@@ -622,7 +622,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 		case OP_PRINT:
 			// compiler ensures stack top will be a string object via OP_STR
 			v := vm.pop()
-			fmt.Printf("%s\n", v.asString())
+			fmt.Printf("%s\n", v.asString().get())
 
 		case OP_POP:
 			// pop 1 stack value and discard
@@ -804,7 +804,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			mv := frame.closure.function.chunk.constants[idx]
-			module := mv.asString()
+			module := mv.asString().get()
 			// if already imported do nothing
 			if ok := globalModules[module]; ok {
 				panic("Import cycle detected.")
@@ -827,7 +827,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 					ot := ov.(StringObject)
 					s = ot.get()
 				case OBJECT_INSTANCE:
-					// get string repr of class by calling asString() method if present
+					// get string repr of class by calling asString().get() method if present
 					ot := ov.(*InstanceObject)
 					if toString, ok := ot.class.methods["toString"]; ok {
 						vm.call(toString.asClosure(), 0)
@@ -886,7 +886,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			idx := vm.peek(0).Int
 			switch iterable.Obj.getType() {
 			case OBJECT_LIST:
-				t := iterable.Obj.(*ListObject)
+				t := iterable.asList()
 				if idx >= len(t.items) {
 					vm.pop()
 					vm.pop()
@@ -897,7 +897,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 				}
 
 			case OBJECT_STRING:
-				t := iterable.Obj.(StringObject)
+				t := iterable.asString()
 				if idx >= len(t.get()) {
 					vm.pop()
 					vm.pop()
@@ -988,7 +988,7 @@ func (vm *VM) raiseException(err Value) bool {
 		// else unwind call stack and repeat
 
 		if !vm.popFrame() {
-			exc := err.Obj.(*InstanceObject)
+			exc := err.asInstance()
 			vm.runTimeError("Uncaught exception: %s : %s ", exc.class, exc.fields["msg"])
 			return false
 		}
@@ -1133,7 +1133,7 @@ func (vm *VM) index() bool {
 				vm.runTimeError("Subscript must be an integer.")
 				return false
 			}
-			t := sv.Obj.(*ListObject)
+			t := sv.asList()
 			idx := iv.Int
 			lo, err := t.index(idx)
 			if err != nil {
@@ -1149,7 +1149,7 @@ func (vm *VM) index() bool {
 				return false
 			}
 			idx := iv.Int
-			t := sv.Obj.(StringObject)
+			t := sv.asString()
 			so, err := t.index(idx)
 			if err != nil {
 				vm.runTimeError(err.Error())
@@ -1161,7 +1161,7 @@ func (vm *VM) index() bool {
 		case OBJECT_DICT:
 
 			key := iv.String()
-			t := sv.Obj.(*DictObject)
+			t := sv.asDict()
 			so, err := t.get(key)
 			if err != nil {
 				vm.runTimeError(err.Error())
@@ -1185,7 +1185,7 @@ func (vm *VM) indexAssign() bool {
 	if collection.Type == VAL_OBJ {
 		switch collection.Obj.getType() {
 		case OBJECT_LIST:
-			t := collection.Obj.(*ListObject)
+			t := collection.asList()
 			if t.tuple {
 				vm.runTimeError("Tuples are immutable.")
 				return false
@@ -1202,7 +1202,7 @@ func (vm *VM) indexAssign() bool {
 				return false
 			}
 		case OBJECT_DICT:
-			t := collection.Obj.(*DictObject)
+			t := collection.asDict()
 			t.set(index.String(), rhs)
 			return true
 		}
@@ -1238,7 +1238,7 @@ func (vm *VM) slice() bool {
 	lv := vm.pop()
 	if lv.isObj() {
 		if lv.Obj.getType() == OBJECT_LIST {
-			lo, err := lv.Obj.(*ListObject).slice(from_idx, to_idx)
+			lo, err := lv.asList().slice(from_idx, to_idx)
 			if err != nil {
 				vm.runTimeError(err.Error())
 				return false
@@ -1247,7 +1247,7 @@ func (vm *VM) slice() bool {
 			return true
 
 		} else if lv.Obj.getType() == OBJECT_STRING {
-			so, err := lv.Obj.(StringObject).slice(from_idx, to_idx)
+			so, err := lv.asString().slice(from_idx, to_idx)
 			if err != nil {
 				vm.runTimeError(err.Error())
 				return false
@@ -1290,7 +1290,7 @@ func (vm *VM) sliceAssign() bool {
 	if lv.isObj() {
 
 		if lv.Obj.getType() == OBJECT_LIST {
-			lst := lv.Obj.(*ListObject)
+			lst := lv.asList()
 			if lst.tuple {
 				vm.runTimeError("Tuples are immutable")
 				return false
@@ -1348,7 +1348,7 @@ func (vm *VM) binaryAdd() bool {
 			}
 			ov1 := v1.Obj
 			if ov1.getType() == OBJECT_STRING {
-				so := makeStringObject(v1.asString() + v2.asString())
+				so := makeStringObject(v1.asString().get() + v2.asString().get())
 				vm.push(makeObjectValue(so, false))
 				return true
 			}
@@ -1419,7 +1419,7 @@ func (vm *VM) binaryMultiply() bool {
 				vm.runTimeError("Invalid operand for multiply.")
 				return false
 			}
-			s := v1.Obj.(StringObject).get()
+			s := v1.asString().get()
 			vm.push(vm.stringMultiply(s, v2.Int))
 		default:
 			vm.runTimeError("Invalid operand for multiply.")
@@ -1442,7 +1442,7 @@ func (vm *VM) binaryMultiply() bool {
 		}
 		switch v1.Type {
 		case VAL_INT:
-			s := v2.asString()
+			s := v2.asString().get()
 			vm.push(vm.stringMultiply(s, v1.Int))
 		default:
 			vm.runTimeError("Invalid operand for multiply.")

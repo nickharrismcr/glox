@@ -31,8 +31,8 @@ func (s StringObject) get() string {
 
 func (s StringObject) replace(from Value, to Value) Value {
 
-	old := from.asString()
-	new := to.asString()
+	old := from.asString().get()
+	new := to.asString().get()
 	rv := strings.Replace(*s.chars, old, new, -1)
 	return makeObjectValue(makeStringObject(rv), false)
 }

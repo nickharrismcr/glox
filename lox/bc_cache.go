@@ -100,12 +100,12 @@ func (v *Value) serialise(buffer *bytes.Buffer) {
 		switch v.Obj.getType() {
 		case OBJECT_STRING:
 			buffer.Write([]byte{0x03})
-			s := v.Obj.(StringObject).get()
+			s := v.asString().get()
 			bin.Write(buffer, bin.LittleEndian, uint32(len(s)))
 			buffer.Write([]byte(s))
 
 		case OBJECT_FUNCTION:
-			fo := v.Obj.(*FunctionObject)
+			fo := v.asFunction()
 			buffer.Write([]byte{0x04})
 			writeString(buffer, fo.name.get())
 			bin.Write(buffer, bin.LittleEndian, uint32(fo.arity))

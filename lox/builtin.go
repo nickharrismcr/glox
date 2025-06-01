@@ -73,7 +73,7 @@ func joinBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 			switch val2.Type {
 			case VAL_OBJ:
 				if val2.isStringObject() {
-					rv, errj := l.join(val2.asString())
+					rv, errj := l.join(val2.asString().get())
 					if errj == nil {
 						return rv
 					} else {
@@ -153,10 +153,10 @@ func lenBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	}
 	switch val.Obj.getType() {
 	case OBJECT_STRING:
-		s := val.Obj.(StringObject).get()
+		s := val.asString().get()
 		return makeIntValue(len(s), false)
 	case OBJECT_LIST:
-		l := val.Obj.(*ListObject).get()
+		l := val.asList().get()
 		return makeIntValue(len(l), false)
 	}
 	vm.runTimeError("Invalid argument type to len.")
@@ -214,7 +214,7 @@ func appendBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	switch val.Obj.getType() {
 
 	case OBJECT_LIST:
-		l := val.Obj.(*ListObject)
+		l := val.asList()
 		if l.tuple {
 			vm.runTimeError("Tuples are immutable")
 			return makeNilValue()
@@ -284,7 +284,7 @@ func replaceBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 		return makeNilValue()
 	}
 
-	s := target.Obj.(StringObject)
+	s := target.asString()
 	return s.replace(from, to)
 }
 
@@ -304,8 +304,8 @@ func openBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 		return makeNilValue()
 	}
 
-	s_path := path.asString()
-	s_mode := mode.asString()
+	s_path := path.asString().get()
+	s_mode := mode.asString().get()
 	fp, err := openFile(s_path, s_mode)
 	if err != nil {
 		vm.runTimeError(fmt.Sprintf("%s", err))

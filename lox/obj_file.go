@@ -62,7 +62,7 @@ func (f *FileObject) readLine() Value {
 
 func (f *FileObject) write(str Value) {
 
-	s := str.asString()
+	s := str.asString().get()
 	s = strings.ReplaceAll(s, `\n`, "\n")
 	f.writer.WriteString(s)
 

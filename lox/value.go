@@ -175,7 +175,7 @@ func isObject(v Value) bool {
 
 func getStringValue(v Value) string {
 
-	return v.asString()
+	return v.asString().get()
 }
 
 func getFunctionObjectValue(v Value) *FunctionObject {
@@ -246,9 +246,9 @@ func (v Value) isStringObject() bool {
 	return v.isObj() && v.Obj.getType() == OBJECT_STRING
 }
 
-func (v Value) asString() string {
+func (v Value) asString() StringObject {
 
-	return v.Obj.(StringObject).get()
+	return v.Obj.(StringObject)
 }
 
 func (v Value) asList() *ListObject {
