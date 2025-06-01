@@ -7,3 +7,12 @@ func map(list,function) {
     return rv;
 }
 
+func reduce(list,function) {
+    
+  var acc = list[0];
+  for (var i = 1; i < len(list); i = i + 1) {
+    acc = function(acc, list[i]);
+  }
+  return acc;
+}
+
