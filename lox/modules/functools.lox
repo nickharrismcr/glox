@@ -6,3 +6,4 @@ func map(list,function) {
     }
     return rv;
 }
+
