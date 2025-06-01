@@ -273,14 +273,11 @@ func (c *Chunk) invokeInstruction(name string, offset int) int {
 func (vm *VM) showGlobals() {
 	fmt.Printf("globals:\n")
 	for k, v := range vm.environments.vars {
-		if v.String() == "<built-in>" {
-			continue
-		}
 		fmt.Printf("%s -> %s  \n", k, v)
 	}
-	for k, v := range vm.environments.builtins {
-		fmt.Printf("%s -> %s  \n", k, v)
-	}
+	//for k, v := range vm.environments.builtins {
+	//	fmt.Printf("%s -> %s  \n", k, v)
+	//}
 }
 
 func (vm *VM) showStack() {
