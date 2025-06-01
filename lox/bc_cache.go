@@ -109,6 +109,7 @@ func (v *Value) serialise(buffer *bytes.Buffer) {
 			buffer.Write([]byte{0x04})
 			writeString(buffer, fo.name.get())
 			bin.Write(buffer, bin.LittleEndian, uint32(fo.arity))
+			bin.Write(buffer, bin.LittleEndian, uint32(fo.upvalueCount))
 			fo.chunk.serialise(buffer)
 		default:
 			panic("serialise object value not handled")
@@ -195,8 +196,11 @@ func readValue(r io.Reader) Value {
 		var arity uint32
 		bin.Read(r, bin.LittleEndian, &arity)
 		Debugf("Arity %d", arity)
+		var upvalueCount uint32
+		bin.Read(r, bin.LittleEndian, &upvalueCount)
+		Debugf("Arity %d", arity)
 		chunk := readChunk(r)
-		return makeObjectValue(&FunctionObject{name: name, arity: int(arity), chunk: chunk}, false)
+		return makeObjectValue(&FunctionObject{name: name, arity: int(arity), upvalueCount: int(upvalueCount), chunk: chunk}, false)
 	case 0x05:
 		var b [1]byte
 		r.Read(b[:])
