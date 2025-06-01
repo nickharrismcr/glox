@@ -96,7 +96,9 @@ func newEnvironment(prev *Environment) *Environment {
 }
 
 func (vm *VM) popEnvironment() {
-	vm.environments = vm.environments.prev
+	if vm.environments.prev != nil {
+		vm.environments = vm.environments.prev
+	}
 }
 
 func (vm *VM) SetArgs(args []string) {
@@ -295,7 +297,7 @@ func (vm *VM) invokeFromModule(module *ModuleObject, name Value, argCount int) b
 		vm.runTimeError("Undefined module property '%s'.", n)
 		return false
 	}
-	env := newEnvironment(vm.environments.prev)
+	env := newEnvironment(vm.environments)
 	env.vars = module.environment.vars
 	env.builtins = module.environment.builtins
 	vm.environments = env
@@ -473,9 +475,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			}
 			vm.stackTop = frame.slots
 			vm.push(result)
-			if vm.environments.prev != nil {
-				vm.environments = vm.environments.prev
-			}
+			vm.popEnvironment()
 
 		case OP_GET_UPVALUE:
 			slot := vm.getCode()[frame.ip]
