@@ -197,10 +197,10 @@ func (vm *VM) peek(dist int) Value {
 	return vm.stack[(vm.stackTop-1)-dist]
 }
 
-func (vm *VM) set(dist int, val Value) {
+/*func (vm *VM) set(dist int, val Value) {
 
 	vm.stack[(vm.stackTop-1)-dist] = val
-}
+}*/
 
 func (vm *VM) callValue(callee Value, argCount int) bool {
 
@@ -257,7 +257,7 @@ func (vm *VM) invoke(name Value, argCount int) bool {
 		vm.runTimeError("Invalid use of '.' operator")
 		return false
 	}
-	return true
+
 }
 
 func (vm *VM) invokeFromClass(class *ClassObject, name Value, argCount int) bool {
