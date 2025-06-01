@@ -63,7 +63,7 @@ func joinBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 		return makeNilValue()
 	}
 	val := vm.stack[arg_stackptr]
-	err = "Argument 2 to join must be a string."
+	err = "Argument 1 to join must be a list."
 
 	switch val.Type {
 	case VAL_OBJ:
