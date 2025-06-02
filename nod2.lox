@@ -1,0 +1,5 @@
+ 
+foreach (var k in [1,2,3]){
+    var c=123;               
+    print c;
+}

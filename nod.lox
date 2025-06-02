@@ -1,0 +1,13 @@
+func getCountDict(d){
+    var rv={};
+    var c;
+    foreach (var k in keys(d)){
+        print "key="+str(k);
+        c=d[k];                  
+        print "val="+str(c);
+    }
+    return rv;
+}
+
+var d={"first":"v1","second":"v2"};
+print getCountDict(d);

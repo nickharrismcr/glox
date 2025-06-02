@@ -452,18 +452,18 @@ func (p *Parser) method() {
 
 func (p *Parser) varDeclaration(in_foreach bool) {
 
-	global := p.parseVariable("Expect variable name")
+	variable := p.parseVariable("Expect variable name")
 
 	if p.match(TOKEN_EQUAL) {
 		p.expression()
 	} else {
-		p.emitByte(OP_NIL)
+		p.emitByte(OP_NIL) // empty local slot
 	}
 	if !in_foreach {
 		p.consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration")
 	}
 
-	p.defineVariable(global)
+	p.defineVariable(variable)
 }
 
 func (p *Parser) constDeclaration() {
@@ -648,8 +648,20 @@ func (p *Parser) foreachStatement() {
 	slot := p.currentCompiler.localCount - 1
 	p.consume(TOKEN_IN, "Expect in after foreach variable.")
 	p.expression()
+	p.addLocal(syntheticToken("__iter"))
+	iterSlot := p.currentCompiler.localCount - 1
+	p.markInitialised()
+	p.emitByte(OP_SET_LOCAL)
+	p.emitByte(uint8(iterSlot))
+
 	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after iterable.")
-	p.emitConstant(makeIntValue(0, false)) //initial index = 0 on stack
+	p.emitConstant(makeIntValue(0, false))
+	p.addLocal(syntheticToken("__index"))
+	p.markInitialised()
+	indexSlot := p.currentCompiler.localCount - 1
+	p.emitByte(OP_SET_LOCAL)
+	p.emitByte(uint8(indexSlot))
+
 	p.currentCompiler.loop.start = len(p.currentChunk().code)
 	jumpToEnd := p.emitForeach(uint8(slot))
 
@@ -658,6 +670,7 @@ func (p *Parser) foreachStatement() {
 		p.patchJump(p.currentCompiler.loop.continue_)
 	}
 	p.emitLoop(OP_NEXT, p.currentCompiler.loop.start)
+	p.emitByte(uint8(indexSlot))
 
 	p.patchForeach(jumpToEnd)
 	p.emitByte(OP_END_FOREACH)

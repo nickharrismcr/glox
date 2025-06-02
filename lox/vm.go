@@ -905,13 +905,17 @@ func (vm *VM) run() (InterpretResult, Value) {
 		// local slot, end of foreach in next 3 instructions
 		case OP_FOREACH:
 			slot := vm.readByte()
+			iterableSlot := vm.readByte()
+			idxSlot := vm.readByte()
 			jumpToEnd := vm.readShort()
-			iterable := vm.peek(1)
+			iterable := vm.stack[frame.slots+int(iterableSlot)]
+
 			if iterable.Type != VAL_OBJ {
 				vm.runTimeError("Iterable in foreach must be list or string.")
 				goto End
 			}
-			idx := vm.peek(0).Int
+			idxVal := vm.stack[frame.slots+int(idxSlot)]
+			idx := idxVal.Int
 			switch iterable.Obj.getType() {
 			case OBJECT_LIST:
 				t := iterable.asList()
@@ -943,8 +947,9 @@ func (vm *VM) run() (InterpretResult, Value) {
 		case OP_NEXT:
 
 			jumpToStart := vm.readShort()
-			index := vm.pop().Int
-			vm.push(makeIntValue(index+1, false))
+			indexSlot := vm.readByte()
+			indexVal := vm.stack[frame.slots+int(indexSlot)]
+			indexVal.Int += 1
 			frame.ip -= int(jumpToStart)
 
 		case OP_END_FOREACH:

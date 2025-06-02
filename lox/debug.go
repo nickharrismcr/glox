@@ -283,14 +283,18 @@ func (vm *VM) showGlobals() {
 func (vm *VM) showStack() {
 
 	fmt.Printf("                                                         ")
-	for i := 0; i < vm.stackTop; i++ {
+	for i := vm.frame().slots; i < vm.stackTop; i++ {
 		v := vm.stack[i]
 		s := v.String()
-		t := v.typeName()
+
+		im := ""
 		if v.Immutable() {
-			fmt.Printf("| %s %s(c) |", t, s)
+			im = "(c)"
+		}
+		if i > vm.frame().slots {
+			fmt.Printf("%% %s%s %%", s, im)
 		} else {
-			fmt.Printf("| %s %s |", t, s)
+			fmt.Printf("| %s%s |", s, im)
 		}
 	}
 	fmt.Printf("\n")
