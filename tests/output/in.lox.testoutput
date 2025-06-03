@@ -1,0 +1,12 @@
+GLOX:
+hello world
+true
+false
+true
+[ "hello" , "world" ]
+true
+false
+false
+true
+false
+nil

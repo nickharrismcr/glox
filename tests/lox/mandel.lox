@@ -23,7 +23,7 @@ func calc(i,j,height,width,max_iteration){
 
 func mandelbrot() {
 
-    const max_iteration = 2000;
+    const max_iteration = 100;
     const width=180;
     const height=120;
     const chars=" .,-:;i+hHM$*#@";
