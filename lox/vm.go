@@ -920,7 +920,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			case OBJECT_LIST:
 				t := iterable.asList()
 				if idx >= len(t.items) {
-					frame.ip += int(jumpToEnd)
+					frame.ip += int(jumpToEnd - 2)
 				} else {
 					val := t.get()[idx]
 					vm.stack[frame.slots+int(slot)] = val
@@ -929,7 +929,8 @@ func (vm *VM) run() (InterpretResult, Value) {
 			case OBJECT_STRING:
 				t := iterable.asString()
 				if idx >= len(t.get()) {
-					frame.ip += int(jumpToEnd)
+					frame.ip += int(jumpToEnd - 2)
+
 				} else {
 					val, _ := t.index(idx)
 					vm.stack[frame.slots+int(slot)] = val
