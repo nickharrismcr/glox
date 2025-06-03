@@ -26,7 +26,7 @@ func (DictObject) getType() ObjectType {
 func (o *DictObject) String() string {
 	s := "Dict({ "
 	for k, v := range o.items {
-		s = s + fmt.Sprintf("%s:%s,", k, v.String())
+		s = s + fmt.Sprintf("\"%s\":%s,", k, v.String())
 	}
 	return s[:len(s)-1] + " })"
 }
