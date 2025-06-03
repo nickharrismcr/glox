@@ -39,7 +39,7 @@ type Local struct {
 
 type Loop struct {
 	start     int
-	break_    int
+	breaks    []int
 	foreach   bool
 	continue_ int
 }
@@ -538,8 +538,10 @@ func (p *Parser) whileStatement() {
 	p.emitByte(OP_POP)
 	p.statement()
 	p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
-	if p.currentCompiler.loop.break_ != 0 {
-		p.patchJump(p.currentCompiler.loop.break_)
+	if len(p.currentCompiler.loop.breaks) != 0 {
+		for _, jump := range p.currentCompiler.loop.breaks {
+			p.patchJump(jump)
+		}
 	}
 	p.patchJump(exitJump)
 	p.emitByte(OP_POP)
@@ -583,8 +585,10 @@ func (p *Parser) forStatement() {
 		p.patchJump(bodyJump)
 	}
 	p.statement()
-	if p.currentCompiler.loop.break_ != 0 {
-		p.patchJump(p.currentCompiler.loop.break_)
+	if len(p.currentCompiler.loop.breaks) != 0 {
+		for _, jump := range p.currentCompiler.loop.breaks {
+			p.patchJump(jump)
+		}
 	}
 	p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
 
@@ -611,7 +615,7 @@ func (p *Parser) breakStatement() {
 			p.emitByte(OP_POP)
 		}
 	}
-	p.currentCompiler.loop.break_ = p.emitJump(OP_JUMP)
+	p.currentCompiler.loop.breaks = append(p.currentCompiler.loop.breaks, p.emitJump(OP_JUMP))
 }
 
 func (p *Parser) continueStatement() {
@@ -684,8 +688,10 @@ func (p *Parser) foreachStatement() {
 	p.emitByte(OP_END_FOREACH)
 	p.patchForeach(jumpToEnd)
 	// did the body contain a break? if so patch its jump to come here
-	if p.currentCompiler.loop.break_ != 0 {
-		p.patchJump(p.currentCompiler.loop.break_)
+	if len(p.currentCompiler.loop.breaks) != 0 {
+		for _, jump := range p.currentCompiler.loop.breaks {
+			p.patchJump(jump)
+		}
 	}
 	p.endScope()
 	p.currentCompiler.loop = loopSave
