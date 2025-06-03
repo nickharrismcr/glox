@@ -80,6 +80,16 @@ func (o *ListObject) add(other *ListObject) *ListObject {
 	return makeListObject(l, false)
 }
 
+func (o *ListObject) contains(v Value) Value {
+
+	for _, a := range o.items {
+		if valuesEqual(a, v, true) {
+			return makeBooleanValue(true, true)
+		}
+	}
+	return makeBooleanValue(false, true)
+}
+
 func (o *ListObject) index(ix int) (Value, error) {
 
 	if ix < 0 {

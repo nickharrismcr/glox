@@ -163,6 +163,7 @@ func (p *Parser) setRules() {
 		TOKEN_BANG_EQUAL:    {prefix: nil, infix: binary, prec: PREC_EQUALITY},
 		TOKEN_EQUAL:         {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_EQUAL_EQUAL:   {prefix: nil, infix: binary, prec: PREC_EQUALITY},
+		TOKEN_IN:            {prefix: nil, infix: binary, prec: PREC_EQUALITY},
 		TOKEN_GREATER:       {prefix: nil, infix: binary, prec: PREC_COMPARISON},
 		TOKEN_GREATER_EQUAL: {prefix: nil, infix: binary, prec: PREC_COMPARISON},
 		TOKEN_LESS:          {prefix: nil, infix: binary, prec: PREC_COMPARISON},
@@ -1303,6 +1304,8 @@ func binary(p *Parser, canAssign bool) {
 		p.emitByte(OP_GREATER)
 	case TOKEN_GREATER_EQUAL:
 		p.emitBytes(OP_LESS, OP_NOT)
+	case TOKEN_IN:
+		p.emitByte(OP_IN)
 	}
 }
 

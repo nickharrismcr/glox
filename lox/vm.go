@@ -951,6 +951,31 @@ func (vm *VM) run() (InterpretResult, Value) {
 
 		case OP_END_FOREACH:
 
+		// stack 1 : string or list
+		// stack 2 : key or substring
+
+		case OP_IN:
+
+			b := vm.pop()
+			a := vm.pop()
+
+			if !(b.isStringObject() || b.isListObject()) {
+				vm.runTimeError("'in' requires string or list as right operand.")
+				goto End
+			}
+			switch b.Obj.getType() {
+			case OBJECT_STRING:
+				if !a.isStringObject() {
+					vm.runTimeError("'in' requires string as left operand.")
+					goto End
+				}
+				rv := b.asString().contains(a)
+				vm.push(rv)
+			case OBJECT_LIST:
+				rv := b.asList().contains(a)
+				vm.push(rv)
+			}
+
 		default:
 			vm.runTimeError("Invalid Opcode")
 			goto End

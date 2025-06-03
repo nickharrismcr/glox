@@ -29,6 +29,13 @@ func (s StringObject) get() string {
 	return *s.chars
 }
 
+func (s StringObject) contains(v Value) Value {
+
+	rv := strings.Contains(*s.chars, *v.asString().chars)
+	return makeBooleanValue(rv, true)
+
+}
+
 func (s StringObject) replace(from Value, to Value) Value {
 
 	old := from.asString().get()
