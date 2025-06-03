@@ -55,6 +55,7 @@ lists :
 - slice assignment ( e.g `a[2:5] = [1,2,3];` )
 - adding ( `list3=list1+list2;` )
 - `join ( list, string )`    e.g `join(["a","b","c"],"|");` -> "a|b|c"   
+- test for `item in list`  -> true|false 
 
 tuples : 
 
@@ -73,9 +74,12 @@ strings :
 
 - multiply by integer ( a la python, e.g  `"@" * 3`,  `3 * "@"` = `"@@@"` )
 - slices   ( `a = "abcd"; b=a[0], b=a[:2]`, etc )
+- test for presence of substring in string : `substring in string` -> true|false 
 
 foreach : 
 - iterate lists/strings with `foreach ( var i in iterable ) { block }`
+
+
 
 renamed fun to func
 
@@ -103,6 +107,6 @@ i/o
 - exception stack trace 
 - from module import [*|name] 
 - import module as <namespace> 
-- `if (key in iterable)` or `if (key not in interable)`
+
 - etc.
  
