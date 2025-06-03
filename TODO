@@ -1,0 +1,35 @@
+this doesn't work properly
+
+func getCountDict(d){
+    var rv={};
+ 
+    foreach (var k in keys(d)){
+        var c=d[k];                 <==== 
+        print c;
+        if ( get(rv,c)==nil ) {
+            rv[c]=[];
+        }
+        append(rv[c],k);
+    }
+    return rv;
+}
+
+  c lookup doesn't work 
+
+this version works:
+
+func getCountDict(d){
+    var rv={};
+    var c; 
+    foreach (var k in keys(d)){
+        c=d[k];
+        print c;
+        if ( get(rv,c)==nil ) {
+            rv[c]=[];
+        }
+        append(rv[c],k);
+    }
+    return rv;
+}
+
+looks like in 1st version,  c is not being considered assignable 

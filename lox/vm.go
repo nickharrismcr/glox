@@ -920,8 +920,6 @@ func (vm *VM) run() (InterpretResult, Value) {
 			case OBJECT_LIST:
 				t := iterable.asList()
 				if idx >= len(t.items) {
-					vm.pop()
-					vm.pop()
 					frame.ip += int(jumpToEnd)
 				} else {
 					val := t.get()[idx]
@@ -931,8 +929,6 @@ func (vm *VM) run() (InterpretResult, Value) {
 			case OBJECT_STRING:
 				t := iterable.asString()
 				if idx >= len(t.get()) {
-					vm.pop()
-					vm.pop()
 					frame.ip += int(jumpToEnd)
 				} else {
 					val, _ := t.index(idx)
@@ -948,9 +944,10 @@ func (vm *VM) run() (InterpretResult, Value) {
 
 			jumpToStart := vm.readShort()
 			indexSlot := vm.readByte()
-			indexVal := vm.stack[frame.slots+int(indexSlot)]
-			indexVal.Int += 1
-			frame.ip -= int(jumpToStart)
+			slot := frame.slots + int(indexSlot)
+			indexVal := vm.stack[slot]
+			vm.stack[slot] = makeIntValue(indexVal.Int+1, false)
+			frame.ip -= int(jumpToStart + 1)
 
 		case OP_END_FOREACH:
 
@@ -1150,7 +1147,7 @@ func (vm *VM) createDict(frame *CallFrame) {
 	for i := 0; i < itemCount; i++ {
 		value := vm.pop()
 		key := vm.pop()
-		dict[key.String()] = value
+		dict[key.asString().get()] = value
 	}
 	do := makeDictObject(dict)
 	vm.push(makeObjectValue(do, false))
@@ -1195,7 +1192,7 @@ func (vm *VM) index() bool {
 
 		case OBJECT_DICT:
 
-			key := iv.String()
+			key := iv.asString().get()
 			t := sv.asDict()
 			so, err := t.get(key)
 			if err != nil {
@@ -1238,7 +1235,7 @@ func (vm *VM) indexAssign() bool {
 			}
 		case OBJECT_DICT:
 			t := collection.asDict()
-			t.set(index.String(), rhs)
+			t.set(index.asString().get(), rhs)
 			return true
 		}
 	}

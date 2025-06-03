@@ -635,6 +635,10 @@ func (p *Parser) continueStatement() {
 
 }
 
+// creates 3 locals on stack:
+//   - var receiving iterator output
+//   - iterated list/string
+//   - iteration index
 func (p *Parser) foreachStatement() {
 
 	loopSave := p.currentCompiler.loop
@@ -647,33 +651,38 @@ func (p *Parser) foreachStatement() {
 	p.varDeclaration(true)
 	slot := p.currentCompiler.localCount - 1
 	p.consume(TOKEN_IN, "Expect in after foreach variable.")
+
+	// get iterator and put it in a temp local
 	p.expression()
 	p.addLocal(syntheticToken("__iter"))
 	iterSlot := p.currentCompiler.localCount - 1
 	p.markInitialised()
-	p.emitByte(OP_SET_LOCAL)
-	p.emitByte(uint8(iterSlot))
 
+	// initialise iterator index to 0 and put it in a temp local
 	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after iterable.")
 	p.emitConstant(makeIntValue(0, false))
 	p.addLocal(syntheticToken("__index"))
 	p.markInitialised()
 	indexSlot := p.currentCompiler.localCount - 1
-	p.emitByte(OP_SET_LOCAL)
-	p.emitByte(uint8(indexSlot))
-
+	// each iteration will jump back to here
 	p.currentCompiler.loop.start = len(p.currentChunk().code)
-	jumpToEnd := p.emitForeach(uint8(slot))
+	jumpToEnd := p.emitForeach(uint8(slot), uint8(iterSlot), uint8(indexSlot))
 
+	// body of foreach
 	p.statement()
+	// if it contained a continue, patch its jump to come here
 	if p.currentCompiler.loop.continue_ != 0 {
 		p.patchJump(p.currentCompiler.loop.continue_)
 	}
+	// will get index from slots and increment it, and jump to loop start
 	p.emitLoop(OP_NEXT, p.currentCompiler.loop.start)
+	// tell it what slot to look in
 	p.emitByte(uint8(indexSlot))
 
-	p.patchForeach(jumpToEnd)
+	// iteration complete, patch foreach to come here
 	p.emitByte(OP_END_FOREACH)
+	p.patchForeach(jumpToEnd)
+	// did the body contain a break? if so patch its jump to come here
 	if p.currentCompiler.loop.break_ != 0 {
 		p.patchJump(p.currentCompiler.loop.break_)
 	}
@@ -757,10 +766,12 @@ func (p *Parser) emitJump(instr uint8) int {
 	p.emitByte(0xff)
 	return len(p.currentChunk().code) - 2
 }
-func (p *Parser) emitForeach(slot uint8) int {
+func (p *Parser) emitForeach(slot uint8, iterslot uint8, idxslot uint8) int {
 
 	p.emitByte(OP_FOREACH)
 	p.emitByte(slot)
+	p.emitByte(iterslot)
+	p.emitByte(idxslot)
 	p.emitByte(0xff)
 	p.emitByte(0xff)
 	return len(p.currentChunk().code) - 3

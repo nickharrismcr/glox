@@ -30,12 +30,40 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("readln", readlnBuiltIn)
 	vm.defineBuiltIn("write", writeBuiltIn)
 	vm.defineBuiltIn("rand", randBuiltIn)
+	vm.defineBuiltIn("get", getBuiltIn)
 
 	// lox built ins e.g Exception classes
 	vm.loadBuiltInModule(exceptionSource)
 	vm.loadBuiltInModule(eofErrorSource)
 	vm.loadBuiltInModule(runTimeErrorSource)
 
+}
+
+func getBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+
+	if argCount != 3 {
+		vm.runTimeError("Invalid argument count to keys.")
+		return makeNilValue()
+	}
+	val := vm.stack[arg_stackptr]
+	key := vm.stack[arg_stackptr+1]
+	def := vm.stack[arg_stackptr+2]
+
+	if val.isDictObject() {
+		if key.isStringObject() {
+			if def.isStringObject() {
+				dict := val.asDict()
+				rv, error := dict.get(key.asString().get())
+				if error != nil {
+					return def
+				}
+				return rv
+			}
+		}
+	}
+
+	vm.runTimeError("Argument to get must be dictionary, key, default")
+	return makeNilValue()
 }
 
 func keysBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
@@ -46,13 +74,11 @@ func keysBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	}
 	val := vm.stack[arg_stackptr]
 
-	switch val.Type {
-	case VAL_OBJ:
-		if val.isDictObject() {
-			d := val.asDict()
-			return d.keys()
-		}
+	if val.isDictObject() {
+		d := val.asDict()
+		return d.keys()
 	}
+
 	vm.runTimeError("Argument to keys must be a dictionary.")
 	return makeNilValue()
 }
@@ -91,15 +117,8 @@ func joinBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeNilValue()
 }
 
-func typeBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
-
-	if argCount != 1 {
-		vm.runTimeError("Single argument expected.")
-		return makeNilValue()
-	}
-	val := vm.stack[arg_stackptr]
+func typeName(val Value) string {
 	var val_type string
-
 	switch val.Type {
 	case VAL_INT:
 		val_type = "int"
@@ -117,6 +136,8 @@ func typeBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 			val_type = "closure"
 		case OBJECT_LIST:
 			val_type = "list"
+		case OBJECT_NATIVE:
+			val_type = "builtin"
 		case OBJECT_DICT:
 			val_type = "dict"
 		case OBJECT_CLASS:
@@ -131,7 +152,19 @@ func typeBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	case VAL_NIL:
 		val_type = "nil"
 	}
-	return makeObjectValue(makeStringObject(val_type), true)
+	return val_type
+}
+
+func typeBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+
+	if argCount != 1 {
+		vm.runTimeError("Single argument expected.")
+		return makeNilValue()
+	}
+	val := vm.stack[arg_stackptr]
+	name := typeName(val)
+
+	return makeObjectValue(makeStringObject(name), true)
 }
 
 func argsBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
@@ -281,7 +314,7 @@ func appendBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 			return makeNilValue()
 		}
 		l.append(val2)
-		return val
+		return makeObjectValue(l, false)
 	}
 	vm.runTimeError("Argument 1 to append must be list.")
 	return makeNilValue()
