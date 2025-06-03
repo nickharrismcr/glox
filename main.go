@@ -16,8 +16,6 @@ type Options struct {
 
 func main() {
 
-	fmt.Println("GLOX:")
-
 	opts := &Options{
 		debugger: false,
 	}
@@ -30,6 +28,7 @@ func main() {
 	handleArgs(opts)
 
 	if opts.doRepl {
+		fmt.Println("GLOX:")
 		vm := lox.NewVM("repl", true)
 		repl(vm)
 	} else {
