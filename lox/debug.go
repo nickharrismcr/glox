@@ -245,7 +245,7 @@ func (c *Chunk) foreachInstruction(offset int) int {
 	jump = uint16(jump1 << 8)
 	jump |= uint16(jump2)
 
-	fmt.Printf("%-16s %04d %04d %04d %04d -> %d \n", "OP_FOREACH", slot, iterslot, idxslot, offset, uint16(offset)+4+jump)
+	fmt.Printf("%-16s %04d %04d %04d %04d -> %d \n", "OP_FOREACH", slot, iterslot, idxslot, jump, uint16(offset)+4+jump)
 	return offset + 6
 }
 
