@@ -66,5 +66,5 @@ args = parser.parse_args()
 if args.file:
     process(args.file, args)
 else:
-    for f in glob.glob("lox/*lox"):
+    for f in glob.glob("bin/*lox"):
         process(f, args)

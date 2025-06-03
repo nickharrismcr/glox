@@ -1,35 +1,10 @@
-this doesn't work properly
+if a module function is assigned to an alias e.g
 
-func getCountDict(d){
-    var rv={};
- 
-    foreach (var k in keys(d)){
-        var c=d[k];                 <==== 
-        print c;
-        if ( get(rv,c)==nil ) {
-            rv[c]=[];
-        }
-        append(rv[c],k);
-    }
-    return rv;
-}
+import math;
+randf=math.randint;
+var x=randf(1,10);
 
-  c lookup doesn't work 
+randf call does not do a module invoke,  just a call, so the module environment is not in scope and global lookups fail  ( e.g nested imports) 
 
-this version works:
 
-func getCountDict(d){
-    var rv={};
-    var c; 
-    foreach (var k in keys(d)){
-        c=d[k];
-        print c;
-        if ( get(rv,c)==nil ) {
-            rv[c]=[];
-        }
-        append(rv[c],k);
-    }
-    return rv;
-}
-
-looks like in 1st version,  c is not being considered assignable 
+can compile prevent shadowing of builtins by new vars/funcs?

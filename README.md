@@ -66,7 +66,7 @@ tuples :
 dictionaries:
 
 - initialiser ( `var a = {}; var a = { "b":"c","d":"e"};` )
-- get ( `a[key]`)
+- get ( `a[key]` or `get(a,key,default)` ) 
 - set ( `a[key]=b`)
 - `keys(dict)`   get list of keys 
 
@@ -105,6 +105,7 @@ i/o
 
 - more runtime exception types 
 - exception stack trace 
+- lxcs to store pointers to original source for error reporting 
 - from module import [*|name] 
 - import module as <namespace> 
 
