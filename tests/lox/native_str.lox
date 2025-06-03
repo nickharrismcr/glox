@@ -1,6 +1,0 @@
-
-var a=clock();
-print (a < 10);
-print str(2);
-print str("2");
-

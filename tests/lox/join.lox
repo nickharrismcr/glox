@@ -1,7 +1,0 @@
-var a = [];
-
-for (var i = 0; i < 100; i=i+1) {
-    append(a,str(i));
-}
-
-print join(a,"||"); 

@@ -1,6 +1,5 @@
-GLOX:
 reading
-1 var fp = open("lox/io_read.lox","r");
+1 var fp = open("bin/io_read.lox","r");
 2 print "reading";
 3 var i=1;
 4 try {

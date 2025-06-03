@@ -1,4 +1,3 @@
-GLOX:
 hello
 raising MyException (something happened)
 in Exception handler
