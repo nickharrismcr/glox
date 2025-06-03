@@ -1,0 +1,37 @@
+ 
+import plot;
+import math;
+
+
+func logmap() {
+    var fname="logistic_map.png";
+    var width =5000;
+    var height = 3000;
+    var min_r = 2.5;
+    var max_r = 4.0;
+    var steps = 1000;
+    var transients = 100;
+
+    var plotter=plot.Plotter(fname,width,height);
+    plotter.clear(1);
+    
+    // Compute logistic map and plot points
+    for (var px = 0; px < width; px = px + 1) {
+        var r = min_r + (float(px) / float(width)) * (max_r - min_r);
+        var x = 0.5;
+        for (var i = 0; i < transients; i = i + 1) {
+            x = r * x * (1 - x); // skip transients
+        }
+        for (var i = 0; i < steps; i = i + 1) {
+            x = r * x * (1 - x);
+            var py = height - 1 - math.floor(x * height);
+            if (py >= 0 and py < height) {
+                plotter.add(px,py,-0.4); 
+            }
+        }
+    }
+
+    plotter.save();
+}
+
+logmap();

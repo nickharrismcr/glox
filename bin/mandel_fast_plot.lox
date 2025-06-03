@@ -1,0 +1,37 @@
+//fast mandelbrot 
+import plot;
+
+func drawit() {
+
+    
+    const fname="mandel.png";
+    const max_iteration = 100;
+    const width=1828;
+    const height=1828;
+    
+    var plotter=plot.Plotter(fname,width,height);
+    var iters;
+    var brightness;
+
+
+    print "plotter initialised";
+
+    for (var i = 0; i < height; i=i+1) { 
+        for (var j = 0; j < width; j=j+1) { 
+            iters=lox_mandel(i,j,height,width,max_iteration);
+            if (iters==max_iteration) {
+                brightness = 0;
+            } else {
+                brightness = float(iters) / float(max_iteration);
+                brightness = sqrt(brightness); // smoother contrast
+            }
+        
+            plotter.plot(j,i,  brightness);
+        }  
+    }
+
+    plotter.save();
+}
+
+drawit();
+
