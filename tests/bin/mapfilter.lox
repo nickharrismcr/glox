@@ -4,7 +4,7 @@ func map(list,function) {
     var ln = len(list);
     var rv = [];
     for (var i = 0; i < ln; i=i+1) {
-        append(rv,function(list[i]));
+        rv.append(function(list[i]));
     }
     return rv;
 }
@@ -14,7 +14,7 @@ func filter(list,function){
     var rv = [];
     for (var i = 0; i < ln; i=i+1) {
         if ( function (list[i]) ) {
-            append(rv,list[i]);
+            rv.append(list[i]);
         }
     }
     return rv;
@@ -34,7 +34,7 @@ func divisibleBy(a) {
 func makeList(size) {
     var rv=[];
     for ( var i = 0 ; i < size; i = i+1 ){
-        append(rv,i);
+        rv.append(i);
     }
     return rv;
 }

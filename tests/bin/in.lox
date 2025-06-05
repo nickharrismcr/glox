@@ -14,5 +14,5 @@ var b=2;
 print b in a;
 
 var c = {"a":1,"b":2,"c":3};
-print "a" in keys(c);
-print "X" in keys(c);
+print "a" in c.keys();
+print "X" in c.keys();

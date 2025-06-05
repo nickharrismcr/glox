@@ -14,12 +14,12 @@ for (var i = 0; i < 20; i=i+1 ){
     print str(i)+" : "+str(c[str(i)]);
 }
 
-print len(keys(c));
+print len(c.keys());
 
 
 var e={"a":{"b":"c","d":[1,2,3,{"e":"f"}]}};
-print len(keys(e));
-print len(keys(e["a"]));
+print len(e.keys());
+print len(e["a"].keys());
 print e["a"]["b"];
 print e["a"]["d"];
 print e["a"]["d"][0];
