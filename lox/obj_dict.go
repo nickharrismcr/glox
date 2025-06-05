@@ -31,6 +31,52 @@ func (o *DictObject) String() string {
 	return s[:len(s)-1] + " })"
 }
 
+func (d *DictObject) GetMethod(name string) *BuiltInObject {
+
+	switch name {
+
+	case "get":
+		return &BuiltInObject{
+			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+				if argCount != 2 {
+					vm.runTimeError("Invalid argument count to get.")
+					return makeNilValue()
+				}
+				key := vm.stack[arg_stackptr]
+				def := vm.stack[arg_stackptr+1]
+
+				if key.isStringObject() {
+					if def.isStringObject() {
+						rv, error := d.get(key.asString().get())
+						if error != nil {
+							return def
+						}
+						return rv
+					}
+				}
+
+				vm.runTimeError("Argument to get must be key, default")
+				return makeNilValue()
+			},
+		}
+	case "keys":
+
+		return &BuiltInObject{
+			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+
+				if argCount != 0 {
+					vm.runTimeError("Invalid argument count to keys.")
+					return makeNilValue()
+				}
+				return d.keys()
+			},
+		}
+
+	default:
+		return nil
+	}
+}
+
 func (o *DictObject) set(key string, value Value) {
 
 	o.items[key] = value

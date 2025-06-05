@@ -22,16 +22,14 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("append", appendBuiltIn)
 	vm.defineBuiltIn("float", floatBuiltIn)
 	vm.defineBuiltIn("int", intBuiltIn)
-	vm.defineBuiltIn("join", joinBuiltIn)
-	vm.defineBuiltIn("keys", keysBuiltIn)
 	vm.defineBuiltIn("lox_mandel", mandelBuiltIn)
+	vm.defineBuiltIn("lox_mandel_array", MandelArrayBuiltIn)
 	vm.defineBuiltIn("replace", replaceBuiltIn)
 	vm.defineBuiltIn("open", openBuiltIn)
 	vm.defineBuiltIn("close", closeBuiltIn)
 	vm.defineBuiltIn("readln", readlnBuiltIn)
 	vm.defineBuiltIn("write", writeBuiltIn)
 	vm.defineBuiltIn("rand", randBuiltIn)
-	vm.defineBuiltIn("get", getBuiltIn)
 	vm.defineBuiltIn("draw_png", drawPNGBuiltIn)
 	vm.defineBuiltIn("float_array", makeFloatArrayBuiltIn)
 
@@ -58,84 +56,6 @@ func makeFloatArrayBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	height := heightval.Int
 	floatArrObj := makeFloatArrayObject(width, height)
 	return makeObjectValue(floatArrObj, false)
-}
-
-func getBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
-
-	if argCount != 3 {
-		vm.runTimeError("Invalid argument count to keys.")
-		return makeNilValue()
-	}
-	val := vm.stack[arg_stackptr]
-	key := vm.stack[arg_stackptr+1]
-	def := vm.stack[arg_stackptr+2]
-
-	if val.isDictObject() {
-		if key.isStringObject() {
-			if def.isStringObject() {
-				dict := val.asDict()
-				rv, error := dict.get(key.asString().get())
-				if error != nil {
-					return def
-				}
-				return rv
-			}
-		}
-	}
-
-	vm.runTimeError("Argument to get must be dictionary, key, default")
-	return makeNilValue()
-}
-
-func keysBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
-
-	if argCount != 1 {
-		vm.runTimeError("Invalid argument count to keys.")
-		return makeNilValue()
-	}
-	val := vm.stack[arg_stackptr]
-
-	if val.isDictObject() {
-		d := val.asDict()
-		return d.keys()
-	}
-
-	vm.runTimeError("Argument to keys must be a dictionary.")
-	return makeNilValue()
-}
-
-func joinBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
-
-	var err string = ""
-
-	if argCount != 2 {
-		vm.runTimeError("Invalid argument count to join.")
-		return makeNilValue()
-	}
-	val := vm.stack[arg_stackptr]
-	err = "Argument 1 to join must be a list."
-
-	switch val.Type {
-	case VAL_OBJ:
-		if val.isListObject() {
-			err = "Argument 2 to join must be a string."
-			l := val.asList()
-			val2 := vm.stack[arg_stackptr+1]
-			switch val2.Type {
-			case VAL_OBJ:
-				if val2.isStringObject() {
-					rv, errj := l.join(val2.asString().get())
-					if errj == nil {
-						return rv
-					} else {
-						err = errj.Error()
-					}
-				}
-			}
-		}
-	}
-	vm.runTimeError("%v", err)
-	return makeNilValue()
 }
 
 func typeName(val Value) string {

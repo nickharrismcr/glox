@@ -28,20 +28,20 @@ func drawPNGBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	}
 
 	fa := plotData.asFloatArray()
-	if fa.Value.Width <= 0 || fa.Value.Height <= 0 {
+	if fa.value.width <= 0 || fa.value.height <= 0 {
 		vm.runTimeError("draw_png data must not be empty")
 		return makeNilValue()
 	}
 
-	width := fa.Value.Width
-	height := fa.Value.Height
+	width := fa.value.width
+	height := fa.value.height
 
 	img := image.NewGray(image.Rect(0, 0, width, height))
 
 	var gray uint8
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			val := fa.Value.Get(x, y)
+			val := fa.value.get(x, y)
 			gray = uint8(min(val*255, 255))
 			img.SetGray(x, y, color.Gray{Y: gray})
 		}
@@ -135,7 +135,7 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 				brightness = float64(iteration) / float64(maxIteration)
 				brightness = math.Sqrt(brightness) // smoother contrast
 			}
-			array.Value.Set(row, col, brightness)
+			array.value.set(row, col, brightness)
 		}
 	}
 	return makeNilValue()

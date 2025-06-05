@@ -162,9 +162,9 @@ func getClosureObjectValue(v Value) *ClosureObject {
 	return v.asClosure()
 }
 
-func getClassObjectValue(v Value) *ClassObject {
+/* func getClassObjectValue(v Value) *ClassObject {
 	return v.asClass()
-}
+} */
 
 func getInstanceObjectValue(v Value) *InstanceObject {
 	return v.asInstance()
@@ -287,11 +287,12 @@ func (v Value) isDictObject() bool {
 	return v.isObj() && v.Obj.getType() == OBJECT_DICT
 }
 
-func (v Value) isFunctionObject() bool {
+/*
+	 func (v Value) isFunctionObject() bool {
 
-	return v.isObj() && v.Obj.getType() == OBJECT_FUNCTION
-}
-
+		return v.isObj() && v.Obj.getType() == OBJECT_FUNCTION
+	}
+*/
 func (v Value) isBuiltInObject() bool {
 
 	return v.isObj() && v.Obj.getType() == OBJECT_NATIVE
@@ -307,10 +308,10 @@ func (v Value) isClassObject() bool {
 	return v.isObj() && v.Obj.getType() == OBJECT_CLASS
 }
 
-func (v Value) isInstanceObject() bool {
+/* func (v Value) isInstanceObject() bool {
 
 	return v.isObj() && v.Obj.getType() == OBJECT_INSTANCE
-}
+} */
 
 func (v Value) isBoundMethodObject() bool {
 

@@ -39,7 +39,6 @@ native funcs :
 - `sin(float)`    -> float
 - `cos(float)`    -> float 
 - `args()` - returns list of command line arguments  
-- `replace(string,old,new)` -> string  - replace substring of string  
 - `type(var)` -> string - return type of variable e.g int,float,string,list,dict,class,instance,closure,file etc 
 - `draw_png(filename,float array)` - generate a png using passed float array ( values 0 (black) to 1 (white)) 
 
@@ -56,13 +55,12 @@ built-in lox modules:
 lists :
 
 - initialiser (`var a=[]; var a=[1,2,3];`)
-- `append (list,val)`  
+- `l.append(val)` -> append val to list in place  
 - indexing ( `b=a[int]` )
 - index assign ( `a[int] = b` )
 - slicing (`b=a[x:y]; b=a[:y]; b=a[x:]; b=a[:];` )
 - slice assignment ( e.g `a[2:5] = [1,2,3];` )
 - adding ( `list3=list1+list2;` )
-- `join ( list, string )`    e.g `join(["a","b","c"],"|");` -> "a|b|c"   
 - test for `item in list`  -> true|false 
 
 tuples : 
@@ -74,12 +72,15 @@ tuples :
 dictionaries:
 
 - initialiser ( `var a = {}; var a = { "b":"c","d":"e"};` )
-- get ( `a[key]` or `get(a,key,default)` ) 
+- get ( `a[key]` or `a.get(key,default)` ) 
 - set ( `a[key]=b`)
-- `keys(dict)`   get list of keys 
+- `dict.keys()`   get list of keys 
 
 strings :
 
+- `s=s+"4"`  string addition
+- `s.replace(old,new)` -> string  - replace substring in string   
+- `s.join(list)` -> string - join each list item with s  e.g `join(["a","b","c"],"|");` -> "a|b|c"   
 - multiply by integer ( a la python, e.g  `"@" * 3`,  `3 * "@"` = `"@@@"` )
 - slices   ( `a = "abcd"; b=a[0], b=a[:2]`, etc )
 - test for presence of substring in string : `substring in string` -> true|false 

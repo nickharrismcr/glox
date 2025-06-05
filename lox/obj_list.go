@@ -26,6 +26,27 @@ func (ListObject) getType() ObjectType {
 	return OBJECT_LIST
 }
 
+func (o *ListObject) GetMethod(name string) *BuiltInObject {
+
+	switch name {
+	case "append":
+		return &BuiltInObject{
+			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+				if argCount != 1 {
+					vm.runTimeError("append takes one argument.")
+					return makeNilValue()
+				}
+				val := vm.peek(0)
+				o.append(val)
+				return makeNilValue()
+			},
+		}
+
+	default:
+		return nil
+	}
+}
+
 func (o *ListObject) get() []Value {
 
 	return o.items

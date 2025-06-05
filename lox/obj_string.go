@@ -24,6 +24,44 @@ func (StringObject) getType() ObjectType {
 	return OBJECT_STRING
 }
 
+func (s StringObject) GetMethod(name string) *BuiltInObject {
+
+	switch name {
+
+	case "replace":
+		return &BuiltInObject{
+			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+				if argCount != 2 {
+					vm.runTimeError("replace takes two arguments.")
+					return makeNilValue()
+				}
+				fromVal := vm.peek(1)
+				toVal := vm.peek(0)
+				return s.replace(fromVal, toVal)
+			},
+		}
+	case "join":
+		return &BuiltInObject{
+			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+				if argCount != 1 || !vm.peek(0).isListObject() {
+					vm.runTimeError("Join takes one list argument.")
+					return makeNilValue()
+				}
+				lstVal := vm.peek(0)
+				lst := lstVal.asList()
+				v, err := lst.join(s.get())
+				if err != nil {
+					vm.runTimeError("%v", err)
+					return makeNilValue()
+				}
+				return v
+			},
+		}
+	default:
+		return nil
+	}
+}
+
 func (s StringObject) get() string {
 
 	return *s.chars
