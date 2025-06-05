@@ -35,7 +35,7 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("write", writeBuiltIn)
 	vm.defineBuiltIn("rand", randBuiltIn)
 	vm.defineBuiltIn("get", getBuiltIn)
-	vm.defineBuiltIn("draw", drawBuiltIn)
+	vm.defineBuiltIn("draw_png", drawPNGBuiltIn)
 	vm.defineBuiltIn("float_array", makeFloatArrayBuiltIn)
 
 	// lox built ins e.g Exception classes
@@ -535,58 +535,40 @@ func openFile(path string, mode string) (*os.File, error) {
 }
 
 // takes a filename, and a FloatArrayObject Value
-func drawBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func drawPNGBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	if argCount != 2 {
-		vm.runTimeError("Invalid argument count to draw.")
+		vm.runTimeError("Invalid argument count to draw_png.")
 		return makeNilValue()
 	}
 	nameVal := vm.stack[arg_stackptr]
 	plotData := vm.stack[arg_stackptr+1]
 
 	if !nameVal.isStringObject() {
-		vm.runTimeError("First argument must be a string filename")
+		vm.runTimeError("First argument to draw_png must be a string filename")
 		return makeNilValue()
 	}
 
 	if !plotData.isFloatArrayObject() {
-		vm.runTimeError("Second argument must be a float array")
+		vm.runTimeError("Second argument to draw_png must be a float array")
 		return makeNilValue()
 	}
 
-	height := len(plotData.asList().items)
-	if height == 0 {
-		vm.runTimeError("Data must not be empty")
+	fa := plotData.asFloatArray()
+	if fa.value.width <= 0 || fa.value.height <= 0 {
+		vm.runTimeError("draw_png data must not be empty")
 		return makeNilValue()
 	}
 
-	width := 0
-	firstRow := plotData.asList().items[0]
-	if !firstRow.isListObject() {
-		vm.runTimeError("Each row must be a list")
-		return makeNilValue()
-	}
-	width = len(firstRow.asList().items)
+	width := fa.value.width
+	height := fa.value.height
 
 	img := image.NewGray(image.Rect(0, 0, width, height))
 
-	for y, rowVal := range plotData.asList().items {
-		if !rowVal.isListObject() {
-			vm.runTimeError("Each row must be a list")
-			return makeNilValue()
-		}
-		row := rowVal.asList()
-
-		for x, cell := range row.items {
-			if !cell.isNumber() {
-				vm.runTimeError("Pixel values must be numbers")
-				return makeNilValue()
-			}
-			var gray uint8
-			if cell.isFloat() {
-				gray = uint8(min(cell.Float, 255))
-			} else {
-				gray = uint8(min(cell.Int, 255))
-			}
+	var gray uint8
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			val := fa.value.get(x, y)
+			gray = uint8(min(val*255, 255))
 			img.SetGray(x, y, color.Gray{Y: gray})
 		}
 	}
