@@ -228,7 +228,7 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 		if callee.isClosureObject() {
 			return vm.call(getClosureObjectValue(callee), argCount)
 
-		} else if callee.isBuiltInFunction() {
+		} else if callee.isBuiltInObject() {
 			nf := callee.asBuiltIn()
 			res := nf.function(argCount, vm.stackTop-argCount, vm)
 			if res.Type == VAL_NIL { // error occurred
@@ -273,6 +273,8 @@ func (vm *VM) invoke(name Value, argCount int) bool {
 	case OBJECT_MODULE:
 		module := receiver.asModule()
 		return vm.invokeFromModule(module, name, argCount)
+	case OBJECT_FLOAT_ARRAY:
+		return vm.invokeFromBuiltin(receiver.Obj, name, argCount)
 	default:
 		vm.runTimeError("Invalid use of '.' operator")
 		return false
@@ -302,6 +304,25 @@ func (vm *VM) invokeFromModule(module *ModuleObject, name Value, argCount int) b
 	env.builtins = module.environment.builtins
 	vm.environments = env
 	return vm.callValue(fn, argCount)
+}
+
+func (vm *VM) invokeFromBuiltin(obj Object, name Value, argCount int) bool {
+
+	n := getStringValue(name)
+	bobj, ok := obj.(HasMethods)
+	if ok {
+		method := bobj.GetMethod(name.asString().get())
+		if method != nil {
+			builtin := method.function
+			res := builtin(argCount, vm.stackTop-argCount, vm)
+			vm.stackTop -= argCount + 1
+			vm.push(res)
+			return true
+		}
+	}
+	vm.runTimeError("Undefined builtin property '%s'.", n)
+	return false
+
 }
 
 func (vm *VM) bindMethod(class *ClassObject, name string) bool {

@@ -1,34 +1,26 @@
 class Plotter {
     init(filename,width,height){
         this.filename=filename;
-        this.data=[];
+        this.data=float_array(width,height);
         this.width=width;
         this.height=height;
-        for (var y=0; y<height; y=y+1) {
-            append(this.data,[]);
-            for ( var x=0; x<width; x=x+1) {
-                append(this.data[y],0);
-            }
-        }
     }
 
     clear(grey){
-        for (var y=0; y<this.height; y=y+1) {
-            for ( var x=0; x<this.width; x=x+1) {
-                this.plot(x,y,grey);
-            }
-        }
+        this.data.clear(grey);
     }
   
     plot(x,y,val){
-        this.data[y][x]=int(val*255.0);
+        this.data.set(x,y,val);
     }
     
     add(x,y,val){
-        this.data[y][x]=this.data[y][x]+int(val*255.0);
+        var v=this.data.get(x,y);
+        this.data.set(x,y,v+val);
     }
 
     save(){
-        draw(this.filename,this.data);
+        print type(this.data);
+        draw_png(this.filename,this.data);
     }
 }

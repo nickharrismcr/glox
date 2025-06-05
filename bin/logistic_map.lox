@@ -5,12 +5,13 @@ import math;
 
 func logmap() {
     var fname="logistic_map.png";
-    var width =5000;
-    var height = 3000;
+    var width =10000;
+    var height = 7000;
     var min_r = 2.5;
     var max_r = 4.0;
     var steps = 1000;
     var transients = 100;
+    var gray = 0.5;
 
     var plotter=plot.Plotter(fname,width,height);
     plotter.clear(1);
@@ -26,7 +27,7 @@ func logmap() {
             x = r * x * (1 - x);
             var py = height - 1 - math.floor(x * height);
             if (py >= 0 and py < height) {
-                plotter.add(px,py,-0.4); 
+                plotter.add(px,py,-gray); 
             }
         }
     }

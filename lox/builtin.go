@@ -32,13 +32,32 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("write", writeBuiltIn)
 	vm.defineBuiltIn("rand", randBuiltIn)
 	vm.defineBuiltIn("get", getBuiltIn)
-	vm.defineBuiltIn("draw", drawPNGBuiltIn)
+	vm.defineBuiltIn("draw_png", drawPNGBuiltIn)
+	vm.defineBuiltIn("float_array", makeFloatArrayBuiltIn)
 
 	// lox built ins e.g Exception classes
 	vm.loadBuiltInModule(exceptionSource)
 	vm.loadBuiltInModule(eofErrorSource)
 	vm.loadBuiltInModule(runTimeErrorSource)
 
+}
+
+func makeFloatArrayBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+
+	widthval := vm.stack[arg_stackptr]
+	heightval := vm.stack[arg_stackptr+1]
+	if argCount != 2 {
+		vm.runTimeError("Invalid argument count to float_array.")
+		return makeNilValue()
+	}
+	if !widthval.isInt() || !heightval.isInt() {
+		vm.runTimeError("float_array arguments must be integers")
+		return makeNilValue()
+	}
+	width := widthval.Int
+	height := heightval.Int
+	floatArrObj := makeFloatArrayObject(width, height)
+	return makeObjectValue(floatArrObj, false)
 }
 
 func getBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {

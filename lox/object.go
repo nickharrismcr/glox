@@ -24,4 +24,8 @@ type Object interface {
 	String() string
 }
 
+type HasMethods interface {
+	GetMethod(string) *BuiltInObject
+}
+
 type BuiltInFn func(argCount int, args_stackptr int, vm *VM) Value

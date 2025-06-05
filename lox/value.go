@@ -292,7 +292,7 @@ func (v Value) isFunctionObject() bool {
 	return v.isObj() && v.Obj.getType() == OBJECT_FUNCTION
 }
 
-func (v Value) isBuiltInFunction() bool {
+func (v Value) isBuiltInObject() bool {
 
 	return v.isObj() && v.Obj.getType() == OBJECT_NATIVE
 }

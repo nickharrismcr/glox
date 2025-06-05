@@ -5,16 +5,14 @@ func drawit() {
 
     
     const fname="mandel.png";
-    const max_iteration = 100;
-    const width=1828;
-    const height=1828;
+    const max_iteration = 150;
+    const width=5256;
+    const height=5256;
     
     var plotter=plot.Plotter(fname,width,height);
     var iters;
     var brightness;
 
-
-    print "plotter initialised";
 
     for (var i = 0; i < height; i=i+1) { 
         for (var j = 0; j < width; j=j+1) { 
