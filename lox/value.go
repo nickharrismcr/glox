@@ -296,6 +296,11 @@ func (v Value) asBoundMethod() *BoundMethodObject {
 	return v.Obj.(*BoundMethodObject)
 }
 
+func (v Value) asFloatArray() *FloatArrayObject {
+
+	return v.Obj.(*FloatArrayObject)
+}
+
 func (v Value) isListObject() bool {
 
 	return v.isObj() && v.Obj.getType() == OBJECT_LIST
@@ -311,7 +316,7 @@ func (v Value) isFunctionObject() bool {
 	return v.isObj() && v.Obj.getType() == OBJECT_FUNCTION
 }
 
-func (v Value) isBuiltInFunction() bool {
+func (v Value) isBuiltInObject() bool {
 
 	return v.isObj() && v.Obj.getType() == OBJECT_NATIVE
 }
@@ -334,6 +339,11 @@ func (v Value) isInstanceObject() bool {
 func (v Value) isBoundMethodObject() bool {
 
 	return v.isObj() && v.Obj.getType() == OBJECT_BOUNDMETHOD
+}
+
+func (v Value) isFloatArrayObject() bool {
+
+	return v.isObj() && v.Obj.getType() == OBJECT_FLOAT_ARRAY
 }
 
 //================================================================================================

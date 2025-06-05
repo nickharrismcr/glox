@@ -15,12 +15,17 @@ const (
 	OBJECT_BOUNDMETHOD
 	OBJECT_MODULE
 	OBJECT_FILE
+	OBJECT_FLOAT_ARRAY
 )
 
 type Object interface {
 	isObject()
 	getType() ObjectType
 	String() string
+}
+
+type HasMethods interface {
+	GetMethod(string) *BuiltInObject
 }
 
 type BuiltInFn func(argCount int, args_stackptr int, vm *VM) Value

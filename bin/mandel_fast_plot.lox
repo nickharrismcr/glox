@@ -5,9 +5,9 @@ func drawit() {
 
     
     const fname="mandel.png";
-    const max_iteration = 100;
-    const width=1828;
-    const height=1828;
+    const max_iteration = 50;
+    const width=1256;
+    const height=1256;
     
     var plotter=plot.Plotter(fname,width,height);
     var iters;

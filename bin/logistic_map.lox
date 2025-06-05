@@ -9,7 +9,7 @@ func logmap() {
     var height = 3000;
     var min_r = 2.5;
     var max_r = 4.0;
-    var steps = 1000;
+    var steps = 5000;
     var transients = 100;
 
     var plotter=plot.Plotter(fname,width,height);
@@ -26,7 +26,7 @@ func logmap() {
             x = r * x * (1 - x);
             var py = height - 1 - math.floor(x * height);
             if (py >= 0 and py < height) {
-                plotter.add(px,py,-0.4); 
+                plotter.add(px,py,-0.6); 
             }
         }
     }
