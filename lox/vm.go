@@ -315,9 +315,6 @@ func (vm *VM) invokeFromBuiltin(obj Object, name Value, argCount int) bool {
 		if method != nil {
 			builtin := method.function
 			res := builtin(argCount, vm.stackTop-argCount, vm)
-			if res.Type == VAL_NIL { // error occurred
-				return false
-			}
 			vm.stackTop -= argCount + 1
 			vm.push(res)
 			return true
