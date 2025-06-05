@@ -273,7 +273,7 @@ func (vm *VM) invoke(name Value, argCount int) bool {
 	case OBJECT_MODULE:
 		module := receiver.asModule()
 		return vm.invokeFromModule(module, name, argCount)
-	case OBJECT_NATIVE:
+	case OBJECT_FLOAT_ARRAY:
 		return vm.invokeFromBuiltin(receiver.Obj, name, argCount)
 	default:
 		vm.runTimeError("Invalid use of '.' operator")
