@@ -44,10 +44,11 @@ native funcs :
 - `draw_png(filename,float array)` - generate a png using passed float array ( values 0 (black) to 1 (white)) 
 
 native objects :
-    fast 2D native float array 
-    -  `var a = float_array(100,100);`
-    -  `a.set(10,10,0.5);`
-    -  `var b=a.get(10,10);`
+
+- fast 2D native float array 
+- - `var a = float_array(100,100);`
+- - `a.set(10,10,0.5);`
+- - `var b=a.get(10,10);`
 
 built-in lox modules:
 -  iterator tools, function tools, string utils, PNG plotter 
