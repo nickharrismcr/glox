@@ -1195,7 +1195,7 @@ func (vm *VM) index() bool {
 			idx := iv.Int
 			lo, err := t.index(idx)
 			if err != nil {
-				vm.runTimeError(err.Error())
+				vm.runTimeError("%v", err)
 				return false
 			}
 			vm.push(lo)
@@ -1210,7 +1210,7 @@ func (vm *VM) index() bool {
 			t := sv.asString()
 			so, err := t.index(idx)
 			if err != nil {
-				vm.runTimeError(err.Error())
+				vm.runTimeError("%v", err)
 				return false
 			}
 			vm.push(so)
@@ -1222,7 +1222,7 @@ func (vm *VM) index() bool {
 			t := sv.asDict()
 			so, err := t.get(key)
 			if err != nil {
-				vm.runTimeError(err.Error())
+				vm.runTimeError("%v", err)
 				return false
 			}
 			vm.push(so)
@@ -1250,7 +1250,7 @@ func (vm *VM) indexAssign() bool {
 			}
 			if index.Type == VAL_INT {
 				if err := t.assignToIndex(index.Int, rhs); err != nil {
-					vm.runTimeError(err.Error())
+					vm.runTimeError("%v", err)
 					return false
 				} else {
 					return true
@@ -1298,7 +1298,7 @@ func (vm *VM) slice() bool {
 		if lv.Obj.getType() == OBJECT_LIST {
 			lo, err := lv.asList().slice(from_idx, to_idx)
 			if err != nil {
-				vm.runTimeError(err.Error())
+				vm.runTimeError("%v", err)
 				return false
 			}
 			vm.push(lo)
@@ -1307,7 +1307,7 @@ func (vm *VM) slice() bool {
 		} else if lv.Obj.getType() == OBJECT_STRING {
 			so, err := lv.asString().slice(from_idx, to_idx)
 			if err != nil {
-				vm.runTimeError(err.Error())
+				vm.runTimeError("%v", err)
 				return false
 			}
 			vm.push(so)
@@ -1355,7 +1355,7 @@ func (vm *VM) sliceAssign() bool {
 			}
 			err := lst.assignToSlice(from_idx, to_idx, val)
 			if err != nil {
-				vm.runTimeError(err.Error())
+				vm.runTimeError("%v", err)
 				return false
 			}
 			return true

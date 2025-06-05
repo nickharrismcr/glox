@@ -15,6 +15,7 @@ const (
 	OBJECT_BOUNDMETHOD
 	OBJECT_MODULE
 	OBJECT_FILE
+	OBJECT_FLOAT_ARRAY
 )
 
 type Object interface {

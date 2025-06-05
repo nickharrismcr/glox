@@ -111,29 +111,13 @@ func valuesEqual(a, b Value, typesMustMatch bool) bool {
 	return false
 }
 
-func (v Value) typeName() string {
+func (v Value) isInt() bool { return v.Type == VAL_INT }
 
-	switch v.Type {
-
-	case VAL_INT:
-		return "i"
-	case VAL_FLOAT:
-		return "f"
-	case VAL_BOOL:
-		return "b"
-	case VAL_OBJ:
-		return "o"
-	case VAL_NIL:
-		return "n"
-	}
-	return ""
-}
-
-func (v Value) isInt() bool    { return v.Type == VAL_INT }
-func (v Value) isFloat() bool  { return v.Type == VAL_FLOAT }
+// func (v Value) isFloat() bool  { return v.Type == VAL_FLOAT }
 func (v Value) isNumber() bool { return v.Type == VAL_INT || v.Type == VAL_FLOAT }
-func (v Value) isNil() bool    { return v.Type == VAL_NIL }
-func (v Value) isObj() bool    { return v.Type == VAL_OBJ }
+
+// func (v Value) isNil() bool    { return v.Type == VAL_NIL }
+func (v Value) isObj() bool { return v.Type == VAL_OBJ }
 
 func (v Value) asFloat() float64 {
 	switch v.Type {
@@ -161,14 +145,6 @@ func isString(v Value) bool {
 	switch v.Type {
 	case VAL_OBJ:
 		return v.Obj.getType() == OBJECT_STRING
-	}
-	return false
-}
-
-func isObject(v Value) bool {
-	switch v.Type {
-	case VAL_OBJ:
-		return true
 	}
 	return false
 }
@@ -296,6 +272,11 @@ func (v Value) asBoundMethod() *BoundMethodObject {
 	return v.Obj.(*BoundMethodObject)
 }
 
+func (v Value) asFloatArray() *FloatArrayObject {
+
+	return v.Obj.(*FloatArrayObject)
+}
+
 func (v Value) isListObject() bool {
 
 	return v.isObj() && v.Obj.getType() == OBJECT_LIST
@@ -334,6 +315,11 @@ func (v Value) isInstanceObject() bool {
 func (v Value) isBoundMethodObject() bool {
 
 	return v.isObj() && v.Obj.getType() == OBJECT_BOUNDMETHOD
+}
+
+func (v Value) isFloatArrayObject() bool {
+
+	return v.isObj() && v.Obj.getType() == OBJECT_FLOAT_ARRAY
 }
 
 //================================================================================================

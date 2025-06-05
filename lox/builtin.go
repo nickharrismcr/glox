@@ -2,9 +2,6 @@ package lox
 
 import (
 	"fmt"
-	"image"
-	"image/color"
-	"image/png"
 	"math"
 	"math/rand"
 	"os"
@@ -35,7 +32,7 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("write", writeBuiltIn)
 	vm.defineBuiltIn("rand", randBuiltIn)
 	vm.defineBuiltIn("get", getBuiltIn)
-	vm.defineBuiltIn("draw", drawBuiltIn)
+	vm.defineBuiltIn("draw", drawPNGBuiltIn)
 
 	// lox built ins e.g Exception classes
 	vm.loadBuiltInModule(exceptionSource)
@@ -118,7 +115,7 @@ func joinBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 			}
 		}
 	}
-	vm.runTimeError(err)
+	vm.runTimeError("%v", err)
 	return makeNilValue()
 }
 
@@ -217,7 +214,7 @@ func intBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 		if arg.Obj.getType() == OBJECT_STRING {
 			i, err := strconv.Atoi(arg.asString().get())
 			if err != nil {
-				vm.runTimeError(err.Error())
+				vm.runTimeError("%v", err)
 				return makeNilValue()
 			}
 			return makeIntValue(int(i), false)
@@ -421,7 +418,7 @@ func openBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	s_mode := mode.asString().get()
 	fp, err := openFile(s_path, s_mode)
 	if err != nil {
-		vm.runTimeError(fmt.Sprintf("%s", err))
+		vm.runTimeError("%v", err)
 		return makeNilValue()
 	}
 	file := makeObjectValue(makeFileObject(fp), true)
@@ -513,69 +510,6 @@ func openFile(path string, mode string) (*os.File, error) {
 	default:
 		return nil, fmt.Errorf("invalid mode: %s", mode)
 	}
-}
-
-// takes a filename, and a list of lists that will be the rows of the plot
-func drawBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
-	if argCount != 2 {
-		vm.runTimeError("Invalid argument count to draw.")
-		return makeNilValue()
-	}
-	nameVal := vm.stack[arg_stackptr]
-	plotData := vm.stack[arg_stackptr+1]
-
-	if !nameVal.isStringObject() {
-		vm.runTimeError("First argument must be a string filename")
-		return makeNilValue()
-	}
-
-	if !plotData.isListObject() {
-		vm.runTimeError("Second argument must be a list of lists of row points")
-		return makeNilValue()
-	}
-
-	height := len(plotData.asList().items)
-	if height == 0 {
-		vm.runTimeError("Data must not be empty")
-		return makeNilValue()
-	}
-
-	width := 0
-	firstRow := plotData.asList().items[0]
-	if !firstRow.isListObject() {
-		vm.runTimeError("Each row must be a list")
-		return makeNilValue()
-	}
-	width = len(firstRow.asList().items)
-
-	img := image.NewGray(image.Rect(0, 0, width, height))
-
-	for y, rowVal := range plotData.asList().items {
-		if !rowVal.isListObject() {
-			vm.runTimeError("Each row must be a list")
-			return makeNilValue()
-		}
-		row := rowVal.asList()
-
-		for x, cell := range row.items {
-			if !cell.isNumber() {
-				vm.runTimeError("Pixel values must be numbers")
-				return makeNilValue()
-			}
-			var gray uint8
-			if cell.isFloat() {
-				gray = uint8(min(cell.Float, 255))
-			} else {
-				gray = uint8(min(cell.Int, 255))
-			}
-			img.SetGray(x, y, color.Gray{Y: gray})
-		}
-	}
-
-	file, _ := os.Create(nameVal.asString().get())
-	defer file.Close()
-	_ = png.Encode(file, img)
-	return makeNilValue()
 }
 
 func (vm *VM) loadBuiltInModule(source string) {
