@@ -1,0 +1,36 @@
+//fast mandelbrot 
+ 
+import random;
+
+func drawit(zoom,xoff,yoff) {
+ 
+    const fname="mandel.png";
+    const max_iteration = 115;
+    const width=1256;
+    const height=1256;
+    
+    var array=float_array(width,height);
+    lox_mandel_array(array,width,height,max_iteration,float(xoff),float(yoff),float(zoom));
+    draw_png(fname,array);
+ 
+}
+
+func wait(){
+    var i=0;
+    while(i<10000000){
+        i=i+1;
+    }
+}
+
+while (true) {
+    var zoom=0.2+rand()*2;
+    print zoom;
+    var xoff=1.0-rand()*2.0;
+    var yoff=1.0-rand()*2.0;
+    print xoff;
+    print yoff;
+    drawit(zoom,xoff,yoff);
+    wait();
+}
+ 
+
