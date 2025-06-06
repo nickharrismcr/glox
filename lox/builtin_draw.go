@@ -75,7 +75,7 @@ func drawPNGBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
-	if argCount != 4 {
+	if argCount != 7 {
 		vm.runTimeError("Invalid argument count to lox_mandel_array")
 		return makeNilValue()
 	}
@@ -83,8 +83,12 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	hVal := vm.stack[arg_stackptr+1]
 	wVal := vm.stack[arg_stackptr+2]
 	maxIterVal := vm.stack[arg_stackptr+3]
+	xoffsetVal := vm.stack[arg_stackptr+4]
+	yoffsetVal := vm.stack[arg_stackptr+5]
+	scaleVal := vm.stack[arg_stackptr+6]
 
-	if hVal.Type != VAL_INT || wVal.Type != VAL_INT || maxIterVal.Type != VAL_INT || !arrayVal.isFloatArrayObject() {
+	if !(hVal.isInt() && wVal.isInt() && maxIterVal.isInt() && xoffsetVal.isFloat() &&
+		yoffsetVal.isFloat() && arrayVal.isFloatArrayObject() && scaleVal.isFloat()) {
 		vm.runTimeError("Invalid arguments to lox_mandel_array")
 		return makeNilValue()
 	}
@@ -93,19 +97,23 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	height := hVal.Int
 	width := wVal.Int
 	maxIteration := maxIterVal.Int
+	xOffset := xoffsetVal.Float
+	yOffset := yoffsetVal.Float
+	scale := scaleVal.Float
+
 	var brightness float64
 
 	for row := 0; row < height; row = row + 1 {
 		for col := 0; col < width; col = col + 1 {
 
-			y0 := 4.0*(float64(row)-float64(height)/2)/float64(height) - 1.0
-			x0 := 4.0 * (float64(col) - float64(width)/2) / float64(width)
+			x0 := scale*(float64(col)-float64(width)/2)/float64(width) + xOffset
+			y0 := scale*(float64(row)-float64(height)/2)/float64(height) + yOffset
 			x, y := 0.0, 0.0
 			iteration := 0
 
 			for (x*x+y*y <= 4) && (iteration < maxIteration) {
-				xtemp := x*x - y*y + y0
-				y = 2*x*y + x0
+				xtemp := x*x - y*y + x0
+				y = 2*x*y + y0
 				x = xtemp
 				iteration++
 			}

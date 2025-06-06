@@ -7,7 +7,7 @@
       "request": "launch",
       "mode": "auto",       // or "exec" if you're running a binary
       "program": "${workspaceFolder}/main.go",
-      "args": ["--debug","tests/lox/get.lox"],  // <== your CLI args here
+      "args": ["--debug","nod.lox"],  // <== your CLI args here
       "env": {"LOX_PATH":"D:/go/glox"},
       "cwd": "${workspaceFolder}"
     }
