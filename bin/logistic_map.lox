@@ -5,8 +5,8 @@ import math;
 
 func logmap() {
     var fname="logistic_map.png";
-    var width =10000;
-    var height = 7000;
+    var width =1000;
+    var height = 700;
     var min_r = 2.5;
     var max_r = 4.0;
     var steps = 1000;
