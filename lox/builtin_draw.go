@@ -8,14 +8,15 @@ import (
 	"os"
 )
 
-// takes a filename, and a FloatArrayObject Value
+// takes a filename, and a FloatArrayObject, and a boolean indicating whether the array contains RGB encoded data
 func drawPNGBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
-	if argCount != 2 {
+	if argCount != 3 {
 		vm.runTimeError("Invalid argument count to draw_png.")
 		return makeNilValue()
 	}
 	nameVal := vm.stack[arg_stackptr]
 	plotData := vm.stack[arg_stackptr+1]
+	colourEncoded := vm.stack[arg_stackptr+2]
 
 	if !nameVal.isStringObject() {
 		vm.runTimeError("First argument to draw_png must be a string filename")
@@ -25,6 +26,9 @@ func drawPNGBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	if !plotData.isFloatArrayObject() {
 		vm.runTimeError("Second argument to draw_png must be a float array")
 		return makeNilValue()
+	}
+	if !colourEncoded.isBool() {
+		vm.runTimeError("Third argument to draw_png must be a boolean")
 	}
 
 	fa := plotData.asFloatArray()
@@ -36,60 +40,37 @@ func drawPNGBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	width := fa.value.width
 	height := fa.value.height
 
-	img := image.NewGray(image.Rect(0, 0, width, height))
+	if !colourEncoded.Bool {
+		img := image.NewGray(image.Rect(0, 0, width, height))
 
-	var gray uint8
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			val := fa.value.get(x, y)
-			gray = uint8(min(val*255, 255))
-			img.SetGray(x, y, color.Gray{Y: gray})
+		var gray uint8
+
+		for y := range height {
+			for x := range width {
+				val := fa.value.get(x, y)
+				gray = uint8(min(val*255, 255))
+				img.SetGray(x, y, color.Gray{Y: gray})
+			}
 		}
+		file, _ := os.Create(nameVal.asString().get())
+		defer file.Close()
+		_ = png.Encode(file, img)
+	} else {
+		img := image.NewRGBA(image.Rect(0, 0, width, height))
+
+		for y := range height {
+			for x := range width {
+				val := fa.value.get(x, y)
+				r, g, b := DecodeRGB(val)
+				img.Set(x, y, color.RGBA{R: r, G: g, B: b, A: 255})
+			}
+		}
+		file, _ := os.Create(nameVal.asString().get())
+		defer file.Close()
+		_ = png.Encode(file, img)
 	}
 
-	file, _ := os.Create(nameVal.asString().get())
-	defer file.Close()
-	_ = png.Encode(file, img)
 	return makeNilValue()
-}
-
-func MandelBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
-
-	if argCount != 5 {
-		vm.runTimeError("Invalid argument count to lox_mandel.")
-		return makeNilValue()
-	}
-	ii := vm.stack[arg_stackptr]
-	jj := vm.stack[arg_stackptr+1]
-	h := vm.stack[arg_stackptr+2]
-	w := vm.stack[arg_stackptr+3]
-	max := vm.stack[arg_stackptr+4]
-
-	if ii.Type != VAL_INT || jj.Type != VAL_INT || h.Type != VAL_INT || w.Type != VAL_INT || max.Type != VAL_INT {
-		vm.runTimeError("Invalid arguments to lox_mandel")
-		return makeNilValue()
-	}
-
-	i := ii.Int
-	j := jj.Int
-	height := h.Int
-	width := w.Int
-	maxIteration := max.Int
-
-	x0 := 4.0*(float64(i)-float64(height)/2)/float64(height) - 1.0
-	y0 := 4.0 * (float64(j) - float64(width)/2) / float64(width)
-	x, y := 0.0, 0.0
-	iteration := 0
-
-	for (x*x+y*y <= 4) && (iteration < maxIteration) {
-		xtemp := x*x - y*y + x0
-		y = 2*x*y + y0
-		x = xtemp
-		iteration++
-	}
-
-	return makeIntValue(iteration, false)
-
 }
 
 func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {

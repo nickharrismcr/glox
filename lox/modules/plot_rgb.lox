@@ -1,0 +1,41 @@
+class Plotter {
+    init(filename,width,height){
+        this.filename=filename;
+        this.data=float_array(width,height);
+        this.width=width;
+        this.height=height;
+    }
+
+    encode(r,g,b) {
+        return encode_rgb(r,g,b);
+    }
+
+    clear(r,g,b){
+        this.data.clear(this.encode(r,g,b));
+    }
+  
+    plot(x,y,r,g,b){
+        if (x < 0 or x >= this.width) {
+            return;
+        }
+        if (y < 0 or y >= this.height) {
+            return;
+        }
+        this.data.set(x,y,this.encode(r,g,b));
+    }
+
+    square(x,y,s,r,g,b){
+        var stx=x-s/2;
+        var sty=y-s/2;
+        for ( var xx=stx; xx < stx+s; xx=xx+1 ){
+            for ( var yy=sty; yy < sty+s; yy=yy+1 ){
+                this.plot(xx,yy,r,g,b);
+            }            
+        }
+    }
+
+    save(){
+        print type(this.data);
+        draw_png(this.filename,this.data,true);
+    }
+}

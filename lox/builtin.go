@@ -22,7 +22,6 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("append", appendBuiltIn)
 	vm.defineBuiltIn("float", floatBuiltIn)
 	vm.defineBuiltIn("int", intBuiltIn)
-	vm.defineBuiltIn("lox_mandel", mandelBuiltIn)
 	vm.defineBuiltIn("lox_mandel_array", MandelArrayBuiltIn)
 	vm.defineBuiltIn("replace", replaceBuiltIn)
 	vm.defineBuiltIn("open", openBuiltIn)
@@ -32,12 +31,69 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("rand", randBuiltIn)
 	vm.defineBuiltIn("draw_png", drawPNGBuiltIn)
 	vm.defineBuiltIn("float_array", makeFloatArrayBuiltIn)
+	vm.defineBuiltIn("encode_rgb", encodeRGBABuiltIn)
+	vm.defineBuiltIn("decode_rgb", decodeRGBABuiltIn)
 
 	// lox built ins e.g Exception classes
 	vm.loadBuiltInModule(exceptionSource)
 	vm.loadBuiltInModule(eofErrorSource)
 	vm.loadBuiltInModule(runTimeErrorSource)
 
+}
+
+func EncodeRGB(r, g, b int) float64 {
+	if r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255 {
+		panic("RGB values must be between 0 and 255")
+	}
+	return float64(uint32(r)<<16 | uint32(g)<<8 | uint32(b))
+}
+
+func DecodeRGB(color float64) (uint8, uint8, uint8) {
+	v := uint32(color)
+	r := uint8((v >> 16) & 0xFF)
+	g := uint8((v >> 8) & 0xFF)
+	b := uint8(v & 0xFF)
+	return r, g, b
+}
+
+func encodeRGBABuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+
+	if argCount != 3 {
+		vm.runTimeError("encodeRGB expects 3 arguments")
+		return makeNilValue()
+	}
+	rVal := vm.stack[arg_stackptr]
+	gVal := vm.stack[arg_stackptr+1]
+	bVal := vm.stack[arg_stackptr+2]
+	if !rVal.isInt() || !gVal.isInt() || !bVal.isInt() {
+		vm.runTimeError("encodeRGB arguments must be integers")
+		return makeNilValue()
+	}
+	r := rVal.Int
+	g := gVal.Int
+	b := bVal.Int
+	color := EncodeRGB(r, g, b)
+	return makeFloatValue(color, false)
+}
+
+func decodeRGBABuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+	if argCount != 1 {
+		vm.runTimeError("decodeRGB expects 1 float argument")
+		return makeNilValue()
+	}
+	fVal := vm.stack[arg_stackptr]
+
+	if !fVal.isFloat() {
+		vm.runTimeError("decodeRGB argument must be a float")
+		return makeNilValue()
+	}
+	f := fVal.Float
+	r, g, b := DecodeRGB(f)
+	rVal := makeIntValue(int(r), false)
+	gVal := makeIntValue(int(g), false)
+	bVal := makeIntValue(int(b), false)
+	ro := makeListObject([]Value{rVal, gVal, bVal}, true)
+	return makeObjectValue(ro, false)
 }
 
 func makeFloatArrayBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
@@ -276,45 +332,6 @@ func appendBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	}
 	vm.runTimeError("Argument 1 to append must be list.")
 	return makeNilValue()
-}
-
-func mandelBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
-
-	if argCount != 5 {
-		vm.runTimeError("Invalid argument count to lox_mandel.")
-		return makeNilValue()
-	}
-	ii := vm.stack[arg_stackptr]
-	jj := vm.stack[arg_stackptr+1]
-	h := vm.stack[arg_stackptr+2]
-	w := vm.stack[arg_stackptr+3]
-	max := vm.stack[arg_stackptr+4]
-
-	if ii.Type != VAL_INT || jj.Type != VAL_INT || h.Type != VAL_INT || w.Type != VAL_INT || max.Type != VAL_INT {
-		vm.runTimeError("Invalid arguments to lox_mandel")
-		return makeNilValue()
-	}
-
-	i := ii.Int
-	j := jj.Int
-	height := h.Int
-	width := w.Int
-	maxIteration := max.Int
-
-	x0 := 4.0*(float64(i)-float64(height)/2)/float64(height) - 1.0
-	y0 := 4.0 * (float64(j) - float64(width)/2) / float64(width)
-	x, y := 0.0, 0.0
-	iteration := 0
-
-	for (x*x+y*y <= 4) && (iteration < maxIteration) {
-		xtemp := x*x - y*y + x0
-		y = 2*x*y + y0
-		x = xtemp
-		iteration++
-	}
-
-	return makeIntValue(iteration, false)
-
 }
 
 // replace( string|list )

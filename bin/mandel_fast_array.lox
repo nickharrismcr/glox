@@ -1,0 +1,19 @@
+//fast mandelbrot float array
+ 
+
+func drawit() {
+
+    
+    const fname="mandel.png";
+    const max_iteration = 150;
+    const width=5256;
+    const height=5256;
+    
+    var array = float_array(width,height);
+    lox_mandel_array(array,width,height,max_iteration);
+    draw_png(fname,array);
+    
+}
+
+drawit();
+

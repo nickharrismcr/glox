@@ -21,6 +21,6 @@ class Plotter {
 
     save(){
         print type(this.data);
-        draw_png(this.filename,this.data);
+        draw_png(this.filename,this.data,false);
     }
 }

@@ -1,0 +1,41 @@
+import plot_rgb;
+import random;
+
+func mysine(x) {
+	x=float(x);
+	x=sin(x);
+	x=x+1.0;
+	x=x*125;
+	if (x>255){ 
+		x=255;
+	} 
+	if (x<0){ 
+		x=0;
+	}
+	return int(x); 
+}
+
+var p=plot_rgb.Plotter("test.png",1000,1000);
+
+//var c=0;
+//for ( var x=0; x<1000; x=x+1){
+//	for ( var y=0; y<1000; y=y+1) {
+//		var r = mysine(x/200.0);
+//		var g = mysine(y/200.0);
+//		var b = mysine(x/200.0+y/200.0);
+//		p.plot(x,y,r,g,b);
+//	}
+//}
+for ( var i = 0 ; i < 10000; i=i+1 ){
+	var x=random.randint(0,1000);
+	var y=random.randint(0,1000);
+	var s=random.randint(0,20);
+	var r=random.randint(0,250);
+	var g=random.randint(0,250);
+	var b=random.randint(0,250);
+	p.square(x,y,s,r,g,b);
+}
+ 
+
+p.save();
+

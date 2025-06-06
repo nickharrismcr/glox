@@ -41,6 +41,8 @@ native funcs :
 - `args()` - returns list of command line arguments  
 - `type(var)` -> string - return type of variable e.g int,float,string,list,dict,class,instance,closure,file etc 
 - `draw_png(filename,float array)` - generate a png using passed float array ( values 0 (black) to 1 (white)) 
+- `encode_rgb(r,g,b) -> float `  - encode rgb int values (0-255) as a single float 
+- `decode_rgb(f)`  - decode an encoded rgb float into a tuple of ints (0-255)     
 
 native objects :
 

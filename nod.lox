@@ -1,0 +1,8 @@
+
+var f = encode_rgb(10,20,30);
+print f;
+var t = decode_rgb(f); 
+
+print t[0];
+print t[1];
+print t[2];

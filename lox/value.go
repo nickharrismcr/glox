@@ -111,10 +111,10 @@ func valuesEqual(a, b Value, typesMustMatch bool) bool {
 	return false
 }
 
-func (v Value) isInt() bool { return v.Type == VAL_INT }
-
-// func (v Value) isFloat() bool  { return v.Type == VAL_FLOAT }
+func (v Value) isInt() bool    { return v.Type == VAL_INT }
+func (v Value) isFloat() bool  { return v.Type == VAL_FLOAT }
 func (v Value) isNumber() bool { return v.Type == VAL_INT || v.Type == VAL_FLOAT }
+func (v Value) isBool() bool   { return v.Type == VAL_BOOL }
 
 // func (v Value) isNil() bool    { return v.Type == VAL_NIL }
 func (v Value) isObj() bool { return v.Type == VAL_OBJ }
@@ -282,10 +282,10 @@ func (v Value) isListObject() bool {
 	return v.isObj() && v.Obj.getType() == OBJECT_LIST
 }
 
-func (v Value) isDictObject() bool {
+// func (v Value) isDictObject() bool {
 
-	return v.isObj() && v.Obj.getType() == OBJECT_DICT
-}
+// 	return v.isObj() && v.Obj.getType() == OBJECT_DICT
+// }
 
 /*
 	 func (v Value) isFunctionObject() bool {
