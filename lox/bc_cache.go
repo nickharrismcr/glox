@@ -37,6 +37,9 @@ func writeToLxc(vm *VM, serialised *bytes.Buffer) {
 
 func loadLxc(scriptPath string) (*Chunk, bool) {
 
+	if ForceModuleCompile {
+		return nil, false
+	}
 	Debugf("Attempting to load lxc for %s", scriptPath)
 
 	// Determine cache path
