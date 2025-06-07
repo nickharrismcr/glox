@@ -513,9 +513,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 				runtime.GC()
 				return INTERPRET_OK, result
 			}
-			Debugf("Module return :framecount %d  env frame %d ", vm.frameCount, vm.environments.frame)
 			if vm.frameCount == vm.environments.frame {
-				Debug("Pop module env")
 				vm.popEnvironment()
 			}
 			vm.stackTop = frame.slots
