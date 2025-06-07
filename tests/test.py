@@ -21,7 +21,7 @@ def format(s):
 
 def process(fname,args):
 
-    
+    passed=False
     pipe = run(fname)
     testdatafile="output/%s.testoutput" % basename(fname)
  
@@ -36,6 +36,7 @@ def process(fname,args):
             match=data==res[0]
             if match:
                 print ("Test %-30s : PASS" % fname)
+                passed=True
             else:
                 print ("Test %-30s : FAIL" % fname)
             if args.verbose:
@@ -49,6 +50,8 @@ def process(fname,args):
                 if args.diff:
                     d=difflib.context_diff(a,b)
                     print ('\n'.join(d))
+    
+    return passed 
 
 ######################################################################################################################
 
@@ -62,9 +65,14 @@ parser.add_argument("--verbose", action="store_true", help="Enable verbose outpu
 parser.add_argument("--diff", action="store_true", help="Show diff")
 
 args = parser.parse_args()
-
+all_passed=True 
 if args.file:
-    process(args.file, args)
+    all_passed=process(args.file, args)
 else:
     for f in glob.glob("bin/*lox"):
-        process(f, args)
+        ok=process(f, args)
+        if not ok:
+            all_passed=False 
+
+if not all_passed:
+    print ("One or more tests failed.")

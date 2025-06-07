@@ -5,7 +5,6 @@ import (
 	"math"
 	"math/rand"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -187,8 +186,17 @@ func floatBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 		return arg
 	case VAL_INT:
 		return makeFloatValue(float64(arg.Int), false)
+	case VAL_OBJ:
+		if arg.Obj.getType() == OBJECT_STRING {
+			f, ok := arg.asString().parseFloat()
+			if !ok {
+				vm.runTimeError("Could not parse string into float.")
+				return makeNilValue()
+			}
+			return makeFloatValue(f, false)
+		}
 	}
-	vm.runTimeError("Argument must be number.")
+	vm.runTimeError("Argument must be number or valid string")
 	return makeNilValue()
 }
 
@@ -207,12 +215,12 @@ func intBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 		return makeIntValue(int(arg.Float), false)
 	case VAL_OBJ:
 		if arg.Obj.getType() == OBJECT_STRING {
-			i, err := strconv.Atoi(arg.asString().get())
-			if err != nil {
-				vm.runTimeError("%v", err)
+			i, ok := arg.asString().parseInt()
+			if !ok {
+				vm.runTimeError("Could not parse string into int.")
 				return makeNilValue()
 			}
-			return makeIntValue(int(i), false)
+			return makeIntValue(i, false)
 		}
 	}
 	vm.runTimeError("Argument must be number or valid string.")

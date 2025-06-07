@@ -3,6 +3,7 @@ package lox
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -121,6 +122,24 @@ func (s StringObject) slice(from_ix, to_ix int) (Value, error) {
 	so := makeStringObject(s.get()[from_ix:to_ix])
 	return makeObjectValue(so, false), nil
 
+}
+
+func (s StringObject) parseFloat() (float64, bool) {
+
+	f, err := strconv.ParseFloat(s.get(), 64)
+	if err != nil {
+		return 0, false
+	}
+	return f, true
+}
+
+func (s StringObject) parseInt() (int, bool) {
+
+	i, err := strconv.ParseInt(s.get(), 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return int(i), true
 }
 
 //-------------------------------------------------------------------------------------------

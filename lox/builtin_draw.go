@@ -4,7 +4,6 @@ import (
 	"image"
 	"image/color"
 	"image/png"
-	"math"
 	"os"
 )
 
@@ -73,9 +72,18 @@ func drawPNGBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeNilValue()
 }
 
+// args:
+// 2D float array for plotting
+// height
+// width
+// max iterations
+// x offset
+// y offset
+// scale
+// 1D float array (RGB encoded) for colour mapping
 func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
-	if argCount != 7 {
+	if argCount != 8 {
 		vm.runTimeError("Invalid argument count to lox_mandel_array")
 		return makeNilValue()
 	}
@@ -86,9 +94,11 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	xoffsetVal := vm.stack[arg_stackptr+4]
 	yoffsetVal := vm.stack[arg_stackptr+5]
 	scaleVal := vm.stack[arg_stackptr+6]
+	colourVal := vm.stack[arg_stackptr+7]
 
 	if !(hVal.isInt() && wVal.isInt() && maxIterVal.isInt() && xoffsetVal.isFloat() &&
-		yoffsetVal.isFloat() && arrayVal.isFloatArrayObject() && scaleVal.isFloat()) {
+		yoffsetVal.isFloat() && arrayVal.isFloatArrayObject() && scaleVal.isFloat() &&
+		colourVal.isFloatArrayObject()) {
 		vm.runTimeError("Invalid arguments to lox_mandel_array")
 		return makeNilValue()
 	}
@@ -100,8 +110,7 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	xOffset := xoffsetVal.Float
 	yOffset := yoffsetVal.Float
 	scale := scaleVal.Float
-
-	var brightness float64
+	colours := colourVal.asFloatArray()
 
 	for row := 0; row < height; row = row + 1 {
 		for col := 0; col < width; col = col + 1 {
@@ -118,13 +127,18 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 				iteration++
 			}
 
+			var colour float64
 			if iteration == maxIteration {
-				brightness = 0
+				colour = EncodeRGB(0, 0, 0)
 			} else {
-				brightness = float64(iteration) / float64(maxIteration)
-				brightness = math.Sqrt(brightness) // smoother contrast
+				index := iteration
+				if index >= colours.value.width {
+					index = colours.value.width - 1
+				}
+				colour = colours.value.get(index, 0)
+
 			}
-			array.value.set(row, col, brightness)
+			array.value.set(row, col, colour)
 		}
 	}
 	return makeNilValue()

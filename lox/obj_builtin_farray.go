@@ -50,6 +50,18 @@ func (o *FloatArrayObject) getType() ObjectType {
 
 func (o *FloatArrayObject) GetMethod(name string) *BuiltInObject {
 	switch name {
+	case "width":
+		return &BuiltInObject{
+			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+				return makeIntValue(o.value.width, true)
+			},
+		}
+	case "height":
+		return &BuiltInObject{
+			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+				return makeIntValue(o.value.height, true)
+			},
+		}
 	case "get":
 		return &BuiltInObject{
 			function: func(argCount int, arg_stackptr int, vm *VM) Value {
