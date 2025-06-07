@@ -607,7 +607,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 
 			v := vm.peek(0)
 			if v.Type != VAL_OBJ {
-				vm.runTimeError("Property not found.")
+				vm.runTimeError("Attempt to access property of non-object.")
 				goto End
 			}
 
@@ -633,11 +633,11 @@ func (vm *VM) run() (InterpretResult, Value) {
 					vm.pop()
 					vm.push(val)
 				} else {
-					vm.runTimeError("Property %s not found.", name)
+					vm.runTimeError("Property '%s' not found.", name)
 					goto End
 				}
 			default:
-				vm.runTimeError("Property not found.")
+				vm.runTimeError("Property '%s' not found.", name)
 				goto End
 			}
 

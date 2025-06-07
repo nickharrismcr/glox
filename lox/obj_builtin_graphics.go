@@ -52,6 +52,8 @@ func (o *GraphicsObject) GetMethod(name string) *BuiltInObject {
 	case "end":
 		return &BuiltInObject{
 			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+
+				rl.DrawFPS(10, 10)
 				rl.EndDrawing()
 				return makeNilValue()
 			},
@@ -66,6 +68,48 @@ func (o *GraphicsObject) GetMethod(name string) *BuiltInObject {
 				g := gval.asInt()
 				b := bval.asInt()
 				rl.ClearBackground(rl.NewColor(uint8(r), uint8(g), uint8(b), 255))
+				return makeNilValue()
+			},
+		}
+	case "circle_fill":
+		return &BuiltInObject{
+			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+				xval := vm.stack[arg_stackptr]
+				yval := vm.stack[arg_stackptr+1]
+				radVal := vm.stack[arg_stackptr+2]
+				rval := vm.stack[arg_stackptr+3]
+				gval := vm.stack[arg_stackptr+4]
+				bval := vm.stack[arg_stackptr+5]
+
+				x := int32(xval.asInt())
+				y := int32(yval.asInt())
+				rad := float32(radVal.asInt())
+				r := int32(rval.asInt())
+				g := int32(gval.asInt())
+				b := int32(bval.asInt())
+
+				rl.DrawCircle(x, y, rad, rl.NewColor(uint8(r), uint8(g), uint8(b), 255))
+				return makeNilValue()
+			},
+		}
+	case "circle":
+		return &BuiltInObject{
+			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+				xval := vm.stack[arg_stackptr]
+				yval := vm.stack[arg_stackptr+1]
+				radVal := vm.stack[arg_stackptr+2]
+				rval := vm.stack[arg_stackptr+3]
+				gval := vm.stack[arg_stackptr+4]
+				bval := vm.stack[arg_stackptr+5]
+
+				x := int32(xval.asInt())
+				y := int32(yval.asInt())
+				rad := float32(radVal.asInt())
+				r := int32(rval.asInt())
+				g := int32(gval.asInt())
+				b := int32(bval.asInt())
+
+				rl.DrawCircleLines(x, y, rad, rl.NewColor(uint8(r), uint8(g), uint8(b), 255))
 				return makeNilValue()
 			},
 		}

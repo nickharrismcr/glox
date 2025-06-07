@@ -184,6 +184,10 @@ func typeName(val Value) string {
 			val_type = "module"
 		case OBJECT_FILE:
 			val_type = "file"
+		case OBJECT_GRAPHICS:
+			val_type = "graphics"
+		case OBJECT_FLOAT_ARRAY:
+			val_type = "float_array"
 		}
 	case VAL_NIL:
 		val_type = "nil"
