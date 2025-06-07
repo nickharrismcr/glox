@@ -1,6 +1,6 @@
 
 import random;
-import colour;
+ 
 import math; 
 
 
@@ -68,22 +68,29 @@ class Emitter {
 
 class Emitters {
     init() {
+        
         this.queue = [];
         this.emitters = [];
     }
-    queue(emitter,delay) {
-        this.queue.append([emitter, delay]);
+    queue(emitter,particles,delay) {
+        this.queue.append([emitter, particles, delay]);
+    }
+    queue_length(){
+        return len(this.queue);
     }
     update() {
+        
         this.update_queue();
         this.update_emitters();
+    
     }
     update_queue() {
         for (var i = 0; i < len(this.queue); i = i + 1) {
             var q = this.queue[i];
             var e = q[0];
-            q[1] = q[1] - 1; // Decrease delay
-            if (q[1] <= 0) {
+            q[2] = q[2] - 1; // Decrease delay
+            if (q[2] <= 0) {
+                e.emit(q[1]);
                 this.emitters.append(e); // Add emitter to the list
                 this.queue.remove(i); // Remove from queue
             }
@@ -95,14 +102,10 @@ class Emitters {
             if (!e.update()) {
                 this.emitters.remove(i); // Remove emitter if it has no particles
                 i = i - 1; // Adjust index after removal
-        
-                e.pos= math.Vector2D(random.float(0, width), random.float(0, height)); // Move emitter to a random position
-                e.emit(random.integer(10, 500)); // Emit a random number of particles
-                var delay = random.integer(10, 300); // Random ticks delay before emitting
-                this.queue(e, delay); // Requeue the emitter with a delay
             }
         }
-    }
+        return len(this.emitters) > 0;
+    }        
     get() {
         return this.emitters;
     }
