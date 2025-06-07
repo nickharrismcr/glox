@@ -1,0 +1,114 @@
+
+import random;
+ 
+import math; 
+
+
+class Particle {
+    init(pos,init_function, update_function) {
+        this.pos = pos; // Position of the particle
+        this.dpos = math.Vector2D(0, 0); // Change in position
+        init_function(this);
+        this.function = update_function;
+        this.age = 0;
+    }
+    next() {
+        this.age = this.age + 1;
+        if (this.age >= this.life) {
+            return false; // Particle is dead
+        }
+        var f=this.function;
+
+        this.pos.x = this.pos.x + this.dpos.x;
+        this.pos.y = this.pos.y + this.dpos.y;
+ 
+        f(this);
+        return true; // Particle is still alive
+    }
+
+    toString() {
+        return "Particle(pos=" + str(this.pos) + ", dpos=" + str(this.dpos) + ", life=" + str(this.life) + ")";
+    }   
+}
+
+class Emitter {
+    init(pos,init_function, update_function) {
+        this.pos = pos; // Position of the emitter
+        this.init_function = init_function;
+        this.update_function = update_function;
+        this.particles = [];
+        this.emit_queue = [];
+    }
+ 
+    emit(num_particles) {
+        for (var i = 0; i < num_particles; i = i + 1) {
+            this.emit_particle();
+        }
+    }
+    emit_particle() {
+        var particle = particle_sys.Particle(this.pos.copy(),this.init_function, this.update_function);
+        this.particles.append(particle);
+    }
+    update() {
+        for (var i = 0; i < len(this.particles); i=i+1) {
+            if (!this.particles[i].next()) {
+                this.particles.remove(i);
+                i = i - 1; // Adjust index after removal
+            }
+        }
+        if (len(this.particles) < 1) {
+            return false;  
+        } 
+        return true;  
+    }
+    get_particles() {
+        return this.particles;
+    }
+}
+
+class Emitters {
+    init() {
+        
+        this.queue = [];
+        this.emitters = [];
+    }
+    queue(emitter,particles,delay) {
+        this.queue.append([emitter, particles, delay]);
+    }
+    queue_length(){
+        return len(this.queue);
+    }
+    update() {
+        
+        this.update_queue();
+        this.update_emitters();
+    
+    }
+    update_queue() {
+        for (var i = 0; i < len(this.queue); i = i + 1) {
+            var q = this.queue[i];
+            var e = q[0];
+            q[2] = q[2] - 1; // Decrease delay
+            if (q[2] <= 0) {
+                e.emit(q[1]);
+                this.emitters.append(e); // Add emitter to the list
+                this.queue.remove(i); // Remove from queue
+            }
+        }
+    }
+    update_emitters() {
+        for (var i = 0; i < len(this.emitters); i = i + 1) {
+            var e = this.emitters[i];
+            if (!e.update()) {
+                this.emitters.remove(i); // Remove emitter if it has no particles
+                i = i - 1; // Adjust index after removal
+            }
+        }
+        return len(this.emitters) > 0;
+    }        
+    get() {
+        return this.emitters;
+    }
+}   
+
+

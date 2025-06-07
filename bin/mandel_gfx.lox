@@ -1,0 +1,73 @@
+//fast mandelbrot PNG using native plotter 
+ 
+ 
+import colour;
+import math; 
+ 
+func cycle_colour(t) {
+  var r = 255 * (0.5 + 0.5 * cos(2 * math.PI * (t + 0.0)));
+  var g = 255 * (0.5 + 0.5 * cos(2 * math.PI * (t + 0.33)));
+  var b = 255 * (0.5 + 0.5 * cos(2 * math.PI * (t + 0.66)));
+
+  // Round and clamp to 0–255
+  r = math.max(0, math.min(255, math.floor(r)));
+  g = math.max(0, math.min(255, math.floor(g)));
+  b = math.max(0, math.min(255, math.floor(b)));
+
+  return colour.Color(r, g, b);
+}
+
+func get_gradient(max_iteration){
+
+    var gradient = float_array(max_iteration,1);
+    for (var i = 0; i < max_iteration; i = i + 1) {
+        var t=float(i)/float(max_iteration);
+        var col = cycle_colour(t);
+        var f = encode_rgb(col.r,col.g,col.b);
+        gradient.set(i, 0, f);
+    }
+    
+    return gradient;
+}
+ 
+
+func rotate(array,num) {
+    for (var n=0; n<num; n=n+1 )
+    {
+        array.set(array.width()-1,0,array.get(0,0));
+        for (var i = 0; i < array.width()-1; i = i + 1) {
+            array.set(i,0,array.get(i+1,0));
+        }
+    }
+}
+
+func calc(array,width,height,max_iteration,zoom,xoff,yoff,gradient) {
+    lox_mandel_array(array_rgb,width,height,max_iteration,float(xoff),float(yoff),float(zoom),gradient);
+}
+
+var max_iteration = 50;
+const width=150;
+const height=150;
+var gr=graphics(width,height);
+gr.init();
+
+var scale=1.0;
+var xOffset= -0.7436438870371587;
+var yOffset= 0.13182590420531197;
+var array_rgb=float_array(width,height);
+
+
+while (!gr.should_close()) {
+ 
+    var gradient = get_gradient(max_iteration);
+    calc(array_rgb,width,height,max_iteration,scale,xOffset,yOffset,gradient);
+    gr.begin();
+    gr.clear(0,0,0);
+    gr.draw_array(array_rgb);
+    gr.end();
+    scale=scale*0.95;
+    max_iteration = max_iteration + 10;
+}
+gr.close();
+
+    

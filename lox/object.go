@@ -16,6 +16,7 @@ const (
 	OBJECT_MODULE
 	OBJECT_FILE
 	OBJECT_FLOAT_ARRAY
+	OBJECT_GRAPHICS
 )
 
 type Object interface {

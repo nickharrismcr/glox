@@ -1,0 +1,48 @@
+ 
+import random;
+
+class Colour {
+    init(r,g,b,a){
+        this.r=r;
+        this.g=g;
+        this.b=b;
+        this.a=a;
+    }
+    scale(scalar) {
+        this.r = int(this.r * scalar);
+        this.g = int(this.g * scalar);
+        this.b = int(this.b * scalar);
+    }
+}
+
+const RED     = Colour(255, 0, 0, 255);
+const GREEN   = Colour(0, 255, 0, 255);
+const BLUE    = Colour(0, 0, 255, 255);
+const YELLOW  = Colour(255, 255, 0, 255);
+const CYAN    = Colour(0, 255, 255, 255);
+const MAGENTA = Colour(255, 0, 255, 255);
+const BLACK   = Colour(0, 0, 0, 255);
+const WHITE   = Colour(255, 255, 255, 255);
+
+
+func primary_colours() {
+    return {
+        "red":     RED,
+        "green":   GREEN,
+        "blue":    BLUE,
+        "yellow":  YELLOW,
+        "cyan":    CYAN,
+        "magenta": MAGENTA,
+        "black":   BLACK,
+        "white":   WHITE
+    };
+}
+
+
+func random_rgb(){
+    var g=random.integer(0,255);
+    var b=random.integer(0,255);
+    var r=random.integer(0,255);
+    return Colour(r,g,b,255);
+}
+

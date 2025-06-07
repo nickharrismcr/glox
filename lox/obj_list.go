@@ -41,6 +41,19 @@ func (o *ListObject) GetMethod(name string) *BuiltInObject {
 				return makeNilValue()
 			},
 		}
+	case "remove":
+		return &BuiltInObject{
+			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+				if argCount != 1 {
+					vm.runTimeError("remove takes one argument.")
+					return makeNilValue()
+				}
+				val := vm.peek(0)
+				idx := val.Int
+				o.remove(idx)
+				return makeNilValue()
+			},
+		}
 
 	default:
 		return nil
@@ -54,6 +67,13 @@ func (o *ListObject) get() []Value {
 
 func (o *ListObject) append(v Value) {
 	o.items = append(o.items, v)
+}
+
+func (o *ListObject) remove(ix int) {
+	if ix < 0 || ix >= len(o.items) {
+		return
+	}
+	o.items = append(o.items[:ix], o.items[ix+1:]...)
 }
 
 func (o *ListObject) join(s string) (Value, error) {
