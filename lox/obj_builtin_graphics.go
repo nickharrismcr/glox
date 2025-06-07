@@ -63,11 +63,13 @@ func (o *GraphicsObject) GetMethod(name string) *BuiltInObject {
 			function: func(argCount int, arg_stackptr int, vm *VM) Value {
 				rval := vm.stack[arg_stackptr]
 				gval := vm.stack[arg_stackptr+1]
-				bval := vm.stack[arg_stackptr+3]
+				bval := vm.stack[arg_stackptr+2]
+				aval := vm.stack[arg_stackptr+3]
 				r := rval.asInt()
 				g := gval.asInt()
 				b := bval.asInt()
-				rl.ClearBackground(rl.NewColor(uint8(r), uint8(g), uint8(b), 255))
+				a := aval.asInt()
+				rl.ClearBackground(rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
 				return makeNilValue()
 			},
 		}
@@ -80,6 +82,7 @@ func (o *GraphicsObject) GetMethod(name string) *BuiltInObject {
 				rval := vm.stack[arg_stackptr+3]
 				gval := vm.stack[arg_stackptr+4]
 				bval := vm.stack[arg_stackptr+5]
+				aval := vm.stack[arg_stackptr+6]
 
 				x := int32(xval.asInt())
 				y := int32(yval.asInt())
@@ -87,8 +90,9 @@ func (o *GraphicsObject) GetMethod(name string) *BuiltInObject {
 				r := int32(rval.asInt())
 				g := int32(gval.asInt())
 				b := int32(bval.asInt())
+				a := int32(aval.asInt())
 
-				rl.DrawCircle(x, y, rad, rl.NewColor(uint8(r), uint8(g), uint8(b), 255))
+				rl.DrawCircle(x, y, rad, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
 				return makeNilValue()
 			},
 		}
@@ -101,6 +105,7 @@ func (o *GraphicsObject) GetMethod(name string) *BuiltInObject {
 				rval := vm.stack[arg_stackptr+3]
 				gval := vm.stack[arg_stackptr+4]
 				bval := vm.stack[arg_stackptr+5]
+				aval := vm.stack[arg_stackptr+6]
 
 				x := int32(xval.asInt())
 				y := int32(yval.asInt())
@@ -108,8 +113,9 @@ func (o *GraphicsObject) GetMethod(name string) *BuiltInObject {
 				r := int32(rval.asInt())
 				g := int32(gval.asInt())
 				b := int32(bval.asInt())
+				a := int32(aval.asInt())
 
-				rl.DrawCircleLines(x, y, rad, rl.NewColor(uint8(r), uint8(g), uint8(b), 255))
+				rl.DrawCircleLines(x, y, rad, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
 				return makeNilValue()
 			},
 		}
