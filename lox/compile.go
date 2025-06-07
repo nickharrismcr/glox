@@ -107,6 +107,7 @@ type Parser struct {
 	rules               map[TokenType]ParseRule
 	currentCompiler     *Compiler
 	currentClass        *ClassCompiler
+	isModule            bool
 }
 
 func NewParser() *Parser {
@@ -125,6 +126,9 @@ func (vm *VM) compile(source string) *FunctionObject {
 		fmt.Println("Compiling...")
 	}
 	parser := NewParser()
+	if vm.ModuleImport {
+		parser.isModule = true
+	}
 	parser.scanner = NewScanner(source)
 	parser.currentCompiler = NewCompiler(TYPE_SCRIPT, nil)
 	parser.advance()
@@ -520,7 +524,11 @@ func (p *Parser) returnStatement() {
 		}
 		p.expression()
 		p.consume(TOKEN_SEMICOLON, "Expect ';' after return value.")
-		p.emitByte(OP_RETURN)
+		op := OP_RETURN
+		if p.isModule {
+			op = OP_MODULE_RETURN
+		}
+		p.emitByte(op)
 	}
 }
 
@@ -800,6 +808,7 @@ func (p *Parser) currentChunk() *Chunk {
 func (p *Parser) endCompiler() *FunctionObject {
 
 	p.emitReturn()
+
 	function := p.currentCompiler.function
 	s := ""
 	if function.name.get() == "" {
@@ -1177,7 +1186,11 @@ func (p *Parser) emitReturn() {
 	} else {
 		p.emitByte(OP_NIL)
 	}
-	p.emitByte(OP_RETURN)
+	op := OP_RETURN
+	if p.isModule {
+		op = OP_MODULE_RETURN
+	}
+	p.emitByte(op)
 }
 
 // a[:], a[:exp]

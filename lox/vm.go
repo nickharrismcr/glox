@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var ForceModuleCompile = false
+
 type InterpretResult int
 
 const (
@@ -32,6 +34,8 @@ type CallFrame struct {
 }
 
 type Environment struct {
+	name     string
+	frame    int
 	vars     map[string]Value
 	builtins map[string]Value
 	prev     *Environment
@@ -72,7 +76,7 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 
 	vm := &VM{
 		script:       script,
-		environments: newEnvironment(nil),
+		environments: newEnvironment(script, nil),
 		starttime:    time.Now(),
 		lastGC:       time.Now(),
 		openUpValues: nil,
@@ -87,8 +91,9 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 	return vm
 }
 
-func newEnvironment(prev *Environment) *Environment {
+func newEnvironment(name string, prev *Environment) *Environment {
 	return &Environment{
+		name:     name,
 		vars:     map[string]Value{},
 		builtins: map[string]Value{},
 		prev:     prev,
@@ -273,7 +278,7 @@ func (vm *VM) invoke(name Value, argCount int) bool {
 	case OBJECT_MODULE:
 		module := receiver.asModule()
 		return vm.invokeFromModule(module, name, argCount)
-	case OBJECT_FLOAT_ARRAY, OBJECT_STRING, OBJECT_LIST, OBJECT_DICT:
+	case OBJECT_FLOAT_ARRAY, OBJECT_STRING, OBJECT_LIST, OBJECT_DICT, OBJECT_GRAPHICS:
 		return vm.invokeFromBuiltin(receiver.Obj, name, argCount)
 	default:
 		vm.runTimeError("Invalid use of '.' operator")
@@ -299,9 +304,10 @@ func (vm *VM) invokeFromModule(module *ModuleObject, name Value, argCount int) b
 		vm.runTimeError("Undefined module property '%s'.", n)
 		return false
 	}
-	env := newEnvironment(vm.environments)
+	env := newEnvironment(module.name, vm.environments)
 	env.vars = module.environment.vars
 	env.builtins = module.environment.builtins
+	env.frame = vm.frameCount
 	vm.environments = env
 	return vm.callValue(fn, argCount)
 }
@@ -496,7 +502,24 @@ func (vm *VM) run() (InterpretResult, Value) {
 			}
 			vm.stackTop = frame.slots
 			vm.push(result)
-			vm.popEnvironment()
+
+		case OP_MODULE_RETURN:
+			// exit, return the value at stack top
+			result := vm.pop()
+			vm.closeUpvalues(frame.slots)
+			vm.frameCount--
+			if vm.frameCount == 0 {
+				vm.pop() // drop main script function obj
+				runtime.GC()
+				return INTERPRET_OK, result
+			}
+			Debugf("Module return :framecount %d  env frame %d ", vm.frameCount, vm.environments.frame)
+			if vm.frameCount == vm.environments.frame {
+				Debug("Pop module env")
+				vm.popEnvironment()
+			}
+			vm.stackTop = frame.slots
+			vm.push(result)
 
 		case OP_GET_UPVALUE:
 			slot := vm.getCode()[frame.ip]
@@ -854,10 +877,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			frame.ip++
 			mv := frame.closure.function.chunk.constants[idx]
 			module := mv.asString().get()
-			// if already imported do nothing
-			if ok := globalModules[module]; ok {
-				panic("Import cycle detected.")
-			}
+
 			status := vm.importModule(module)
 			if status != INTERPRET_OK {
 				return status, makeNilValue()

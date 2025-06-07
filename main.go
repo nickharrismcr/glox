@@ -110,6 +110,8 @@ func handleArgs(opts *Options) {
 				lox.DebugShowGlobals = true
 			case "--repl":
 				opts.doRepl = true
+			case "--force-compile":
+				lox.ForceModuleCompile = true
 			default:
 				usage()
 			}

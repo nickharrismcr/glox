@@ -62,6 +62,8 @@ func (c *Chunk) disassembleInstruction(name string, frame *CallFrame, i uint8, o
 	switch i {
 	case OP_RETURN:
 		return c.simpleInstruction("OP_RETURN", offset)
+	case OP_MODULE_RETURN:
+		return c.simpleInstruction("OP_MODULE_RETURN", offset)
 	case OP_CONSTANT:
 		return c.constantInstruction("OP_CONSTANT", offset)
 	case OP_NEGATE:
@@ -287,7 +289,7 @@ func (c *Chunk) invokeInstruction(name string, offset int) int {
 }
 
 func (vm *VM) showGlobals() {
-	fmt.Printf("globals:\n")
+	fmt.Printf("globals: %s \n", vm.environments.name)
 	for k, v := range vm.environments.vars {
 		fmt.Printf("%s -> %s  \n", k, v)
 	}
