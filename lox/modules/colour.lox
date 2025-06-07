@@ -1,0 +1,30 @@
+ 
+
+class Color {
+    init(r,g,b){
+        this.r=r;
+        this.g=g;
+        this.b=b;
+    }
+}
+
+func floor(n) {
+  if (n < 0 and n != int(n)) {
+    return int(n) - 1;
+  }
+  return int(n);
+} 
+
+func rand_int(min, max) {
+    return min + floor(rand() * (max - min + 1));
+}
+
+
+func random_rgb(){
+    var r=rand_int(0,255);
+    print r;
+    var g=rand_int(0,255);
+    print g;
+    var b=rand_int(0,255);
+    return Color(r,g,b);
+}

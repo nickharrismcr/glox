@@ -32,6 +32,8 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("float_array", makeFloatArrayBuiltIn)
 	vm.defineBuiltIn("encode_rgb", encodeRGBABuiltIn)
 	vm.defineBuiltIn("decode_rgb", decodeRGBABuiltIn)
+	vm.defineBuiltIn("graphics", graphicsBuiltIn)
+	vm.defineBuiltIn("sleep", sleepBuiltIn)
 
 	// lox built ins e.g Exception classes
 	vm.loadBuiltInModule(exceptionSource)
@@ -55,17 +57,55 @@ func DecodeRGB(color float64) (uint8, uint8, uint8) {
 	return r, g, b
 }
 
+func graphicsBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+
+	if argCount != 2 {
+		vm.runTimeError("graphics expects 2 arguments")
+		return makeNilValue()
+	}
+	wVal := vm.stack[arg_stackptr]
+	hVal := vm.stack[arg_stackptr+1]
+	if !wVal.isInt() || !hVal.isInt() {
+		vm.runTimeError("graphics arguments must be integers")
+		return makeNilValue()
+	}
+	o := makeGraphicsObject(wVal.Int, hVal.Int)
+	return makeObjectValue(o, true)
+}
+
+func sleepBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+
+	if argCount != 1 {
+		vm.runTimeError("sleep expects 1 argument")
+		return makeNilValue()
+	}
+	tVal := vm.stack[arg_stackptr]
+	if !tVal.isNumber() {
+		vm.runTimeError("sleep argument must be number")
+		return makeNilValue()
+	}
+	var dur time.Duration
+	if tVal.isInt() {
+		dur = time.Duration(tVal.asInt()) * time.Second
+	}
+	if tVal.isFloat() {
+		dur = time.Duration(tVal.asFloat()) * time.Second
+	}
+	time.Sleep(dur)
+	return makeNilValue()
+}
+
 func encodeRGBABuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 	if argCount != 3 {
-		vm.runTimeError("encodeRGB expects 3 arguments")
+		vm.runTimeError("encode_rgb expects 3 arguments")
 		return makeNilValue()
 	}
 	rVal := vm.stack[arg_stackptr]
 	gVal := vm.stack[arg_stackptr+1]
 	bVal := vm.stack[arg_stackptr+2]
 	if !rVal.isInt() || !gVal.isInt() || !bVal.isInt() {
-		vm.runTimeError("encodeRGB arguments must be integers")
+		vm.runTimeError("encode_rgb arguments must be integers")
 		return makeNilValue()
 	}
 	r := rVal.Int
@@ -77,13 +117,13 @@ func encodeRGBABuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 func decodeRGBABuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	if argCount != 1 {
-		vm.runTimeError("decodeRGB expects 1 float argument")
+		vm.runTimeError("decode_rgb expects 1 float argument")
 		return makeNilValue()
 	}
 	fVal := vm.stack[arg_stackptr]
 
 	if !fVal.isFloat() {
-		vm.runTimeError("decodeRGB argument must be a float")
+		vm.runTimeError("decode_rgb argument must be a float")
 		return makeNilValue()
 	}
 	f := fVal.Float
