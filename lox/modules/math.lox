@@ -4,3 +4,19 @@ func floor(n) {
   }
   return int(n);
 } 
+
+func max(a, b) {
+  if (a > b) {
+    return a;
+  }
+  return b;
+}
+
+func min(a, b) {
+  if (a < b) {
+    return a;
+  }
+  return b;
+}
+
+var PI = 3.141592653589793238462643383279;
