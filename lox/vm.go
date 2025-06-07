@@ -736,10 +736,11 @@ func (vm *VM) run() (InterpretResult, Value) {
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			name := getStringValue(frame.closure.function.chunk.constants[idx])
-			if _, ok := vm.environments.vars[name]; !ok {
-				vm.runTimeError("Undefined variable %s\n", name)
-				goto End
-			}
+			// auto-declare
+			// if _, ok := vm.environments.vars[name]; !ok {
+			// 	vm.runTimeError("Undefined variable %s\n", name)
+			// 	goto End
+			// }
 			if vm.environments.vars[name].Immutable() {
 				vm.runTimeError("Cannot assign to const %s\n", name)
 				goto End

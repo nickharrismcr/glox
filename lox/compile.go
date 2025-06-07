@@ -165,7 +165,7 @@ func (p *Parser) setRules() {
 		TOKEN_PERCENT:       {prefix: nil, infix: binary, prec: PREC_FACTOR},
 		TOKEN_BANG:          {prefix: unary, infix: nil, prec: PREC_NONE},
 		TOKEN_BANG_EQUAL:    {prefix: nil, infix: binary, prec: PREC_EQUALITY},
-		TOKEN_EQUAL:         {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_EQUAL:         {prefix: nil, infix: assign, prec: PREC_ASSIGNMENT},
 		TOKEN_EQUAL_EQUAL:   {prefix: nil, infix: binary, prec: PREC_EQUALITY},
 		TOKEN_IN:            {prefix: nil, infix: binary, prec: PREC_EQUALITY},
 		TOKEN_GREATER:       {prefix: nil, infix: binary, prec: PREC_COMPARISON},
@@ -483,6 +483,35 @@ func (p *Parser) constDeclaration() {
 	p.consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration")
 
 	p.defineConstVariable(v)
+}
+
+func assign(p *Parser, canAssign bool) {
+	// The left-hand side is already parsed and on the stack.
+	// We need to check if it's a variable (identifier).
+	// If so, allow assignment, and if not declared, create it.
+
+	// For simplicity, let's assume only identifiers can be assigned to.
+	if p.previous.tokentype != TOKEN_IDENTIFIER {
+		p.error("Invalid assignment target.")
+		return
+	}
+
+	name := p.previous
+
+	// Parse the right-hand side.
+	p.parsePredence(PREC_ASSIGNMENT)
+
+	// Check if the variable exists in the current scope.
+	arg := p.resolveLocal(p.currentCompiler, name)
+	if arg == -1 {
+		// Not found: create a new local variable.
+		p.addLocal(name)
+		p.currentCompiler.locals[p.currentCompiler.localCount-1].depth = p.currentCompiler.scopeDepth
+		arg = p.currentCompiler.localCount - 1
+	}
+
+	// Emit code to set the variable.
+	p.emitBytes(OP_SET_LOCAL, uint8(arg))
 }
 
 func (p *Parser) expressionStatement() {
@@ -1107,9 +1136,18 @@ func (p *Parser) namedVariable(name Token, canAssign bool) {
 		getOp = OP_GET_UPVALUE
 		setOp = OP_SET_UPVALUE
 	} else {
-		arg = int(p.identifierConstant(name))
-		getOp = OP_GET_GLOBAL
-		setOp = OP_SET_GLOBAL
+		// If assigning and not found, create a new local variable (implicit declaration)
+		if canAssign && p.check(TOKEN_EQUAL) && p.currentCompiler.scopeDepth > 0 {
+			p.addLocal(name)
+			p.currentCompiler.locals[p.currentCompiler.localCount-1].depth = p.currentCompiler.scopeDepth
+			arg = p.currentCompiler.localCount - 1
+			getOp = OP_GET_LOCAL
+			setOp = OP_SET_LOCAL
+		} else {
+			arg = int(p.identifierConstant(name))
+			getOp = OP_GET_GLOBAL
+			setOp = OP_SET_GLOBAL
+		}
 	}
 
 	if canAssign && p.match(TOKEN_EQUAL) {
