@@ -1,18 +1,36 @@
  
 import random;
 
-class Color {
+class Colour {
     init(r,g,b){
         this.r=r;
         this.g=g;
         this.b=b;
     }
+    scale(scalar) {
+        this.r = int(this.r * scalar);
+        this.g = int(this.g * scalar);
+        this.b = int(this.b * scalar);
+    }
+}
+
+func primary_colours() {
+    return {
+        "red":     Colour(255, 0, 0),
+        "green":   Colour(0, 255, 0),
+        "blue":    Colour(0, 0, 255),
+        "yellow":  Colour(255, 255, 0),
+        "cyan":    Colour(0, 255, 255),
+        "magenta": Colour(255, 0, 255),
+        "black":   Colour(0, 0, 0),
+        "white":   Colour(255, 255, 255)
+    };
 }
 
 
 func random_rgb(){
-    var g=random.randint(0,255);
-    var b=random.randint(0,255);
-    var r=random.randint(0,255);
-    return Color(r,g,b);
+    var g=random.integer(0,255);
+    var b=random.integer(0,255);
+    var r=random.integer(0,255);
+    return Colour(r,g,b);
 }

@@ -45,9 +45,9 @@ func calc(array,width,height,max_iteration,zoom,xoff,yoff,gradient) {
     lox_mandel_array(array_rgb,width,height,max_iteration,float(xoff),float(yoff),float(zoom),gradient);
 }
 
-var max_iteration = 100;
-const width=300;
-const height=300;
+var max_iteration = 50;
+const width=150;
+const height=150;
 var gr=graphics(width,height);
 gr.init();
 

@@ -14,7 +14,7 @@ class RandWalk{
         this.count=this.count+1;
         if (this.count==this.change) {
             this.count=0;
-            this.dx=random.randint(-1,1); 
+            this.dx=random.integer(-1,1); 
         }
         this.x = this.x + this.dx;
         if (this.x < 0){
