@@ -108,6 +108,7 @@ type Parser struct {
 	currentCompiler     *Compiler
 	currentClass        *ClassCompiler
 	isModule            bool
+	globals             map[string]bool
 }
 
 func NewParser() *Parser {
@@ -115,6 +116,7 @@ func NewParser() *Parser {
 	p := &Parser{
 		hadError:  false,
 		panicMode: false,
+		globals:   map[string]bool{},
 	}
 	p.setRules()
 	return p
@@ -906,6 +908,8 @@ func (p *Parser) parsePredence(prec Precedence) {
 
 func (p *Parser) identifierConstant(t Token) uint8 {
 
+	x := t.lexeme()
+	p.globals[x] = true
 	return p.makeConstant(makeObjectValue(makeStringObject(t.lexeme()), false))
 }
 
@@ -1123,6 +1127,11 @@ func (p *Parser) declareVariable() {
 	p.addLocal(name)
 }
 
+func (p *Parser) checkGlobals(name string) bool {
+	_, ok := p.globals[name]
+	return ok
+}
+
 func (p *Parser) namedVariable(name Token, canAssign bool) {
 
 	var getOp, setOp uint8
@@ -1136,8 +1145,7 @@ func (p *Parser) namedVariable(name Token, canAssign bool) {
 		getOp = OP_GET_UPVALUE
 		setOp = OP_SET_UPVALUE
 	} else {
-		// If assigning and not found, create a new local variable (implicit declaration)
-		if canAssign && p.check(TOKEN_EQUAL) && p.currentCompiler.scopeDepth > 0 {
+		if !p.checkGlobals(a) && canAssign && p.check(TOKEN_EQUAL) && p.currentCompiler.scopeDepth > 0 {
 			p.addLocal(name)
 			p.currentCompiler.locals[p.currentCompiler.localCount-1].depth = p.currentCompiler.scopeDepth
 			arg = p.currentCompiler.localCount - 1
