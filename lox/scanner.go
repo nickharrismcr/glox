@@ -245,10 +245,12 @@ func (s *Scanner) scanToken() Token {
 		}
 		switch c {
 		case "\n":
-			s.line++
 			if !s.skipEOL() {
-				return s.makeToken(TOKEN_EOL)
+				rv := s.makeToken(TOKEN_EOL)
+				s.line++
+				return rv
 			}
+			s.line++
 		case "(":
 			return s.makeToken(TOKEN_LEFT_PAREN)
 		case ")":
@@ -398,7 +400,6 @@ func (s *Scanner) skipEOL() bool {
 		prev == TOKEN_LEFT_PAREN ||
 		prev == TOKEN_LEFT_BRACKET ||
 		prev == TOKEN_COMMA ||
-		prev == TOKEN_RIGHT_BRACE ||
 		prev == TOKEN_SEMICOLON ||
 		prev == TOKEN_COLON ||
 		prev == TOKEN_EOL ||
