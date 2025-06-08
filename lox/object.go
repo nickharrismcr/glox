@@ -1,5 +1,7 @@
 package lox
 
+import "time"
+
 type ObjectType int
 
 const (
@@ -29,4 +31,13 @@ type HasMethods interface {
 	GetMethod(string) *BuiltInObject
 }
 
-type BuiltInFn func(argCount int, args_stackptr int, vm *VM) Value
+type VMContext interface {
+	Stack(int) Value
+	RunTimeError(string, ...interface{})
+	Args() []string
+	StartTime() time.Time
+	RaiseExceptionByName(string, string) bool
+	Peek(int) Value
+}
+
+type BuiltInFn func(argCount int, args_stackptr int, vm VMContext) Value

@@ -31,24 +31,24 @@ func (o *ListObject) GetMethod(name string) *BuiltInObject {
 	switch name {
 	case "append":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 1 {
-					vm.runTimeError("append takes one argument.")
+					vm.RunTimeError("append takes one argument.")
 					return makeNilValue()
 				}
-				val := vm.peek(0)
+				val := vm.Peek(0)
 				o.append(val)
 				return makeNilValue()
 			},
 		}
 	case "remove":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 1 {
-					vm.runTimeError("remove takes one argument.")
+					vm.RunTimeError("remove takes one argument.")
 					return makeNilValue()
 				}
-				val := vm.peek(0)
+				val := vm.Peek(0)
 				idx := val.Int
 				o.remove(idx)
 				return makeNilValue()

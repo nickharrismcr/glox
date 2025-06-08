@@ -31,28 +31,28 @@ func (s StringObject) GetMethod(name string) *BuiltInObject {
 
 	case "replace":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 2 {
-					vm.runTimeError("replace takes two arguments.")
+					vm.RunTimeError("replace takes two arguments.")
 					return makeNilValue()
 				}
-				fromVal := vm.peek(1)
-				toVal := vm.peek(0)
+				fromVal := vm.Peek(1)
+				toVal := vm.Peek(0)
 				return s.replace(fromVal, toVal)
 			},
 		}
 	case "join":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm *VM) Value {
-				if argCount != 1 || !vm.peek(0).isListObject() {
-					vm.runTimeError("Join takes one list argument.")
+			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+				if argCount != 1 || !vm.Peek(0).isListObject() {
+					vm.RunTimeError("Join takes one list argument.")
 					return makeNilValue()
 				}
-				lstVal := vm.peek(0)
+				lstVal := vm.Peek(0)
 				lst := lstVal.asList()
 				v, err := lst.join(s.get())
 				if err != nil {
-					vm.runTimeError("%v", err)
+					vm.RunTimeError("%v", err)
 					return makeNilValue()
 				}
 				return v

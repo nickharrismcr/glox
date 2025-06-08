@@ -52,21 +52,21 @@ func (o *FloatArrayObject) GetMethod(name string) *BuiltInObject {
 	switch name {
 	case "width":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				return makeIntValue(o.value.width, true)
 			},
 		}
 	case "height":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm *VM) Value {
+			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				return makeIntValue(o.value.height, true)
 			},
 		}
 	case "get":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm *VM) Value {
-				xval := vm.stack[arg_stackptr]
-				yval := vm.stack[arg_stackptr+1]
+			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+				xval := vm.Stack(arg_stackptr)
+				yval := vm.Stack(arg_stackptr + 1)
 				x := xval.asInt()
 				y := yval.asInt()
 				return makeFloatValue(o.value.get(x, y), false)
@@ -74,10 +74,10 @@ func (o *FloatArrayObject) GetMethod(name string) *BuiltInObject {
 		}
 	case "set":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm *VM) Value {
-				xval := vm.stack[arg_stackptr]
-				yval := vm.stack[arg_stackptr+1]
-				fval := vm.stack[arg_stackptr+2]
+			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+				xval := vm.Stack(arg_stackptr)
+				yval := vm.Stack(arg_stackptr + 1)
+				fval := vm.Stack(arg_stackptr + 2)
 				x := xval.asInt()
 				y := yval.asInt()
 				f := fval.asFloat()
@@ -87,8 +87,8 @@ func (o *FloatArrayObject) GetMethod(name string) *BuiltInObject {
 		}
 	case "clear":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm *VM) Value {
-				fval := vm.stack[arg_stackptr]
+			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+				fval := vm.Stack(arg_stackptr)
 				f := fval.asFloat()
 				o.value.clear(f)
 				return makeNilValue()

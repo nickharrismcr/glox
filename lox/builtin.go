@@ -38,7 +38,7 @@ func (vm *VM) defineBuiltIns() {
 	// lox built ins e.g Exception classes
 	vm.loadBuiltInModule(exceptionSource)
 	vm.loadBuiltInModule(eofErrorSource)
-	vm.loadBuiltInModule(runTimeErrorSource)
+	vm.loadBuiltInModule(RunTimeErrorSource)
 
 }
 
@@ -57,31 +57,31 @@ func DecodeRGB(color float64) (uint8, uint8, uint8) {
 	return r, g, b
 }
 
-func graphicsBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func graphicsBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 2 {
-		vm.runTimeError("graphics expects 2 arguments")
+		vm.RunTimeError("graphics expects 2 arguments")
 		return makeNilValue()
 	}
-	wVal := vm.stack[arg_stackptr]
-	hVal := vm.stack[arg_stackptr+1]
+	wVal := vm.Stack(arg_stackptr)
+	hVal := vm.Stack(arg_stackptr + 1)
 	if !wVal.isInt() || !hVal.isInt() {
-		vm.runTimeError("graphics arguments must be integers")
+		vm.RunTimeError("graphics arguments must be integers")
 		return makeNilValue()
 	}
 	o := makeGraphicsObject(wVal.Int, hVal.Int)
 	return makeObjectValue(o, true)
 }
 
-func sleepBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func sleepBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 1 {
-		vm.runTimeError("sleep expects 1 argument")
+		vm.RunTimeError("sleep expects 1 argument")
 		return makeNilValue()
 	}
-	tVal := vm.stack[arg_stackptr]
+	tVal := vm.Stack(arg_stackptr)
 	if !tVal.isNumber() {
-		vm.runTimeError("sleep argument must be number")
+		vm.RunTimeError("sleep argument must be number")
 		return makeNilValue()
 	}
 	var dur time.Duration
@@ -95,17 +95,17 @@ func sleepBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeNilValue()
 }
 
-func encodeRGBABuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func encodeRGBABuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 3 {
-		vm.runTimeError("encode_rgb expects 3 arguments")
+		vm.RunTimeError("encode_rgb expects 3 arguments")
 		return makeNilValue()
 	}
-	rVal := vm.stack[arg_stackptr]
-	gVal := vm.stack[arg_stackptr+1]
-	bVal := vm.stack[arg_stackptr+2]
+	rVal := vm.Stack(arg_stackptr)
+	gVal := vm.Stack(arg_stackptr + 1)
+	bVal := vm.Stack(arg_stackptr + 2)
 	if !rVal.isInt() || !gVal.isInt() || !bVal.isInt() {
-		vm.runTimeError("encode_rgb arguments must be integers")
+		vm.RunTimeError("encode_rgb arguments must be integers")
 		return makeNilValue()
 	}
 	r := rVal.Int
@@ -115,15 +115,15 @@ func encodeRGBABuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeFloatValue(color, false)
 }
 
-func decodeRGBABuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func decodeRGBABuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 	if argCount != 1 {
-		vm.runTimeError("decode_rgb expects 1 float argument")
+		vm.RunTimeError("decode_rgb expects 1 float argument")
 		return makeNilValue()
 	}
-	fVal := vm.stack[arg_stackptr]
+	fVal := vm.Stack(arg_stackptr)
 
 	if !fVal.isFloat() {
-		vm.runTimeError("decode_rgb argument must be a float")
+		vm.RunTimeError("decode_rgb argument must be a float")
 		return makeNilValue()
 	}
 	f := fVal.Float
@@ -135,16 +135,16 @@ func decodeRGBABuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeObjectValue(ro, false)
 }
 
-func makeFloatArrayBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func makeFloatArrayBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
-	widthval := vm.stack[arg_stackptr]
-	heightval := vm.stack[arg_stackptr+1]
+	widthval := vm.Stack(arg_stackptr)
+	heightval := vm.Stack(arg_stackptr + 1)
 	if argCount != 2 {
-		vm.runTimeError("Invalid argument count to float_array.")
+		vm.RunTimeError("Invalid argument count to float_array.")
 		return makeNilValue()
 	}
 	if !widthval.isInt() || !heightval.isInt() {
-		vm.runTimeError("float_array arguments must be integers")
+		vm.RunTimeError("float_array arguments must be integers")
 		return makeNilValue()
 	}
 	width := widthval.Int
@@ -195,35 +195,35 @@ func typeName(val Value) string {
 	return val_type
 }
 
-func typeBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func typeBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 1 {
-		vm.runTimeError("Single argument expected.")
+		vm.RunTimeError("Single argument expected.")
 		return makeNilValue()
 	}
-	val := vm.stack[arg_stackptr]
+	val := vm.Stack(arg_stackptr)
 	name := typeName(val)
 
 	return makeObjectValue(makeStringObject(name), true)
 }
 
-func argsBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func argsBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	argvList := []Value{}
-	for _, a := range vm.args {
+	for _, a := range vm.Args() {
 		argvList = append(argvList, makeObjectValue(makeStringObject(a), true))
 	}
 	list := makeListObject(argvList, false)
 	return makeObjectValue(list, false)
 }
 
-func floatBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func floatBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 1 {
-		vm.runTimeError("Single argument expected.")
+		vm.RunTimeError("Single argument expected.")
 		return makeNilValue()
 	}
-	arg := vm.stack[arg_stackptr]
+	arg := vm.Stack(arg_stackptr)
 
 	switch arg.Type {
 	case VAL_FLOAT:
@@ -234,23 +234,23 @@ func floatBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 		if arg.Obj.getType() == OBJECT_STRING {
 			f, ok := arg.asString().parseFloat()
 			if !ok {
-				vm.runTimeError("Could not parse string into float.")
+				vm.RunTimeError("Could not parse string into float.")
 				return makeNilValue()
 			}
 			return makeFloatValue(f, false)
 		}
 	}
-	vm.runTimeError("Argument must be number or valid string")
+	vm.RunTimeError("Argument must be number or valid string")
 	return makeNilValue()
 }
 
-func intBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func intBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 1 {
-		vm.runTimeError("Single argument expected.")
+		vm.RunTimeError("Single argument expected.")
 		return makeNilValue()
 	}
-	arg := vm.stack[arg_stackptr]
+	arg := vm.Stack(arg_stackptr)
 
 	switch arg.Type {
 	case VAL_INT:
@@ -261,37 +261,37 @@ func intBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 		if arg.Obj.getType() == OBJECT_STRING {
 			i, ok := arg.asString().parseInt()
 			if !ok {
-				vm.runTimeError("Could not parse string into int.")
+				vm.RunTimeError("Could not parse string into int.")
 				return makeNilValue()
 			}
 			return makeIntValue(i, false)
 		}
 	}
-	vm.runTimeError("Argument must be number or valid string.")
+	vm.RunTimeError("Argument must be number or valid string.")
 	return makeNilValue()
 }
 
-func clockBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func clockBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
-	elapsed := time.Since(vm.starttime)
+	elapsed := time.Since(vm.StartTime())
 	return makeFloatValue(float64(elapsed.Seconds()), false)
 }
 
-func randBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func randBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	return makeFloatValue(rand.Float64(), false)
 }
 
 // len( string )
-func lenBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func lenBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 1 {
-		vm.runTimeError("Invalid argument count to len.")
+		vm.RunTimeError("Invalid argument count to len.")
 		return makeNilValue()
 	}
-	val := vm.stack[arg_stackptr]
+	val := vm.Stack(arg_stackptr)
 	if val.Type != VAL_OBJ {
-		vm.runTimeError("Invalid argument type to len.")
+		vm.RunTimeError("Invalid argument type to len.")
 		return makeNilValue()
 	}
 	switch val.Obj.getType() {
@@ -302,21 +302,21 @@ func lenBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 		l := val.asList().get()
 		return makeIntValue(len(l), false)
 	}
-	vm.runTimeError("Invalid argument type to len.")
+	vm.RunTimeError("Invalid argument type to len.")
 	return makeNilValue()
 }
 
 // sin(number)
-func sinBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func sinBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 1 {
-		vm.runTimeError("Invalid argument count to sin.")
+		vm.RunTimeError("Invalid argument count to sin.")
 		return makeNilValue()
 	}
-	vnum := vm.stack[arg_stackptr]
+	vnum := vm.Stack(arg_stackptr)
 
 	if vnum.Type != VAL_FLOAT {
-		vm.runTimeError("Invalid argument type to sin.")
+		vm.RunTimeError("Invalid argument type to sin.")
 		return makeNilValue()
 	}
 	n := vnum.Float
@@ -324,34 +324,34 @@ func sinBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 }
 
 // cos(number)
-func cosBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func cosBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 1 {
-		vm.runTimeError("Invalid argument count to cos.")
+		vm.RunTimeError("Invalid argument count to cos.")
 		return makeNilValue()
 	}
-	vnum := vm.stack[arg_stackptr]
+	vnum := vm.Stack(arg_stackptr)
 
 	if vnum.Type != VAL_FLOAT {
 
-		vm.runTimeError("Invalid argument type to cos.")
+		vm.RunTimeError("Invalid argument type to cos.")
 		return makeNilValue()
 	}
 	n := vnum.Float
 	return makeFloatValue(math.Cos(n), false)
 }
 
-func sqrtBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func sqrtBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 1 {
-		vm.runTimeError("Invalid argument count to sqrt.")
+		vm.RunTimeError("Invalid argument count to sqrt.")
 		return makeNilValue()
 	}
-	vnum := vm.stack[arg_stackptr]
+	vnum := vm.Stack(arg_stackptr)
 
 	if vnum.Type != VAL_FLOAT {
 
-		vm.runTimeError("Invalid argument type to sqrt.")
+		vm.RunTimeError("Invalid argument type to sqrt.")
 		return makeNilValue()
 	}
 	n := vnum.Float
@@ -359,46 +359,46 @@ func sqrtBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 }
 
 // append(obj,value)
-func appendBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func appendBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 2 {
-		vm.runTimeError("Invalid argument count to append.")
+		vm.RunTimeError("Invalid argument count to append.")
 		return makeNilValue()
 	}
-	val := vm.stack[arg_stackptr]
+	val := vm.Stack(arg_stackptr)
 	if val.Type != VAL_OBJ {
-		vm.runTimeError("Argument 1 to append must be list.")
+		vm.RunTimeError("Argument 1 to append must be list.")
 		return makeNilValue()
 	}
-	val2 := vm.stack[arg_stackptr+1]
+	val2 := vm.Stack(arg_stackptr + 1)
 	switch val.Obj.getType() {
 
 	case OBJECT_LIST:
 		l := val.asList()
 		if l.tuple {
-			vm.runTimeError("Tuples are immutable")
+			vm.RunTimeError("Tuples are immutable")
 			return makeNilValue()
 		}
 		l.append(val2)
 		return makeObjectValue(l, false)
 	}
-	vm.runTimeError("Argument 1 to append must be list.")
+	vm.RunTimeError("Argument 1 to append must be list.")
 	return makeNilValue()
 }
 
 // replace( string|list )
-func replaceBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func replaceBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 3 {
-		vm.runTimeError("Invalid argument count to replace.")
+		vm.RunTimeError("Invalid argument count to replace.")
 		return makeNilValue()
 	}
-	target := vm.stack[arg_stackptr]
-	from := vm.stack[arg_stackptr+1]
-	to := vm.stack[arg_stackptr+2]
+	target := vm.Stack(arg_stackptr)
+	from := vm.Stack(arg_stackptr + 1)
+	to := vm.Stack(arg_stackptr + 2)
 
 	if target.Type != VAL_OBJ || target.Obj.getType() != OBJECT_STRING {
-		vm.runTimeError("Invalid argument type to replace.")
+		vm.RunTimeError("Invalid argument type to replace.")
 		return makeNilValue()
 	}
 
@@ -407,18 +407,18 @@ func replaceBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 }
 
 // return a FileObject
-func openBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func openBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 2 {
-		vm.runTimeError("Invalid argument count to open.")
+		vm.RunTimeError("Invalid argument count to open.")
 		return makeNilValue()
 	}
-	path := vm.stack[arg_stackptr]
-	mode := vm.stack[arg_stackptr+1]
+	path := vm.Stack(arg_stackptr)
+	mode := vm.Stack(arg_stackptr + 1)
 
 	if path.Type != VAL_OBJ || path.Obj.getType() != OBJECT_STRING ||
 		mode.Type != VAL_OBJ || mode.Obj.getType() != OBJECT_STRING {
-		vm.runTimeError("Invalid argument type to open.")
+		vm.RunTimeError("Invalid argument type to open.")
 		return makeNilValue()
 	}
 
@@ -426,7 +426,7 @@ func openBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	s_mode := mode.asString().get()
 	fp, err := openFile(s_path, s_mode)
 	if err != nil {
-		vm.runTimeError("%v", err)
+		vm.RunTimeError("%v", err)
 		return makeNilValue()
 	}
 	file := makeObjectValue(makeFileObject(fp), true)
@@ -434,16 +434,16 @@ func openBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 
 }
 
-func closeBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func closeBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 1 {
-		vm.runTimeError("Invalid argument count to close.")
+		vm.RunTimeError("Invalid argument count to close.")
 		return makeNilValue()
 	}
-	fov := vm.stack[arg_stackptr]
+	fov := vm.Stack(arg_stackptr)
 
 	if fov.Type != VAL_OBJ || fov.Obj.getType() != OBJECT_FILE {
-		vm.runTimeError("Invalid argument type to close.")
+		vm.RunTimeError("Invalid argument type to close.")
 		return makeNilValue()
 	}
 
@@ -452,54 +452,54 @@ func closeBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 	return makeBooleanValue(true, false)
 }
 
-func readlnBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func readlnBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 1 {
-		vm.runTimeError("Invalid argument count to readln.")
+		vm.RunTimeError("Invalid argument count to readln.")
 		return makeNilValue()
 	}
-	fov := vm.stack[arg_stackptr]
+	fov := vm.Stack(arg_stackptr)
 
 	if fov.Type != VAL_OBJ || fov.Obj.getType() != OBJECT_FILE {
-		vm.runTimeError("Invalid argument type to readln.")
+		vm.RunTimeError("Invalid argument type to readln.")
 		return makeNilValue()
 	}
 
 	fo := fov.Obj.(*FileObject)
 	if fo.closed {
-		vm.runTimeError("readln attempted on closed file.")
+		vm.RunTimeError("readln attempted on closed file.")
 		return makeNilValue()
 	}
 
 	rv := fo.readLine()
 	if rv.Type == VAL_NIL {
-		vm.raiseExceptionByName("EOFError", "End of file reached")
+		vm.RaiseExceptionByName("EOFError", "End of file reached")
 		return makeBooleanValue(true, false)
 	}
 	return rv
 }
 
-func writeBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func writeBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 2 {
-		vm.runTimeError("Invalid argument count to writeln.")
+		vm.RunTimeError("Invalid argument count to writeln.")
 		return makeNilValue()
 	}
-	fov := vm.stack[arg_stackptr]
-	str := vm.stack[arg_stackptr+1]
+	fov := vm.Stack(arg_stackptr)
+	str := vm.Stack(arg_stackptr + 1)
 
 	if fov.Type != VAL_OBJ || fov.Obj.getType() != OBJECT_FILE {
-		vm.runTimeError("Invalid argument type to writeln.")
+		vm.RunTimeError("Invalid argument type to writeln.")
 		return makeNilValue()
 	}
 	if str.Type != VAL_OBJ || str.Obj.getType() != OBJECT_STRING {
-		vm.runTimeError("Invalid argument type to writeln.")
+		vm.RunTimeError("Invalid argument type to writeln.")
 		return makeNilValue()
 	}
 
 	fo := fov.Obj.(*FileObject)
 	if fo.closed {
-		vm.runTimeError("writeln attempted on closed file.")
+		vm.RunTimeError("writeln attempted on closed file.")
 		return makeNilValue()
 	}
 
@@ -532,4 +532,4 @@ func (vm *VM) loadBuiltInModule(source string) {
 // predefine an Exception class using Lox source
 const exceptionSource = `class Exception {init(msg) {this.msg = msg;this.name = "Exception";  }toString() {return this.msg;}}`
 const eofErrorSource = `class EOFError < Exception {init(msg) {this.msg = msg;this.name = "EOFError";  }toString() {return this.msg;}}`
-const runTimeErrorSource = `class RunTimeError < Exception {init(msg) {this.msg = msg;this.name = "RunTimeError";  }toString() {return this.msg;}}`
+const RunTimeErrorSource = `class RunTimeError < Exception {init(msg) {this.msg = msg;this.name = "RunTimeError";  }toString() {return this.msg;}}`

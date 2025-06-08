@@ -8,31 +8,31 @@ import (
 )
 
 // takes a filename, and a FloatArrayObject, and a boolean indicating whether the array contains RGB encoded data
-func drawPNGBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func drawPNGBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 	if argCount != 3 {
-		vm.runTimeError("Invalid argument count to draw_png.")
+		vm.RunTimeError("Invalid argument count to draw_png.")
 		return makeNilValue()
 	}
-	nameVal := vm.stack[arg_stackptr]
-	plotData := vm.stack[arg_stackptr+1]
-	colourEncoded := vm.stack[arg_stackptr+2]
+	nameVal := vm.Stack(arg_stackptr)
+	plotData := vm.Stack(arg_stackptr + 1)
+	colourEncoded := vm.Stack(arg_stackptr + 2)
 
 	if !nameVal.isStringObject() {
-		vm.runTimeError("First argument to draw_png must be a string filename")
+		vm.RunTimeError("First argument to draw_png must be a string filename")
 		return makeNilValue()
 	}
 
 	if !plotData.isFloatArrayObject() {
-		vm.runTimeError("Second argument to draw_png must be a float array")
+		vm.RunTimeError("Second argument to draw_png must be a float array")
 		return makeNilValue()
 	}
 	if !colourEncoded.isBool() {
-		vm.runTimeError("Third argument to draw_png must be a boolean")
+		vm.RunTimeError("Third argument to draw_png must be a boolean")
 	}
 
 	fa := plotData.asFloatArray()
 	if fa.value.width <= 0 || fa.value.height <= 0 {
-		vm.runTimeError("draw_png data must not be empty")
+		vm.RunTimeError("draw_png data must not be empty")
 		return makeNilValue()
 	}
 
@@ -81,25 +81,25 @@ func drawPNGBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
 // y offset
 // scale
 // 1D float array (RGB encoded) for colour mapping
-func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm *VM) Value {
+func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 8 {
-		vm.runTimeError("Invalid argument count to lox_mandel_array")
+		vm.RunTimeError("Invalid argument count to lox_mandel_array")
 		return makeNilValue()
 	}
-	arrayVal := vm.stack[arg_stackptr]
-	hVal := vm.stack[arg_stackptr+1]
-	wVal := vm.stack[arg_stackptr+2]
-	maxIterVal := vm.stack[arg_stackptr+3]
-	xoffsetVal := vm.stack[arg_stackptr+4]
-	yoffsetVal := vm.stack[arg_stackptr+5]
-	scaleVal := vm.stack[arg_stackptr+6]
-	colourVal := vm.stack[arg_stackptr+7]
+	arrayVal := vm.Stack(arg_stackptr)
+	hVal := vm.Stack(arg_stackptr + 1)
+	wVal := vm.Stack(arg_stackptr + 2)
+	maxIterVal := vm.Stack(arg_stackptr + 3)
+	xoffsetVal := vm.Stack(arg_stackptr + 4)
+	yoffsetVal := vm.Stack(arg_stackptr + 5)
+	scaleVal := vm.Stack(arg_stackptr + 6)
+	colourVal := vm.Stack(arg_stackptr + 7)
 
 	if !(hVal.isInt() && wVal.isInt() && maxIterVal.isInt() && xoffsetVal.isFloat() &&
 		yoffsetVal.isFloat() && arrayVal.isFloatArrayObject() && scaleVal.isFloat() &&
 		colourVal.isFloatArrayObject()) {
-		vm.runTimeError("Invalid arguments to lox_mandel_array")
+		vm.RunTimeError("Invalid arguments to lox_mandel_array")
 		return makeNilValue()
 	}
 

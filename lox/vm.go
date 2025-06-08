@@ -134,6 +134,25 @@ func (vm *VM) Interpret(source string) (InterpretResult, string) {
 	res, val := vm.run()
 	return res, val.String()
 }
+
+func (vm *VM) Stack(index int) Value {
+
+	if index < 0 || index >= vm.stackTop {
+		return makeNilValue()
+	}
+	return vm.stack[index]
+}
+
+func (vm *VM) Args() []string {
+
+	return vm.args
+}
+
+func (vm *VM) StartTime() time.Time {
+
+	return vm.starttime
+}
+
 func (vm *VM) callLoadedChunk(name string, chunk *Chunk) {
 
 	function := makeFunctionObject()
@@ -169,11 +188,11 @@ func (vm *VM) resetStack() {
 	vm.frameCount = 0
 }
 
-func (vm *VM) runTimeError(format string, args ...interface{}) {
+func (vm *VM) RunTimeError(format string, args ...interface{}) {
 
 	vm.ErrorMsg = fmt.Sprintf(format, args...)
 
-	//vm.raiseExceptionByName("RunTimeError", err)
+	//vm.RaiseExceptionByName("RunTimeError", err)
 	/* fmt.Fprintf(os.Stderr, format, args...)
 	fmt.Fprint(os.Stderr, "\n")
 
@@ -217,7 +236,7 @@ func (vm *VM) pop() Value {
 	return vm.stack[vm.stackTop]
 }
 
-func (vm *VM) peek(dist int) Value {
+func (vm *VM) Peek(dist int) Value {
 
 	return vm.stack[(vm.stackTop-1)-dist]
 }
@@ -249,7 +268,7 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 			if initialiser, ok := class.methods["init"]; ok {
 				return vm.call(initialiser.asClosure(), argCount)
 			} else if argCount != 0 {
-				vm.runTimeError("Expected 0 arguments but got %d", argCount)
+				vm.RunTimeError("Expected 0 arguments but got %d", argCount)
 				return false
 			}
 			return true
@@ -260,15 +279,15 @@ func (vm *VM) callValue(callee Value, argCount int) bool {
 			return vm.call(bound.method, argCount)
 		}
 	}
-	vm.runTimeError("Can only call functions and classes.")
+	vm.RunTimeError("Can only call functions and classes.")
 	return false
 }
 
 // optimised method call/module access
 func (vm *VM) invoke(name Value, argCount int) bool {
-	receiver := vm.peek(argCount)
+	receiver := vm.Peek(argCount)
 	if receiver.Type != VAL_OBJ {
-		vm.runTimeError("Invalid use of '.' operator")
+		vm.RunTimeError("Invalid use of '.' operator")
 		return false
 	}
 	switch receiver.Obj.getType() {
@@ -281,7 +300,7 @@ func (vm *VM) invoke(name Value, argCount int) bool {
 	case OBJECT_FLOAT_ARRAY, OBJECT_STRING, OBJECT_LIST, OBJECT_DICT, OBJECT_GRAPHICS:
 		return vm.invokeFromBuiltin(receiver.Obj, name, argCount)
 	default:
-		vm.runTimeError("Invalid use of '.' operator")
+		vm.RunTimeError("Invalid use of '.' operator")
 		return false
 	}
 
@@ -291,7 +310,7 @@ func (vm *VM) invokeFromClass(class *ClassObject, name Value, argCount int) bool
 	n := getStringValue(name)
 	method, ok := class.methods[n]
 	if !ok {
-		vm.runTimeError("Undefined method '%s'.", n)
+		vm.RunTimeError("Undefined method '%s'.", n)
 		return false
 	}
 	return vm.call(method.asClosure(), argCount)
@@ -301,7 +320,7 @@ func (vm *VM) invokeFromModule(module *ModuleObject, name Value, argCount int) b
 	n := getStringValue(name)
 	fn, ok := module.environment.vars[n]
 	if !ok {
-		vm.runTimeError("Undefined module property '%s'.", n)
+		vm.RunTimeError("Undefined module property '%s'.", n)
 		return false
 	}
 	env := newEnvironment(module.name, vm.environments)
@@ -326,7 +345,7 @@ func (vm *VM) invokeFromBuiltin(obj Object, name Value, argCount int) bool {
 			return true
 		}
 	}
-	vm.runTimeError("Undefined builtin property '%s'.", n)
+	vm.RunTimeError("Undefined builtin property '%s'.", n)
 	return false
 
 }
@@ -334,10 +353,10 @@ func (vm *VM) invokeFromBuiltin(obj Object, name Value, argCount int) bool {
 func (vm *VM) bindMethod(class *ClassObject, name string) bool {
 	method, ok := class.methods[name]
 	if !ok {
-		vm.runTimeError("Undefined property '%s'", name)
+		vm.RunTimeError("Undefined property '%s'", name)
 		return false
 	}
-	bound := makeBoundMethodObject(vm.peek(0), method.asClosure())
+	bound := makeBoundMethodObject(vm.Peek(0), method.asClosure())
 	vm.pop()
 	vm.push(makeObjectValue(bound, false))
 	return true
@@ -375,8 +394,8 @@ func (vm *VM) closeUpvalues(last int) {
 }
 
 func (vm *VM) defineMethod(name string) {
-	method := vm.peek(0)
-	class := vm.peek(1).asClass()
+	method := vm.Peek(0)
+	class := vm.Peek(1).asClass()
 	class.methods[name] = method
 	vm.pop()
 }
@@ -384,7 +403,7 @@ func (vm *VM) defineMethod(name string) {
 func (vm *VM) call(closure *ClosureObject, argCount int) bool {
 
 	if argCount != closure.function.arity {
-		vm.runTimeError("Expected %d arguments but got %d.", closure.function.arity, argCount)
+		vm.RunTimeError("Expected %d arguments but got %d.", closure.function.arity, argCount)
 		return false
 	}
 	frame := &CallFrame{
@@ -397,7 +416,7 @@ func (vm *VM) call(closure *ClosureObject, argCount int) bool {
 	vm.frames[vm.frameCount] = frame
 	vm.frameCount++
 	if vm.frameCount == FRAMES_MAX {
-		vm.runTimeError("Stack overflow.")
+		vm.RunTimeError("Stack overflow.")
 		return false
 	}
 
@@ -528,7 +547,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 		case OP_SET_UPVALUE:
 			slot := vm.getCode()[frame.ip]
 			frame.ip++
-			*(frame.closure.upvalues[slot].location) = vm.peek(0)
+			*(frame.closure.upvalues[slot].location) = vm.Peek(0)
 
 		case OP_CLOSE_UPVALUE:
 			vm.closeUpvalues(vm.stackTop - 1)
@@ -603,9 +622,9 @@ func (vm *VM) run() (InterpretResult, Value) {
 
 		case OP_GET_PROPERTY:
 
-			v := vm.peek(0)
+			v := vm.Peek(0)
 			if v.Type != VAL_OBJ {
-				vm.runTimeError("Attempt to access property of non-object.")
+				vm.RunTimeError("Attempt to access property of non-object.")
 				goto End
 			}
 
@@ -631,20 +650,20 @@ func (vm *VM) run() (InterpretResult, Value) {
 					vm.pop()
 					vm.push(val)
 				} else {
-					vm.runTimeError("Property '%s' not found.", name)
+					vm.RunTimeError("Property '%s' not found.", name)
 					goto End
 				}
 			default:
-				vm.runTimeError("Property '%s' not found.", name)
+				vm.RunTimeError("Property '%s' not found.", name)
 				goto End
 			}
 
 		case OP_SET_PROPERTY:
 
-			val := vm.peek(0)
-			v := vm.peek(1)
+			val := vm.Peek(0)
+			v := vm.Peek(1)
 			if v.Type != VAL_OBJ {
-				vm.runTimeError("Property not found.")
+				vm.RunTimeError("Property not found.")
 				goto End
 			}
 			idx := vm.getCode()[frame.ip]
@@ -664,7 +683,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 				vm.pop()
 				vm.push(tmp)
 			default:
-				vm.runTimeError("Property not found.")
+				vm.RunTimeError("Property not found.")
 				goto End
 			}
 
@@ -701,7 +720,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			name := getStringValue(frame.closure.function.chunk.constants[idx])
-			vm.environments.vars[name] = vm.peek(0)
+			vm.environments.vars[name] = vm.Peek(0)
 			vm.pop()
 
 		case OP_DEFINE_GLOBAL_CONST:
@@ -710,7 +729,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			name := getStringValue(frame.closure.function.chunk.constants[idx])
-			vm.environments.vars[name] = vm.peek(0)
+			vm.environments.vars[name] = vm.Peek(0)
 			vm.environments.vars[name] = immutable(vm.environments.vars[name])
 			vm.pop()
 
@@ -724,7 +743,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			if !ok {
 				value, ok = vm.environments.builtins[name]
 				if !ok {
-					vm.runTimeError("Undefined variable %s\n", name)
+					vm.RunTimeError("Undefined variable %s\n", name)
 					goto End
 				}
 			}
@@ -738,14 +757,14 @@ func (vm *VM) run() (InterpretResult, Value) {
 			name := getStringValue(frame.closure.function.chunk.constants[idx])
 			// auto-declare
 			// if _, ok := vm.environments.vars[name]; !ok {
-			// 	vm.runTimeError("Undefined variable %s\n", name)
+			// 	vm.RunTimeError("Undefined variable %s\n", name)
 			// 	goto End
 			// }
 			if vm.environments.vars[name].Immutable() {
-				vm.runTimeError("Cannot assign to const %s\n", name)
+				vm.RunTimeError("Cannot assign to const %s\n", name)
 				goto End
 			}
-			vm.environments.vars[name] = mutable(vm.peek(0)) // in case of assignment of const
+			vm.environments.vars[name] = mutable(vm.Peek(0)) // in case of assignment of const
 
 		case OP_GET_LOCAL:
 			// get local from stack at position = operand and push on stack top
@@ -755,11 +774,11 @@ func (vm *VM) run() (InterpretResult, Value) {
 
 		case OP_SET_LOCAL:
 			// get value at stack top and store it in stack at position = operand
-			val := vm.peek(0)
+			val := vm.Peek(0)
 			slot_idx := int(vm.getCode()[frame.ip])
 			frame.ip++
 			if vm.stack[frame.slots+slot_idx].Immutable() {
-				vm.runTimeError("Cannot assign to const local.\n")
+				vm.RunTimeError("Cannot assign to const local.\n")
 				goto End
 			}
 			vm.stack[frame.slots+slot_idx] = mutable(val)
@@ -767,7 +786,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 		case OP_JUMP_IF_FALSE:
 			// if stack top is falsey, jump by offset ( 2 operands )
 			offset := vm.readShort()
-			if vm.isFalsey(vm.peek(0)) {
+			if vm.isFalsey(vm.Peek(0)) {
 				frame.ip += int(offset)
 			}
 
@@ -818,7 +837,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			// arg count is operand, callable object is on stack after arguments, result will be stack top
 			argCount := vm.getCode()[frame.ip]
 			frame.ip++
-			if !vm.callValue(vm.peek(int(argCount)), int(argCount)) {
+			if !vm.callValue(vm.Peek(int(argCount)), int(argCount)) {
 				goto End
 			}
 
@@ -829,8 +848,8 @@ func (vm *VM) run() (InterpretResult, Value) {
 			vm.push(makeObjectValue(makeClassObject(name), false))
 
 		case OP_INHERIT:
-			superclass := vm.peek(1)
-			subclass := vm.peek(0).asClass()
+			superclass := vm.Peek(1)
+			subclass := vm.Peek(0).asClass()
 			if superclass.Type == VAL_OBJ {
 				if superclass.isClassObject() {
 					sco := superclass.asClass()
@@ -843,7 +862,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 				}
 			}
 
-			vm.runTimeError("Superclass must be a class.")
+			vm.RunTimeError("Superclass must be a class.")
 			return INTERPRET_RUNTIME_ERROR, makeNilValue()
 
 		case OP_GET_SUPER:
@@ -885,7 +904,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 		case OP_STR:
 
 			// replace stack top with string repr of it
-			v := vm.peek(0) // may be needed for class toString so don't pop now
+			v := vm.Peek(0) // may be needed for class toString so don't pop now
 			s := v.String()
 			switch v.Type {
 			case VAL_OBJ:
@@ -951,7 +970,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			iterable := vm.stack[frame.slots+int(iterableSlot)]
 
 			if iterable.Type != VAL_OBJ {
-				vm.runTimeError("Iterable in foreach must be list or string.")
+				vm.RunTimeError("Iterable in foreach must be list or string.")
 				goto End
 			}
 			idxVal := vm.stack[frame.slots+int(idxSlot)]
@@ -977,7 +996,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 				}
 
 			default:
-				vm.runTimeError("Iterable in foreach must be list or string.")
+				vm.RunTimeError("Iterable in foreach must be list or string.")
 				goto End
 			}
 
@@ -1001,13 +1020,13 @@ func (vm *VM) run() (InterpretResult, Value) {
 			a := vm.pop()
 
 			if !(b.isStringObject() || b.isListObject()) {
-				vm.runTimeError("'in' requires string or list as right operand.")
+				vm.RunTimeError("'in' requires string or list as right operand.")
 				goto End
 			}
 			switch b.Obj.getType() {
 			case OBJECT_STRING:
 				if !a.isStringObject() {
-					vm.runTimeError("'in' requires string as left operand.")
+					vm.RunTimeError("'in' requires string as left operand.")
 					goto End
 				}
 				rv := b.asString().contains(a)
@@ -1018,13 +1037,13 @@ func (vm *VM) run() (InterpretResult, Value) {
 			}
 
 		default:
-			vm.runTimeError("Invalid Opcode")
+			vm.RunTimeError("Invalid Opcode")
 			goto End
 		}
 	End:
 
 		if vm.ErrorMsg != "" {
-			if !vm.raiseExceptionByName("RunTimeError", vm.ErrorMsg) {
+			if !vm.RaiseExceptionByName("RunTimeError", vm.ErrorMsg) {
 				return INTERPRET_RUNTIME_ERROR, makeNilValue()
 			}
 		}
@@ -1037,7 +1056,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 // - make an instance of the class and set the message on it
 // - pass the instance to raiseException
 // used for vm raising errors that can be handled in lox e.g EOFError when reading a file
-func (vm *VM) raiseExceptionByName(name string, msg string) bool {
+func (vm *VM) RaiseExceptionByName(name string, msg string) bool {
 
 	classVal := vm.environments.vars[name]
 	classObj := classVal.Obj
@@ -1085,7 +1104,7 @@ func (vm *VM) raiseException(err Value) bool {
 
 		if !vm.popFrame() {
 			exc := err.asInstance()
-			vm.runTimeError("Uncaught exception: %s : %s ", exc.class, exc.fields["msg"])
+			vm.RunTimeError("Uncaught exception: %s : %s ", exc.class, exc.fields["msg"])
 			return false
 		}
 	}
@@ -1150,7 +1169,7 @@ func (vm *VM) sourceLine(line int) string {
 func (vm *VM) importModule(moduleName string) InterpretResult {
 
 	globalModules[moduleName] = true
-	searchPath := getPath(vm.args, moduleName) + ".lox"
+	searchPath := getPath(vm.Args(), moduleName) + ".lox"
 	bytes, err := os.ReadFile(searchPath)
 	if err != nil {
 		fmt.Printf("Could not find module %s.", searchPath)
@@ -1158,7 +1177,7 @@ func (vm *VM) importModule(moduleName string) InterpretResult {
 	}
 
 	subvm := NewVM(searchPath, true)
-	subvm.SetArgs(vm.args)
+	subvm.SetArgs(vm.Args())
 	subvm.ModuleImport = true
 	// see if we can load lxc bytecode file for the module.
 	// if not, load the module source and compile it.
@@ -1228,14 +1247,14 @@ func (vm *VM) index() bool {
 		switch sv.Obj.getType() {
 		case OBJECT_LIST:
 			if iv.Type != VAL_INT {
-				vm.runTimeError("Subscript must be an integer.")
+				vm.RunTimeError("Subscript must be an integer.")
 				return false
 			}
 			t := sv.asList()
 			idx := iv.Int
 			lo, err := t.index(idx)
 			if err != nil {
-				vm.runTimeError("%v", err)
+				vm.RunTimeError("%v", err)
 				return false
 			}
 			vm.push(lo)
@@ -1243,14 +1262,14 @@ func (vm *VM) index() bool {
 
 		case OBJECT_STRING:
 			if iv.Type != VAL_INT {
-				vm.runTimeError("Subscript must be an integer.")
+				vm.RunTimeError("Subscript must be an integer.")
 				return false
 			}
 			idx := iv.Int
 			t := sv.asString()
 			so, err := t.index(idx)
 			if err != nil {
-				vm.runTimeError("%v", err)
+				vm.RunTimeError("%v", err)
 				return false
 			}
 			vm.push(so)
@@ -1262,7 +1281,7 @@ func (vm *VM) index() bool {
 			t := sv.asDict()
 			so, err := t.get(key)
 			if err != nil {
-				vm.runTimeError("%v", err)
+				vm.RunTimeError("%v", err)
 				return false
 			}
 			vm.push(so)
@@ -1270,7 +1289,7 @@ func (vm *VM) index() bool {
 		}
 
 	}
-	vm.runTimeError("Invalid type for subscript.")
+	vm.RunTimeError("Invalid type for subscript.")
 	return false
 }
 
@@ -1279,24 +1298,24 @@ func (vm *VM) indexAssign() bool {
 	// collection, index, RHS on stack
 	rhs := vm.pop()
 	index := vm.pop()
-	collection := vm.peek(0)
+	collection := vm.Peek(0)
 	if collection.Type == VAL_OBJ {
 		switch collection.Obj.getType() {
 		case OBJECT_LIST:
 			t := collection.asList()
 			if t.tuple {
-				vm.runTimeError("Tuples are immutable.")
+				vm.RunTimeError("Tuples are immutable.")
 				return false
 			}
 			if index.Type == VAL_INT {
 				if err := t.assignToIndex(index.Int, rhs); err != nil {
-					vm.runTimeError("%v", err)
+					vm.RunTimeError("%v", err)
 					return false
 				} else {
 					return true
 				}
 			} else {
-				vm.runTimeError("List index must an integer.")
+				vm.RunTimeError("List index must an integer.")
 				return false
 			}
 		case OBJECT_DICT:
@@ -1305,7 +1324,7 @@ func (vm *VM) indexAssign() bool {
 			return true
 		}
 	}
-	vm.runTimeError("Can only assign to collection.")
+	vm.RunTimeError("Can only assign to collection.")
 	return false
 }
 
@@ -1317,7 +1336,7 @@ func (vm *VM) slice() bool {
 	if v_to.Type == VAL_NIL {
 		to_idx = -1
 	} else if v_to.Type != VAL_INT {
-		vm.runTimeError("Invalid type in slice expression.")
+		vm.RunTimeError("Invalid type in slice expression.")
 		return false
 	} else {
 		to_idx = v_to.Int
@@ -1327,7 +1346,7 @@ func (vm *VM) slice() bool {
 	if v_from.Type == VAL_NIL {
 		from_idx = 0
 	} else if v_from.Type != VAL_INT {
-		vm.runTimeError("Invalid type in slice expression.")
+		vm.RunTimeError("Invalid type in slice expression.")
 		return false
 	} else {
 		from_idx = v_from.Int
@@ -1338,7 +1357,7 @@ func (vm *VM) slice() bool {
 		if lv.Obj.getType() == OBJECT_LIST {
 			lo, err := lv.asList().slice(from_idx, to_idx)
 			if err != nil {
-				vm.runTimeError("%v", err)
+				vm.RunTimeError("%v", err)
 				return false
 			}
 			vm.push(lo)
@@ -1347,14 +1366,14 @@ func (vm *VM) slice() bool {
 		} else if lv.Obj.getType() == OBJECT_STRING {
 			so, err := lv.asString().slice(from_idx, to_idx)
 			if err != nil {
-				vm.runTimeError("%v", err)
+				vm.RunTimeError("%v", err)
 				return false
 			}
 			vm.push(so)
 			return true
 		}
 	}
-	vm.runTimeError("Invalid type for slice.")
+	vm.RunTimeError("Invalid type for slice.")
 	return false
 }
 
@@ -1368,7 +1387,7 @@ func (vm *VM) sliceAssign() bool {
 	if v_to.Type == VAL_NIL {
 		to_idx = -1
 	} else if v_to.Type != VAL_INT {
-		vm.runTimeError("Invalid type in slice expression.")
+		vm.RunTimeError("Invalid type in slice expression.")
 		return false
 	} else {
 		to_idx = v_to.Int
@@ -1378,30 +1397,30 @@ func (vm *VM) sliceAssign() bool {
 	if v_from.Type == VAL_NIL {
 		from_idx = 0
 	} else if v_from.Type != VAL_INT {
-		vm.runTimeError("Invalid type in slice expression.")
+		vm.RunTimeError("Invalid type in slice expression.")
 		return false
 	} else {
 		from_idx = v_from.Int
 	}
 
-	lv := vm.peek(0)
+	lv := vm.Peek(0)
 	if lv.isObj() {
 
 		if lv.Obj.getType() == OBJECT_LIST {
 			lst := lv.asList()
 			if lst.tuple {
-				vm.runTimeError("Tuples are immutable")
+				vm.RunTimeError("Tuples are immutable")
 				return false
 			}
 			err := lst.assignToSlice(from_idx, to_idx, val)
 			if err != nil {
-				vm.runTimeError("%v", err)
+				vm.RunTimeError("%v", err)
 				return false
 			}
 			return true
 		}
 	}
-	vm.runTimeError("Can only assign to list slice.")
+	vm.RunTimeError("Can only assign to list slice.")
 	return false
 }
 
@@ -1421,7 +1440,7 @@ func (vm *VM) binaryAdd() bool {
 			vm.push(makeFloatValue(v1.Float+float64(v2.Int), false))
 			return true
 		}
-		vm.runTimeError("Addition type mismatch")
+		vm.RunTimeError("Addition type mismatch")
 		return false
 
 	case VAL_FLOAT:
@@ -1433,7 +1452,7 @@ func (vm *VM) binaryAdd() bool {
 			vm.push(makeFloatValue(v1.Float+v2.Float, false))
 			return true
 		}
-		vm.runTimeError("Addition type mismatch")
+		vm.RunTimeError("Addition type mismatch")
 		return false
 
 	case VAL_OBJ:
@@ -1441,7 +1460,7 @@ func (vm *VM) binaryAdd() bool {
 		switch ov2.getType() {
 		case OBJECT_STRING:
 			if v1.Type != VAL_OBJ {
-				vm.runTimeError("Addition type mismatch")
+				vm.RunTimeError("Addition type mismatch")
 				return false
 			}
 			ov1 := v1.Obj
@@ -1454,7 +1473,7 @@ func (vm *VM) binaryAdd() bool {
 		case OBJECT_LIST:
 
 			if v1.Type != VAL_OBJ {
-				vm.runTimeError("Addition type mismatch")
+				vm.RunTimeError("Addition type mismatch")
 				return false
 			}
 			ov1 := v1.Obj
@@ -1465,7 +1484,7 @@ func (vm *VM) binaryAdd() bool {
 			}
 		}
 	}
-	vm.runTimeError("Operands must be numbers or strings")
+	vm.RunTimeError("Operands must be numbers or strings")
 	return false
 }
 
@@ -1496,7 +1515,7 @@ func (vm *VM) binarySubtract() bool {
 		}
 	}
 
-	vm.runTimeError("Addition type mismatch")
+	vm.RunTimeError("Addition type mismatch")
 	return false
 }
 
@@ -1514,13 +1533,13 @@ func (vm *VM) binaryMultiply() bool {
 			vm.push(makeFloatValue(v1.Float*float64(v2.Int), false))
 		case VAL_OBJ:
 			if !v1.isStringObject() {
-				vm.runTimeError("Invalid operand for multiply.")
+				vm.RunTimeError("Invalid operand for multiply.")
 				return false
 			}
 			s := v1.asString().get()
 			vm.push(vm.stringMultiply(s, v2.Int))
 		default:
-			vm.runTimeError("Invalid operand for multiply.")
+			vm.RunTimeError("Invalid operand for multiply.")
 			return false
 		}
 	case VAL_FLOAT:
@@ -1530,12 +1549,12 @@ func (vm *VM) binaryMultiply() bool {
 		case VAL_FLOAT:
 			vm.push(makeFloatValue(v1.Float*v2.Float, false))
 		default:
-			vm.runTimeError("Invalid operand for multiply.")
+			vm.RunTimeError("Invalid operand for multiply.")
 			return false
 		}
 	case VAL_OBJ:
 		if !v2.isStringObject() {
-			vm.runTimeError("Invalid operand for multiply.")
+			vm.RunTimeError("Invalid operand for multiply.")
 			return false
 		}
 		switch v1.Type {
@@ -1543,12 +1562,12 @@ func (vm *VM) binaryMultiply() bool {
 			s := v2.asString().get()
 			vm.push(vm.stringMultiply(s, v1.Int))
 		default:
-			vm.runTimeError("Invalid operand for multiply.")
+			vm.RunTimeError("Invalid operand for multiply.")
 			return false
 		}
 
 	default:
-		vm.runTimeError("Invalid operand for multiply.")
+		vm.RunTimeError("Invalid operand for multiply.")
 		return false
 	}
 
@@ -1582,7 +1601,7 @@ func (vm *VM) binaryDivide() bool {
 		}
 	}
 
-	vm.runTimeError("Addition type mismatch")
+	vm.RunTimeError("Addition type mismatch")
 	return false
 }
 
@@ -1592,7 +1611,7 @@ func (vm *VM) binaryModulus() bool {
 	v1 := vm.pop()
 
 	if !v1.isInt() || !v2.isInt() {
-		vm.runTimeError("Operands must be integers")
+		vm.RunTimeError("Operands must be integers")
 		return false
 	}
 	vm.push(makeIntValue(v1.Int%v2.Int, false))
@@ -1614,7 +1633,7 @@ func (vm *VM) unaryNegate() bool {
 		return true
 	}
 
-	vm.runTimeError("Operand must be a number")
+	vm.RunTimeError("Operand must be a number")
 	return false
 
 }
@@ -1625,7 +1644,7 @@ func (vm *VM) binaryGreater() bool {
 	v1 := vm.pop()
 
 	if !v1.isNumber() || !v2.isNumber() {
-		vm.runTimeError("Operands must be numbers")
+		vm.RunTimeError("Operands must be numbers")
 		return false
 	}
 
@@ -1639,7 +1658,7 @@ func (vm *VM) binaryLess() bool {
 	v1 := vm.pop()
 
 	if !v1.isNumber() || !v2.isNumber() {
-		vm.runTimeError("Operands must be numbers")
+		vm.RunTimeError("Operands must be numbers")
 		return false
 	}
 
