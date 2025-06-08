@@ -2,6 +2,7 @@ package lox
 
 import (
 	"fmt"
+	"strings"
 )
 
 type TokenType int
@@ -23,6 +24,7 @@ const (
 	TOKEN_SLASH
 	TOKEN_STAR
 	TOKEN_COLON
+	TOKEN_EOL
 	// One or two character tokens.
 	TOKEN_BANG
 	TOKEN_BANG_EQUAL
@@ -84,6 +86,7 @@ var keywords = map[string]TokenType{
 	"while":    TOKEN_WHILE,
 	"false":    TOKEN_FALSE,
 	"for":      TOKEN_FOR,
+	"fun":      TOKEN_FUNC,
 	"func":     TOKEN_FUNC,
 	"this":     TOKEN_THIS,
 	"true":     TOKEN_TRUE,
@@ -101,9 +104,71 @@ var keywords = map[string]TokenType{
 	"in":       TOKEN_IN,
 }
 
+var repr = map[TokenType]string{
+	TOKEN_LEFT_PAREN:    "TOKEN_LEFT_PAREN ",
+	TOKEN_RIGHT_PAREN:   "TOKEN_RIGHT_PAREN",
+	TOKEN_LEFT_BRACE:    "TOKEN_LEFT_BRACE",
+	TOKEN_RIGHT_BRACE:   "TOKEN_RIGHT_BRACE",
+	TOKEN_LEFT_BRACKET:  "TOKEN_LEFT_BRACKET",
+	TOKEN_RIGHT_BRACKET: "TOKEN_RIGHT_BRACKET",
+	TOKEN_COMMA:         "TOKEN_COMMA",
+	TOKEN_DOT:           "TOKEN_DOT",
+	TOKEN_PERCENT:       "TOKEN_PERCENT",
+	TOKEN_MINUS:         "TOKEN_MINUS",
+	TOKEN_PLUS:          "TOKEN_PLUS",
+	TOKEN_SEMICOLON:     "TOKEN_SEMICOLON",
+	TOKEN_SLASH:         "TOKEN_SLASH",
+	TOKEN_STAR:          "TOKEN_STAR",
+	TOKEN_COLON:         "TOKEN_COLON",
+	TOKEN_EOL:           "TOKEN_EOL",
+	TOKEN_BANG:          "TOKEN_BANG",
+	TOKEN_BANG_EQUAL:    "TOKEN_BANG_EQUAL",
+	TOKEN_EQUAL:         "TOKEN_EQUAL",
+	TOKEN_EQUAL_EQUAL:   "TOKEN_EQUAL_EQUAL",
+	TOKEN_GREATER:       "TOKEN_GREATER",
+	TOKEN_GREATER_EQUAL: "TOKEN_GREATER_EQUAL",
+	TOKEN_LESS:          "TOKEN_LESS",
+	TOKEN_LESS_EQUAL:    "TOKEN_LESS_EQUAL",
+	TOKEN_IDENTIFIER:    "TOKEN_IDENTIFIER",
+	TOKEN_STRING:        "TOKEN_STRING",
+	TOKEN_INT:           "TOKEN_INT",
+	TOKEN_FLOAT:         "TOKEN_FLOAT",
+	TOKEN_AND:           "TOKEN_AND",
+	TOKEN_CLASS:         "TOKEN_CLASS",
+	TOKEN_ELSE:          "TOKEN_ELSE",
+	TOKEN_FALSE:         "TOKEN_FALSE",
+	TOKEN_FOR:           "TOKEN_FOR",
+	TOKEN_FUNC:          "TOKEN_FUNC",
+	TOKEN_IF:            "TOKEN_IF",
+	TOKEN_NIL:           "TOKEN_NIL",
+	TOKEN_OR:            "TOKEN_OR",
+	TOKEN_PRINT:         "TOKEN_PRINT",
+	TOKEN_RETURN:        "TOKEN_RETURN",
+	TOKEN_SUPER:         "TOKEN_SUPER",
+	TOKEN_THIS:          "TOKEN_THIS",
+	TOKEN_TRUE:          "TOKEN_TRUE",
+	TOKEN_VAR:           "TOKEN_VAR",
+	TOKEN_WHILE:         "TOKEN_WHILE",
+	TOKEN_ERROR:         "TOKEN_ERROR",
+	TOKEN_EOF:           "TOKEN_EOF",
+	TOKEN_CONST:         "TOKEN_CONST",
+	TOKEN_BREAK:         "TOKEN_BREAK",
+	TOKEN_CONTINUE:      "TOKEN_CONTINUE",
+	TOKEN_STR:           "TOKEN_STR",
+	TOKEN_IMPORT:        "TOKEN_IMPORT",
+	TOKEN_TRY:           "TOKEN_TRY",
+	TOKEN_EXCEPT:        "TOKEN_EXCEPT",
+	TOKEN_AS:            "TOKEN_AS",
+	TOKEN_FINALLY:       "TOKEN_FINALLY",
+	TOKEN_RAISE:         "TOKEN_RAISE",
+	TOKEN_FOREACH:       "TOKEN_FOREACH",
+	TOKEN_IN:            "TOKEN_IN",
+}
+
 type Scanner struct {
 	source               string
 	start, current, line int
+	tokens               TokenList
 }
 
 type Token struct {
@@ -112,88 +177,141 @@ type Token struct {
 	start, length, line int
 }
 
+type TokenList struct {
+	tokens []Token
+}
+
+func MakeTokenList() TokenList {
+	return TokenList{
+		tokens: []Token{},
+	}
+}
+
+func (t *TokenList) add(token Token) {
+	t.tokens = append(t.tokens, token)
+}
+
+func (t TokenList) size() int {
+	return len(t.tokens)
+}
+
+func (t TokenList) get(offset int) Token {
+	return t.tokens[t.size()+offset]
+}
+
+func (t TokenList) print() {
+
+	for i, token := range t.tokens {
+		fmt.Printf("%d: %s (%s)  [%d:%d]\n", i, repr[token.tokentype], token.lexeme(), token.line, token.start)
+	}
+}
+
 func (t Token) lexeme() string {
 
-	return (*t.source)[t.start : t.start+t.length]
+	rv := (*t.source)[t.start : t.start+t.length]
+	if rv == "\n" {
+		return "\\n"
+	}
+	return rv
 }
 
 func NewScanner(source string) *Scanner {
 
+	source = strings.ReplaceAll(source, "\r\n", "\n")
+	source = strings.ReplaceAll(source, "\r", "\n")
+	source = source + "\n"
 	return &Scanner{
 		source: source,
 		line:   1,
+		tokens: MakeTokenList(),
 	}
 }
 
 func (s *Scanner) scanToken() Token {
 
-	s.skipWhiteSpace()
-	s.start = s.current
-	if s.isAtEnd() {
-		return s.makeToken(TOKEN_EOF)
-	}
-	c := s.advance()
-	if s.isAlpha(c) {
-		return s.identifier()
-	}
-	if s.isDigit(c) {
-		return s.number()
-	}
-	switch c {
-	case "(":
-		return s.makeToken(TOKEN_LEFT_PAREN)
-	case ")":
-		return s.makeToken(TOKEN_RIGHT_PAREN)
-	case "{":
-		return s.makeToken(TOKEN_LEFT_BRACE)
-	case "}":
-		return s.makeToken(TOKEN_RIGHT_BRACE)
-	case "[":
-		return s.makeToken(TOKEN_LEFT_BRACKET)
-	case "]":
-		return s.makeToken(TOKEN_RIGHT_BRACKET)
-	case ";":
-		return s.makeToken(TOKEN_SEMICOLON)
-	case ":":
-		return s.makeToken(TOKEN_COLON)
-	case ",":
-		return s.makeToken(TOKEN_COMMA)
-	case ".":
-		return s.makeToken(TOKEN_DOT)
-	case "-":
-		return s.makeToken(TOKEN_MINUS)
-	case "+":
-		return s.makeToken(TOKEN_PLUS)
-	case "%":
-		return s.makeToken(TOKEN_PERCENT)
-	case "/":
-		return s.makeToken(TOKEN_SLASH)
-	case "*":
-		return s.makeToken(TOKEN_STAR)
-	case "!":
-		if s.match("=") {
-			return s.makeToken(TOKEN_BANG_EQUAL)
+	for {
+
+		s.skipWhiteSpace()
+		s.start = s.current
+		if s.isAtEnd() {
+			return s.makeToken(TOKEN_EOF)
 		}
-		return s.makeToken(TOKEN_BANG)
-	case "=":
-		if s.match("=") {
-			return s.makeToken(TOKEN_EQUAL_EQUAL)
+		c := s.advance()
+		if s.isAlpha(c) {
+			return s.identifier()
 		}
-		return s.makeToken(TOKEN_EQUAL)
-	case "<":
-		if s.match("=") {
-			return s.makeToken(TOKEN_LESS_EQUAL)
+		if s.isDigit(c) {
+			return s.number()
 		}
-		return s.makeToken(TOKEN_LESS)
-	case ">":
-		if s.match("=") {
-			return s.makeToken(TOKEN_GREATER_EQUAL)
+		switch c {
+		case "\n":
+			s.line++
+			if !s.skipEOL() {
+				return s.makeToken(TOKEN_EOL)
+			}
+		case "(":
+			return s.makeToken(TOKEN_LEFT_PAREN)
+		case ")":
+			return s.makeToken(TOKEN_RIGHT_PAREN)
+		case "{":
+			return s.makeToken(TOKEN_LEFT_BRACE)
+		case "}":
+			return s.makeToken(TOKEN_RIGHT_BRACE)
+		case "[":
+			return s.makeToken(TOKEN_LEFT_BRACKET)
+		case "]":
+			return s.makeToken(TOKEN_RIGHT_BRACKET)
+		case ";":
+			return s.makeToken(TOKEN_SEMICOLON)
+		case ":":
+			return s.makeToken(TOKEN_COLON)
+		case ",":
+			return s.makeToken(TOKEN_COMMA)
+		case ".":
+			return s.makeToken(TOKEN_DOT)
+		case "-":
+			return s.makeToken(TOKEN_MINUS)
+		case "+":
+			return s.makeToken(TOKEN_PLUS)
+		case "%":
+			return s.makeToken(TOKEN_PERCENT)
+		case "/":
+			return s.makeToken(TOKEN_SLASH)
+		case "*":
+			return s.makeToken(TOKEN_STAR)
+		case "!":
+			if s.match("=") {
+				return s.makeToken(TOKEN_BANG_EQUAL)
+			}
+			return s.makeToken(TOKEN_BANG)
+		case "=":
+			if s.match("=") {
+				return s.makeToken(TOKEN_EQUAL_EQUAL)
+			}
+			return s.makeToken(TOKEN_EQUAL)
+		case "<":
+			if s.match("=") {
+				return s.makeToken(TOKEN_LESS_EQUAL)
+			}
+			return s.makeToken(TOKEN_LESS)
+		case ">":
+			if s.match("=") {
+				return s.makeToken(TOKEN_GREATER_EQUAL)
+			}
+			return s.makeToken(TOKEN_GREATER)
+		case "\"":
+			return s.string()
+		default:
+			return s.errorToken(fmt.Sprintf("Unexpected character [%s]", c))
 		}
-		return s.makeToken(TOKEN_GREATER)
-	case "\"":
-		return s.string()
 	}
-	return s.errorToken(fmt.Sprintf("Unexpected character [%s]", c))
+
+}
+
+func (s *Scanner) EOL() Token {
+
+	s.line++
+	return s.makeToken(TOKEN_EOL)
 }
 
 func (s *Scanner) isAtEnd() bool {
@@ -203,13 +321,15 @@ func (s *Scanner) isAtEnd() bool {
 
 func (s *Scanner) makeToken(tokentype TokenType) Token {
 
-	return Token{
+	rv := Token{
 		tokentype: tokentype,
 		start:     s.start,
 		length:    s.current - s.start,
 		line:      s.line,
 		source:    &s.source,
 	}
+	s.tokens.add(rv)
+	return rv
 }
 
 func (s *Scanner) errorToken(message string) Token {
@@ -252,9 +372,6 @@ func (s *Scanner) skipWhiteSpace() {
 			s.advance()
 		case "\t":
 			s.advance()
-		case "\n":
-			s.line++
-			s.advance()
 		case "/":
 			if s.peekNext() == "/" {
 				for s.peek() != "\n" && !s.isAtEnd() {
@@ -268,6 +385,32 @@ func (s *Scanner) skipWhiteSpace() {
 		}
 	}
 
+}
+
+func (s *Scanner) skipEOL() bool {
+
+	if s.tokens.size() < 2 {
+		return true
+	}
+	prev := s.tokens.get(-1).tokentype
+
+	if prev == TOKEN_LEFT_BRACE ||
+		prev == TOKEN_LEFT_PAREN ||
+		prev == TOKEN_LEFT_BRACKET ||
+		prev == TOKEN_COMMA ||
+		prev == TOKEN_RIGHT_BRACE ||
+		prev == TOKEN_SEMICOLON ||
+		prev == TOKEN_COLON ||
+		prev == TOKEN_EOL ||
+		prev == TOKEN_EQUAL ||
+		prev == TOKEN_MINUS ||
+		prev == TOKEN_PLUS ||
+		prev == TOKEN_SLASH ||
+		prev == TOKEN_STAR ||
+		prev == TOKEN_PERCENT {
+		return true
+	}
+	return false
 }
 
 func (s *Scanner) peek() string {
@@ -355,4 +498,17 @@ func syntheticToken(src string) Token {
 		length:    4,
 		line:      0,
 	}
+}
+
+func PrintTokens(source string) {
+
+	s := NewScanner(source)
+	for {
+		t := s.scanToken()
+		if t.tokentype == TOKEN_EOF {
+			break
+		}
+	}
+	s.tokens.print()
+
 }
