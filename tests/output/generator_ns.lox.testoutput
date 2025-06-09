@@ -1,0 +1,21 @@
+gen1 10
+gen2 3
+gen1 20
+gen2 6
+gen1 30
+gen2 9
+gen1 40
+gen2 12
+gen1 50
+gen2 15
+gen1 60
+gen2 18
+gen1 70
+gen2 21
+gen1 80
+gen2 24
+gen1 90
+gen2 27
+gen1 100
+gen2 30
+nil
