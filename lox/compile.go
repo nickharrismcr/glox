@@ -1098,6 +1098,7 @@ func (p *Parser) parseDict() uint8 {
 				break
 			}
 		}
+		p.match(TOKEN_EOL) // allow EOL after dict items
 		p.consume(TOKEN_RIGHT_BRACE, "Expect '}' after dictionary items.")
 	}
 
