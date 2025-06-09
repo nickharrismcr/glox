@@ -162,6 +162,7 @@ func (p *Parser) setRules() {
 		TOKEN_MINUS:         {prefix: unary, infix: binary, prec: PREC_TERM},
 		TOKEN_PLUS:          {prefix: nil, infix: binary, prec: PREC_TERM},
 		TOKEN_SEMICOLON:     {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_EOL:           {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_SLASH:         {prefix: nil, infix: binary, prec: PREC_FACTOR},
 		TOKEN_STAR:          {prefix: nil, infix: binary, prec: PREC_FACTOR},
 		TOKEN_PERCENT:       {prefix: nil, infix: binary, prec: PREC_FACTOR},
@@ -354,6 +355,8 @@ func (p *Parser) block() {
 		p.declaration()
 	}
 	p.consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.")
+	p.match(TOKEN_EOL) // allow EOL after block
+
 }
 
 func (p *Parser) funcDeclaration() {
@@ -444,6 +447,7 @@ func (p *Parser) classDeclaration() {
 		p.method()
 	}
 	p.consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.")
+	p.match(TOKEN_EOL) // allow EOL after block
 	p.emitByte(OP_POP)
 	p.currentClass = p.currentClass.enclosing
 }
