@@ -22,6 +22,8 @@ module imports
 - importing modules will cache the compiled bytecode in `__loxcache__/<module>.lxc`, subsequent imports will load from this cache unless the source is newer in which 
   case the module will be recompiled. 
 
+EOL semicolons are optional 
+
 immutable vars e.g  `const a = 1;`
 
 integer number type:
