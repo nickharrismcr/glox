@@ -14,7 +14,7 @@ func cycle_colour(t) {
   g = math.max(0, math.min(255, math.floor(g)));
   b = math.max(0, math.min(255, math.floor(b)));
 
-  return colour.Color(r, g, b);
+  return colour.Colour(r, g, b,255);
 }
 
 func get_gradient(max_iteration){
@@ -46,8 +46,8 @@ func calc(array,width,height,max_iteration,zoom,xoff,yoff,gradient) {
 }
 
 var max_iteration = 50;
-const width=150;
-const height=150;
+const width=550;
+const height=550;
 var gr=graphics(width,height);
 gr.init();
 
@@ -65,7 +65,7 @@ while (!gr.should_close()) {
     gr.clear(0,0,0);
     gr.draw_array(array_rgb);
     gr.end();
-    scale=scale*0.95;
+    scale=scale*0.8;
     max_iteration = max_iteration + 10;
 }
 gr.close();

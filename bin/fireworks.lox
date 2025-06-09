@@ -33,7 +33,7 @@ func init(col1,col2) {
 }
 
 func random_vec_2D(xmin,xmax,ymin,ymax) {
-  return math.Vector2D(random.integer(xmin,xmax),random.integer(ymin,ymax));
+  return math.Vector2D(random.integer(xmin,xmax),random.integer(ymin,ymax))
 }
 
 func queue_random_emitter(width,height,delay){
