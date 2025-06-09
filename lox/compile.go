@@ -162,6 +162,7 @@ func (p *Parser) setRules() {
 		TOKEN_MINUS:         {prefix: unary, infix: binary, prec: PREC_TERM},
 		TOKEN_PLUS:          {prefix: nil, infix: binary, prec: PREC_TERM},
 		TOKEN_SEMICOLON:     {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_EOL:           {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_SLASH:         {prefix: nil, infix: binary, prec: PREC_FACTOR},
 		TOKEN_STAR:          {prefix: nil, infix: binary, prec: PREC_FACTOR},
 		TOKEN_PERCENT:       {prefix: nil, infix: binary, prec: PREC_FACTOR},
@@ -291,7 +292,8 @@ func (p *Parser) statement() {
 
 func (p *Parser) tryExceptStatement() {
 
-	p.consume(TOKEN_LEFT_BRACE, "Expect left brace.")
+	_ = p.match(TOKEN_EOL)
+	p.consume(TOKEN_LEFT_BRACE, "Expect '{' brace after try")
 	exceptTry := p.emitTry()
 	p.beginScope()
 	p.block()
@@ -306,6 +308,7 @@ func (p *Parser) tryExceptStatement() {
 		p.consume(TOKEN_AS, "Expect as")
 		ev := p.parseVariable("Expect exception variable name.")
 		p.defineVariable(ev)
+		_ = p.match(TOKEN_EOL)
 		p.consume(TOKEN_LEFT_BRACE, "Expect left brace.")
 		p.emitByte(OP_EXCEPT)
 		p.emitByte(idx)
@@ -352,6 +355,8 @@ func (p *Parser) block() {
 		p.declaration()
 	}
 	p.consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.")
+	p.match(TOKEN_EOL) // allow EOL after block
+
 }
 
 func (p *Parser) funcDeclaration() {
@@ -387,6 +392,7 @@ func (p *Parser) function(type_ FunctionType) {
 		}
 	}
 	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after function parameters.")
+	p.match(TOKEN_EOL) // allow EOL after parameters
 	p.consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.")
 	p.block()
 
@@ -435,11 +441,13 @@ func (p *Parser) classDeclaration() {
 	}
 
 	p.namedVariable(className, false)
+	p.match(TOKEN_EOL) // allow EOL after parameters
 	p.consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.")
 	for !p.check(TOKEN_RIGHT_BRACE) && !p.check(TOKEN_EOF) {
 		p.method()
 	}
-	p.consume(TOKEN_RIGHT_BRACE, "Expect '{' after class body.")
+	p.consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.")
+	p.match(TOKEN_EOL) // allow EOL after block
 	p.emitByte(OP_POP)
 	p.currentClass = p.currentClass.enclosing
 }
@@ -623,6 +631,7 @@ func (p *Parser) forStatement() {
 		p.currentCompiler.loop.start = incrementStart
 		p.patchJump(bodyJump)
 	}
+	p.match(TOKEN_EOL)
 	p.statement()
 	if len(p.currentCompiler.loop.breaks) != 0 {
 		for _, jump := range p.currentCompiler.loop.breaks {
@@ -747,7 +756,7 @@ func (p *Parser) synchronize() {
 
 	p.panicMode = false
 	for p.current.tokentype != TOKEN_EOF {
-		if p.previous.tokentype == TOKEN_SEMICOLON {
+		if p.previous.tokentype == TOKEN_SEMICOLON || p.previous.tokentype == TOKEN_EOL {
 			return
 		}
 		switch p.current.tokentype {
@@ -774,7 +783,7 @@ func (p *Parser) synchronize() {
 
 func (p *Parser) consume(toktype TokenType, msg string) {
 
-	if p.current.tokentype == toktype {
+	if p.current.tokentype == toktype || (toktype == TOKEN_SEMICOLON && p.current.tokentype == TOKEN_EOL) {
 		p.advance()
 		return
 	}

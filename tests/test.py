@@ -60,6 +60,7 @@ verbose=False
 
 parser = argparse.ArgumentParser(description="Process .lox files with optional write and verbose modes.")
 parser.add_argument("file", nargs="?", help="File to process (optional; if not provided, all lox/*lox files will be processed)")
+parser.add_argument("--dir", nargs="?",default="bin")
 parser.add_argument("--write", action="store_true", help="Enable write mode")
 parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 parser.add_argument("--diff", action="store_true", help="Show diff")
@@ -69,7 +70,7 @@ all_passed=True
 if args.file:
     all_passed=process(args.file, args)
 else:
-    for f in glob.glob("bin/*lox"):
+    for f in glob.glob(f"{args.dir}/*lox"):
         ok=process(f, args)
         if not ok:
             all_passed=False 

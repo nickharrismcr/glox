@@ -1,0 +1,5 @@
+hello
+raising MyException (something happened)
+in Exception handler
+oops MyException something happened
+nil

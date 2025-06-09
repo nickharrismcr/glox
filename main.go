@@ -9,21 +9,14 @@ import (
 )
 
 type Options struct {
-	debugger bool
-	doRepl   bool
-	args     []string
+	doRepl      bool
+	printTokens bool
+	args        []string
 }
 
 func main() {
 
-	opts := &Options{
-		debugger: false,
-	}
-
-	if opts.debugger {
-		runFile([]string{"dbg.lox"})
-		os.Exit(0)
-	}
+	opts := &Options{}
 
 	handleArgs(opts)
 
@@ -35,7 +28,7 @@ func main() {
 		if len(opts.args) == 0 {
 			usage()
 		}
-		runFile(opts.args)
+		runFile(opts)
 	}
 }
 
@@ -60,8 +53,9 @@ func repl(vm *lox.VM) {
 	}
 }
 
-func runFile(args []string) {
+func runFile(opts *Options) {
 
+	args := opts.args
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println(r)
@@ -71,15 +65,20 @@ func runFile(args []string) {
 	}()
 
 	path := args[0]
-	vm := lox.NewVM(path, true)
-	vm.SetArgs(args)
-
 	bytes, err := os.ReadFile(path)
 	if err != nil {
 		fmt.Printf("Could not open file %s : %s", path, err)
 		os.Exit(1)
 	}
 	source := string(bytes)
+
+	if opts.printTokens {
+		lox.PrintTokens(source)
+		os.Exit(0)
+	}
+	vm := lox.NewVM(path, !lox.DebugSkipBuiltins)
+	vm.SetArgs(args)
+
 	status, result := vm.Interpret(source)
 	if status == lox.INTERPRET_COMPILE_ERROR {
 		os.Exit(65)
@@ -108,10 +107,14 @@ func handleArgs(opts *Options) {
 				lox.DebugTraceExecution = true
 			case "--globals":
 				lox.DebugShowGlobals = true
+			case "--skip-builtins":
+				lox.DebugSkipBuiltins = true
 			case "--repl":
 				opts.doRepl = true
 			case "--force-compile":
 				lox.ForceModuleCompile = true
+			case "--print-tokens":
+				opts.printTokens = true
 			default:
 				usage()
 			}
@@ -122,6 +125,6 @@ func handleArgs(opts *Options) {
 }
 
 func usage() {
-	fmt.Println("Usage : glox [--debug][--globals][--repl] filename")
+	fmt.Println("Usage : glox [--debug][--globals][--skip-builtins][--repl] filename")
 	os.Exit(1)
 }
