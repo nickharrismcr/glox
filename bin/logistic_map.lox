@@ -1,20 +1,26 @@
- 
-import plot;
+// logistic map plotter
+
+import plot_rgb;
 import math;
+import colour;
+
+
+
+const width =1000;
+const height = 700; 
 
 
 func logmap() {
-    var fname="logistic_map.png";
-    var width =1000;
-    var height = 700;
+    
+
     var min_r = 2.5;
     var max_r = 4.0;
-    var steps = 1000;
+    var steps = 500;
     var transients = 100;
-    var gray = 0.5;
+    var gray = 0.1;
 
-    var plotter=plot.Plotter(fname,width,height);
-    plotter.clear(1);
+    var plotter=plot_rgb.Plotter("",width,height);
+    plotter.clear(colour.WHITE);
     
     // Compute logistic map and plot points
     for (var px = 0; px < width; px = px + 1) {
@@ -27,12 +33,28 @@ func logmap() {
             x = r * x * (1 - x);
             var py = height - 1 - math.floor(x * height);
             if (py >= 0 and py < height) {
-                plotter.add(px,py,-gray); 
+                plotter.add(px,py,colour.Colour(-gray * 255, -gray * 255, -gray * 255,255))     
             }
         }
     }
 
-    plotter.save();
+    return plotter.get_array() 
 }
 
-logmap();
+arraydata=logmap();
+
+var gr=graphics(width,height);
+gr.init();
+ 
+
+
+while (!gr.should_close()) {
+ 
+    gr.begin();
+    gr.clear(0,0,0);
+    gr.draw_array(arraydata);
+    gr.end();
+   
+}
+gr.close();
+

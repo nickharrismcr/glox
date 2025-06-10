@@ -1,79 +1,80 @@
 
-import random;
-import colour;
+import random
+import colour
 import math; 
 
-const SPEED=8; 
+const SPEED=8 
+const TRAIL=20
 
 func random_vec2D (minX, maxX, minY, maxY) {
-    return math.Vector2D(random.integer(minX, maxX), random.integer(minY, maxY));
+    return math.Vector2D(random.integer(minX, maxX), random.integer(minY, maxY))
 }
 
 // A simple buffer that rotates its contents when full
 // and appends new values to the end.
 class Buffer{
     init(size) {
-        this.size = size;
-        this.data = [];
+        this.size = size
+        this.data = []
     }
     append(value) {
         if (len(this.data) >= this.size) {
-            this.data[0]= value;
-            this.data = this.shift_list(this.data);
+            this.data[0]= value
+            this.data = this.shift_list(this.data)
         } else {
-            this.data.append(value);
+            this.data.append(value)
         }
     }
     shift_list(lst) {
-        var new_lst = [];
+        var new_lst = []
         for (var i = 1; i < len(lst); i = i + 1) {
-            new_lst.append(lst[i]);
+            new_lst.append(lst[i])
         }
-        return new_lst;
+        return new_lst
     }
     // Returns the length of the list
     len(lst) {
-        return lst.length;
+        return lst.length
     }
     toString() {
-        return "Buffer(" + str(this.size) + ", " + str(this.data) + ")";
+        return "Buffer(" + str(this.size) + ", " + str(this.data) + ")"
     }
 }
 
 // A line that moves around the screen and leaves a trail
 class Line {
     init(x1, y1, x2, y2, r, g, b, a, width, height) {
-        this.x1 = x1;
-        this.y1 = y1;
-        this.x2 = x2;
-        this.y2 = y2;
-        this.r = r;
-        this.g = g;
-        this.b = b;
-        this.a = a;
-        this.d1= random_vec2D(-SPEED, SPEED, -SPEED, SPEED);
-        this.d2= random_vec2D(-SPEED, SPEED, -SPEED, SPEED);
-        this.width = width;
-        this.height = height;
-        this.hist = Buffer(50);
-        this.counter= 0;
+        this.x1 = x1
+        this.y1 = y1
+        this.x2 = x2
+        this.y2 = y2
+        this.r = r
+        this.g = g
+        this.b = b
+        this.a = a
+        this.d1= random_vec2D(-SPEED, SPEED, -SPEED, SPEED)
+        this.d2= random_vec2D(-SPEED, SPEED, -SPEED, SPEED)
+        this.width = width
+        this.height = height
+        this.hist = Buffer(TRAIL)
+        this.counter= 0
     }
     move(){
-        this.x1 = this.x1 + this.d1.x;
-        this.y1 = this.y1 + this.d1.y;
-        this.x2 = this.x2 + this.d2.x;
-        this.y2 = this.y2 + this.d2.y;
+        this.x1 = this.x1 + this.d1.x
+        this.y1 = this.y1 + this.d1.y
+        this.x2 = this.x2 + this.d2.x
+        this.y2 = this.y2 + this.d2.y
         if (this.x1 < 0 or this.x1 > this.width) {
-            this.d1.x = -this.d1.x;
+            this.d1.x = -this.d1.x
         }
         if (this.y1 < 0 or this.y1 > this.height) { 
-            this.d1.y = -this.d1.y;
+            this.d1.y = -this.d1.y
         }
         if (this.x2 < 0 or this.x2 > this.width) {
             this.d2.x = -this.d2.x;     
         }   
         if (this.y2 < 0 or this.y2 > this.height) {
-            this.d2.y = -this.d2.y;
+            this.d2.y = -this.d2.y
         }    
         
         this.hist.append(this.copy()); 
@@ -81,71 +82,72 @@ class Line {
         
     }
     draw(g) {
-        g.line(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a);
-        c=1.0;
+        g.line(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a)
+        c=1.0
         foreach (var l in this.hist.data) {
-            c = c + 1.0;
+            c = c + 1.0
             a = 255.0 * (c / (1.1*len(this.hist.data))) ; 
-            g.line(l.x1, l.y1, l.x2, l.y2, l.r, l.g, l.b, a);
+            g.line(l.x1, l.y1, l.x2, l.y2, l.r, l.g, l.b, a)
         }   
     }
 
     new() {
-        return Line(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a, this.width, this.height);
+        return Line(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a, this.width, this.height)
     }
     toString() {
-        return "Line(" + str(this.x1) + ", " + str(this.y1) + ", " + str(this.x2) + ", " + str(this.y2) + ", " + str(this.r) + ", " + str(this.g) + ", " + str(this.b) + ", " + str(this.a) + ")";
+        return "Line(" + str(this.x1) + ", " + str(this.y1) + ", " + str(this.x2) + ", " + str(this.y2) + ", " + str(this.r) + ", " + str(this.g) + ", " + str(this.b) + ", " + str(this.a) + ")"
     }
     copy() {
-        return Line(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a, this.width, this.height);
+        return Line(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a, this.width, this.height)
     }
 }
 
+// A collection of lines 
 class Lines {
     init(width, height ){
-        this.width = width;
-        this.height = height;
-        this.lines = [];
+        this.width = width
+        this.height = height
+        this.lines = []
     }
     add_line(x1, y1, x2, y2, r, g, b, a) {
-        var line = Line(x1, y1, x2, y2, r, g, b, a, this.width, this.height);
-        this.lines.append(line);
+        var line = Line(x1, y1, x2, y2, r, g, b, a, this.width, this.height)
+        this.lines.append(line)
     }
     update() {
         foreach ( var l in this.lines ) {
-            l.move();
+            l.move()
         }
     }
     draw(g) {
         foreach ( var l in this.lines ) {
-            l.draw(g);
+            l.draw(g)
         }
     }
 }
  
 
-const width=1500;
-const height=900;
-var g = graphics(width,height);
-g.init();
+const width=1500
+const height=900
+var g = graphics(width,height)
+g.init()
 
 lines=Lines(width, height); 
 
-for (var i = 0; i < 10; i = i + 1) {
-    var pos = random_vec2D(0, width, 0, height);
-    var pos2 = random_vec2D(0, width, 0, height);
+for (var i = 0; i < 50; i = i + 1) {
+    var pos = random_vec2D(0, width, 0, height)
+    var pos2 = random_vec2D(0, width, 0, height)
     var col = colour.random_rgb(); 
-    lines.add_line(pos.x, pos.y, pos2.x, pos2.y, col.r, col.g, col.b, 255);
+    lines.add_line(pos.x, pos.y, pos2.x, pos2.y, col.r, col.g, col.b, 255)
 }
 
 while (!g.should_close()) {
 
-    g.begin();
-    g.clear(0, 0, 0, 255);
+    g.begin()
+    g.clear(0, 0, 0, 255)
   
-    lines.update();
-    lines.draw(g);
+    lines.update()
+    lines.draw(g)
  
-    g.end();
+    g.end()
 }
-g.close();
+g.close()
