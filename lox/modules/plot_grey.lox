@@ -19,6 +19,7 @@ class Plotter {
         this.data.set(x,y,v+val);
     }
 
+ c
     save(){
         print type(this.data);
         draw_png(this.filename,this.data,false);

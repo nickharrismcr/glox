@@ -1,3 +1,8 @@
+// plot an rgb image using a 2D array of colours encoded as floats 
+// array can be written to a png file 
+// or passed to graphics.draw_array() to draw on the screen
+
+
 class Plotter {
     init(filename,width,height){
         this.filename=filename;
@@ -6,22 +11,33 @@ class Plotter {
         this.height=height;
     }
 
-    encode(r,g,b) {
-        return encode_rgb(r,g,b);
-    }
 
-    clear(r,g,b){
-        this.data.clear(this.encode(r,g,b));
+    clear(col){
+        this.data.clear(col.encode())
     }
   
-    plot(x,y,r,g,b){
+    plot(x,y,col){
         if (x < 0 or x >= this.width) {
             return;
         }
         if (y < 0 or y >= this.height) {
             return;
         }
-        this.data.set(x,y,this.encode(r,g,b));
+        this.data.set(x,y,col.encode()) 
+    }
+    add(x,y,col){
+        if (x < 0 or x >= this.width) {
+            return;
+        }
+        if (y < 0 or y >= this.height) {
+            return;
+        }
+        var c=colour.ColourFromEncoded(this.data.get(x,y));
+        nr=c.r+col.r;
+        ng=c.g+col.g;          
+        nb=c.b+col.b; 
+        
+        this.plot(x,y,colour.Colour(nr,ng,nb,255));
     }
 
     square(x,y,s,r,g,b){
@@ -32,6 +48,9 @@ class Plotter {
                 this.plot(xx,yy,r,g,b);
             }            
         }
+    }
+    get_array(){
+        return this.data;
     }
 
     save(){
