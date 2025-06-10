@@ -137,7 +137,7 @@ func (vm *VM) compile(source string) *FunctionObject {
 	for !parser.match(TOKEN_EOF) {
 		parser.declaration()
 	}
-	parser.consume(TOKEN_EOF, "Expect end of expression")
+	//parser.consume(TOKEN_EOF, "Expect end of expression")
 	function := parser.endCompiler()
 	if DebugTraceExecution && !DebugSuppress {
 		fmt.Println("Compile done.")
@@ -168,7 +168,7 @@ func (p *Parser) setRules() {
 		TOKEN_PERCENT:       {prefix: nil, infix: binary, prec: PREC_FACTOR},
 		TOKEN_BANG:          {prefix: unary, infix: nil, prec: PREC_NONE},
 		TOKEN_BANG_EQUAL:    {prefix: nil, infix: binary, prec: PREC_EQUALITY},
-		TOKEN_EQUAL:         {prefix: nil, infix: assign, prec: PREC_ASSIGNMENT},
+		TOKEN_EQUAL:         {prefix: nil, infix: nil, prec: PREC_ASSIGNMENT},
 		TOKEN_EQUAL_EQUAL:   {prefix: nil, infix: binary, prec: PREC_EQUALITY},
 		TOKEN_IN:            {prefix: nil, infix: binary, prec: PREC_EQUALITY},
 		TOKEN_GREATER:       {prefix: nil, infix: binary, prec: PREC_COMPARISON},
@@ -212,7 +212,9 @@ func (p *Parser) match(tt TokenType) bool {
 	if !p.check(tt) {
 		return false
 	}
-	p.advance()
+	if tt != TOKEN_EOF {
+		p.advance()
+	}
 	return true
 }
 
@@ -221,11 +223,16 @@ func (p *Parser) check(tt TokenType) bool {
 	return p.current.tokentype == tt
 }
 
+func (p *Parser) checkNext(tt TokenType) bool {
+
+	return p.scanner.tokens.at(p.scanner.tokenIdx+1).tokentype == tt
+}
+
 func (p *Parser) advance() {
 
 	p.previous = p.current
 	for {
-		p.current = p.scanner.scanToken()
+		p.current = p.scanner.nextToken()
 		if p.current.tokentype != TOKEN_ERROR {
 			break
 		}
@@ -495,36 +502,32 @@ func (p *Parser) constDeclaration() {
 	p.defineConstVariable(v)
 }
 
-func assign(p *Parser, canAssign bool) {
-	// The left-hand side is already parsed and on the stack.
-	// We need to check if it's a variable (identifier).
-	// If so, allow assignment, and if not declared, create it.
+func (p *Parser) expressionStatement() {
 
-	// For simplicity, let's assume only identifiers can be assigned to.
-	if p.previous.tokentype != TOKEN_IDENTIFIER {
-		p.error("Invalid assignment target.")
+	//handle implicit declarations
+	if p.check(TOKEN_IDENTIFIER) && p.checkNext(TOKEN_EQUAL) {
+		name := p.current
+		p.consume(TOKEN_IDENTIFIER, "")
+		p.consume(TOKEN_EQUAL, "")
+		l := name.lexeme()
+		if p.currentCompiler.scopeDepth > 0 {
+			if p.resolveLocal(p.currentCompiler, name) == -1 &&
+				p.resolveUpvalue(p.currentCompiler, name) == -1 &&
+				!p.checkGlobals(l) {
+				p.addLocal(name)
+				p.currentCompiler.locals[p.currentCompiler.localCount-1].depth = p.currentCompiler.scopeDepth
+				p.expression()
+				p.consume(TOKEN_SEMICOLON, "Expect ';' after expression.")
+			}
+		} else {
+			if _, ok := p.globals[l]; !ok {
+				p.globals[l] = true
+				p.expression()
+				p.emitBytes(OP_DEFINE_GLOBAL, p.identifierConstant(name))
+			}
+		}
 		return
 	}
-
-	name := p.previous
-
-	// Parse the right-hand side.
-	p.parsePredence(PREC_ASSIGNMENT)
-
-	// Check if the variable exists in the current scope.
-	arg := p.resolveLocal(p.currentCompiler, name)
-	if arg == -1 {
-		// Not found: create a new local variable.
-		p.addLocal(name)
-		p.currentCompiler.locals[p.currentCompiler.localCount-1].depth = p.currentCompiler.scopeDepth
-		arg = p.currentCompiler.localCount - 1
-	}
-
-	// Emit code to set the variable.
-	p.emitBytes(OP_SET_LOCAL, uint8(arg))
-}
-
-func (p *Parser) expressionStatement() {
 
 	p.expression()
 	p.consume(TOKEN_SEMICOLON, "Expect ';' after expression.")
@@ -1155,17 +1158,9 @@ func (p *Parser) namedVariable(name Token, canAssign bool) {
 		getOp = OP_GET_UPVALUE
 		setOp = OP_SET_UPVALUE
 	} else {
-		if !p.checkGlobals(a) && canAssign && p.check(TOKEN_EQUAL) && p.currentCompiler.scopeDepth > 0 {
-			p.addLocal(name)
-			p.currentCompiler.locals[p.currentCompiler.localCount-1].depth = p.currentCompiler.scopeDepth
-			arg = p.currentCompiler.localCount - 1
-			getOp = OP_GET_LOCAL
-			setOp = OP_SET_LOCAL
-		} else {
-			arg = int(p.identifierConstant(name))
-			getOp = OP_GET_GLOBAL
-			setOp = OP_SET_GLOBAL
-		}
+		arg = int(p.identifierConstant(name))
+		getOp = OP_GET_GLOBAL
+		setOp = OP_SET_GLOBAL
 	}
 
 	if canAssign && p.match(TOKEN_EQUAL) {
@@ -1174,6 +1169,7 @@ func (p *Parser) namedVariable(name Token, canAssign bool) {
 	} else {
 		p.emitBytes(getOp, uint8(arg))
 	}
+
 }
 
 func (p *Parser) addLocal(name Token) {

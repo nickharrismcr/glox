@@ -169,6 +169,7 @@ type Scanner struct {
 	source               string
 	start, current, line int
 	tokens               TokenList
+	tokenIdx             int
 }
 
 type Token struct {
@@ -193,6 +194,10 @@ func (t *TokenList) add(token Token) {
 
 func (t TokenList) size() int {
 	return len(t.tokens)
+}
+
+func (t TokenList) at(idx int) Token {
+	return t.tokens[idx]
 }
 
 func (t TokenList) get(offset int) Token {
@@ -220,11 +225,26 @@ func NewScanner(source string) *Scanner {
 	source = strings.ReplaceAll(source, "\r\n", "\n")
 	source = strings.ReplaceAll(source, "\r", "\n")
 	source = source + "\n"
-	return &Scanner{
-		source: source,
-		line:   1,
-		tokens: MakeTokenList(),
+	s := &Scanner{
+		source:   source,
+		line:     1,
+		tokens:   MakeTokenList(),
+		tokenIdx: 0,
 	}
+	for {
+		t := s.scanToken()
+		s.tokens.add(t)
+		if t.tokentype == TOKEN_EOF {
+			break
+		}
+	}
+	return s
+}
+func (s *Scanner) nextToken() Token {
+
+	token := s.tokens.at(s.tokenIdx)
+	s.tokenIdx++
+	return token
 }
 
 func (s *Scanner) scanToken() Token {
@@ -330,7 +350,6 @@ func (s *Scanner) makeToken(tokentype TokenType) Token {
 		line:      s.line,
 		source:    &s.source,
 	}
-	s.tokens.add(rv)
 	return rv
 }
 
