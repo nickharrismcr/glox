@@ -77,14 +77,16 @@ type Compiler struct {
 	scopeDepth int
 	loop       *Loop
 	upvalues   [256]*Upvalue
+	scriptName string
 }
 
-func NewCompiler(type_ FunctionType, parent *Compiler) *Compiler {
+func NewCompiler(type_ FunctionType, scriptName string, parent *Compiler) *Compiler {
 
 	rv := &Compiler{
-		enclosing: parent,
-		type_:     type_,
-		function:  makeFunctionObject(),
+		enclosing:  parent,
+		type_:      type_,
+		scriptName: scriptName,
+		function:   makeFunctionObject(scriptName),
 	}
 	// slot 0 is for enclosing function
 	rv.locals[0] = &Local{
@@ -132,7 +134,7 @@ func (vm *VM) compile(source string) *FunctionObject {
 		parser.isModule = true
 	}
 	parser.scanner = NewScanner(source)
-	parser.currentCompiler = NewCompiler(TYPE_SCRIPT, nil)
+	parser.currentCompiler = NewCompiler(TYPE_SCRIPT, vm.script, nil)
 	parser.advance()
 	for !parser.match(TOKEN_EOF) {
 		parser.declaration()
@@ -376,7 +378,7 @@ func (p *Parser) funcDeclaration() {
 
 func (p *Parser) function(type_ FunctionType) {
 
-	compiler := NewCompiler(type_, p.currentCompiler)
+	compiler := NewCompiler(type_, p.currentCompiler.scriptName, p.currentCompiler)
 	p.currentCompiler = compiler
 	funcname := p.previous.lexeme()
 

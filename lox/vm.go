@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -70,7 +71,7 @@ type ExceptionHandler struct {
 //------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------
 
-var globalModules = map[string]bool{}
+var globalModules = map[string]string{}
 
 func NewVM(script string, defineBuiltIns bool) *VM {
 
@@ -155,7 +156,7 @@ func (vm *VM) StartTime() time.Time {
 
 func (vm *VM) callLoadedChunk(name string, chunk *Chunk) {
 
-	function := makeFunctionObject()
+	function := makeFunctionObject(name)
 	function.chunk = chunk
 	function.name = makeStringObject(name)
 	closure := makeClosureObject(function)
@@ -188,7 +189,7 @@ func (vm *VM) resetStack() {
 	vm.frameCount = 0
 }
 
-func (vm *VM) RunTimeError(format string, args ...interface{}) {
+func (vm *VM) RunTimeError(format string, args ...any) {
 
 	vm.ErrorMsg = fmt.Sprintf(format, args...)
 
@@ -743,7 +744,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			if !ok {
 				value, ok = vm.environments.builtins[name]
 				if !ok {
-					vm.RunTimeError("Undefined variable %s\n", name)
+					vm.RunTimeError("Undefined variable %s", name)
 					goto End
 				}
 			}
@@ -761,7 +762,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			// 	goto End
 			// }
 			if vm.environments.vars[name].Immutable() {
-				vm.RunTimeError("Cannot assign to const %s\n", name)
+				vm.RunTimeError("Cannot assign to const %s", name)
 				goto End
 			}
 			vm.environments.vars[name] = mutable(vm.Peek(0)) // in case of assignment of const
@@ -778,7 +779,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			slot_idx := int(vm.getCode()[frame.ip])
 			frame.ip++
 			if vm.stack[frame.slots+slot_idx].Immutable() {
-				vm.RunTimeError("Cannot assign to const local.\n")
+				vm.RunTimeError("Cannot assign to const local.")
 				goto End
 			}
 			vm.stack[frame.slots+slot_idx] = mutable(val)
@@ -1138,16 +1139,19 @@ func (vm *VM) appendStackTrace() {
 
 	frame := vm.frame()
 	function := frame.closure.function
-	where := ""
+	where, script := "", ""
 	if function.name.get() == "" {
-		where = vm.script
+		script = vm.script
+		where = "<module>"
 	} else {
+		script = function.chunk.filename
 		where = function.name.get()
 	}
 	line := function.chunk.lines[frame.ip]
-	s := fmt.Sprintf("[line %d] in %s ", line, where)
+
+	s := fmt.Sprintf("File '%s' , line %d, in %s ", script, line, where)
 	vm.stackTrace = append(vm.stackTrace, s)
-	codeline := vm.sourceLine(line)
+	codeline := vm.sourceLine(script, line)
 	vm.stackTrace = append(vm.stackTrace, codeline)
 }
 
@@ -1157,33 +1161,40 @@ func (vm *VM) PrintStackTrace() {
 	}
 }
 
-func (vm *VM) sourceLine(line int) string {
+func (vm *VM) sourceLine(script string, line int) string {
 
-	lines := strings.Split(vm.source, "\r\n")
+	source := vm.source
+	if script != vm.script {
+		module := getModule(script)
+		source = globalModules[module]
+	}
+	lines := strings.Split(source, "\n")
 	if line > 0 && line <= len(lines) {
-		return lines[line-1]
+		rv := lines[line-1]
+		return rv
 	}
 	return ""
 }
 
 func (vm *VM) importModule(moduleName string) InterpretResult {
 
-	globalModules[moduleName] = true
 	searchPath := getPath(vm.Args(), moduleName) + ".lox"
 	bytes, err := os.ReadFile(searchPath)
 	if err != nil {
 		fmt.Printf("Could not find module %s.", searchPath)
 		os.Exit(1)
 	}
-
+	globalModules[moduleName] = string(bytes)
 	subvm := NewVM(searchPath, true)
 	subvm.SetArgs(vm.Args())
 	subvm.ModuleImport = true
 	// see if we can load lxc bytecode file for the module.
-	// if not, load the module source and compile it.
+	// if so run it
 	if loadedChunk, ok := loadLxc(searchPath); ok {
+		loadedChunk.filename = moduleName
 		subvm.callLoadedChunk(moduleName, loadedChunk)
 	} else {
+		// if not, load the module source, compile it and run it
 		res, _ := subvm.Interpret(string(bytes))
 		if res != INTERPRET_OK {
 			return res
@@ -1706,4 +1717,10 @@ func getPath(args []string, module string) string {
 		return strings.Join(searchPath, "\\") + "\\" + module
 	}
 	return module
+}
+
+func getModule(fullPath string) string {
+	base := filepath.Base(fullPath)      // "foo.lox"
+	ext := filepath.Ext(base)            // ".lox"
+	return strings.TrimSuffix(base, ext) // "foo"
 }

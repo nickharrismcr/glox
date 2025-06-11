@@ -11,12 +11,12 @@ type FunctionObject struct {
 	upvalueCount int
 }
 
-func makeFunctionObject() *FunctionObject {
+func makeFunctionObject(filename string) *FunctionObject {
 
 	return &FunctionObject{
 		arity: 0,
 		name:  makeStringObject(""),
-		chunk: newChunk(),
+		chunk: newChunk(filename),
 	}
 }
 

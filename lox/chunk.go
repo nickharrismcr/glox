@@ -66,14 +66,16 @@ type Chunk struct {
 	code      []uint8
 	constants []Value
 	lines     []int
+	filename  string // for debugging purposes
 }
 
-func newChunk() *Chunk {
+func newChunk(filename string) *Chunk {
 
 	return &Chunk{
 		code:      []uint8{},
 		constants: []Value{},
 		lines:     []int{},
+		filename:  filename,
 	}
 }
 

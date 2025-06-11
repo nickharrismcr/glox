@@ -32,7 +32,7 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("float_array", makeFloatArrayBuiltIn)
 	vm.defineBuiltIn("encode_rgb", encodeRGBABuiltIn)
 	vm.defineBuiltIn("decode_rgb", decodeRGBABuiltIn)
-	vm.defineBuiltIn("graphics", graphicsBuiltIn)
+	vm.defineBuiltIn("window", graphicsBuiltIn)
 	vm.defineBuiltIn("sleep", sleepBuiltIn)
 
 	// lox built ins e.g Exception classes

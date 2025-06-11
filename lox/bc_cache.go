@@ -88,6 +88,9 @@ func (c *Chunk) serialise(b *bytes.Buffer) {
 		v.serialise(b)
 	}
 	writeMarker(b)
+	bin.Write(b, bin.LittleEndian, uint32(len(c.filename)))
+	b.Write([]byte(c.filename))
+	writeMarker(b)
 }
 
 func (v *Value) serialise(buffer *bytes.Buffer) {
@@ -164,9 +167,16 @@ func readChunk(reader io.Reader) *Chunk {
 	for i := range constants {
 		constants[i] = readValue(reader)
 	}
+	var filenameLen uint32
+	readMarker(reader)
+	bin.Read(reader, bin.LittleEndian, &filenameLen)
+	Debugf("Filename len %d", filenameLen)
+	filename := make([]byte, filenameLen)
+	reader.Read(filename)
+	Debugf("String %s ", string(filename))
 	readMarker(reader)
 
-	chunk := &Chunk{code: code, lines: lines, constants: constants}
+	chunk := &Chunk{code: code, lines: lines, constants: constants, filename: string(filename)}
 	return chunk
 }
 
