@@ -43,18 +43,16 @@ func logmap() {
 
 arraydata=logmap();
 
-var gr=graphics(width,height);
-gr.init();
+var win=window(width,height);
+win.init();
  
-
-
-while (!gr.should_close()) {
+while (!win.should_close()) {
  
-    gr.begin();
-    gr.clear(0,0,0);
-    gr.draw_array(arraydata);
-    gr.end();
+    win.begin();
+    win.clear(0,0,0);
+    win.draw_array(arraydata);
+    win.end();
    
 }
-gr.close();
+win.close();
 

@@ -4,7 +4,8 @@ import colour
 import math; 
 
 const SPEED=8 
-const TRAIL=20
+const TRAIL=100
+const LINES=100
 
 func random_vec2D (minX, maxX, minY, maxY) {
     return math.Vector2D(random.integer(minX, maxX), random.integer(minY, maxY))
@@ -60,6 +61,8 @@ class Line {
         this.counter= 0
     }
     move(){
+        this.hist.append(this.copy()); 
+
         this.x1 = this.x1 + this.d1.x
         this.y1 = this.y1 + this.d1.y
         this.x2 = this.x2 + this.d2.x
@@ -77,14 +80,14 @@ class Line {
             this.d2.y = -this.d2.y
         }    
         
-        this.hist.append(this.copy()); 
+      
        
         
     }
     draw(g) {
         g.line(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a)
         c=1.0
-        foreach (var l in this.hist.data) {
+        foreach (var l in this.hist.data[1:]) {
             c = c + 1.0
             a = 255.0 * (c / (1.1*len(this.hist.data))) ; 
             g.line(l.x1, l.y1, l.x2, l.y2, l.r, l.g, l.b, a)
@@ -128,26 +131,28 @@ class Lines {
 
 const width=1500
 const height=900
-var g = graphics(width,height)
-g.init()
+var win = window(width,height)
+win.init()
+ 
 
 lines=Lines(width, height); 
 
-for (var i = 0; i < 50; i = i + 1) {
+for (var i = 0; i < LINES; i = i + 1) {
     var pos = random_vec2D(0, width, 0, height)
     var pos2 = random_vec2D(0, width, 0, height)
     var col = colour.random_rgb(); 
     lines.add_line(pos.x, pos.y, pos2.x, pos2.y, col.r, col.g, col.b, 255)
 }
 
-while (!g.should_close()) {
+while (!win.should_close()) {
 
-    g.begin()
-    g.clear(0, 0, 0, 255)
+    win.begin()
+    win.clear(10,10,10, 255)
   
     lines.update()
-    lines.draw(g)
- 
-    g.end()
+    win.begin_blend_mode("multiply")
+    lines.draw(win)
+    win.end_blend_mode()
+    win.end()
 }
-g.close()
+win.close()

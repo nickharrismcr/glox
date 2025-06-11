@@ -65,14 +65,14 @@ func update_stars(stars) {
         var pos = s[0];
         var size = s[1];
         var a = s[2];
-        g.circle_fill(pos.x, pos.y, size, 255, 255, 255, a);
+        win.circle_fill(pos.x, pos.y, size, 255, 255, 255, a);
     }
 }   
 
 const width=1500;
 const height=900;
-var g = graphics(width,height);
-g.init();
+var win = window(width,height);
+win.init();
 var col=colour.BLACK;
 var emitters = particle_sys.Emitters();
 for (var i = 0; i < 15; i = i + 1) {
@@ -80,22 +80,23 @@ for (var i = 0; i < 15; i = i + 1) {
 }
 stars = make_stars();
  
-while (!g.should_close()) {
+while (!win.should_close()) {
 
-    g.begin();
-    g.clear(col.r,col.g,col.b,col.a);
+    win.begin();
+    win.begin_blend_mode("add");
+    win.clear(col.r,col.g,col.b,col.a);
     if (!emitters.update() and emitters.queue_length() < 20) {
         queue_random_emitter(width,height,random.integer(50,500));
     }  
     foreach ( var e in emitters.get()) {
         foreach (var p in e.get_particles()) {
-            g.circle_fill(p.pos.x, p.pos.y, p.size, p.col.r, p.col.g, p.col.b,255);
+            win.circle_fill(p.pos.x, p.pos.y, p.size, p.col.r, p.col.g, p.col.b,255);
         }
     }
     update_stars(stars);
-  
-    g.end();
+    win.end_blend_mode();
+    win.end();
     
 }
 
-g.close();
+win.close();

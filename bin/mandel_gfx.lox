@@ -48,7 +48,7 @@ func calc(array,width,height,max_iteration,zoom,xoff,yoff,gradient) {
 var max_iteration = 50;
 const width=550;
 const height=550;
-var gr=graphics(width,height);
+var gr=window(width,height);
 gr.init();
 
 var scale=1.0;
