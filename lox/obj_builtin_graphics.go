@@ -8,6 +8,7 @@ import (
 
 type Graphics struct {
 	width, height int32
+	blend_mode    rl.BlendMode
 }
 
 type GraphicsObject struct {
@@ -19,12 +20,27 @@ func makeGraphicsObject(w int, h int) *GraphicsObject {
 
 	return &GraphicsObject{
 		BuiltInObject: BuiltInObject{},
-		value:         &Graphics{width: int32(w), height: int32(h)},
+		value:         &Graphics{width: int32(w), height: int32(h), blend_mode: rl.BlendAlpha},
 	}
 }
 
 func (o *GraphicsObject) String() string {
 	return fmt.Sprintf("<Graphics %dx%d>", o.value.width, o.value.height)
+}
+
+func (g *Graphics) setBlendMode(modename string) {
+	switch modename {
+	case "add":
+		g.blend_mode = rl.BlendAdditive
+	case "alpha":
+		g.blend_mode = rl.BlendAlpha
+	case "multiply":
+		g.blend_mode = rl.BlendMultiplied
+	case "subtract":
+		g.blend_mode = rl.BlendSubtractColors
+	default:
+		g.blend_mode = rl.BlendAlpha // default to alpha blending
+	}
 }
 
 func (o *GraphicsObject) getType() ObjectType {
@@ -45,6 +61,25 @@ func (o *GraphicsObject) GetMethod(name string) *BuiltInObject {
 		return &BuiltInObject{
 			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				rl.BeginDrawing()
+				rl.BeginBlendMode(rl.BlendAdditive)
+				return makeNilValue()
+			},
+		}
+	case "begin_blend_mode":
+		return &BuiltInObject{
+			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+				modeVal := vm.Stack(arg_stackptr)
+
+				o.value.setBlendMode(modeVal.asString().get())
+				rl.BeginBlendMode(o.value.blend_mode)
+				return makeNilValue()
+			},
+		}
+	case "end_blend_mode":
+		return &BuiltInObject{
+			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+
+				rl.EndBlendMode()
 				return makeNilValue()
 			},
 		}
