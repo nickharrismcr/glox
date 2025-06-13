@@ -1,6 +1,0 @@
-import cls  
-
-i = cls.Test() 
-//print i.get()
-
-print cls.module_func()
