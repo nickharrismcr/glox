@@ -3,7 +3,7 @@ import sys, glob,subprocess,difflib,argparse
 
 def run(fname):
 
-    res = subprocess.Popen(["../glox","%s" % fname],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    res = subprocess.Popen(["glox.exe","%s" % fname,"2>&1"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     return res
 
 def basename(path):
@@ -29,6 +29,7 @@ def process(fname,args):
         with open(testdatafile,"wb") as outfile:
             res=pipe.communicate()
             outfile.write(res[0])
+            passed=True
     else:
         with open(testdatafile,"rb") as infile:
             res=pipe.communicate()
@@ -39,17 +40,17 @@ def process(fname,args):
                 passed=True
             else:
                 print ("Test %-30s : FAIL" % fname)
-            if args.verbose:
-               
-                print (f'expecting:\n'+format(data))
-                print (f'got:\n'+format(res[0]))
+                if args.verbose:
+                
+                    print (f'expecting:\n'+format(data))
+                    print (f'got:\n'+format(res[0]))
 
-                a=res[0].decode('ascii').splitlines()
-                b=data.decode('ascii').splitlines()
-    
-                if args.diff:
-                    d=difflib.context_diff(a,b)
-                    print ('\n'.join(d))
+                    a=res[0].decode('ascii').splitlines()
+                    b=data.decode('ascii').splitlines()
+        
+                    if args.diff:
+                        d=difflib.context_diff(a,b)
+                        print ('\n'.join(d))
     
     return passed 
 
