@@ -1,0 +1,35 @@
+import mountains 
+import stars 
+ 
+
+const width=15 
+const height=9 
+var win = window(width,height)
+win.init()
+
+vel=40
+ 
+//mountain=mountains.Mountain(width*10, height*0.3)
+starfield=stars.Stars(width*5, height, 100)
+bgxpos=0
+fgxpos=0
+
+while (!win.should_close()) {
+
+    win.begin()
+    win.clear(10,10,10, 255)
+    starfield.update()
+    bgxpos = bgxpos + vel/4
+    fgxpos = fgxpos + vel
+    if (fgxpos > width*10) {
+        fgxpos = 0
+    }
+    if (bgxpos > width*5) {
+        bgxpos = 0
+    }
+    mountain.draw(win,height, fgxpos, width)
+    starfield.draw(win, bgxpos, width)
+   
+    win.end()
+}
+win.close()

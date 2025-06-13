@@ -6,6 +6,11 @@ class Vector2D {
         this.x = x;
         this.y = y;
     }
+    add(v2d) {
+      this.x = this.x + v2d.x
+      this.y = this.y + v2d.y 
+      return this
+    }
     scale(scalar) {
       this.x = this.x * scalar;
       this.y = this.y * scalar;
@@ -20,7 +25,7 @@ class Vector2D {
         this.y = yNew;
     }
     copy() {
-        return math.Vector2D(this.x, this.y);
+        return Vector2D(this.x, this.y);
     }
     toString() {
         return "Vector2D(" + str(this.x) + ", " + str(this.y) + ")";

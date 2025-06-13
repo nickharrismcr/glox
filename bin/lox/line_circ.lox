@@ -1,0 +1,296 @@
+
+import random
+import colour
+import math; 
+
+const SPEED=10
+const TRAIL=100
+const LINES=20
+const CIRCLES=20
+
+func random_vec2D (minX, maxX, minY, maxY) {
+    return math.Vector2D(random.integer(minX, maxX), random.integer(minY, maxY))
+}
+
+func rand_not_zero(min, max) {
+    var v = random.integer(min, max)
+    if (v == 0) {
+        return 1
+    }
+    return v
+}
+
+class Bouncer {
+    init(min,max) {
+        this.x= random.integer(min, max)
+        this.dx=random.integer(1,10)
+        this.min=min
+        this.max=max       
+    }
+    update() {
+        this.x = this.x + this.dx
+        if (this.x < this.min) {
+            this.x = this.min
+            this.dx = -this.dx
+        }
+        if (this.x > this.max) {
+            this.x = this.max
+            this.dx = -this.dx
+        }
+    }
+    get() {
+        return this.x
+    }
+    set(value) {
+        this.x = value
+    }
+}
+
+class ColourShift {
+    init() {
+        this.r = Bouncer(0, 255)
+        this.g = Bouncer(0, 255)
+        this.b = Bouncer(0, 255)
+        this.a = Bouncer(0, 255)
+    }
+    update() {
+        this.r.update()
+        this.g.update()
+        this.b.update()
+        this.a.update()
+    }
+    get() {
+        return colour.Colour(this.r.get(), this.g.get(), this.b.get(), this.a.get())
+    }
+
+}
+
+// A simple buffer that rotates its contents when full
+// and appends new values to the end.
+class Buffer{
+    init(size) {
+        this.size = size
+        this.data = []
+    }
+    append(value) {
+        if (len(this.data) >= this.size) {
+            this.data[0]= value
+            this.data = this.shift_list(this.data)
+        } else {
+            this.data.append(value)
+        }
+    }
+    shift_list(lst) {
+        var new_lst = []
+        for (var i = 1; i < len(lst); i = i + 1) {
+            new_lst.append(lst[i])
+        }
+        return new_lst
+    }
+    // Returns the length of the list
+    len(lst) {
+        return lst.length
+    }
+    toString() {
+        return "Buffer(" + str(this.size) + ", " + str(this.data) + ")"
+    }
+}
+
+// A line that moves around the screen and leaves a trail
+class Line {
+    init(x1, y1, x2, y2, r, g, b, a, width, height) {
+        this.x1 = x1
+        this.y1 = y1
+        this.x2 = x2
+        this.y2 = y2
+        this.r = r
+        this.g = g
+        this.b = b
+        this.a = a
+        this.d1= random_vec2D(-SPEED, SPEED, -SPEED, SPEED)
+        this.d2= random_vec2D(-SPEED, SPEED, -SPEED, SPEED)
+        this.width = width
+        this.height = height
+        this.hist = Buffer(TRAIL)
+        this.counter= 0
+    }
+    move(){
+        this.hist.append(this.copy()); 
+
+        this.x1 = this.x1 + this.d1.x
+        this.y1 = this.y1 + this.d1.y
+        this.x2 = this.x2 + this.d2.x
+        this.y2 = this.y2 + this.d2.y
+        if (this.x1 < 0 or this.x1 > this.width) {
+            this.d1.x = -this.d1.x
+        }
+        if (this.y1 < 0 or this.y1 > this.height) { 
+            this.d1.y = -this.d1.y
+        }
+        if (this.x2 < 0 or this.x2 > this.width) {
+            this.d2.x = -this.d2.x;     
+        }   
+        if (this.y2 < 0 or this.y2 > this.height) {
+            this.d2.y = -this.d2.y
+        }    
+        
+      
+       
+        
+    }
+    draw(g) {
+        g.line(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a)
+        c=1.0
+        foreach (var l in this.hist.data[1:]) {
+            c = c + 1.0
+            a = 255.0 * (c / (1.1*len(this.hist.data))) ; 
+            g.line(l.x1, l.y1, l.x2, l.y2, l.r, l.g, l.b, a)
+        }   
+    }
+
+    new() {
+        return Line(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a, this.width, this.height)
+    }
+    toString() {
+        return "Line(" + str(this.x1) + ", " + str(this.y1) + ", " + str(this.x2) + ", " + str(this.y2) + ", " + str(this.r) + ", " + str(this.g) + ", " + str(this.b) + ", " + str(this.a) + ")"
+    }
+    copy() {
+        return Line(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a, this.width, this.height)
+    }
+}
+
+// A collection of lines 
+class Lines {
+    init(width, height ){
+        this.width = width
+        this.height = height
+        this.lines = []
+    }
+    add_line(x1, y1, x2, y2, r, g, b, a) {
+        var line = Line(x1, y1, x2, y2, r, g, b, a, this.width, this.height)
+        this.lines.append(line)
+    }
+    update() {
+        foreach ( var l in this.lines ) {
+            l.move()
+        }
+    }
+    draw(g) {
+        foreach ( var l in this.lines ) {
+            l.draw(g)
+        }
+    }
+}
+class Circle {
+    init(pos,s,col) {
+        this.pos = pos
+        this.s = s
+        this.col = col
+    }
+    copy() {
+        return Circle(this.pos.copy(), this.s, this.col)
+    }
+}
+
+class Circler {
+    init(pos, s,col, width, height) {
+        this.circle = Circle(pos, s, col)
+        this.dpos= random_vec2D(rand_not_zero(-SPEED, SPEED), rand_not_zero(-SPEED, SPEED), rand_not_zero(-SPEED, SPEED), rand_not_zero(-SPEED, SPEED))
+        this.width = width
+        this.height = height
+        this.hist = Buffer(TRAIL)
+        this.counter= 0
+        this.shifter=   ColourShift()
+    }
+    move(){
+        this.hist.append(this.circle.copy()); 
+        this.circle.pos.add(this.dpos)
+        if (this.circle.pos.x < 0 or this.circle.pos.x > this.width) {
+            this.dpos.x = -this.dpos.x
+        }
+        if (this.circle.pos.y < 0 or this.circle.pos.y > this.height) {
+            this.dpos.y = -this.dpos.y
+        }
+        this.shifter.update()
+        this.circle.col = this.shifter.get()
+    }
+    draw(g) {
+        c=this.circle.col
+        g.circle_fill(this.circle.pos.x, this.circle.pos.y, this.circle.s,c.r,c.g,c.b,c.a)
+        c=1.0
+        foreach (var l in this.hist.data[1:]) {
+            c = c + 1.0
+            a = 255.0 * (c / (2*len(this.hist.data))) ; 
+            s = l.s * (c / len(this.hist.data))
+            g.circle_fill(l.pos.x, l.pos.y, s,l.col.r,l.col.g,l.col.b,a)
+        }   
+    } 
+    
+}
+
+// A collection of circlers  
+class Circlers {
+    init(width, height ){
+        this.width = width
+        this.height = height
+        this.circlers = []
+    }
+    add_circle(pos,s, col) {
+        var c = Circler(pos, s, col, this.width, this.height)
+        this.circlers.append(c) 
+       
+    }
+    update() {
+        foreach ( var l in this.circlers ) {
+            l.move()
+        }
+    }
+    draw(g) {
+        foreach ( var l in this.circlers ) {
+            l.draw(g)
+        }
+    }
+}
+ 
+
+
+const width=1500
+const height=900
+var win = window(width,height)
+win.init()
+ 
+
+lines=Lines(width, height); 
+
+for (var i = 0; i < LINES; i = i + 1) {
+    var pos = random_vec2D(0, width, 0, height)
+    var pos2 = random_vec2D(0, width, 0, height)
+    var col = colour.random_rgb(); 
+    lines.add_line(pos.x, pos.y, pos2.x, pos2.y, col.r, col.g, col.b, 255)
+}
+
+circles=Circlers(width, height);
+
+for (var i = 0; i < CIRCLES; i = i + 1) {
+    var pos = random_vec2D(0, width, 0, height)
+    var s = random.integer(1, 5)
+    var col = colour.random_rgb();
+    circles.add_circle(pos, s, col)
+}
+
+while (!win.should_close()) {
+
+    win.begin()
+    win.clear(10,10,10, 255)
+  
+    lines.update()
+    win.begin_blend_mode("multiply")
+    lines.draw(win)
+    win.end_blend_mode()
+    circles.update()
+    win.begin_blend_mode("subtract")
+    circles.draw(win)
+    win.end_blend_mode()
+    win.end()
+}
+win.close()

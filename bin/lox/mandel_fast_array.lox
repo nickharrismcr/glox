@@ -1,0 +1,97 @@
+//fast mandelbrot PNG using native plotter 
+ 
+import random;
+
+class RandWalk{
+
+    init(x,change){
+        this.x=x;
+        this.dx=1;
+        this.change=change;
+        this.count=0;
+    }
+    next(){
+        this.count=this.count+1;
+        if (this.count==this.change) {
+            this.count=0;
+            this.dx=random.integer(-1,1); 
+        }
+        this.x = this.x + this.dx;
+        if (this.x < 0){
+            this.x = 0;
+            this.dx=-this.dx;
+        }
+        if (this.x > 255){
+            this.x = 255;
+            this.dx = -this.dx;
+        }
+        return this.x;
+    }
+}
+
+class GradientGenerator {
+    
+    init(change){
+
+        this.r=RandWalk(125,change);
+        this.g=RandWalk(125,change);
+        this.b=RandWalk(125,change);
+    }
+
+    next() {
+        var r=this.r.next();
+        var g=this.g.next();
+        var b=this.b.next();
+        return encode_rgb(r,g,b);
+    }
+}
+
+func get_gradient(max_iteration){
+
+    var g = GradientGenerator(5);
+
+    var gradient = float_array(max_iteration,1);
+    for (var i = 0; i < max_iteration; i = i + 1) {
+        var f=g.next();
+        gradient.set(i, 0, f);
+    }
+    
+    return gradient;
+}
+ 
+
+func rotate(array,num) {
+    for (var n=0; n<num; n=n+1 )
+    {
+        array.set(array.width()-1,0,array.get(0,0));
+        for (var i = 0; i < array.width()-1; i = i + 1) {
+            array.set(i,0,array.get(i+1,0));
+        }
+    }
+}
+
+func calc(array,width,height,max_iteration,zoom,xoff,yoff,gradient) {
+    lox_mandel_array(array_rgb,width,height,max_iteration,float(xoff),float(yoff),float(zoom),gradient);
+}
+
+const max_iteration = 1250;
+const width=556;
+const height=556;
+
+var image=0;
+var name="mandel.png";
+var scale=1.0;
+var xOffset= -0.7436438870371587;
+var yOffset= 0.13182590420531197;
+var array_rgb=float_array(width,height);
+var gradient = get_gradient(max_iteration);
+while (true) {
+ 
+    rotate(gradient,5);
+    calc(array_rgb,width,height,max_iteration,scale,xOffset,yOffset,gradient);
+    draw_png(name,array_rgb,true);
+    scale=scale*0.95;
+   
+}
+
+    

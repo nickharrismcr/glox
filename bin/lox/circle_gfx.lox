@@ -1,0 +1,133 @@
+
+import random
+import colour
+import math; 
+
+const SPEED=5
+const TRAIL=50
+const CIRCLES=100
+
+func random_vec2D (minX, maxX, minY, maxY) {
+    return math.Vector2D(random.integer(minX, maxX), random.integer(minY, maxY))
+}
+
+// A simple buffer that rotates its contents when full
+// and appends new values to the end.
+class Buffer{
+    init(size) {
+        this.size = size
+        this.data = []
+    }
+    append(value) {
+        if (len(this.data) >= this.size) {
+            this.data[0]= value
+            this.data = this.shift_list(this.data)
+        } else {
+            this.data.append(value)
+        }
+    }
+    shift_list(lst) {
+        var new_lst = []
+        for (var i = 1; i < len(lst); i = i + 1) {
+            new_lst.append(lst[i])
+        }
+        return new_lst
+    }
+    // Returns the length of the list
+    len(lst) {
+        return lst.length
+    }
+    toString() {
+        return "Buffer(" + str(this.size) + ", " + str(this.data) + ")"
+    }
+}
+ 
+class Circle {
+    init(pos, s,col, width, height) {
+        this.pos=pos
+        this.col=col
+        this.s=s
+        this.dpos= random_vec2D(-SPEED, SPEED, -SPEED, SPEED)
+        this.width = width
+        this.height = height
+        this.hist = Buffer(TRAIL)
+        this.counter= 0
+    }
+    move(){
+        this.hist.append(this.copy()); 
+        this.pos.add(this.dpos)
+        if (this.pos.x < 0 or this.pos.x > this.width) {
+            this.dpos.x = -this.dpos.x
+        }
+        if (this.pos.y < 0 or this.pos.y > this.height) {
+            this.dpos.y = -this.dpos.y
+        }
+    }
+    draw(g) {
+        c=this.col
+        g.circle_fill(this.pos.x, this.pos.y, this.s,c.r,c.g,c.b,c.a)
+        c=1.0
+        foreach (var l in this.hist.data[1:]) {
+            c = c + 1.0
+            a = 255.0 * (c / (2*len(this.hist.data))) ; 
+            s = l.s * (c / len(this.hist.data))
+            g.circle_fill(l.pos.x, l.pos.y, s,l.col.r,l.col.g,l.col.b,a)
+        }   
+    } 
+    copy() {
+        return Circle(this.pos.copy(),this.s, this.col,this.width,this.height)
+    }
+}
+
+// A collection of circles  
+class Circles {
+    init(width, height ){
+        this.width = width
+        this.height = height
+        this.circles = []
+    }
+    add_circle(pos,s, col) {
+        var c = Circle(pos, s, col, this.width, this.height)
+        this.circles.append(c) 
+       
+    }
+    update() {
+        foreach ( var l in this.circles ) {
+            l.move()
+        }
+    }
+    draw(g) {
+        foreach ( var l in this.circles ) {
+            l.draw(g)
+        }
+    }
+}
+ 
+
+const width=1500
+const height=900
+var win = window(width,height)
+win.init()
+ 
+
+circles=Circles(width, height);
+
+for (var i = 0; i < CIRCLES; i = i + 1) {
+    var pos = random_vec2D(0, width, 0, height)
+    var s = random.integer(1, 5)
+    var col = colour.random_rgb();
+    circles.add_circle(pos, s, col)
+}
+
+while (!win.should_close()) {
+
+    win.begin()
+    win.clear(10,10,10, 255)
+
+    circles.update()
+    win.begin_blend_mode("add")
+    circles.draw(win)
+    win.end_blend_mode()
+    win.end()
+}
+win.close()

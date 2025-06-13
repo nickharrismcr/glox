@@ -1,0 +1,53 @@
+
+import random
+import colour
+import math
+
+class Star {
+    init(pos,col){
+        this.pos = pos
+        this.col = col
+    }
+    get(){
+        return (this.pos,this.col)
+    }   
+}
+
+class Stars { 
+    init(width,height,num_stars) {
+        this.width = width
+        this.height = height
+        this.num_stars = num_stars
+        this.stars = []
+        this.add_stars()  
+    }
+    add_stars() {
+        for (var i = 0; i < this.num_stars; i = i + 1) {
+            var x = random.integer(0, this.width)
+            var y = random.integer(0, this.height)
+            this.stars.append(Star(math.Vector2D(x, y),colour.random_rgb() ))  
+        }
+    }
+
+    update(){
+        var a = random.integer(0, 100)
+        if (a < 1) {
+            var x = random.integer(0, this.width)
+            var y = random.integer(0, this.height)
+            var which = random.integer(0, len(this.stars)-1)
+            this.stars[which].pos = math.Vector2D(x, y)
+        }
+    }
+    draw(win,xpos,screen_width) {
+        foreach (var star in this.stars) {
+            s= star.get()
+            pos=s[0]
+            col=s[1]
+            relative_x = pos.x - xpos
+            if (relative_x >= 0 and relative_x < screen_width) {
+                win.circle_fill(relative_x, pos.y, 2, col.r, col.g, col.b, 255)
+            }
+        }
+    }
+}
+        

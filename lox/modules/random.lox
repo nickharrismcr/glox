@@ -2,6 +2,7 @@ import math;
 
 // Returns an integer between min and max (inclusive)
 func integer(min, max) {
+ 
     return min + math.floor(rand() * (max - min + 1));
 }
 

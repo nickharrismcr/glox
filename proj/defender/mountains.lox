@@ -1,0 +1,44 @@
+
+import random
+import colour
+import math; 
+
+
+class Mountain { 
+    init(width,max_height) {
+        this.width = width
+        this.max_height = max_height
+        this.points = []
+        this.generate_points()  
+    }
+    generate_points() {
+        x = 0
+        h = 0
+        dh = 1  
+        while (x < this.width) {
+            x=x+1
+            this.points.append(h)
+            h = h + dh 
+            if (h < 0 or h > this.max_height) {
+                dh = -dh
+            }
+            if (random.integer(0, 50) == 0) {
+                dh = -dh
+            }
+        }
+    }
+    get(x){
+        return this.points[x%len(this.points)] 
+    }    
+    draw(win,height,xpos,width){
+        for (var x = 0; x< width; x = x + 1) {
+            if (x%5==0){
+                var h = this.get(x + xpos)
+                win.circle_fill(x,height-h,2,255,150,0,255)
+            }
+        }
+    }
+}
+ 
+
+ 

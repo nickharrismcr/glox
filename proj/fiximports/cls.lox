@@ -1,0 +1,15 @@
+import random
+
+class Test{
+  init() {
+    this.value = 42;
+  }
+
+  get() {
+    return random.integer(0, 100)  
+  }
+}
+
+func module_func() {
+  return random.integer(0, 100)
+}

@@ -1,0 +1,731 @@
+Compiling...
+=== <script> ===
+[ "cls" ][ "i" ][ "Test" ][ "get" ]
+0000 0001 OP_IMPORT        0000  "cls"
+0002 0003 OP_GET_GLOBAL    0000  "cls"
+0004    | OP_INVOKE        (0 args)    2  "Test"
+0007    | OP_SET_GLOBAL    0001  "i"
+0009    | OP_POP
+0010 0004 OP_GET_GLOBAL    0001  "i"
+0012    | OP_INVOKE        (0 args)    3  "get"
+0015    | OP_STR
+0016    | OP_PRINT
+0017    | OP_NIL
+0018    | OP_RETURN
+Compile done.
+globals: main.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+                                                         
+01 : [main.lox  ] : 0000 0001 OP_IMPORT        0000  "cls"
+Attempting to load lxc for cls.lox
+Compiling...
+=== init ===
+[ "value" ][ 42 ]
+0000 0005 OP_GET_LOCAL     0000
+0002    | OP_CONSTANT      0001  42
+0004    | OP_SET_PROPERTY  0000  "value"
+0006    | OP_POP
+0007 0006 OP_GET_LOCAL     0000
+0009    | OP_MODULE_RETURN
+=== get ===
+[ "random" ][ "randint" ][ 0 ][ 100 ]
+0000 0009 OP_GET_GLOBAL    0000  "random"
+0002    | OP_CONSTANT      0002  0
+0004    | OP_CONSTANT      0003  100
+0006    | OP_INVOKE        (2 args)    1  "randint"
+0009    | OP_MODULE_RETURN
+0010 0010 OP_NIL
+0011    | OP_MODULE_RETURN
+=== <script> ===
+[ "random" ][ "Test" ][ "init" ][ <fn "init"> ][ "get" ][ <fn "get"> ]
+0000 0001 OP_IMPORT        0000  "random"
+0002 0003 OP_CLASS         0001  "Test"
+0004    | OP_DEFINE_GLOBAL 0001  "Test"
+0006    | OP_GET_GLOBAL    0001  "Test"
+0008 0006 OP_CLOSURE       0003  <fn "init">
+0010    | OP_METHOD        0002  "init"
+0012 0010 OP_CLOSURE       0005  <fn "get">
+0014    | OP_METHOD        0004  "get"
+0016 0011 OP_POP
+0017    | OP_NIL
+0018    | OP_MODULE_RETURN
+Compile done.
+globals: cls.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+                                                         
+01 : [cls.lox   ] : 0000 0001 OP_IMPORT        0000  "random"
+Attempting to load lxc for D:/go/glox/lox/modules/random.lox
+Code len 16
+Line count 16
+Const count 7
+Tag : 3
+String math 
+Tag : 3
+String integer 
+Tag : 4
+Function integer
+Arity 2
+Arity 2
+Code len 24
+Line count 24
+Const count 4
+Tag : 3
+String math 
+Tag : 3
+String floor 
+Tag : 3
+String rand 
+Tag : 2
+Int 1
+Filename len 33
+String D:/go/glox/lox/modules/random.lox 
+Tag : 3
+String float 
+Tag : 4
+Function float
+Arity 2
+Arity 2
+Code len 16
+Line count 16
+Const count 1
+Tag : 3
+String rand 
+Filename len 33
+String D:/go/glox/lox/modules/random.lox 
+Tag : 3
+String choice 
+Tag : 4
+Function choice
+Arity 1
+Arity 1
+Code len 42
+Line count 42
+Const count 5
+Tag : 3
+String len 
+Tag : 2
+Int 0
+Tag : 3
+String integer 
+Tag : 2
+Int 1
+Tag : 3
+String [ 
+Filename len 33
+String D:/go/glox/lox/modules/random.lox 
+Filename len 33
+String D:/go/glox/lox/modules/random.lox 
+globals: D:/go/glox/lox/modules/random.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+                                                         
+01 : [D:/go/glox/lox/modules/random.lox] : 0000 0001 OP_IMPORT        0000  "math"
+Attempting to load lxc for D:/go/glox/lox/modules/math.lox
+Code len 49
+Line count 49
+Const count 21
+Tag : 3
+String Vector2D 
+Tag : 3
+String init 
+Tag : 4
+Function init
+Arity 2
+Arity 2
+Code len 17
+Line count 17
+Const count 2
+Tag : 3
+String x 
+Tag : 3
+String y 
+Filename len 31
+String D:/go/glox/lox/modules/math.lox 
+Tag : 3
+String add 
+Tag : 4
+Function add
+Arity 1
+Arity 1
+Code len 33
+Line count 33
+Const count 2
+Tag : 3
+String x 
+Tag : 3
+String y 
+Filename len 31
+String D:/go/glox/lox/modules/math.lox 
+Tag : 3
+String scale 
+Tag : 4
+Function scale
+Arity 1
+Arity 1
+Code len 26
+Line count 26
+Const count 2
+Tag : 3
+String x 
+Tag : 3
+String y 
+Filename len 31
+String D:/go/glox/lox/modules/math.lox 
+Tag : 3
+String rotate 
+Tag : 4
+Function rotate
+Arity 1
+Arity 1
+Code len 58
+Line count 58
+Const count 4
+Tag : 3
+String cos 
+Tag : 3
+String sin 
+Tag : 3
+String x 
+Tag : 3
+String y 
+Filename len 31
+String D:/go/glox/lox/modules/math.lox 
+Tag : 3
+String copy 
+Tag : 4
+Function copy
+Arity 0
+Arity 0
+Code len 16
+Line count 16
+Const count 4
+Tag : 3
+String math 
+Tag : 3
+String Vector2D 
+Tag : 3
+String x 
+Tag : 3
+String y 
+Filename len 31
+String D:/go/glox/lox/modules/math.lox 
+Tag : 3
+String toString 
+Tag : 4
+Function toString
+Arity 0
+Arity 0
+Code len 23
+Line count 23
+Const count 5
+Tag : 3
+String Vector2D( 
+Tag : 3
+String x 
+Tag : 3
+String ,  
+Tag : 3
+String y 
+Tag : 3
+String ) 
+Filename len 31
+String D:/go/glox/lox/modules/math.lox 
+Tag : 3
+String floor 
+Tag : 4
+Function floor
+Arity 1
+Arity 1
+Code len 46
+Line count 46
+Const count 3
+Tag : 2
+Int 0
+Tag : 3
+String int 
+Tag : 2
+Int 1
+Filename len 31
+String D:/go/glox/lox/modules/math.lox 
+Tag : 3
+String max 
+Tag : 4
+Function max
+Arity 2
+Arity 2
+Code len 21
+Line count 21
+Const count 0
+Filename len 31
+String D:/go/glox/lox/modules/math.lox 
+Tag : 3
+String min 
+Tag : 4
+Function min
+Arity 2
+Arity 2
+Code len 21
+Line count 21
+Const count 0
+Filename len 31
+String D:/go/glox/lox/modules/math.lox 
+Tag : 3
+String PI 
+Tag : 1
+Float 3.141593
+Filename len 31
+String D:/go/glox/lox/modules/math.lox 
+globals: D:/go/glox/lox/modules/math.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+                                                         
+01 : [D:/go/glox/lox/modules/math.lox] : 0000 0003 OP_CLASS         0000  "Vector2D"
+globals: D:/go/glox/lox/modules/math.lox 
+RunTimeError -> <class RunTimeError>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+                                                         % <class Vector2D> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0002    | OP_DEFINE_GLOBAL 0000  "Vector2D"
+globals: D:/go/glox/lox/modules/math.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+                                                         
+01 : [D:/go/glox/lox/modules/math.lox] : 0004    | OP_GET_GLOBAL    0000  "Vector2D"
+globals: D:/go/glox/lox/modules/math.lox 
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+                                                         % <class Vector2D> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0006 0008 OP_CLOSURE       0002  <fn "init">
+globals: D:/go/glox/lox/modules/math.lox 
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+                                                         % <class Vector2D> %% <fn "init"> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0008    | OP_METHOD        0001  "init"
+globals: D:/go/glox/lox/modules/math.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+                                                         % <class Vector2D> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0010 0013 OP_CLOSURE       0004  <fn "add">
+globals: D:/go/glox/lox/modules/math.lox 
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+                                                         % <class Vector2D> %% <fn "add"> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0012    | OP_METHOD        0003  "add"
+globals: D:/go/glox/lox/modules/math.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+                                                         % <class Vector2D> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0014 0017 OP_CLOSURE       0006  <fn "scale">
+globals: D:/go/glox/lox/modules/math.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+                                                         % <class Vector2D> %% <fn "scale"> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0016    | OP_METHOD        0005  "scale"
+globals: D:/go/glox/lox/modules/math.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+                                                         % <class Vector2D> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0018 0026 OP_CLOSURE       0008  <fn "rotate">
+globals: D:/go/glox/lox/modules/math.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+                                                         % <class Vector2D> %% <fn "rotate"> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0020    | OP_METHOD        0007  "rotate"
+globals: D:/go/glox/lox/modules/math.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+                                                         % <class Vector2D> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0022 0029 OP_CLOSURE       0010  <fn "copy">
+globals: D:/go/glox/lox/modules/math.lox 
+Vector2D -> <class Vector2D>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+                                                         % <class Vector2D> %% <fn "copy"> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0024    | OP_METHOD        0009  "copy"
+globals: D:/go/glox/lox/modules/math.lox 
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+                                                         % <class Vector2D> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0026 0032 OP_CLOSURE       0012  <fn "toString">
+globals: D:/go/glox/lox/modules/math.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+                                                         % <class Vector2D> %% <fn "toString"> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0028    | OP_METHOD        0011  "toString"
+globals: D:/go/glox/lox/modules/math.lox 
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+                                                         % <class Vector2D> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0030 0033 OP_POP
+globals: D:/go/glox/lox/modules/math.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+                                                         
+01 : [D:/go/glox/lox/modules/math.lox] : 0031 0042 OP_CLOSURE       0014  <fn "floor">
+globals: D:/go/glox/lox/modules/math.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+                                                         % <fn "floor"> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0033    | OP_DEFINE_GLOBAL 0013  "floor"
+globals: D:/go/glox/lox/modules/math.lox 
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+floor -> <fn "floor">  
+Exception -> <class Exception>  
+                                                         
+01 : [D:/go/glox/lox/modules/math.lox] : 0035 0049 OP_CLOSURE       0016  <fn "max">
+globals: D:/go/glox/lox/modules/math.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+floor -> <fn "floor">  
+                                                         % <fn "max"> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0037    | OP_DEFINE_GLOBAL 0015  "max"
+globals: D:/go/glox/lox/modules/math.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+floor -> <fn "floor">  
+max -> <fn "max">  
+                                                         
+01 : [D:/go/glox/lox/modules/math.lox] : 0039 0056 OP_CLOSURE       0018  <fn "min">
+globals: D:/go/glox/lox/modules/math.lox 
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+floor -> <fn "floor">  
+max -> <fn "max">  
+Exception -> <class Exception>  
+                                                         % <fn "min"> %
+01 : [D:/go/glox/lox/modules/math.lox] : 0041    | OP_DEFINE_GLOBAL 0017  "min"
+globals: D:/go/glox/lox/modules/math.lox 
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+floor -> <fn "floor">  
+max -> <fn "max">  
+min -> <fn "min">  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+                                                         
+01 : [D:/go/glox/lox/modules/math.lox] : 0043 0058 OP_CONSTANT      0020  3.141592653589793
+globals: D:/go/glox/lox/modules/math.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+floor -> <fn "floor">  
+max -> <fn "max">  
+min -> <fn "min">  
+                                                         % 3.141592653589793 %
+01 : [D:/go/glox/lox/modules/math.lox] : 0045    | OP_DEFINE_GLOBAL 0019  "PI"
+globals: D:/go/glox/lox/modules/math.lox 
+floor -> <fn "floor">  
+max -> <fn "max">  
+min -> <fn "min">  
+PI -> 3.141592653589793  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+                                                         
+01 : [D:/go/glox/lox/modules/math.lox] : 0047    | OP_NIL
+globals: D:/go/glox/lox/modules/math.lox 
+floor -> <fn "floor">  
+max -> <fn "max">  
+min -> <fn "min">  
+PI -> 3.141592653589793  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+Vector2D -> <class Vector2D>  
+                                                         % nil %
+01 : [D:/go/glox/lox/modules/math.lox] : 0048    | OP_MODULE_RETURN
+globals: D:/go/glox/lox/modules/random.lox 
+RunTimeError -> <class RunTimeError>  
+math -> <module math>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+                                                         
+01 : [D:/go/glox/lox/modules/random.lox] : 0002 0006 OP_CLOSURE       0002  <fn "integer">
+globals: D:/go/glox/lox/modules/random.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+math -> <module math>  
+                                                         % <fn "integer"> %
+01 : [D:/go/glox/lox/modules/random.lox] : 0004    | OP_DEFINE_GLOBAL 0001  "integer"
+globals: D:/go/glox/lox/modules/random.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+math -> <module math>  
+integer -> <fn "integer">  
+                                                         
+01 : [D:/go/glox/lox/modules/random.lox] : 0006 0010 OP_CLOSURE       0004  <fn "float">
+globals: D:/go/glox/lox/modules/random.lox 
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+math -> <module math>  
+integer -> <fn "integer">  
+Exception -> <class Exception>  
+                                                         % <fn "float"> %
+01 : [D:/go/glox/lox/modules/random.lox] : 0008    | OP_DEFINE_GLOBAL 0003  "float"
+globals: D:/go/glox/lox/modules/random.lox 
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+math -> <module math>  
+integer -> <fn "integer">  
+float -> <fn "float">  
+Exception -> <class Exception>  
+                                                         
+01 : [D:/go/glox/lox/modules/random.lox] : 0010 0018 OP_CLOSURE       0006  <fn "choice">
+globals: D:/go/glox/lox/modules/random.lox 
+float -> <fn "float">  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+math -> <module math>  
+integer -> <fn "integer">  
+                                                         % <fn "choice"> %
+01 : [D:/go/glox/lox/modules/random.lox] : 0012    | OP_DEFINE_GLOBAL 0005  "choice"
+globals: D:/go/glox/lox/modules/random.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+math -> <module math>  
+integer -> <fn "integer">  
+float -> <fn "float">  
+choice -> <fn "choice">  
+                                                         
+01 : [D:/go/glox/lox/modules/random.lox] : 0014    | OP_NIL
+globals: D:/go/glox/lox/modules/random.lox 
+math -> <module math>  
+integer -> <fn "integer">  
+float -> <fn "float">  
+choice -> <fn "choice">  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+                                                         % nil %
+01 : [D:/go/glox/lox/modules/random.lox] : 0015    | OP_MODULE_RETURN
+globals: cls.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+random -> <module random>  
+                                                         
+01 : [cls.lox   ] : 0002 0003 OP_CLASS         0001  "Test"
+globals: cls.lox 
+RunTimeError -> <class RunTimeError>  
+random -> <module random>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+                                                         % <class Test> %
+01 : [cls.lox   ] : 0004    | OP_DEFINE_GLOBAL 0001  "Test"
+globals: cls.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+random -> <module random>  
+Test -> <class Test>  
+                                                         
+01 : [cls.lox   ] : 0006    | OP_GET_GLOBAL    0001  "Test"
+globals: cls.lox 
+random -> <module random>  
+Test -> <class Test>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+                                                         % <class Test> %
+01 : [cls.lox   ] : 0008 0006 OP_CLOSURE       0003  <fn "init">
+globals: cls.lox 
+RunTimeError -> <class RunTimeError>  
+random -> <module random>  
+Test -> <class Test>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+                                                         % <class Test> %% <fn "init"> %
+01 : [cls.lox   ] : 0010    | OP_METHOD        0002  "init"
+globals: cls.lox 
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+random -> <module random>  
+Test -> <class Test>  
+Exception -> <class Exception>  
+                                                         % <class Test> %
+01 : [cls.lox   ] : 0012 0010 OP_CLOSURE       0005  <fn "get">
+globals: cls.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+random -> <module random>  
+Test -> <class Test>  
+                                                         % <class Test> %% <fn "get"> %
+01 : [cls.lox   ] : 0014    | OP_METHOD        0004  "get"
+globals: cls.lox 
+RunTimeError -> <class RunTimeError>  
+random -> <module random>  
+Test -> <class Test>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+                                                         % <class Test> %
+01 : [cls.lox   ] : 0016 0011 OP_POP
+globals: cls.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+random -> <module random>  
+Test -> <class Test>  
+                                                         
+01 : [cls.lox   ] : 0017    | OP_NIL
+globals: cls.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+random -> <module random>  
+Test -> <class Test>  
+                                                         % nil %
+01 : [cls.lox   ] : 0018    | OP_MODULE_RETURN
+globals: main.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+cls -> <module cls>  
+                                                         
+01 : [main.lox  ] : 0002 0003 OP_GET_GLOBAL    0000  "cls"
+globals: main.lox 
+cls -> <module cls>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+                                                         % <module cls> %
+01 : [main.lox  ] : 0004    | OP_INVOKE        (0 args)    2  "Test"
+Invoking module cls function 'Test' with 0 args
+globals: cls 
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+random -> <module random>  
+Test -> <class Test>  
+Exception -> <class Exception>  
+                                                         | <instance Test> |
+02 : [init      ] : 0000 0005 OP_GET_LOCAL     0000
+globals: cls 
+RunTimeError -> <class RunTimeError>  
+random -> <module random>  
+Test -> <class Test>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+                                                         | <instance Test> |% <instance Test> %
+02 : [init      ] : 0002    | OP_CONSTANT      0001  42
+globals: cls 
+Test -> <class Test>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+random -> <module random>  
+                                                         | <instance Test> |% <instance Test> %% 42 %
+02 : [init      ] : 0004    | OP_SET_PROPERTY  0000  "value"
+globals: cls 
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+random -> <module random>  
+Test -> <class Test>  
+Exception -> <class Exception>  
+                                                         | <instance Test> |% 42 %
+02 : [init      ] : 0006    | OP_POP
+globals: cls 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+random -> <module random>  
+Test -> <class Test>  
+                                                         | <instance Test> |
+02 : [init      ] : 0007 0006 OP_GET_LOCAL     0000
+globals: cls 
+random -> <module random>  
+Test -> <class Test>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+                                                         | <instance Test> |% <instance Test> %
+02 : [init      ] : 0009    | OP_MODULE_RETURN
+globals: main.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+cls -> <module cls>  
+                                                         % <instance Test> %
+01 : [main.lox  ] : 0007 0003 OP_SET_GLOBAL    0001  "i"
+globals: main.lox 
+i -> <instance Test>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+cls -> <module cls>  
+                                                         % <instance Test> %
+01 : [main.lox  ] : 0009    | OP_POP
+globals: main.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+cls -> <module cls>  
+i -> <instance Test>  
+                                                         
+01 : [main.lox  ] : 0010 0004 OP_GET_GLOBAL    0001  "i"
+globals: main.lox 
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+cls -> <module cls>  
+i -> <instance Test>  
+                                                         % <instance Test> %
+01 : [main.lox  ] : 0012    | OP_INVOKE        (0 args)    3  "get"
+globals: main.lox 
+i -> <instance Test>  
+Exception -> <class Exception>  
+EOFError -> <class EOFError>  
+RunTimeError -> <class RunTimeError>  
+cls -> <module cls>  
+                                                         | <instance Test> |
+02 : [get       ] : 0000 0009 OP_GET_GLOBAL    0000  "random"
+Uncaught exception: <class RunTimeError> : "Undefined variable random" 

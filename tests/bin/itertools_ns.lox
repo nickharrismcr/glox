@@ -6,5 +6,4 @@ print itertools.reverse(a)
 var b = [1,2,3,4]
 print itertools.reverse(b)
 
-var c = {"a":1}
-print itertools.reverse(c)
+ 

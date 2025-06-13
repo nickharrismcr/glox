@@ -46,7 +46,7 @@ class Emitter {
         }
     }
     emit_particle() {
-        var particle = particle_sys.Particle(this.pos.copy(),this.init_function, this.update_function);
+        var particle = Particle(this.pos.copy(),this.init_function, this.update_function);
         this.particles.append(particle);
     }
     update() {
