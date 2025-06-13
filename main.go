@@ -42,7 +42,7 @@ func repl(vm *lox.VM) {
 			if len(s) == 0 {
 				return
 			}
-			status, result := vm.Interpret(s)
+			status, result := vm.Interpret(s, "__repl__")
 			if status == lox.INTERPRET_OK {
 				if result != "nil" {
 					fmt.Println(result)
@@ -79,7 +79,7 @@ func runFile(opts *Options) {
 	vm := lox.NewVM(path, !lox.DebugSkipBuiltins)
 	vm.SetArgs(args)
 
-	status, result := vm.Interpret(source)
+	status, result := vm.Interpret(source, "__main__")
 	if status == lox.INTERPRET_COMPILE_ERROR {
 		os.Exit(65)
 	}

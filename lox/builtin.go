@@ -10,6 +10,7 @@ import (
 
 func (vm *VM) defineBuiltIns() {
 
+	Debug("Defining built-in functions")
 	// native functions
 	vm.defineBuiltIn("args", argsBuiltIn)
 	vm.defineBuiltIn("clock", clockBuiltIn)
@@ -36,9 +37,7 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("sleep", sleepBuiltIn)
 
 	// lox built ins e.g Exception classes
-	vm.loadBuiltInModule(exceptionSource)
-	vm.loadBuiltInModule(eofErrorSource)
-	vm.loadBuiltInModule(RunTimeErrorSource)
+	vm.loadBuiltInModule(exceptionSource, "exception")
 
 }
 
@@ -520,16 +519,43 @@ func openFile(path string, mode string) (*os.File, error) {
 	}
 }
 
-func (vm *VM) loadBuiltInModule(source string) {
+func (vm *VM) loadBuiltInModule(source string, moduleName string) {
+	Debug("Loading built-in module ")
 	subvm := NewVM("", false)
-	subvm.environments.vars = vm.environments.vars
-	DebugSuppress = true
-	_, _ = subvm.Interpret(source)
-	vm.updateEnvironment(*subvm.environments)
+	//	DebugSuppress = true
+	_, _ = subvm.Interpret(source, moduleName)
+	for k, v := range subvm.frames[0].closure.function.environment.vars {
+		vm.builtIns[k] = v
+	}
 	DebugSuppress = false
 }
 
 // predefine an Exception class using Lox source
-const exceptionSource = `class Exception {init(msg) {this.msg = msg;this.name = "Exception";  }toString() {return this.msg;}}`
-const eofErrorSource = `class EOFError < Exception {init(msg) {this.msg = msg;this.name = "EOFError";  }toString() {return this.msg;}}`
-const RunTimeErrorSource = `class RunTimeError < Exception {init(msg) {this.msg = msg;this.name = "RunTimeError";  }toString() {return this.msg;}}`
+const exceptionSource = `class Exception {
+    init(msg) {
+	    this.msg = msg;
+		this.name = "Exception";
+	}
+	toString() {
+	    return this.msg;
+	}
+}
+class EOFError < Exception {
+     init(msg) {
+	    this.msg = msg;
+		this.name = "EOFError";
+	}
+	toString() {
+	    return this.msg;
+	}
+}
+class RunTimeError < Exception {
+    init(msg) {
+	    this.msg = msg;
+		this.name = "RunTimeError";
+	}
+	toString() {
+		return this.msg;
+	}
+}
+`

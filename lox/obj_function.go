@@ -9,14 +9,20 @@ type FunctionObject struct {
 	chunk        *Chunk
 	name         StringObject
 	upvalueCount int
+	environment  *Environment
 }
 
-func makeFunctionObject(filename string) *FunctionObject {
+func makeFunctionObject(filename string, environment *Environment) *FunctionObject {
 
+	if environment == nil {
+		Debug("makeFunctionObject: environment is nil")
+		Debugf("makeFunctionObject: filename: %s", filename)
+	}
 	return &FunctionObject{
-		arity: 0,
-		name:  makeStringObject(""),
-		chunk: newChunk(filename),
+		arity:       0,
+		name:        makeStringObject(""),
+		chunk:       newChunk(filename),
+		environment: environment,
 	}
 }
 

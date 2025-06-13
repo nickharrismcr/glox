@@ -69,24 +69,26 @@ type ClassCompiler struct {
 }
 
 type Compiler struct {
-	enclosing  *Compiler
-	function   *FunctionObject
-	type_      FunctionType
-	locals     [256]*Local
-	localCount int
-	scopeDepth int
-	loop       *Loop
-	upvalues   [256]*Upvalue
-	scriptName string
+	enclosing   *Compiler
+	function    *FunctionObject
+	type_       FunctionType
+	locals      [256]*Local
+	localCount  int
+	scopeDepth  int
+	loop        *Loop
+	upvalues    [256]*Upvalue
+	scriptName  string
+	environment *Environment
 }
 
-func NewCompiler(type_ FunctionType, scriptName string, parent *Compiler) *Compiler {
+func NewCompiler(type_ FunctionType, scriptName string, parent *Compiler, environment *Environment) *Compiler {
 
 	rv := &Compiler{
-		enclosing:  parent,
-		type_:      type_,
-		scriptName: scriptName,
-		function:   makeFunctionObject(scriptName),
+		enclosing:   parent,
+		type_:       type_,
+		scriptName:  scriptName,
+		function:    makeFunctionObject(scriptName, environment),
+		environment: environment,
 	}
 	// slot 0 is for enclosing function
 	rv.locals[0] = &Local{
@@ -109,7 +111,6 @@ type Parser struct {
 	rules               map[TokenType]ParseRule
 	currentCompiler     *Compiler
 	currentClass        *ClassCompiler
-	isModule            bool
 	globals             map[string]bool
 }
 
@@ -124,17 +125,16 @@ func NewParser() *Parser {
 	return p
 }
 
-func (vm *VM) compile(source string) *FunctionObject {
+func (vm *VM) compile(source string, module string) *FunctionObject {
 
 	if DebugTraceExecution && !DebugSuppress {
 		fmt.Println("Compiling...")
 	}
 	parser := NewParser()
-	if vm.ModuleImport {
-		parser.isModule = true
-	}
+
 	parser.scanner = NewScanner(source)
-	parser.currentCompiler = NewCompiler(TYPE_SCRIPT, vm.script, nil)
+	environment := newEnvironment(module)
+	parser.currentCompiler = NewCompiler(TYPE_SCRIPT, vm.script, nil, environment)
 	parser.advance()
 	for !parser.match(TOKEN_EOF) {
 		parser.declaration()
@@ -274,6 +274,8 @@ func (p *Parser) statement() {
 		p.importStatement()
 	} else if p.match(TOKEN_BREAK) {
 		p.breakStatement()
+	} else if p.match(TOKEN_BREAKPOINT) {
+		p.breakpointStatement()
 	} else if p.match(TOKEN_CONTINUE) {
 		p.continueStatement()
 	} else if p.match(TOKEN_TRY) {
@@ -378,7 +380,7 @@ func (p *Parser) funcDeclaration() {
 
 func (p *Parser) function(type_ FunctionType) {
 
-	compiler := NewCompiler(type_, p.currentCompiler.scriptName, p.currentCompiler)
+	compiler := NewCompiler(type_, p.currentCompiler.scriptName, p.currentCompiler, p.currentCompiler.environment)
 	p.currentCompiler = compiler
 	funcname := p.previous.lexeme()
 
@@ -458,6 +460,9 @@ func (p *Parser) classDeclaration() {
 	p.consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.")
 	p.match(TOKEN_EOL) // allow EOL after block
 	p.emitByte(OP_POP)
+	if p.currentClass.hasSuperClass {
+		p.endScope()
+	}
 	p.currentClass = p.currentClass.enclosing
 }
 
@@ -569,9 +574,7 @@ func (p *Parser) returnStatement() {
 		p.expression()
 		p.consume(TOKEN_SEMICOLON, "Expect ';' after return value.")
 		op := OP_RETURN
-		if p.isModule {
-			op = OP_MODULE_RETURN
-		}
+
 		p.emitByte(op)
 	}
 }
@@ -669,6 +672,12 @@ func (p *Parser) breakStatement() {
 		}
 	}
 	p.currentCompiler.loop.breaks = append(p.currentCompiler.loop.breaks, p.emitJump(OP_JUMP))
+}
+
+func (p *Parser) breakpointStatement() {
+
+	p.consume(TOKEN_SEMICOLON, "Expect ';' after statement.")
+	p.emitByte(OP_BREAKPOINT)
 }
 
 func (p *Parser) continueStatement() {
@@ -857,7 +866,7 @@ func (p *Parser) endCompiler() *FunctionObject {
 	function := p.currentCompiler.function
 	s := ""
 	if function.name.get() == "" {
-		s = "<script>"
+		s = p.currentCompiler.scriptName
 	} else {
 		s = function.name.get()
 	}
@@ -1241,9 +1250,7 @@ func (p *Parser) emitReturn() {
 		p.emitByte(OP_NIL)
 	}
 	op := OP_RETURN
-	if p.isModule {
-		op = OP_MODULE_RETURN
-	}
+
 	p.emitByte(op)
 }
 

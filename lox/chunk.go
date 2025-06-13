@@ -59,7 +59,7 @@ const (
 	OP_END_FOREACH
 	OP_CREATE_TUPLE
 	OP_IN
-	OP_MODULE_RETURN
+	OP_BREAKPOINT
 )
 
 type Chunk struct {

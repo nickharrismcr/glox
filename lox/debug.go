@@ -63,8 +63,6 @@ func (c *Chunk) disassembleInstruction(name string, frame *CallFrame, i uint8, o
 	switch i {
 	case OP_RETURN:
 		return c.simpleInstruction("OP_RETURN", offset)
-	case OP_MODULE_RETURN:
-		return c.simpleInstruction("OP_MODULE_RETURN", offset)
 	case OP_CONSTANT:
 		return c.constantInstruction("OP_CONSTANT", offset)
 	case OP_NEGATE:
@@ -195,6 +193,8 @@ func (c *Chunk) disassembleInstruction(name string, frame *CallFrame, i uint8, o
 		return c.simpleInstruction("OP_RAISE", offset)
 	case OP_END_EXCEPT:
 		return c.simpleInstruction("OP_END_EXCEPT", offset)
+	case OP_BREAKPOINT:
+		return c.simpleInstruction("OP_BREAKPOINT", offset)
 	default:
 		fmt.Printf("Unknown opcode %d", i)
 		return offset + 1
@@ -290,8 +290,12 @@ func (c *Chunk) invokeInstruction(name string, offset int) int {
 }
 
 func (vm *VM) showGlobals() {
-	fmt.Printf("globals: %s \n", vm.environments.name)
-	for k, v := range vm.environments.vars {
+	if vm.frame().closure.function.environment == nil {
+		fmt.Println("No globals (nil environment)")
+		return
+	}
+	fmt.Printf("globals: %s \n", vm.frame().closure.function.environment.name)
+	for k, v := range vm.frame().closure.function.environment.vars {
 		fmt.Printf("%s -> %s  \n", k, v)
 	}
 	//for k, v := range vm.environments.builtins {

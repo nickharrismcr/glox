@@ -70,38 +70,40 @@ const (
 	TOKEN_RAISE
 	TOKEN_FOREACH
 	TOKEN_IN
+	TOKEN_BREAKPOINT
 )
 
 var keywords = map[string]TokenType{
-	"and":      TOKEN_AND,
-	"class":    TOKEN_CLASS,
-	"else":     TOKEN_ELSE,
-	"if":       TOKEN_IF,
-	"nil":      TOKEN_NIL,
-	"or":       TOKEN_OR,
-	"print":    TOKEN_PRINT,
-	"return":   TOKEN_RETURN,
-	"super":    TOKEN_SUPER,
-	"var":      TOKEN_VAR,
-	"while":    TOKEN_WHILE,
-	"false":    TOKEN_FALSE,
-	"for":      TOKEN_FOR,
-	"fun":      TOKEN_FUNC,
-	"func":     TOKEN_FUNC,
-	"this":     TOKEN_THIS,
-	"true":     TOKEN_TRUE,
-	"const":    TOKEN_CONST,
-	"break":    TOKEN_BREAK,
-	"continue": TOKEN_CONTINUE,
-	"str":      TOKEN_STR,
-	"import":   TOKEN_IMPORT,
-	"try":      TOKEN_TRY,
-	"except":   TOKEN_EXCEPT,
-	"finally":  TOKEN_FINALLY,
-	"raise":    TOKEN_RAISE,
-	"as":       TOKEN_AS,
-	"foreach":  TOKEN_FOREACH,
-	"in":       TOKEN_IN,
+	"and":        TOKEN_AND,
+	"class":      TOKEN_CLASS,
+	"else":       TOKEN_ELSE,
+	"if":         TOKEN_IF,
+	"nil":        TOKEN_NIL,
+	"or":         TOKEN_OR,
+	"print":      TOKEN_PRINT,
+	"return":     TOKEN_RETURN,
+	"super":      TOKEN_SUPER,
+	"var":        TOKEN_VAR,
+	"while":      TOKEN_WHILE,
+	"false":      TOKEN_FALSE,
+	"for":        TOKEN_FOR,
+	"fun":        TOKEN_FUNC,
+	"func":       TOKEN_FUNC,
+	"this":       TOKEN_THIS,
+	"true":       TOKEN_TRUE,
+	"const":      TOKEN_CONST,
+	"break":      TOKEN_BREAK,
+	"continue":   TOKEN_CONTINUE,
+	"str":        TOKEN_STR,
+	"import":     TOKEN_IMPORT,
+	"try":        TOKEN_TRY,
+	"except":     TOKEN_EXCEPT,
+	"finally":    TOKEN_FINALLY,
+	"raise":      TOKEN_RAISE,
+	"as":         TOKEN_AS,
+	"foreach":    TOKEN_FOREACH,
+	"in":         TOKEN_IN,
+	"breakpoint": TOKEN_BREAKPOINT,
 }
 
 var repr = map[TokenType]string{
@@ -163,6 +165,7 @@ var repr = map[TokenType]string{
 	TOKEN_RAISE:         "TOKEN_RAISE",
 	TOKEN_FOREACH:       "TOKEN_FOREACH",
 	TOKEN_IN:            "TOKEN_IN",
+	TOKEN_BREAKPOINT:    "TOKEN_BREAKPOINT",
 }
 
 type Scanner struct {

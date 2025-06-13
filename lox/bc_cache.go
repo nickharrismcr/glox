@@ -35,10 +35,10 @@ func writeToLxc(vm *VM, serialised *bytes.Buffer) {
 	}
 }
 
-func loadLxc(scriptPath string) (*Chunk, bool) {
+func loadLxc(scriptPath string) (*Chunk, *Environment, bool) {
 
 	if ForceModuleCompile {
-		return nil, false
+		return nil, nil, false
 	}
 	Debugf("Attempting to load lxc for %s", scriptPath)
 
@@ -51,8 +51,8 @@ func loadLxc(scriptPath string) (*Chunk, bool) {
 	// Check timestamps
 	sourceInfo, err := os.Stat(scriptPath)
 	if err != nil {
-		Debug("lxc not found.")
-		return nil, false
+		//Debug("lxc not found.")
+		return nil, nil, false
 	}
 
 	cacheInfo, err := os.Stat(cachePath)
@@ -62,14 +62,15 @@ func loadLxc(scriptPath string) (*Chunk, bool) {
 		// Load from cache
 		reader, err := os.Open(cachePath)
 		if err != nil {
-			Debug("lxc not found.")
-			return nil, false
+			//Debug("lxc not found.")
+			return nil, nil, false
 		}
-		Debug("loading lxc.")
-		chunk := readChunk(reader)
-		return chunk, true
+		Debugf("loading lxc. %s", base)
+		env := newEnvironment(base)
+		chunk := readChunk(reader, env)
+		return chunk, env, true
 	}
-	return nil, false
+	return nil, nil, false
 }
 
 func (c *Chunk) serialise(b *bytes.Buffer) {
@@ -139,19 +140,19 @@ func writeString(b *bytes.Buffer, s string) {
 	b.Write([]byte(s))
 }
 
-func readChunk(reader io.Reader) *Chunk {
+func readChunk(reader io.Reader, env *Environment) *Chunk {
 
 	var codeLen uint32
 	readMarker(reader)
 	bin.Read(reader, bin.LittleEndian, &codeLen)
-	Debugf("Code len %d", codeLen)
+	//Debugf("Code len %d", codeLen)
 	code := make([]byte, codeLen)
 	io.ReadFull(reader, code)
 	readMarker(reader)
 
 	var lineCount uint32
 	bin.Read(reader, bin.LittleEndian, &lineCount)
-	Debugf("Line count %d", lineCount)
+	//Debugf("Line count %d", lineCount)
 	lines := make([]int, lineCount)
 	for i := range lines {
 		var l uint32
@@ -162,65 +163,71 @@ func readChunk(reader io.Reader) *Chunk {
 
 	var constCount uint32
 	bin.Read(reader, bin.LittleEndian, &constCount)
-	Debugf("Const count %d", constCount)
+	//Debugf("Const count %d", constCount)
 	constants := make([]Value, constCount)
 	for i := range constants {
-		constants[i] = readValue(reader)
+		constants[i] = readValue(reader, env)
 	}
 	var filenameLen uint32
 	readMarker(reader)
 	bin.Read(reader, bin.LittleEndian, &filenameLen)
-	Debugf("Filename len %d", filenameLen)
+	//Debugf("Filename len %d", filenameLen)
 	filename := make([]byte, filenameLen)
 	reader.Read(filename)
-	Debugf("String %s ", string(filename))
+	//Debugf("String %s ", string(filename))
 	readMarker(reader)
 
 	chunk := &Chunk{code: code, lines: lines, constants: constants, filename: string(filename)}
 	return chunk
 }
 
-func readValue(r io.Reader) Value {
+func readValue(r io.Reader, env *Environment) Value {
 	var tag [1]byte
 	r.Read(tag[:])
-	Debugf("Tag : %d", tag[0])
+	//Debugf("Tag : %d", tag[0])
 	switch tag[0] {
 	case 0x01:
 		var n float64
 		bin.Read(r, bin.LittleEndian, &n)
-		Debugf("Float %f", n)
+		//Debugf("Float %f", n)
 		return makeFloatValue(n, false)
 	case 0x02:
 		var n uint32
 		bin.Read(r, bin.LittleEndian, &n)
-		Debugf("Int %d", n)
+		//Debugf("Int %d", n)
 		return makeIntValue(int(n), false)
 	case 0x03:
 		var len uint32
 		bin.Read(r, bin.LittleEndian, &len)
 		buf := make([]byte, len)
 		r.Read(buf)
-		Debugf("String %s ", string(buf))
+		//Debugf("String %s ", string(buf))
 		return makeObjectValue(makeStringObject(string(buf)), false)
 	case 0x04:
 		s := readString(r)
 		name := makeStringObject(s)
-		Debugf("Function %s", s)
+		//Debugf("Function %s", s)
 		var arity uint32
 		bin.Read(r, bin.LittleEndian, &arity)
-		Debugf("Arity %d", arity)
+		//Debugf("Arity %d", arity)
 		var upvalueCount uint32
 		bin.Read(r, bin.LittleEndian, &upvalueCount)
-		Debugf("Arity %d", arity)
-		chunk := readChunk(r)
-		return makeObjectValue(&FunctionObject{name: name, arity: int(arity), upvalueCount: int(upvalueCount), chunk: chunk}, false)
+		//Debugf("Arity %d", arity)
+		chunk := readChunk(r, env)
+		fo := makeFunctionObject(name.get(), env)
+		fo.name = name
+		//Debugf("Function %s arity %d upvalueCount %d", fo.name.get(), arity, upvalueCount)
+		fo.arity = int(arity)
+		fo.upvalueCount = int(upvalueCount)
+		fo.chunk = chunk
+		return makeObjectValue(fo, false)
 	case 0x05:
 		var b [1]byte
 		r.Read(b[:])
-		Debugf("Bool %s", b[0] == 1)
+		//Debugf("Bool %s", b[0] == 1)
 		return makeBooleanValue(b[0] == 1, false)
 	case 0x06:
-		Debugf("Nil")
+		//Debugf("Nil")
 		return makeNilValue()
 	default:
 		panic("unknown tag")
