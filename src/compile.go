@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	scn "glox/src/scanner"
 )
 
 type Precedence int
@@ -31,7 +33,7 @@ type ParseRule struct {
 }
 
 type Local struct {
-	name       Token
+	name       scn.Token
 	lexeme     string
 	depth      int
 	isCaptured bool
@@ -96,19 +98,19 @@ func NewCompiler(type_ FunctionType, scriptName string, parent *Compiler, enviro
 		isCaptured: false,
 	}
 	if type_ != TYPE_FUNCTION {
-		rv.locals[0].name = syntheticToken("this")
+		rv.locals[0].name = scn.SyntheticToken("this")
 	} else {
-		rv.locals[0].name = Token{}
+		rv.locals[0].name = scn.Token{}
 	}
 	rv.localCount = 1
 	return rv
 }
 
 type Parser struct {
-	scanner             *Scanner
-	current, previous   Token
+	scn                 *scn.Scanner
+	current, previous   scn.Token
 	hadError, panicMode bool
-	rules               map[TokenType]ParseRule
+	rules               map[scn.TokenType]ParseRule
 	currentCompiler     *Compiler
 	currentClass        *ClassCompiler
 	globals             map[string]bool
@@ -132,14 +134,14 @@ func (vm *VM) compile(source string, module string) *FunctionObject {
 	}
 	parser := NewParser()
 
-	parser.scanner = NewScanner(source)
+	parser.scn = scn.NewScanner(source)
 	environment := newEnvironment(module)
 	parser.currentCompiler = NewCompiler(TYPE_SCRIPT, vm.script, nil, environment)
 	parser.advance()
-	for !parser.match(TOKEN_EOF) {
+	for !parser.match(scn.TOKEN_EOF) {
 		parser.declaration()
 	}
-	//parser.consume(TOKEN_EOF, "Expect end of expression")
+	//parser.consume(scn.TOKEN_EOF, "Expect end of expression")
 	function := parser.endCompiler()
 	if DebugTraceExecution && !DebugSuppress {
 		fmt.Println("Compile done.")
@@ -152,111 +154,111 @@ func (vm *VM) compile(source string, module string) *FunctionObject {
 
 func (p *Parser) setRules() {
 
-	p.rules = map[TokenType]ParseRule{
-		TOKEN_LEFT_PAREN:    {prefix: grouping, infix: call, prec: PREC_CALL},
-		TOKEN_RIGHT_PAREN:   {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_LEFT_BRACE:    {prefix: dictLiteral, infix: nil, prec: PREC_NONE},
-		TOKEN_RIGHT_BRACE:   {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_LEFT_BRACKET:  {prefix: listLiteral, infix: slice, prec: PREC_CALL},
-		TOKEN_RIGHT_BRACKET: {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_COMMA:         {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_DOT:           {prefix: nil, infix: dot, prec: PREC_CALL},
-		TOKEN_MINUS:         {prefix: unary, infix: binary, prec: PREC_TERM},
-		TOKEN_PLUS:          {prefix: nil, infix: binary, prec: PREC_TERM},
-		TOKEN_SEMICOLON:     {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_EOL:           {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_SLASH:         {prefix: nil, infix: binary, prec: PREC_FACTOR},
-		TOKEN_STAR:          {prefix: nil, infix: binary, prec: PREC_FACTOR},
-		TOKEN_PERCENT:       {prefix: nil, infix: binary, prec: PREC_FACTOR},
-		TOKEN_BANG:          {prefix: unary, infix: nil, prec: PREC_NONE},
-		TOKEN_BANG_EQUAL:    {prefix: nil, infix: binary, prec: PREC_EQUALITY},
-		TOKEN_EQUAL:         {prefix: nil, infix: nil, prec: PREC_ASSIGNMENT},
-		TOKEN_EQUAL_EQUAL:   {prefix: nil, infix: binary, prec: PREC_EQUALITY},
-		TOKEN_IN:            {prefix: nil, infix: binary, prec: PREC_EQUALITY},
-		TOKEN_GREATER:       {prefix: nil, infix: binary, prec: PREC_COMPARISON},
-		TOKEN_GREATER_EQUAL: {prefix: nil, infix: binary, prec: PREC_COMPARISON},
-		TOKEN_LESS:          {prefix: nil, infix: binary, prec: PREC_COMPARISON},
-		TOKEN_LESS_EQUAL:    {prefix: nil, infix: binary, prec: PREC_COMPARISON},
-		TOKEN_IDENTIFIER:    {prefix: variable, infix: nil, prec: PREC_NONE},
-		TOKEN_STRING:        {prefix: loxstring, infix: nil, prec: PREC_NONE},
-		TOKEN_FLOAT:         {prefix: float, infix: nil, prec: PREC_NONE},
-		TOKEN_INT:           {prefix: int_, infix: nil, prec: PREC_NONE},
-		TOKEN_AND:           {prefix: nil, infix: and_, prec: PREC_AND},
-		TOKEN_CLASS:         {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_ELSE:          {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_FALSE:         {prefix: literal, infix: nil, prec: PREC_NONE},
-		TOKEN_FOR:           {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_FOREACH:       {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_FUNC:          {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_IF:            {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_TRY:           {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_EXCEPT:        {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_FINALLY:       {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_NIL:           {prefix: literal, infix: nil, prec: PREC_NONE},
-		TOKEN_OR:            {prefix: nil, infix: or_, prec: PREC_OR},
-		TOKEN_PRINT:         {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_RETURN:        {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_RAISE:         {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_SUPER:         {prefix: super, infix: nil, prec: PREC_NONE},
-		TOKEN_THIS:          {prefix: this, infix: nil, prec: PREC_NONE},
-		TOKEN_TRUE:          {prefix: literal, infix: nil, prec: PREC_NONE},
-		TOKEN_VAR:           {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_CONST:         {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_WHILE:         {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_ERROR:         {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_EOF:           {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_STR:           {prefix: str_, infix: nil, prec: PREC_NONE},
+	p.rules = map[scn.TokenType]ParseRule{
+		scn.TOKEN_LEFT_PAREN:    {prefix: grouping, infix: call, prec: PREC_CALL},
+		scn.TOKEN_RIGHT_PAREN:   {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_LEFT_BRACE:    {prefix: dictLiteral, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_RIGHT_BRACE:   {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_LEFT_BRACKET:  {prefix: listLiteral, infix: slice, prec: PREC_CALL},
+		scn.TOKEN_RIGHT_BRACKET: {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_COMMA:         {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_DOT:           {prefix: nil, infix: dot, prec: PREC_CALL},
+		scn.TOKEN_MINUS:         {prefix: unary, infix: binary, prec: PREC_TERM},
+		scn.TOKEN_PLUS:          {prefix: nil, infix: binary, prec: PREC_TERM},
+		scn.TOKEN_SEMICOLON:     {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_EOL:           {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_SLASH:         {prefix: nil, infix: binary, prec: PREC_FACTOR},
+		scn.TOKEN_STAR:          {prefix: nil, infix: binary, prec: PREC_FACTOR},
+		scn.TOKEN_PERCENT:       {prefix: nil, infix: binary, prec: PREC_FACTOR},
+		scn.TOKEN_BANG:          {prefix: unary, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_BANG_EQUAL:    {prefix: nil, infix: binary, prec: PREC_EQUALITY},
+		scn.TOKEN_EQUAL:         {prefix: nil, infix: nil, prec: PREC_ASSIGNMENT},
+		scn.TOKEN_EQUAL_EQUAL:   {prefix: nil, infix: binary, prec: PREC_EQUALITY},
+		scn.TOKEN_IN:            {prefix: nil, infix: binary, prec: PREC_EQUALITY},
+		scn.TOKEN_GREATER:       {prefix: nil, infix: binary, prec: PREC_COMPARISON},
+		scn.TOKEN_GREATER_EQUAL: {prefix: nil, infix: binary, prec: PREC_COMPARISON},
+		scn.TOKEN_LESS:          {prefix: nil, infix: binary, prec: PREC_COMPARISON},
+		scn.TOKEN_LESS_EQUAL:    {prefix: nil, infix: binary, prec: PREC_COMPARISON},
+		scn.TOKEN_IDENTIFIER:    {prefix: variable, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_STRING:        {prefix: loxstring, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_FLOAT:         {prefix: float, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_INT:           {prefix: int_, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_AND:           {prefix: nil, infix: and_, prec: PREC_AND},
+		scn.TOKEN_CLASS:         {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_ELSE:          {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_FALSE:         {prefix: literal, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_FOR:           {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_FOREACH:       {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_FUNC:          {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_IF:            {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_TRY:           {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_EXCEPT:        {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_FINALLY:       {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_NIL:           {prefix: literal, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_OR:            {prefix: nil, infix: or_, prec: PREC_OR},
+		scn.TOKEN_PRINT:         {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_RETURN:        {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_RAISE:         {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_SUPER:         {prefix: super, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_THIS:          {prefix: this, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_TRUE:          {prefix: literal, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_VAR:           {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_CONST:         {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_WHILE:         {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_ERROR:         {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_EOF:           {prefix: nil, infix: nil, prec: PREC_NONE},
+		scn.TOKEN_STR:           {prefix: str_, infix: nil, prec: PREC_NONE},
 	}
 }
 
-func (p *Parser) match(tt TokenType) bool {
+func (p *Parser) match(tt scn.TokenType) bool {
 
 	if !p.check(tt) {
 		return false
 	}
-	if tt != TOKEN_EOF {
+	if tt != scn.TOKEN_EOF {
 		p.advance()
 	}
 	return true
 }
 
-func (p *Parser) check(tt TokenType) bool {
+func (p *Parser) check(tt scn.TokenType) bool {
 
-	return p.current.tokentype == tt
+	return p.current.Tokentype == tt
 }
 
-func (p *Parser) checkNext(tt TokenType) bool {
+func (p *Parser) checkNext(tt scn.TokenType) bool {
 
-	return p.scanner.tokens.at(p.scanner.tokenIdx+1).tokentype == tt
+	return p.scn.Tokens.At(p.scn.TokenIdx+1).Tokentype == tt
 }
 
 func (p *Parser) advance() {
 
 	p.previous = p.current
 	for {
-		p.current = p.scanner.nextToken()
-		if p.current.tokentype != TOKEN_ERROR {
+		p.current = p.scn.NextToken()
+		if p.current.Tokentype != scn.TOKEN_ERROR {
 			break
 		}
-		p.errorAtCurrent(p.current.lexeme())
+		p.errorAtCurrent(p.current.Lexeme())
 	}
 
 }
 
-func (p *Parser) getRule(tok TokenType) ParseRule {
+func (p *Parser) getRule(tok scn.TokenType) ParseRule {
 
 	return p.rules[tok]
 }
 
 func (p *Parser) declaration() {
 
-	if p.match(TOKEN_CLASS) {
+	if p.match(scn.TOKEN_CLASS) {
 		p.classDeclaration()
-	} else if p.match(TOKEN_FUNC) {
+	} else if p.match(scn.TOKEN_FUNC) {
 		p.funcDeclaration()
-	} else if p.match(TOKEN_VAR) {
+	} else if p.match(scn.TOKEN_VAR) {
 		p.varDeclaration(false)
-	} else if p.match(TOKEN_CONST) {
+	} else if p.match(scn.TOKEN_CONST) {
 		p.constDeclaration()
 	} else {
 		p.statement()
@@ -268,31 +270,31 @@ func (p *Parser) declaration() {
 }
 func (p *Parser) statement() {
 
-	if p.match(TOKEN_PRINT) {
+	if p.match(scn.TOKEN_PRINT) {
 		p.printStatement()
-	} else if p.match(TOKEN_IMPORT) {
+	} else if p.match(scn.TOKEN_IMPORT) {
 		p.importStatement()
-	} else if p.match(TOKEN_BREAK) {
+	} else if p.match(scn.TOKEN_BREAK) {
 		p.breakStatement()
-	} else if p.match(TOKEN_BREAKPOINT) {
+	} else if p.match(scn.TOKEN_BREAKPOINT) {
 		p.breakpointStatement()
-	} else if p.match(TOKEN_CONTINUE) {
+	} else if p.match(scn.TOKEN_CONTINUE) {
 		p.continueStatement()
-	} else if p.match(TOKEN_TRY) {
+	} else if p.match(scn.TOKEN_TRY) {
 		p.tryExceptStatement()
-	} else if p.match(TOKEN_RAISE) {
+	} else if p.match(scn.TOKEN_RAISE) {
 		p.raiseStatement()
-	} else if p.match(TOKEN_FOR) {
+	} else if p.match(scn.TOKEN_FOR) {
 		p.forStatement()
-	} else if p.match(TOKEN_FOREACH) {
+	} else if p.match(scn.TOKEN_FOREACH) {
 		p.foreachStatement()
-	} else if p.match(TOKEN_IF) {
+	} else if p.match(scn.TOKEN_IF) {
 		p.ifStatement()
-	} else if p.match(TOKEN_RETURN) {
+	} else if p.match(scn.TOKEN_RETURN) {
 		p.returnStatement()
-	} else if p.match(TOKEN_WHILE) {
+	} else if p.match(scn.TOKEN_WHILE) {
 		p.whileStatement()
-	} else if p.match(TOKEN_LEFT_BRACE) {
+	} else if p.match(scn.TOKEN_LEFT_BRACE) {
 		p.beginScope()
 		p.block()
 		p.endScope()
@@ -303,30 +305,30 @@ func (p *Parser) statement() {
 
 func (p *Parser) tryExceptStatement() {
 
-	_ = p.match(TOKEN_EOL)
-	p.consume(TOKEN_LEFT_BRACE, "Expect '{' brace after try")
+	_ = p.match(scn.TOKEN_EOL)
+	p.consume(scn.TOKEN_LEFT_BRACE, "Expect '{' brace after try")
 	exceptTry := p.emitTry()
 	p.beginScope()
 	p.block()
 	p.endScope()
 	endTryJump := p.emitJump(OP_END_TRY)
 	for {
-		p.consume(TOKEN_EXCEPT, "Expect except.")
-		p.consume(TOKEN_IDENTIFIER, "Expect Exception type.")
+		p.consume(scn.TOKEN_EXCEPT, "Expect except.")
+		p.consume(scn.TOKEN_IDENTIFIER, "Expect Exception type.")
 		p.beginScope()
 		idx := p.identifierConstant(p.previous)
 		p.patchTry(exceptTry)
-		p.consume(TOKEN_AS, "Expect as")
+		p.consume(scn.TOKEN_AS, "Expect as")
 		ev := p.parseVariable("Expect exception variable name.")
 		p.defineVariable(ev)
-		_ = p.match(TOKEN_EOL)
-		p.consume(TOKEN_LEFT_BRACE, "Expect left brace.")
+		_ = p.match(scn.TOKEN_EOL)
+		p.consume(scn.TOKEN_LEFT_BRACE, "Expect left brace.")
 		p.emitByte(OP_EXCEPT)
 		p.emitByte(idx)
 		p.block()
 		p.endScope()
 		p.emitByte(OP_END_EXCEPT)
-		if !p.check(TOKEN_EXCEPT) {
+		if !p.check(scn.TOKEN_EXCEPT) {
 			break
 		}
 	}
@@ -338,22 +340,22 @@ func (p *Parser) tryExceptStatement() {
 func (p *Parser) raiseStatement() {
 
 	p.expression() // this includes constructor calls
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after throw expression.")
+	p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after throw expression.")
 	p.emitByte(OP_RAISE)
 }
 
 func (p *Parser) importStatement() {
 	c := 0
 	for {
-		p.consume(TOKEN_IDENTIFIER, "Expect module name.")
+		p.consume(scn.TOKEN_IDENTIFIER, "Expect module name.")
 		nameConstant := p.identifierConstant(p.previous)
 		c = c + 1
 		p.emitBytes(OP_IMPORT, nameConstant)
-		if !p.match(TOKEN_COMMA) {
+		if !p.match(scn.TOKEN_COMMA) {
 			break
 		}
 	}
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after import list.")
+	p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after import list.")
 }
 func (p *Parser) expression() {
 
@@ -362,11 +364,11 @@ func (p *Parser) expression() {
 
 func (p *Parser) block() {
 
-	for !p.check(TOKEN_RIGHT_BRACE) && !p.check(TOKEN_EOF) {
+	for !p.check(scn.TOKEN_RIGHT_BRACE) && !p.check(scn.TOKEN_EOF) {
 		p.declaration()
 	}
-	p.consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.")
-	p.match(TOKEN_EOL) // allow EOL after block
+	p.consume(scn.TOKEN_RIGHT_BRACE, "Expect '}' after block.")
+	p.match(scn.TOKEN_EOL) // allow EOL after block
 
 }
 
@@ -382,14 +384,14 @@ func (p *Parser) function(type_ FunctionType) {
 
 	compiler := NewCompiler(type_, p.currentCompiler.scriptName, p.currentCompiler, p.currentCompiler.environment)
 	p.currentCompiler = compiler
-	funcname := p.previous.lexeme()
+	funcname := p.previous.Lexeme()
 
 	compiler.function.name = makeStringObject(funcname)
 
 	p.beginScope()
 
-	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.")
-	if !p.check(TOKEN_RIGHT_PAREN) {
+	p.consume(scn.TOKEN_LEFT_PAREN, "Expect '(' after function name.")
+	if !p.check(scn.TOKEN_RIGHT_PAREN) {
 		for {
 			p.currentCompiler.function.arity++
 			if p.currentCompiler.function.arity > 255 {
@@ -397,14 +399,14 @@ func (p *Parser) function(type_ FunctionType) {
 			}
 			constant := p.parseVariable("Expect parameter name.")
 			p.defineVariable(constant)
-			if !p.match(TOKEN_COMMA) {
+			if !p.match(scn.TOKEN_COMMA) {
 				break
 			}
 		}
 	}
-	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after function parameters.")
-	p.match(TOKEN_EOL) // allow EOL after parameters
-	p.consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.")
+	p.consume(scn.TOKEN_RIGHT_PAREN, "Expect ')' after function parameters.")
+	p.match(scn.TOKEN_EOL) // allow EOL after parameters
+	p.consume(scn.TOKEN_LEFT_BRACE, "Expect '{' before function body.")
 	p.block()
 
 	function := p.endCompiler()
@@ -423,7 +425,7 @@ func (p *Parser) function(type_ FunctionType) {
 
 func (p *Parser) classDeclaration() {
 
-	p.consume(TOKEN_IDENTIFIER, "Expect class name.")
+	p.consume(scn.TOKEN_IDENTIFIER, "Expect class name.")
 	className := p.previous
 	nameConstant := p.identifierConstant(p.previous)
 	p.declareVariable()
@@ -437,14 +439,14 @@ func (p *Parser) classDeclaration() {
 	}
 	p.currentClass = cc
 
-	if p.match(TOKEN_LESS) {
-		p.consume(TOKEN_IDENTIFIER, "Expect superclass name.")
+	if p.match(scn.TOKEN_LESS) {
+		p.consume(scn.TOKEN_IDENTIFIER, "Expect superclass name.")
 		variable(p, false)
 		if p.identifiersEqual(className, p.previous) {
 			p.error("A class cannot inherit from itself.")
 		}
 		p.beginScope()
-		p.addLocal(syntheticToken("super"))
+		p.addLocal(scn.SyntheticToken("super"))
 		p.defineVariable(0)
 		p.namedVariable(className, false)
 		p.emitByte(OP_INHERIT)
@@ -452,13 +454,13 @@ func (p *Parser) classDeclaration() {
 	}
 
 	p.namedVariable(className, false)
-	p.match(TOKEN_EOL) // allow EOL after parameters
-	p.consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.")
-	for !p.check(TOKEN_RIGHT_BRACE) && !p.check(TOKEN_EOF) {
+	p.match(scn.TOKEN_EOL) // allow EOL after parameters
+	p.consume(scn.TOKEN_LEFT_BRACE, "Expect '{' before class body.")
+	for !p.check(scn.TOKEN_RIGHT_BRACE) && !p.check(scn.TOKEN_EOF) {
 		p.method()
 	}
-	p.consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.")
-	p.match(TOKEN_EOL) // allow EOL after block
+	p.consume(scn.TOKEN_RIGHT_BRACE, "Expect '}' after class body.")
+	p.match(scn.TOKEN_EOL) // allow EOL after block
 	p.emitByte(OP_POP)
 	if p.currentClass.hasSuperClass {
 		p.endScope()
@@ -468,10 +470,10 @@ func (p *Parser) classDeclaration() {
 
 func (p *Parser) method() {
 
-	p.consume(TOKEN_IDENTIFIER, "Expect method name.")
+	p.consume(scn.TOKEN_IDENTIFIER, "Expect method name.")
 	constant := p.identifierConstant(p.previous)
 	_type := TYPE_METHOD
-	if p.previous.lexeme() == "init" {
+	if p.previous.Lexeme() == "init" {
 		_type = TYPE_INITIALIZER
 
 	}
@@ -483,13 +485,13 @@ func (p *Parser) varDeclaration(in_foreach bool) {
 
 	variable := p.parseVariable("Expect variable name")
 
-	if p.match(TOKEN_EQUAL) {
+	if p.match(scn.TOKEN_EQUAL) {
 		p.expression()
 	} else {
 		p.emitByte(OP_NIL) // empty local slot
 	}
 	if !in_foreach {
-		p.consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration")
+		p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after variable declaration")
 	}
 
 	p.defineVariable(variable)
@@ -499,12 +501,12 @@ func (p *Parser) constDeclaration() {
 
 	v := p.parseVariable("Expect variable name")
 
-	if p.match(TOKEN_EQUAL) {
+	if p.match(scn.TOKEN_EQUAL) {
 		p.expression()
 	} else {
 		p.error("Constants must be initialised.")
 	}
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration")
+	p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after variable declaration")
 
 	p.defineConstVariable(v)
 }
@@ -512,11 +514,11 @@ func (p *Parser) constDeclaration() {
 func (p *Parser) expressionStatement() {
 
 	//handle implicit declarations
-	if p.check(TOKEN_IDENTIFIER) && p.checkNext(TOKEN_EQUAL) {
+	if p.check(scn.TOKEN_IDENTIFIER) && p.checkNext(scn.TOKEN_EQUAL) {
 		name := p.current
-		p.consume(TOKEN_IDENTIFIER, "")
-		p.consume(TOKEN_EQUAL, "")
-		l := name.lexeme()
+		p.consume(scn.TOKEN_IDENTIFIER, "")
+		p.consume(scn.TOKEN_EQUAL, "")
+		l := name.Lexeme()
 		if p.currentCompiler.scopeDepth > 0 {
 			if p.resolveLocal(p.currentCompiler, name) == -1 &&
 				p.resolveUpvalue(p.currentCompiler, name) == -1 &&
@@ -524,7 +526,7 @@ func (p *Parser) expressionStatement() {
 				p.addLocal(name)
 				p.currentCompiler.locals[p.currentCompiler.localCount-1].depth = p.currentCompiler.scopeDepth
 				p.expression()
-				p.consume(TOKEN_SEMICOLON, "Expect ';' after expression.")
+				p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after expression.")
 			}
 		} else {
 			if _, ok := p.globals[l]; !ok {
@@ -537,15 +539,15 @@ func (p *Parser) expressionStatement() {
 	}
 
 	p.expression()
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after expression.")
+	p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after expression.")
 	p.emitByte(OP_POP)
 }
 
 func (p *Parser) ifStatement() {
 
-	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.")
+	p.consume(scn.TOKEN_LEFT_PAREN, "Expect '(' after 'if'.")
 	p.expression()
-	p.consume(TOKEN_RIGHT_PAREN, "Expect '(' after condition.")
+	p.consume(scn.TOKEN_RIGHT_PAREN, "Expect '(' after condition.")
 
 	thenJump := p.emitJump(OP_JUMP_IF_FALSE)
 	p.emitByte(OP_POP)
@@ -553,7 +555,7 @@ func (p *Parser) ifStatement() {
 	elseJump := p.emitJump(OP_JUMP)
 	p.patchJump(thenJump)
 	p.emitByte(OP_POP)
-	if p.match(TOKEN_ELSE) {
+	if p.match(scn.TOKEN_ELSE) {
 		p.statement()
 	}
 	p.patchJump(elseJump)
@@ -565,14 +567,14 @@ func (p *Parser) returnStatement() {
 	if p.currentCompiler.type_ == TYPE_SCRIPT {
 		p.error("Can't return from top-level code.")
 	}
-	if p.match(TOKEN_SEMICOLON) {
+	if p.match(scn.TOKEN_SEMICOLON) {
 		p.emitReturn()
 	} else {
 		if p.currentCompiler.type_ == TYPE_INITIALIZER {
 			p.error("Can't return from an initializer.")
 		}
 		p.expression()
-		p.consume(TOKEN_SEMICOLON, "Expect ';' after return value.")
+		p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after return value.")
 		op := OP_RETURN
 
 		p.emitByte(op)
@@ -585,9 +587,9 @@ func (p *Parser) whileStatement() {
 	p.currentCompiler.loop = NewLoop()
 
 	p.currentCompiler.loop.start = len(p.currentChunk().code)
-	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after while.")
+	p.consume(scn.TOKEN_LEFT_PAREN, "Expect '(' after while.")
 	p.expression()
-	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.")
+	p.consume(scn.TOKEN_RIGHT_PAREN, "Expect ')' after condition.")
 
 	exitJump := p.emitJump(OP_JUMP_IF_FALSE)
 	p.emitByte(OP_POP)
@@ -610,10 +612,10 @@ func (p *Parser) forStatement() {
 	p.currentCompiler.loop = NewLoop()
 
 	p.beginScope()
-	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after for.")
+	p.consume(scn.TOKEN_LEFT_PAREN, "Expect '(' after for.")
 	// initialiser
-	if p.match(TOKEN_SEMICOLON) {
-	} else if p.match(TOKEN_VAR) {
+	if p.match(scn.TOKEN_SEMICOLON) {
+	} else if p.match(scn.TOKEN_VAR) {
 		p.varDeclaration(false)
 	} else {
 		p.expressionStatement()
@@ -621,25 +623,25 @@ func (p *Parser) forStatement() {
 	p.currentCompiler.loop.start = len(p.currentChunk().code)
 	// exit condition
 	exitJump := -1
-	if !p.match(TOKEN_SEMICOLON) {
+	if !p.match(scn.TOKEN_SEMICOLON) {
 		p.expression()
-		p.consume(TOKEN_SEMICOLON, "Expect ';'.")
+		p.consume(scn.TOKEN_SEMICOLON, "Expect ';'.")
 		exitJump = p.emitJump(OP_JUMP_IF_FALSE)
 		p.emitByte(OP_POP)
 	}
 	// increment
-	if !p.match(TOKEN_RIGHT_PAREN) {
+	if !p.match(scn.TOKEN_RIGHT_PAREN) {
 		// jump over increment, will be executed after body
 		bodyJump := p.emitJump(OP_JUMP)
 		incrementStart := len(p.currentChunk().code)
 		p.expression()
 		p.emitByte(OP_POP)
-		p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.")
+		p.consume(scn.TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.")
 		p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
 		p.currentCompiler.loop.start = incrementStart
 		p.patchJump(bodyJump)
 	}
-	p.match(TOKEN_EOL)
+	p.match(scn.TOKEN_EOL)
 	p.statement()
 	if len(p.currentCompiler.loop.breaks) != 0 {
 		for _, jump := range p.currentCompiler.loop.breaks {
@@ -658,7 +660,7 @@ func (p *Parser) forStatement() {
 
 func (p *Parser) breakStatement() {
 
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after statement.")
+	p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after statement.")
 	if p.currentCompiler.loop == nil {
 		p.errorAtCurrent("Cannot use break outside loop.")
 	}
@@ -676,13 +678,13 @@ func (p *Parser) breakStatement() {
 
 func (p *Parser) breakpointStatement() {
 
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after statement.")
+	p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after statement.")
 	p.emitByte(OP_BREAKPOINT)
 }
 
 func (p *Parser) continueStatement() {
 
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after statement.")
+	p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after statement.")
 	if p.currentCompiler.loop == nil {
 		p.errorAtCurrent("Cannot use continue outside loop.")
 	}
@@ -713,22 +715,22 @@ func (p *Parser) foreachStatement() {
 	p.currentCompiler.loop.foreach = true // so continue knows to jump to next
 
 	p.beginScope()
-	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after for.")
-	p.consume(TOKEN_VAR, "Expect var declaration")
+	p.consume(scn.TOKEN_LEFT_PAREN, "Expect '(' after for.")
+	p.consume(scn.TOKEN_VAR, "Expect var declaration")
 	p.varDeclaration(true)
 	slot := p.currentCompiler.localCount - 1
-	p.consume(TOKEN_IN, "Expect in after foreach variable.")
+	p.consume(scn.TOKEN_IN, "Expect in after foreach variable.")
 
 	// get iterator and put it in a temp local
 	p.expression()
-	p.addLocal(syntheticToken("__iter"))
+	p.addLocal(scn.SyntheticToken("__iter"))
 	iterSlot := p.currentCompiler.localCount - 1
 	p.markInitialised()
 
 	// initialise iterator index to 0 and put it in a temp local
-	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after iterable.")
+	p.consume(scn.TOKEN_RIGHT_PAREN, "Expect ')' after iterable.")
 	p.emitConstant(makeIntValue(0, false))
-	p.addLocal(syntheticToken("__index"))
+	p.addLocal(scn.SyntheticToken("__index"))
 	p.markInitialised()
 	indexSlot := p.currentCompiler.localCount - 1
 	// each iteration will jump back to here
@@ -762,42 +764,42 @@ func (p *Parser) foreachStatement() {
 func (p *Parser) printStatement() {
 
 	p.expression()
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after value.")
+	p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after value.")
 	p.emitByte(OP_STR)
 	p.emitByte(OP_PRINT)
 }
 func (p *Parser) synchronize() {
 
 	p.panicMode = false
-	for p.current.tokentype != TOKEN_EOF {
-		if p.previous.tokentype == TOKEN_SEMICOLON || p.previous.tokentype == TOKEN_EOL {
+	for p.current.Tokentype != scn.TOKEN_EOF {
+		if p.previous.Tokentype == scn.TOKEN_SEMICOLON || p.previous.Tokentype == scn.TOKEN_EOL {
 			return
 		}
-		switch p.current.tokentype {
-		case TOKEN_CLASS:
+		switch p.current.Tokentype {
+		case scn.TOKEN_CLASS:
 			return
-		case TOKEN_FUNC:
+		case scn.TOKEN_FUNC:
 			return
-		case TOKEN_FOR:
+		case scn.TOKEN_FOR:
 			return
-		case TOKEN_VAR:
+		case scn.TOKEN_VAR:
 			return
-		case TOKEN_IF:
+		case scn.TOKEN_IF:
 			return
-		case TOKEN_WHILE:
+		case scn.TOKEN_WHILE:
 			return
-		case TOKEN_PRINT:
+		case scn.TOKEN_PRINT:
 			return
-		case TOKEN_RETURN:
+		case scn.TOKEN_RETURN:
 			return
 		}
 		p.advance()
 	}
 }
 
-func (p *Parser) consume(toktype TokenType, msg string) {
+func (p *Parser) consume(toktype scn.TokenType, msg string) {
 
-	if p.current.tokentype == toktype || (toktype == TOKEN_SEMICOLON && p.current.tokentype == TOKEN_EOL) {
+	if p.current.Tokentype == toktype || (toktype == scn.TOKEN_SEMICOLON && p.current.Tokentype == scn.TOKEN_EOL) {
 		p.advance()
 		return
 	}
@@ -806,7 +808,7 @@ func (p *Parser) consume(toktype TokenType, msg string) {
 
 func (p *Parser) emitByte(byte uint8) {
 
-	p.currentChunk().writeOpCode(byte, p.previous.line)
+	p.currentChunk().writeOpCode(byte, p.previous.Line)
 }
 
 func (p *Parser) emitBytes(byte1, byte2 uint8) {
@@ -905,7 +907,7 @@ func (p *Parser) parsePredence(prec Precedence) {
 
 	p.advance()
 
-	prefixRule := p.getRule(p.previous.tokentype).prefix
+	prefixRule := p.getRule(p.previous.Tokentype).prefix
 	if prefixRule == nil {
 		p.error("Expect expression")
 		return
@@ -913,10 +915,10 @@ func (p *Parser) parsePredence(prec Precedence) {
 
 	canAssign := prec <= PREC_ASSIGNMENT
 	prefixRule(p, canAssign)
-	for prec <= p.getRule(p.current.tokentype).prec {
+	for prec <= p.getRule(p.current.Tokentype).prec {
 
 		p.advance()
-		infixRule := p.getRule(p.previous.tokentype).infix
+		infixRule := p.getRule(p.previous.Tokentype).infix
 		if infixRule != nil {
 
 			infixRule(p, canAssign)
@@ -924,30 +926,30 @@ func (p *Parser) parsePredence(prec Precedence) {
 
 	}
 	// if = is left over, no rule it, return an error.
-	if canAssign && p.match(TOKEN_EQUAL) {
+	if canAssign && p.match(scn.TOKEN_EQUAL) {
 		p.error("Invalid assignment target.")
 	}
 }
 
-func (p *Parser) identifierConstant(t Token) uint8 {
+func (p *Parser) identifierConstant(t scn.Token) uint8 {
 
-	x := t.lexeme()
+	x := t.Lexeme()
 	p.globals[x] = true
-	return p.makeConstant(makeObjectValue(makeStringObject(t.lexeme()), false))
+	return p.makeConstant(makeObjectValue(makeStringObject(t.Lexeme()), false))
 }
 
-func (p *Parser) identifiersEqual(a, b Token) bool {
+func (p *Parser) identifiersEqual(a, b scn.Token) bool {
 
-	if a.length != b.length {
+	if a.Length != b.Length {
 		return false
 	}
-	if a.lexeme() != b.lexeme() {
+	if a.Lexeme() != b.Lexeme() {
 		return false
 	}
 	return true
 }
 
-func (p *Parser) resolveLocal(compiler *Compiler, name Token) int {
+func (p *Parser) resolveLocal(compiler *Compiler, name scn.Token) int {
 
 	for i := compiler.localCount - 1; i >= 0; i-- {
 		local := compiler.locals[i]
@@ -985,7 +987,7 @@ func (p *Parser) addUpvalue(compiler *Compiler, index uint8, isLocal bool) int {
 	return upvalueCount
 
 }
-func (p *Parser) resolveUpvalue(compiler *Compiler, name Token) int {
+func (p *Parser) resolveUpvalue(compiler *Compiler, name scn.Token) int {
 
 	/*
 		First, we look for a matching local variable in the enclosing function.
@@ -1024,7 +1026,7 @@ func (p *Parser) resolveUpvalue(compiler *Compiler, name Token) int {
 
 func (p *Parser) parseVariable(errorMsg string) uint8 {
 
-	p.consume(TOKEN_IDENTIFIER, errorMsg)
+	p.consume(scn.TOKEN_IDENTIFIER, errorMsg)
 	p.declareVariable()
 	// if local, don't add to constant table
 	if p.currentCompiler.scopeDepth > 0 {
@@ -1061,59 +1063,59 @@ func (p *Parser) defineVariable(global uint8) {
 func (p *Parser) argumentList() uint8 {
 
 	var argCount uint8 = 0
-	if !p.check(TOKEN_RIGHT_PAREN) {
+	if !p.check(scn.TOKEN_RIGHT_PAREN) {
 		for {
 			p.expression()
 			argCount++
 			if argCount == 255 {
 				p.error("Can't have more than 255 arguments. ")
 			}
-			if !p.match(TOKEN_COMMA) {
+			if !p.match(scn.TOKEN_COMMA) {
 				break
 			}
 		}
 	}
-	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments")
+	p.consume(scn.TOKEN_RIGHT_PAREN, "Expect ')' after arguments")
 	return argCount
 }
 
 func (p *Parser) parseList() uint8 {
 
 	var itemCount uint8 = 0
-	if !p.check(TOKEN_RIGHT_BRACKET) {
+	if !p.check(scn.TOKEN_RIGHT_BRACKET) {
 		for {
 			p.expression()
 			itemCount++
 			if itemCount == 255 {
 				p.error("Can't have more than 255 initialiser items. ")
 			}
-			if !p.match(TOKEN_COMMA) {
+			if !p.match(scn.TOKEN_COMMA) {
 				break
 			}
 		}
 	}
-	p.consume(TOKEN_RIGHT_BRACKET, "Expect ']' after list items.")
+	p.consume(scn.TOKEN_RIGHT_BRACKET, "Expect ']' after list items.")
 	return itemCount
 }
 
 func (p *Parser) parseDict() uint8 {
 
 	var itemCount uint8 = 0
-	if !p.match(TOKEN_RIGHT_BRACE) {
+	if !p.match(scn.TOKEN_RIGHT_BRACE) {
 		for {
 			p.expression()
-			p.consume(TOKEN_COLON, "Expect ':' after key.")
+			p.consume(scn.TOKEN_COLON, "Expect ':' after key.")
 			p.expression()
 			itemCount++
 			if itemCount == 255 {
 				p.error("Can't have more than 255 initialiser keys. ")
 			}
-			if !p.match(TOKEN_COMMA) {
+			if !p.match(scn.TOKEN_COMMA) {
 				break
 			}
 		}
-		p.match(TOKEN_EOL) // allow EOL after dict items
-		p.consume(TOKEN_RIGHT_BRACE, "Expect '}' after dictionary items.")
+		p.match(scn.TOKEN_EOL) // allow EOL after dict items
+		p.consume(scn.TOKEN_RIGHT_BRACE, "Expect '}' after dictionary items.")
 	}
 
 	return itemCount
@@ -1156,10 +1158,10 @@ func (p *Parser) checkGlobals(name string) bool {
 	return ok
 }
 
-func (p *Parser) namedVariable(name Token, canAssign bool) {
+func (p *Parser) namedVariable(name scn.Token, canAssign bool) {
 
 	var getOp, setOp uint8
-	a := name.lexeme()
+	a := name.Lexeme()
 	_ = a
 	arg := p.resolveLocal(p.currentCompiler, name)
 	if arg != -1 {
@@ -1174,7 +1176,7 @@ func (p *Parser) namedVariable(name Token, canAssign bool) {
 		setOp = OP_SET_GLOBAL
 	}
 
-	if canAssign && p.match(TOKEN_EQUAL) {
+	if canAssign && p.match(scn.TOKEN_EQUAL) {
 		p.expression()
 		p.emitBytes(setOp, uint8(arg))
 	} else {
@@ -1183,7 +1185,7 @@ func (p *Parser) namedVariable(name Token, canAssign bool) {
 
 }
 
-func (p *Parser) addLocal(name Token) {
+func (p *Parser) addLocal(name scn.Token) {
 
 	if p.currentCompiler.localCount == 256 {
 		p.error("Too many variables in function")
@@ -1191,7 +1193,7 @@ func (p *Parser) addLocal(name Token) {
 	}
 	local := &Local{
 		name:       name,
-		lexeme:     name.lexeme(),
+		lexeme:     name.Lexeme(),
 		depth:      -1, // marks as uninitialised
 		isCaptured: false,
 	}
@@ -1258,9 +1260,9 @@ func (p *Parser) emitReturn() {
 func (p *Parser) slice1(canAssign bool) {
 	// slice from -> stack
 	p.emitByte(OP_NIL)
-	if p.match(TOKEN_RIGHT_BRACKET) {
+	if p.match(scn.TOKEN_RIGHT_BRACKET) {
 		// [:]
-		if canAssign && p.match(TOKEN_EQUAL) {
+		if canAssign && p.match(scn.TOKEN_EQUAL) {
 			// slice to -> stack
 			p.emitByte(OP_NIL)
 			// RHS -> stack
@@ -1274,8 +1276,8 @@ func (p *Parser) slice1(canAssign bool) {
 		// [:exp]
 		// slice to -> stack
 		p.expression()
-		p.consume(TOKEN_RIGHT_BRACKET, "Expect ']' after expression.")
-		if canAssign && p.match(TOKEN_EQUAL) {
+		p.consume(scn.TOKEN_RIGHT_BRACKET, "Expect ']' after expression.")
+		if canAssign && p.match(scn.TOKEN_EQUAL) {
 			// RHS -> stack
 			p.expression()
 			p.emitByte(OP_SLICE_ASSIGN)
@@ -1288,7 +1290,7 @@ func (p *Parser) slice1(canAssign bool) {
 // a[exp]
 func (p *Parser) index(canAssign bool) {
 
-	if canAssign && p.match(TOKEN_EQUAL) {
+	if canAssign && p.match(scn.TOKEN_EQUAL) {
 		// RHS -> stack
 		p.expression()
 		p.emitByte(OP_INDEX_ASSIGN)
@@ -1300,10 +1302,10 @@ func (p *Parser) index(canAssign bool) {
 // a[exp:], a[exp:exp]
 func (p *Parser) slice2(canAssign bool) {
 
-	if p.match(TOKEN_RIGHT_BRACKET) {
+	if p.match(scn.TOKEN_RIGHT_BRACKET) {
 		// [exp:]
 		p.emitByte(OP_NIL)
-		if canAssign && p.match(TOKEN_EQUAL) {
+		if canAssign && p.match(scn.TOKEN_EQUAL) {
 			// RHS -> stack
 			p.expression()
 			p.emitByte(OP_SLICE_ASSIGN)
@@ -1313,8 +1315,8 @@ func (p *Parser) slice2(canAssign bool) {
 	} else {
 		// [exp:exp]
 		p.expression()
-		p.consume(TOKEN_RIGHT_BRACKET, "Expect ']' after expression")
-		if canAssign && p.match(TOKEN_EQUAL) {
+		p.consume(scn.TOKEN_RIGHT_BRACKET, "Expect ']' after expression")
+		if canAssign && p.match(scn.TOKEN_EQUAL) {
 			// RHS -> stack
 			p.expression()
 			p.emitByte(OP_SLICE_ASSIGN)
@@ -1334,19 +1336,19 @@ func (p *Parser) error(msg string) {
 	p.errorAt(p.previous, msg)
 }
 
-func (p *Parser) errorAt(tok Token, msg string) {
+func (p *Parser) errorAt(tok scn.Token, msg string) {
 
 	if p.panicMode {
 		return
 	}
 	p.panicMode = true
-	fmt.Printf("[line %d] Error ", tok.line)
-	if tok.tokentype == TOKEN_EOF {
+	fmt.Printf("[line %d] Error ", tok.Line)
+	if tok.Tokentype == scn.TOKEN_EOF {
 		fmt.Printf(" at end")
-	} else if tok.tokentype == TOKEN_ERROR {
-		fmt.Printf(" at %s ", tok.lexeme())
+	} else if tok.Tokentype == scn.TOKEN_ERROR {
+		fmt.Printf(" at %s ", tok.Lexeme())
 	} else {
-		fmt.Printf(" at %s ", tok.lexeme())
+		fmt.Printf(" at %s ", tok.Lexeme())
 	}
 	fmt.Printf(" : %s\n", msg)
 	p.hadError = true
@@ -1357,34 +1359,34 @@ func (p *Parser) errorAt(tok Token, msg string) {
 
 func binary(p *Parser, canAssign bool) {
 
-	opType := p.previous.tokentype
+	opType := p.previous.Tokentype
 	rule := p.getRule(opType)
 	p.parsePredence(Precedence(rule.prec + 1))
 
 	switch opType {
-	case TOKEN_PLUS:
+	case scn.TOKEN_PLUS:
 		p.emitByte(OP_ADD)
-	case TOKEN_MINUS:
+	case scn.TOKEN_MINUS:
 		p.emitByte(OP_SUBTRACT)
-	case TOKEN_STAR:
+	case scn.TOKEN_STAR:
 		p.emitByte(OP_MULTIPLY)
-	case TOKEN_SLASH:
+	case scn.TOKEN_SLASH:
 		p.emitByte(OP_DIVIDE)
-	case TOKEN_PERCENT:
+	case scn.TOKEN_PERCENT:
 		p.emitByte(OP_MODULUS)
-	case TOKEN_BANG_EQUAL:
+	case scn.TOKEN_BANG_EQUAL:
 		p.emitBytes(OP_EQUAL, OP_NOT)
-	case TOKEN_EQUAL_EQUAL:
+	case scn.TOKEN_EQUAL_EQUAL:
 		p.emitByte(OP_EQUAL)
-	case TOKEN_LESS:
+	case scn.TOKEN_LESS:
 		p.emitByte(OP_LESS)
-	case TOKEN_LESS_EQUAL:
+	case scn.TOKEN_LESS_EQUAL:
 		p.emitBytes(OP_GREATER, OP_NOT)
-	case TOKEN_GREATER:
+	case scn.TOKEN_GREATER:
 		p.emitByte(OP_GREATER)
-	case TOKEN_GREATER_EQUAL:
+	case scn.TOKEN_GREATER_EQUAL:
 		p.emitBytes(OP_LESS, OP_NOT)
-	case TOKEN_IN:
+	case scn.TOKEN_IN:
 		p.emitByte(OP_IN)
 	}
 }
@@ -1392,40 +1394,40 @@ func binary(p *Parser, canAssign bool) {
 func grouping(p *Parser, canAssign bool) {
 
 	p.expression()
-	if p.match(TOKEN_COMMA) {
+	if p.match(scn.TOKEN_COMMA) {
 		arity := 1
 		for {
 			p.expression()
 			arity++
-			if !p.match(TOKEN_COMMA) {
+			if !p.match(scn.TOKEN_COMMA) {
 				break
 			}
 		}
-		p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after tuple.")
+		p.consume(scn.TOKEN_RIGHT_PAREN, "Expect ')' after tuple.")
 		p.emitByte(OP_CREATE_TUPLE)
 		p.emitByte(uint8(arity))
 	} else {
-		p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.")
+		p.consume(scn.TOKEN_RIGHT_PAREN, "Expect ')' after expression.")
 	}
 }
 
 func float(p *Parser, canAssign bool) {
 
-	val, _ := strconv.ParseFloat(p.previous.lexeme(), 64)
+	val, _ := strconv.ParseFloat(p.previous.Lexeme(), 64)
 	p.emitConstant(makeFloatValue(val, false))
 
 }
 
 func int_(p *Parser, canAssign bool) {
 
-	val, _ := strconv.ParseInt(p.previous.lexeme(), 10, 32)
+	val, _ := strconv.ParseInt(p.previous.Lexeme(), 10, 32)
 	p.emitConstant(makeIntValue(int(val), false))
 
 }
 
 func loxstring(p *Parser, canAssign bool) {
 
-	str := p.previous.lexeme()
+	str := p.previous.Lexeme()
 	strobj := makeStringObject(strings.Replace(str, "\"", "", -1))
 	p.emitConstant(makeObjectValue(strobj, false))
 
@@ -1438,25 +1440,25 @@ func variable(p *Parser, canAssign bool) {
 
 func unary(p *Parser, canAssign bool) {
 
-	opType := p.previous.tokentype
+	opType := p.previous.Tokentype
 	p.parsePredence(PREC_UNARY)
 
 	switch opType {
-	case TOKEN_MINUS:
+	case scn.TOKEN_MINUS:
 		p.emitByte(OP_NEGATE)
-	case TOKEN_BANG:
+	case scn.TOKEN_BANG:
 		p.emitByte(OP_NOT)
 	}
 }
 
 func literal(p *Parser, canAssign bool) {
 
-	switch p.previous.tokentype {
-	case TOKEN_NIL:
+	switch p.previous.Tokentype {
+	case scn.TOKEN_NIL:
 		p.emitByte(OP_NIL)
-	case TOKEN_FALSE:
+	case scn.TOKEN_FALSE:
 		p.emitByte(OP_FALSE)
-	case TOKEN_TRUE:
+	case scn.TOKEN_TRUE:
 		p.emitByte(OP_TRUE)
 	}
 }
@@ -1489,13 +1491,13 @@ func call(p *Parser, canAssign bool) {
 
 func dot(p *Parser, canAssign bool) {
 
-	p.consume(TOKEN_IDENTIFIER, "Expect property name after '.'.")
+	p.consume(scn.TOKEN_IDENTIFIER, "Expect property name after '.'.")
 	name := p.identifierConstant(p.previous)
 
-	if canAssign && p.match(TOKEN_EQUAL) {
+	if canAssign && p.match(scn.TOKEN_EQUAL) {
 		p.expression()
 		p.emitBytes(OP_SET_PROPERTY, name)
-	} else if p.match(TOKEN_LEFT_PAREN) {
+	} else if p.match(scn.TOKEN_LEFT_PAREN) {
 		argCount := p.argumentList()
 		p.emitBytes(OP_INVOKE, name)
 		p.emitByte(argCount)
@@ -1520,17 +1522,17 @@ func super(p *Parser, canAssign bool) {
 		p.error("Cannot use 'super' in a class with no superclass.")
 	}
 
-	p.consume(TOKEN_DOT, "Expect '.' after super.")
-	p.consume(TOKEN_IDENTIFIER, "Expect superclass method name.")
+	p.consume(scn.TOKEN_DOT, "Expect '.' after super.")
+	p.consume(scn.TOKEN_IDENTIFIER, "Expect superclass method name.")
 	name := p.identifierConstant(p.previous)
-	p.namedVariable(syntheticToken("this"), false)
-	if p.match(TOKEN_LEFT_PAREN) {
+	p.namedVariable(scn.SyntheticToken("this"), false)
+	if p.match(scn.TOKEN_LEFT_PAREN) {
 		argCount := p.argumentList()
-		p.namedVariable(syntheticToken("super"), false)
+		p.namedVariable(scn.SyntheticToken("super"), false)
 		p.emitBytes(OP_SUPER_INVOKE, name)
 		p.emitByte(argCount)
 	} else {
-		p.namedVariable(syntheticToken("super"), false)
+		p.namedVariable(scn.SyntheticToken("super"), false)
 		p.emitBytes(OP_GET_SUPER, name)
 	}
 }
@@ -1550,7 +1552,7 @@ func dictLiteral(p *Parser, canAssign bool) {
 // var[<expr>]
 func slice(p *Parser, canAssign bool) {
 
-	if p.check(TOKEN_RIGHT_BRACKET) {
+	if p.check(scn.TOKEN_RIGHT_BRACKET) {
 		p.error("Can't have empty slice.")
 		return
 	}
@@ -1558,7 +1560,7 @@ func slice(p *Parser, canAssign bool) {
 	_ = p.identifierConstant(p.previous)
 
 	// handle the slice variants : [exp], [:], [:exp], [exp:], [exp:exp]
-	if p.match(TOKEN_COLON) {
+	if p.match(scn.TOKEN_COLON) {
 		//[:],[:exp]
 		p.slice1(canAssign)
 
@@ -1566,13 +1568,13 @@ func slice(p *Parser, canAssign bool) {
 		// [exp],[exp:],[exp:exp]
 		// slice from/index -> stack
 		p.expression()
-		if p.match(TOKEN_RIGHT_BRACKET) {
+		if p.match(scn.TOKEN_RIGHT_BRACKET) {
 			//[exp]
 			p.index(canAssign)
 
 		} else {
 			// [exp:],[exp:exp]
-			if p.match(TOKEN_COLON) {
+			if p.match(scn.TOKEN_COLON) {
 				p.slice2(canAssign)
 
 			}
@@ -1581,8 +1583,8 @@ func slice(p *Parser, canAssign bool) {
 }
 
 func str_(p *Parser, canAssign bool) {
-	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after str.")
+	p.consume(scn.TOKEN_LEFT_PAREN, "Expect '(' after str.")
 	p.expression()
-	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.")
+	p.consume(scn.TOKEN_RIGHT_PAREN, "Expect ')' after expression.")
 	p.emitByte(OP_STR)
 }

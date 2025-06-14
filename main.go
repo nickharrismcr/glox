@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	lox "glox/src"
+	"glox/src/scanner"
 	"os"
 	"runtime/debug"
 )
@@ -73,7 +74,7 @@ func runFile(opts *Options) {
 	source := string(bytes)
 
 	if opts.printTokens {
-		lox.PrintTokens(source)
+		scanner.PrintTokens(source)
 		os.Exit(0)
 	}
 	vm := lox.NewVM(path, !lox.DebugSkipBuiltins)
