@@ -1,15 +1,15 @@
 package core
 
 type Environment struct {
-	Name	string
-	Vars	map[string]Value
+	Name string
+	Vars map[string]Value
 }
 
 func NewEnvironment(name string) *Environment {
 
 	return &Environment{
-		name:	name,
-		vars:	map[string]Value{},
+		Name: name,
+		Vars: map[string]Value{},
 	}
 }
 func (env *Environment) SetVar(name string, value Value) {

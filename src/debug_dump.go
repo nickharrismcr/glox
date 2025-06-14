@@ -34,7 +34,7 @@ func dumpObject(obj core.Object, seen map[uintptr]bool, indent int) {
 
 	case *core.FunctionObject:
 		fo := obj.(*core.FunctionObject)
-		Debugf("%s<Function %s @%p>\n", indentPad(indent), fo.name, fo)
+		Debugf("%s<Function %s @%p>\n", indentPad(indent), fo.Name, fo)
 		if fo.Environment != nil {
 			Debugf("%s  Env:\n", indentPad(indent))
 			dumpEnvironment(fo.Environment, seen, indent+2)
@@ -65,9 +65,9 @@ func dumpEnvironment(env *core.Environment, seen map[uintptr]bool, indent int) {
 		return
 	}
 	seen[ptr] = true
-	Debugf("%s<Environment @%p '%s'>\n", indentPad(indent), env, env.name)
+	Debugf("%s<Environment @%p '%s'>\n", indentPad(indent), env, env.Name)
 	Debugf("%sVars:\n", indentPad(indent))
-	for k, v := range env.vars {
+	for k, v := range env.Vars {
 		Debugf("%s%s: ", indentPad(indent+1), k)
 		dumpValue(v, seen, indent+2)
 	}

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"glox/src/core"
 	scn "glox/src/scanner"
 )
 
@@ -72,7 +73,7 @@ type ClassCompiler struct {
 
 type Compiler struct {
 	enclosing   *Compiler
-	function    *FunctionObject
+	function    *core.FunctionObject
 	type_       FunctionType
 	locals      [256]*Local
 	localCount  int
@@ -80,16 +81,16 @@ type Compiler struct {
 	loop        *Loop
 	upvalues    [256]*Upvalue
 	scriptName  string
-	environment *Environment
+	environment *core.Environment
 }
 
-func NewCompiler(type_ FunctionType, scriptName string, parent *Compiler, environment *Environment) *Compiler {
+func NewCompiler(type_ FunctionType, scriptName string, parent *Compiler, environment *core.Environment) *Compiler {
 
 	rv := &Compiler{
 		enclosing:   parent,
 		type_:       type_,
 		scriptName:  scriptName,
-		function:    makeFunctionObject(scriptName, environment),
+		function:    core.MakeFunctionObject(scriptName, environment),
 		environment: environment,
 	}
 	// slot 0 is for enclosing function
@@ -127,7 +128,7 @@ func NewParser() *Parser {
 	return p
 }
 
-func (vm *VM) compile(source string, module string) *FunctionObject {
+func (vm *VM) compile(source string, module string) *core.FunctionObject {
 
 	if DebugTraceExecution && !DebugSuppress {
 		fmt.Println("Compiling...")
@@ -135,7 +136,7 @@ func (vm *VM) compile(source string, module string) *FunctionObject {
 	parser := NewParser()
 
 	parser.scn = scn.NewScanner(source)
-	environment := newEnvironment(module)
+	environment := core.NewEnvironment(module)
 	parser.currentCompiler = NewCompiler(TYPE_SCRIPT, vm.script, nil, environment)
 	parser.advance()
 	for !parser.match(scn.TOKEN_EOF) {
@@ -311,7 +312,7 @@ func (p *Parser) tryExceptStatement() {
 	p.beginScope()
 	p.block()
 	p.endScope()
-	endTryJump := p.emitJump(OP_END_TRY)
+	endTryJump := p.emitJump(core.OP_END_TRY)
 	for {
 		p.consume(scn.TOKEN_EXCEPT, "Expect except.")
 		p.consume(scn.TOKEN_IDENTIFIER, "Expect Exception type.")
@@ -323,11 +324,11 @@ func (p *Parser) tryExceptStatement() {
 		p.defineVariable(ev)
 		_ = p.match(scn.TOKEN_EOL)
 		p.consume(scn.TOKEN_LEFT_BRACE, "Expect left brace.")
-		p.emitByte(OP_EXCEPT)
+		p.emitByte(core.OP_EXCEPT)
 		p.emitByte(idx)
 		p.block()
 		p.endScope()
-		p.emitByte(OP_END_EXCEPT)
+		p.emitByte(core.OP_END_EXCEPT)
 		if !p.check(scn.TOKEN_EXCEPT) {
 			break
 		}
@@ -341,7 +342,7 @@ func (p *Parser) raiseStatement() {
 
 	p.expression() // this includes constructor calls
 	p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after throw expression.")
-	p.emitByte(OP_RAISE)
+	p.emitByte(core.OP_RAISE)
 }
 
 func (p *Parser) importStatement() {
@@ -350,7 +351,7 @@ func (p *Parser) importStatement() {
 		p.consume(scn.TOKEN_IDENTIFIER, "Expect module name.")
 		nameConstant := p.identifierConstant(p.previous)
 		c = c + 1
-		p.emitBytes(OP_IMPORT, nameConstant)
+		p.emitBytes(core.OP_IMPORT, nameConstant)
 		if !p.match(scn.TOKEN_COMMA) {
 			break
 		}
@@ -386,15 +387,15 @@ func (p *Parser) function(type_ FunctionType) {
 	p.currentCompiler = compiler
 	funcname := p.previous.Lexeme()
 
-	compiler.function.name = makeStringObject(funcname)
+	compiler.function.Name = core.MakeStringObject(funcname)
 
 	p.beginScope()
 
 	p.consume(scn.TOKEN_LEFT_PAREN, "Expect '(' after function name.")
 	if !p.check(scn.TOKEN_RIGHT_PAREN) {
 		for {
-			p.currentCompiler.function.arity++
-			if p.currentCompiler.function.arity > 255 {
+			p.currentCompiler.function.Arity++
+			if p.currentCompiler.function.Arity > 255 {
 				p.errorAtCurrent("Can't have more than 255 parameters")
 			}
 			constant := p.parseVariable("Expect parameter name.")
@@ -410,9 +411,9 @@ func (p *Parser) function(type_ FunctionType) {
 	p.block()
 
 	function := p.endCompiler()
-	p.emitBytes(OP_CLOSURE, p.makeConstant(makeObjectValue(function, false)))
+	p.emitBytes(core.OP_CLOSURE, p.MakeConstant(core.MakeObjectValue(function, false)))
 
-	for i := 0; i < function.upvalueCount; i++ {
+	for i := 0; i < function.UpvalueCount; i++ {
 		uv := *(compiler.upvalues[i])
 		if uv.isLocal {
 			p.emitByte(1)
@@ -430,7 +431,7 @@ func (p *Parser) classDeclaration() {
 	nameConstant := p.identifierConstant(p.previous)
 	p.declareVariable()
 
-	p.emitBytes(OP_CLASS, nameConstant)
+	p.emitBytes(core.OP_CLASS, nameConstant)
 	p.defineVariable(nameConstant)
 
 	cc := &ClassCompiler{
@@ -449,7 +450,7 @@ func (p *Parser) classDeclaration() {
 		p.addLocal(scn.SyntheticToken("super"))
 		p.defineVariable(0)
 		p.namedVariable(className, false)
-		p.emitByte(OP_INHERIT)
+		p.emitByte(core.OP_INHERIT)
 		p.currentClass.hasSuperClass = true
 	}
 
@@ -461,7 +462,7 @@ func (p *Parser) classDeclaration() {
 	}
 	p.consume(scn.TOKEN_RIGHT_BRACE, "Expect '}' after class body.")
 	p.match(scn.TOKEN_EOL) // allow EOL after block
-	p.emitByte(OP_POP)
+	p.emitByte(core.OP_POP)
 	if p.currentClass.hasSuperClass {
 		p.endScope()
 	}
@@ -478,7 +479,7 @@ func (p *Parser) method() {
 
 	}
 	p.function(_type)
-	p.emitBytes(OP_METHOD, constant)
+	p.emitBytes(core.OP_METHOD, constant)
 }
 
 func (p *Parser) varDeclaration(in_foreach bool) {
@@ -488,7 +489,7 @@ func (p *Parser) varDeclaration(in_foreach bool) {
 	if p.match(scn.TOKEN_EQUAL) {
 		p.expression()
 	} else {
-		p.emitByte(OP_NIL) // empty local slot
+		p.emitByte(core.OP_NIL) // empty local slot
 	}
 	if !in_foreach {
 		p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after variable declaration")
@@ -532,7 +533,7 @@ func (p *Parser) expressionStatement() {
 			if _, ok := p.globals[l]; !ok {
 				p.globals[l] = true
 				p.expression()
-				p.emitBytes(OP_DEFINE_GLOBAL, p.identifierConstant(name))
+				p.emitBytes(core.OP_DEFINE_GLOBAL, p.identifierConstant(name))
 			}
 		}
 		return
@@ -540,7 +541,7 @@ func (p *Parser) expressionStatement() {
 
 	p.expression()
 	p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after expression.")
-	p.emitByte(OP_POP)
+	p.emitByte(core.OP_POP)
 }
 
 func (p *Parser) ifStatement() {
@@ -549,12 +550,12 @@ func (p *Parser) ifStatement() {
 	p.expression()
 	p.consume(scn.TOKEN_RIGHT_PAREN, "Expect '(' after condition.")
 
-	thenJump := p.emitJump(OP_JUMP_IF_FALSE)
-	p.emitByte(OP_POP)
+	thenJump := p.emitJump(core.OP_JUMP_IF_FALSE)
+	p.emitByte(core.OP_POP)
 	p.statement()
-	elseJump := p.emitJump(OP_JUMP)
+	elseJump := p.emitJump(core.OP_JUMP)
 	p.patchJump(thenJump)
-	p.emitByte(OP_POP)
+	p.emitByte(core.OP_POP)
 	if p.match(scn.TOKEN_ELSE) {
 		p.statement()
 	}
@@ -575,7 +576,7 @@ func (p *Parser) returnStatement() {
 		}
 		p.expression()
 		p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after return value.")
-		op := OP_RETURN
+		op := core.OP_RETURN
 
 		p.emitByte(op)
 	}
@@ -586,22 +587,22 @@ func (p *Parser) whileStatement() {
 	loopSave := p.currentCompiler.loop
 	p.currentCompiler.loop = NewLoop()
 
-	p.currentCompiler.loop.start = len(p.currentChunk().code)
+	p.currentCompiler.loop.start = len(p.currentChunk().Code)
 	p.consume(scn.TOKEN_LEFT_PAREN, "Expect '(' after while.")
 	p.expression()
 	p.consume(scn.TOKEN_RIGHT_PAREN, "Expect ')' after condition.")
 
-	exitJump := p.emitJump(OP_JUMP_IF_FALSE)
-	p.emitByte(OP_POP)
+	exitJump := p.emitJump(core.OP_JUMP_IF_FALSE)
+	p.emitByte(core.OP_POP)
 	p.statement()
-	p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
+	p.emitLoop(core.OP_LOOP, p.currentCompiler.loop.start)
 	if len(p.currentCompiler.loop.breaks) != 0 {
 		for _, jump := range p.currentCompiler.loop.breaks {
 			p.patchJump(jump)
 		}
 	}
 	p.patchJump(exitJump)
-	p.emitByte(OP_POP)
+	p.emitByte(core.OP_POP)
 
 	p.currentCompiler.loop = loopSave
 }
@@ -620,24 +621,24 @@ func (p *Parser) forStatement() {
 	} else {
 		p.expressionStatement()
 	}
-	p.currentCompiler.loop.start = len(p.currentChunk().code)
+	p.currentCompiler.loop.start = len(p.currentChunk().Code)
 	// exit condition
 	exitJump := -1
 	if !p.match(scn.TOKEN_SEMICOLON) {
 		p.expression()
 		p.consume(scn.TOKEN_SEMICOLON, "Expect ';'.")
-		exitJump = p.emitJump(OP_JUMP_IF_FALSE)
-		p.emitByte(OP_POP)
+		exitJump = p.emitJump(core.OP_JUMP_IF_FALSE)
+		p.emitByte(core.OP_POP)
 	}
 	// increment
 	if !p.match(scn.TOKEN_RIGHT_PAREN) {
 		// jump over increment, will be executed after body
-		bodyJump := p.emitJump(OP_JUMP)
-		incrementStart := len(p.currentChunk().code)
+		bodyJump := p.emitJump(core.OP_JUMP)
+		incrementStart := len(p.currentChunk().Code)
 		p.expression()
-		p.emitByte(OP_POP)
+		p.emitByte(core.OP_POP)
 		p.consume(scn.TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.")
-		p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
+		p.emitLoop(core.OP_LOOP, p.currentCompiler.loop.start)
 		p.currentCompiler.loop.start = incrementStart
 		p.patchJump(bodyJump)
 	}
@@ -648,11 +649,11 @@ func (p *Parser) forStatement() {
 			p.patchJump(jump)
 		}
 	}
-	p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
+	p.emitLoop(core.OP_LOOP, p.currentCompiler.loop.start)
 
 	if exitJump != -1 {
 		p.patchJump(exitJump)
-		p.emitByte(OP_POP)
+		p.emitByte(core.OP_POP)
 	}
 	p.endScope()
 	p.currentCompiler.loop = loopSave
@@ -670,16 +671,16 @@ func (p *Parser) breakStatement() {
 
 	for i := 0; i < c.localCount; i++ {
 		if c.locals[i].depth >= c.scopeDepth-1 {
-			p.emitByte(OP_POP)
+			p.emitByte(core.OP_POP)
 		}
 	}
-	p.currentCompiler.loop.breaks = append(p.currentCompiler.loop.breaks, p.emitJump(OP_JUMP))
+	p.currentCompiler.loop.breaks = append(p.currentCompiler.loop.breaks, p.emitJump(core.OP_JUMP))
 }
 
 func (p *Parser) breakpointStatement() {
 
 	p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after statement.")
-	p.emitByte(OP_BREAKPOINT)
+	p.emitByte(core.OP_BREAKPOINT)
 }
 
 func (p *Parser) continueStatement() {
@@ -693,13 +694,13 @@ func (p *Parser) continueStatement() {
 	c := p.currentCompiler
 	for i := 0; i < c.localCount; i++ {
 		if c.locals[i].depth >= c.scopeDepth-1 {
-			p.emitByte(OP_POP)
+			p.emitByte(core.OP_POP)
 		}
 	}
 	if p.currentCompiler.loop.foreach {
-		p.currentCompiler.loop.continue_ = p.emitJump(OP_JUMP)
+		p.currentCompiler.loop.continue_ = p.emitJump(core.OP_JUMP)
 	} else {
-		p.emitLoop(OP_LOOP, p.currentCompiler.loop.start)
+		p.emitLoop(core.OP_LOOP, p.currentCompiler.loop.start)
 	}
 
 }
@@ -729,12 +730,12 @@ func (p *Parser) foreachStatement() {
 
 	// initialise iterator index to 0 and put it in a temp local
 	p.consume(scn.TOKEN_RIGHT_PAREN, "Expect ')' after iterable.")
-	p.emitConstant(makeIntValue(0, false))
+	p.emitConstant(core.MakeIntValue(0, false))
 	p.addLocal(scn.SyntheticToken("__index"))
 	p.markInitialised()
 	indexSlot := p.currentCompiler.localCount - 1
 	// each iteration will jump back to here
-	p.currentCompiler.loop.start = len(p.currentChunk().code)
+	p.currentCompiler.loop.start = len(p.currentChunk().Code)
 	jumpToEnd := p.emitForeach(uint8(slot), uint8(iterSlot), uint8(indexSlot))
 
 	// body of foreach
@@ -744,12 +745,12 @@ func (p *Parser) foreachStatement() {
 		p.patchJump(p.currentCompiler.loop.continue_)
 	}
 	// will get index from slots and increment it, and jump to loop start
-	p.emitLoop(OP_NEXT, p.currentCompiler.loop.start)
+	p.emitLoop(core.OP_NEXT, p.currentCompiler.loop.start)
 	// tell it what slot to look in
 	p.emitByte(uint8(indexSlot))
 
 	// iteration complete, patch foreach to come here
-	p.emitByte(OP_END_FOREACH)
+	p.emitByte(core.OP_END_FOREACH)
 	p.patchForeach(jumpToEnd)
 	// did the body contain a break? if so patch its jump to come here
 	if len(p.currentCompiler.loop.breaks) != 0 {
@@ -765,8 +766,8 @@ func (p *Parser) printStatement() {
 
 	p.expression()
 	p.consume(scn.TOKEN_SEMICOLON, "Expect ';' after value.")
-	p.emitByte(OP_STR)
-	p.emitByte(OP_PRINT)
+	p.emitByte(core.OP_STR)
+	p.emitByte(core.OP_PRINT)
 }
 func (p *Parser) synchronize() {
 
@@ -808,7 +809,7 @@ func (p *Parser) consume(toktype scn.TokenType, msg string) {
 
 func (p *Parser) emitByte(byte uint8) {
 
-	p.currentChunk().writeOpCode(byte, p.previous.Line)
+	p.currentChunk().WriteOpCode(byte, p.previous.Line)
 }
 
 func (p *Parser) emitBytes(byte1, byte2 uint8) {
@@ -821,7 +822,7 @@ func (p *Parser) emitLoop(instr uint8, loopStart int) {
 
 	p.emitByte(instr)
 
-	offset := len(p.currentChunk().code) - loopStart + 2
+	offset := len(p.currentChunk().Code) - loopStart + 2
 	if offset >= int(^uint16(0)) {
 		p.error("Loop body too large")
 	}
@@ -835,46 +836,46 @@ func (p *Parser) emitJump(instr uint8) int {
 	p.emitByte(instr)
 	p.emitByte(0xff)
 	p.emitByte(0xff)
-	return len(p.currentChunk().code) - 2
+	return len(p.currentChunk().Code) - 2
 }
 func (p *Parser) emitForeach(slot uint8, iterslot uint8, idxslot uint8) int {
 
-	p.emitByte(OP_FOREACH)
+	p.emitByte(core.OP_FOREACH)
 	p.emitByte(slot)
 	p.emitByte(iterslot)
 	p.emitByte(idxslot)
 	p.emitByte(0xff)
 	p.emitByte(0xff)
-	return len(p.currentChunk().code) - 3
+	return len(p.currentChunk().Code) - 3
 }
 
 func (p *Parser) emitTry() int {
 
-	p.emitByte(OP_TRY)
+	p.emitByte(core.OP_TRY)
 	p.emitByte(0xff)
 	p.emitByte(0xff)
-	return len(p.currentChunk().code) - 2
+	return len(p.currentChunk().Code) - 2
 }
 
-func (p *Parser) currentChunk() *Chunk {
+func (p *Parser) currentChunk() *core.Chunk {
 
-	return p.currentCompiler.function.chunk
+	return p.currentCompiler.function.Chunk
 }
 
-func (p *Parser) endCompiler() *FunctionObject {
+func (p *Parser) endCompiler() *core.FunctionObject {
 
 	p.emitReturn()
 
 	function := p.currentCompiler.function
 	s := ""
-	if function.name.get() == "" {
+	if function.Name.Get() == "" {
 		s = p.currentCompiler.scriptName
 	} else {
-		s = function.name.get()
+		s = function.Name.Get()
 	}
 	if DebugPrintCode && !DebugSuppress {
 		if !p.hadError {
-			p.currentChunk().disassemble(s)
+			disassemble(p.currentChunk(), s)
 		}
 	}
 
@@ -895,9 +896,9 @@ func (p *Parser) endScope() {
 	// drop local vars on stack
 	for c.localCount > 0 && c.locals[c.localCount-1].depth > c.scopeDepth {
 		if c.locals[c.localCount-1].isCaptured {
-			p.emitByte(OP_CLOSE_UPVALUE)
+			p.emitByte(core.OP_CLOSE_UPVALUE)
 		} else {
-			p.emitByte(OP_POP)
+			p.emitByte(core.OP_POP)
 		}
 		c.localCount--
 	}
@@ -935,7 +936,7 @@ func (p *Parser) identifierConstant(t scn.Token) uint8 {
 
 	x := t.Lexeme()
 	p.globals[x] = true
-	return p.makeConstant(makeObjectValue(makeStringObject(t.Lexeme()), false))
+	return p.MakeConstant(core.MakeObjectValue(core.MakeStringObject(t.Lexeme()), false))
 }
 
 func (p *Parser) identifiersEqual(a, b scn.Token) bool {
@@ -964,7 +965,7 @@ func (p *Parser) resolveLocal(compiler *Compiler, name scn.Token) int {
 }
 func (p *Parser) addUpvalue(compiler *Compiler, index uint8, isLocal bool) int {
 
-	upvalueCount := compiler.function.upvalueCount
+	upvalueCount := compiler.function.UpvalueCount
 
 	// does upvalue already exist ?
 	for i := 0; i < upvalueCount; i++ {
@@ -982,7 +983,7 @@ func (p *Parser) addUpvalue(compiler *Compiler, index uint8, isLocal bool) int {
 		index:   index,
 	}
 	compiler.upvalues[upvalueCount] = uv
-	compiler.function.upvalueCount++
+	compiler.function.UpvalueCount++
 
 	return upvalueCount
 
@@ -1047,7 +1048,7 @@ func (p *Parser) markInitialised() {
 func (p *Parser) setLocalImmutable() {
 
 	c := p.currentChunk()
-	c.constants[len(c.constants)-1] = immutable(c.constants[len(c.constants)-1])
+	c.Constants[len(c.Constants)-1] = core.Immutable(c.Constants[len(c.Constants)-1])
 }
 
 func (p *Parser) defineVariable(global uint8) {
@@ -1057,7 +1058,7 @@ func (p *Parser) defineVariable(global uint8) {
 		p.markInitialised()
 		return
 	}
-	p.emitBytes(OP_DEFINE_GLOBAL, global)
+	p.emitBytes(core.OP_DEFINE_GLOBAL, global)
 }
 
 func (p *Parser) argumentList() uint8 {
@@ -1129,7 +1130,7 @@ func (p *Parser) defineConstVariable(global uint8) {
 		p.setLocalImmutable()
 		return
 	}
-	p.emitBytes(OP_DEFINE_GLOBAL_CONST, global)
+	p.emitBytes(core.OP_DEFINE_GLOBAL_CONST, global)
 }
 
 func (p *Parser) declareVariable() {
@@ -1165,15 +1166,15 @@ func (p *Parser) namedVariable(name scn.Token, canAssign bool) {
 	_ = a
 	arg := p.resolveLocal(p.currentCompiler, name)
 	if arg != -1 {
-		getOp = OP_GET_LOCAL
-		setOp = OP_SET_LOCAL
+		getOp = core.OP_GET_LOCAL
+		setOp = core.OP_SET_LOCAL
 	} else if arg = p.resolveUpvalue(p.currentCompiler, name); arg != -1 {
-		getOp = OP_GET_UPVALUE
-		setOp = OP_SET_UPVALUE
+		getOp = core.OP_GET_UPVALUE
+		setOp = core.OP_SET_UPVALUE
 	} else {
 		arg = int(p.identifierConstant(name))
-		getOp = OP_GET_GLOBAL
-		setOp = OP_SET_GLOBAL
+		getOp = core.OP_GET_GLOBAL
+		setOp = core.OP_SET_GLOBAL
 	}
 
 	if canAssign && p.match(scn.TOKEN_EQUAL) {
@@ -1201,42 +1202,42 @@ func (p *Parser) addLocal(name scn.Token) {
 	p.currentCompiler.localCount++
 }
 
-func (p *Parser) emitConstant(value Value) {
+func (p *Parser) emitConstant(value core.Value) {
 
-	p.emitBytes(OP_CONSTANT, p.makeConstant(value))
+	p.emitBytes(core.OP_CONSTANT, p.MakeConstant(value))
 }
 
 func (p *Parser) patchJump(offset int) {
 
-	jump := len(p.currentChunk().code) - offset - 2
+	jump := len(p.currentChunk().Code) - offset - 2
 	if uint16(jump) > ^uint16(0) {
 		p.error("Jump overflow")
 	}
-	p.currentChunk().code[offset] = uint8((jump >> 8) & 0xff)
-	p.currentChunk().code[offset+1] = uint8(jump & 0xff)
+	p.currentChunk().Code[offset] = uint8((jump >> 8) & 0xff)
+	p.currentChunk().Code[offset+1] = uint8(jump & 0xff)
 
 }
 func (p *Parser) patchForeach(offset int) {
 
-	jump := len(p.currentChunk().code) - offset - 2
+	jump := len(p.currentChunk().Code) - offset - 2
 	if uint16(jump) > ^uint16(0) {
 		p.error("Jump overflow")
 	}
-	p.currentChunk().code[offset+1] = uint8((jump >> 8) & 0xff)
-	p.currentChunk().code[offset+2] = uint8(jump & 0xff)
+	p.currentChunk().Code[offset+1] = uint8((jump >> 8) & 0xff)
+	p.currentChunk().Code[offset+2] = uint8(jump & 0xff)
 
 }
 
 func (p *Parser) patchTry(offset int) {
 
-	address := len(p.currentChunk().code)
-	p.currentChunk().code[offset] = uint8((address >> 8) & 0xff)
-	p.currentChunk().code[offset+1] = uint8(address & 0xff)
+	address := len(p.currentChunk().Code)
+	p.currentChunk().Code[offset] = uint8((address >> 8) & 0xff)
+	p.currentChunk().Code[offset+1] = uint8(address & 0xff)
 }
 
-func (p *Parser) makeConstant(value Value) uint8 {
+func (p *Parser) MakeConstant(value core.Value) uint8 {
 
-	constidx := p.currentChunk().addConstant(value)
+	constidx := p.currentChunk().AddConstant(value)
 	if constidx > 254 {
 		p.error("Too many constants in one chunk")
 		return 0
@@ -1247,11 +1248,11 @@ func (p *Parser) makeConstant(value Value) uint8 {
 func (p *Parser) emitReturn() {
 
 	if p.currentCompiler.type_ == TYPE_INITIALIZER {
-		p.emitBytes(OP_GET_LOCAL, 0)
+		p.emitBytes(core.OP_GET_LOCAL, 0)
 	} else {
-		p.emitByte(OP_NIL)
+		p.emitByte(core.OP_NIL)
 	}
-	op := OP_RETURN
+	op := core.OP_RETURN
 
 	p.emitByte(op)
 }
@@ -1259,18 +1260,18 @@ func (p *Parser) emitReturn() {
 // a[:], a[:exp]
 func (p *Parser) slice1(canAssign bool) {
 	// slice from -> stack
-	p.emitByte(OP_NIL)
+	p.emitByte(core.OP_NIL)
 	if p.match(scn.TOKEN_RIGHT_BRACKET) {
 		// [:]
 		if canAssign && p.match(scn.TOKEN_EQUAL) {
 			// slice to -> stack
-			p.emitByte(OP_NIL)
+			p.emitByte(core.OP_NIL)
 			// RHS -> stack
 			p.expression()
-			p.emitByte(OP_SLICE_ASSIGN)
+			p.emitByte(core.OP_SLICE_ASSIGN)
 		} else {
-			p.emitByte(OP_NIL)
-			p.emitByte(OP_SLICE)
+			p.emitByte(core.OP_NIL)
+			p.emitByte(core.OP_SLICE)
 		}
 	} else {
 		// [:exp]
@@ -1280,9 +1281,9 @@ func (p *Parser) slice1(canAssign bool) {
 		if canAssign && p.match(scn.TOKEN_EQUAL) {
 			// RHS -> stack
 			p.expression()
-			p.emitByte(OP_SLICE_ASSIGN)
+			p.emitByte(core.OP_SLICE_ASSIGN)
 		} else {
-			p.emitByte(OP_SLICE)
+			p.emitByte(core.OP_SLICE)
 		}
 	}
 }
@@ -1293,9 +1294,9 @@ func (p *Parser) index(canAssign bool) {
 	if canAssign && p.match(scn.TOKEN_EQUAL) {
 		// RHS -> stack
 		p.expression()
-		p.emitByte(OP_INDEX_ASSIGN)
+		p.emitByte(core.OP_INDEX_ASSIGN)
 	} else {
-		p.emitByte(OP_INDEX)
+		p.emitByte(core.OP_INDEX)
 	}
 }
 
@@ -1304,13 +1305,13 @@ func (p *Parser) slice2(canAssign bool) {
 
 	if p.match(scn.TOKEN_RIGHT_BRACKET) {
 		// [exp:]
-		p.emitByte(OP_NIL)
+		p.emitByte(core.OP_NIL)
 		if canAssign && p.match(scn.TOKEN_EQUAL) {
 			// RHS -> stack
 			p.expression()
-			p.emitByte(OP_SLICE_ASSIGN)
+			p.emitByte(core.OP_SLICE_ASSIGN)
 		} else {
-			p.emitByte(OP_SLICE)
+			p.emitByte(core.OP_SLICE)
 		}
 	} else {
 		// [exp:exp]
@@ -1319,9 +1320,9 @@ func (p *Parser) slice2(canAssign bool) {
 		if canAssign && p.match(scn.TOKEN_EQUAL) {
 			// RHS -> stack
 			p.expression()
-			p.emitByte(OP_SLICE_ASSIGN)
+			p.emitByte(core.OP_SLICE_ASSIGN)
 		} else {
-			p.emitByte(OP_SLICE)
+			p.emitByte(core.OP_SLICE)
 		}
 	}
 }
@@ -1365,29 +1366,29 @@ func binary(p *Parser, canAssign bool) {
 
 	switch opType {
 	case scn.TOKEN_PLUS:
-		p.emitByte(OP_ADD)
+		p.emitByte(core.OP_ADD)
 	case scn.TOKEN_MINUS:
-		p.emitByte(OP_SUBTRACT)
+		p.emitByte(core.OP_SUBTRACT)
 	case scn.TOKEN_STAR:
-		p.emitByte(OP_MULTIPLY)
+		p.emitByte(core.OP_MULTIPLY)
 	case scn.TOKEN_SLASH:
-		p.emitByte(OP_DIVIDE)
+		p.emitByte(core.OP_DIVIDE)
 	case scn.TOKEN_PERCENT:
-		p.emitByte(OP_MODULUS)
+		p.emitByte(core.OP_MODULUS)
 	case scn.TOKEN_BANG_EQUAL:
-		p.emitBytes(OP_EQUAL, OP_NOT)
+		p.emitBytes(core.OP_EQUAL, core.OP_NOT)
 	case scn.TOKEN_EQUAL_EQUAL:
-		p.emitByte(OP_EQUAL)
+		p.emitByte(core.OP_EQUAL)
 	case scn.TOKEN_LESS:
-		p.emitByte(OP_LESS)
+		p.emitByte(core.OP_LESS)
 	case scn.TOKEN_LESS_EQUAL:
-		p.emitBytes(OP_GREATER, OP_NOT)
+		p.emitBytes(core.OP_GREATER, core.OP_NOT)
 	case scn.TOKEN_GREATER:
-		p.emitByte(OP_GREATER)
+		p.emitByte(core.OP_GREATER)
 	case scn.TOKEN_GREATER_EQUAL:
-		p.emitBytes(OP_LESS, OP_NOT)
+		p.emitBytes(core.OP_LESS, core.OP_NOT)
 	case scn.TOKEN_IN:
-		p.emitByte(OP_IN)
+		p.emitByte(core.OP_IN)
 	}
 }
 
@@ -1404,7 +1405,7 @@ func grouping(p *Parser, canAssign bool) {
 			}
 		}
 		p.consume(scn.TOKEN_RIGHT_PAREN, "Expect ')' after tuple.")
-		p.emitByte(OP_CREATE_TUPLE)
+		p.emitByte(core.OP_CREATE_TUPLE)
 		p.emitByte(uint8(arity))
 	} else {
 		p.consume(scn.TOKEN_RIGHT_PAREN, "Expect ')' after expression.")
@@ -1414,22 +1415,22 @@ func grouping(p *Parser, canAssign bool) {
 func float(p *Parser, canAssign bool) {
 
 	val, _ := strconv.ParseFloat(p.previous.Lexeme(), 64)
-	p.emitConstant(makeFloatValue(val, false))
+	p.emitConstant(core.MakeFloatValue(val, false))
 
 }
 
 func int_(p *Parser, canAssign bool) {
 
 	val, _ := strconv.ParseInt(p.previous.Lexeme(), 10, 32)
-	p.emitConstant(makeIntValue(int(val), false))
+	p.emitConstant(core.MakeIntValue(int(val), false))
 
 }
 
 func loxstring(p *Parser, canAssign bool) {
 
 	str := p.previous.Lexeme()
-	strobj := makeStringObject(strings.Replace(str, "\"", "", -1))
-	p.emitConstant(makeObjectValue(strobj, false))
+	strobj := core.MakeStringObject(strings.Replace(str, "\"", "", -1))
+	p.emitConstant(core.MakeObjectValue(strobj, false))
 
 }
 
@@ -1445,9 +1446,9 @@ func unary(p *Parser, canAssign bool) {
 
 	switch opType {
 	case scn.TOKEN_MINUS:
-		p.emitByte(OP_NEGATE)
+		p.emitByte(core.OP_NEGATE)
 	case scn.TOKEN_BANG:
-		p.emitByte(OP_NOT)
+		p.emitByte(core.OP_NOT)
 	}
 }
 
@@ -1455,29 +1456,29 @@ func literal(p *Parser, canAssign bool) {
 
 	switch p.previous.Tokentype {
 	case scn.TOKEN_NIL:
-		p.emitByte(OP_NIL)
+		p.emitByte(core.OP_NIL)
 	case scn.TOKEN_FALSE:
-		p.emitByte(OP_FALSE)
+		p.emitByte(core.OP_FALSE)
 	case scn.TOKEN_TRUE:
-		p.emitByte(OP_TRUE)
+		p.emitByte(core.OP_TRUE)
 	}
 }
 
 func and_(p *Parser, canAssign bool) {
 
-	endJump := p.emitJump(OP_JUMP_IF_FALSE)
-	p.emitByte(OP_POP)
+	endJump := p.emitJump(core.OP_JUMP_IF_FALSE)
+	p.emitByte(core.OP_POP)
 	p.parsePredence(PREC_AND)
 	p.patchJump(endJump)
 }
 
 func or_(p *Parser, canAssign bool) {
 
-	elseJump := p.emitJump(OP_JUMP_IF_FALSE)
-	endJump := p.emitJump(OP_JUMP)
+	elseJump := p.emitJump(core.OP_JUMP_IF_FALSE)
+	endJump := p.emitJump(core.OP_JUMP)
 
 	p.patchJump(elseJump)
-	p.emitByte(OP_POP)
+	p.emitByte(core.OP_POP)
 
 	p.parsePredence(PREC_OR)
 	p.patchJump(endJump)
@@ -1486,7 +1487,7 @@ func or_(p *Parser, canAssign bool) {
 func call(p *Parser, canAssign bool) {
 
 	argCount := p.argumentList()
-	p.emitBytes(OP_CALL, argCount)
+	p.emitBytes(core.OP_CALL, argCount)
 }
 
 func dot(p *Parser, canAssign bool) {
@@ -1496,13 +1497,13 @@ func dot(p *Parser, canAssign bool) {
 
 	if canAssign && p.match(scn.TOKEN_EQUAL) {
 		p.expression()
-		p.emitBytes(OP_SET_PROPERTY, name)
+		p.emitBytes(core.OP_SET_PROPERTY, name)
 	} else if p.match(scn.TOKEN_LEFT_PAREN) {
 		argCount := p.argumentList()
-		p.emitBytes(OP_INVOKE, name)
+		p.emitBytes(core.OP_INVOKE, name)
 		p.emitByte(argCount)
 	} else {
-		p.emitBytes(OP_GET_PROPERTY, name)
+		p.emitBytes(core.OP_GET_PROPERTY, name)
 	}
 }
 
@@ -1529,24 +1530,24 @@ func super(p *Parser, canAssign bool) {
 	if p.match(scn.TOKEN_LEFT_PAREN) {
 		argCount := p.argumentList()
 		p.namedVariable(scn.SyntheticToken("super"), false)
-		p.emitBytes(OP_SUPER_INVOKE, name)
+		p.emitBytes(core.OP_SUPER_INVOKE, name)
 		p.emitByte(argCount)
 	} else {
 		p.namedVariable(scn.SyntheticToken("super"), false)
-		p.emitBytes(OP_GET_SUPER, name)
+		p.emitBytes(core.OP_GET_SUPER, name)
 	}
 }
 
 func listLiteral(p *Parser, canAssign bool) {
 
 	listCount := p.parseList()
-	p.emitBytes(OP_CREATE_LIST, listCount)
+	p.emitBytes(core.OP_CREATE_LIST, listCount)
 }
 
 func dictLiteral(p *Parser, canAssign bool) {
 
 	dictCount := p.parseDict()
-	p.emitBytes(OP_CREATE_DICT, dictCount)
+	p.emitBytes(core.OP_CREATE_DICT, dictCount)
 }
 
 // var[<expr>]
@@ -1586,5 +1587,5 @@ func str_(p *Parser, canAssign bool) {
 	p.consume(scn.TOKEN_LEFT_PAREN, "Expect '(' after str.")
 	p.expression()
 	p.consume(scn.TOKEN_RIGHT_PAREN, "Expect ')' after expression.")
-	p.emitByte(OP_STR)
+	p.emitByte(core.OP_STR)
 }

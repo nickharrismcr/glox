@@ -26,7 +26,7 @@ type Value struct {
 	Immut bool
 }
 
-func immutable(v Value) Value {
+func Immutable(v Value) Value {
 
 	switch v.Type {
 	case VAL_INT:
@@ -41,7 +41,7 @@ func immutable(v Value) Value {
 	return MakeNilValue()
 }
 
-func mutable(v Value) Value {
+func Mutable(v Value) Value {
 	switch v.Type {
 	case VAL_INT:
 		return MakeIntValue(v.Int, false)
@@ -144,7 +144,7 @@ func (v Value) AsInt() int {
 	}
 }
 
-func isString(v Value) bool {
+func IsString(v Value) bool {
 	switch v.Type {
 	case VAL_OBJ:
 		return v.Obj.GetType() == OBJECT_STRING
@@ -152,24 +152,24 @@ func isString(v Value) bool {
 	return false
 }
 
-func getStringValue(v Value) string {
+func GetStringValue(v Value) string {
 
 	return v.AsString().Get()
 }
 
-func getFunctionObjectValue(v Value) *FunctionObject {
+func GetFunctionObjectValue(v Value) *FunctionObject {
 	return v.AsFunction()
 }
 
-func getClosureObjectValue(v Value) *ClosureObject {
+func GetClosureObjectValue(v Value) *ClosureObject {
 	return v.AsClosure()
 }
 
-/* func getClassObjectValue(v Value) *ClassObject {
+/* func GetClassObjectValue(v Value) *ClassObject {
 	return v.asClass()
 } */
 
-func getInstanceObjectValue(v Value) *InstanceObject {
+func GetInstanceObjectValue(v Value) *InstanceObject {
 	return v.AsInstance()
 }
 
