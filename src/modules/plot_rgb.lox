@@ -2,7 +2,7 @@
 // array can be written to a png file 
 // or passed to graphics.draw_array() to draw on the screen
 
-
+import colour 
 class Plotter {
     init(filename,width,height){
         this.filename=filename;
