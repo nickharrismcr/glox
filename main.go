@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	lox "glox/src"
+	"glox/src/compiler"
 	"glox/src/core"
-	"glox/src/scanner"
 	"os"
 	"runtime/debug"
 )
@@ -75,7 +75,7 @@ func runFile(opts *Options) {
 	source := string(bytes)
 
 	if opts.printTokens {
-		scanner.PrintTokens(source)
+		compiler.PrintTokens(source)
 		os.Exit(0)
 	}
 	vm := lox.NewVM(path, !core.DebugSkipBuiltins)
