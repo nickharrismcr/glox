@@ -170,25 +170,6 @@ func (vm *VM) resetStack() {
 func (vm *VM) RunTimeError(format string, args ...any) {
 
 	vm.ErrorMsg = fmt.Sprintf(format, args...)
-
-	//vm.RaiseExceptionByName("RunTimeError", err)
-	/* fmt.Fprintf(os.Stderr, format, args...)
-	fmt.Fprint(os.Stderr, "\n")
-
-	for i := vm.frameCount - 1; i >= 0; i-- {
-		frame := vm.frames[i]
-		function := function
-
-		fmt.Fprintf(os.Stderr, "[line %d] in ", chunk.lines[frame.ip])
-		if function.name.get() == "" {
-			fmt.Fprintf(os.Stderr, "%s \n", vm.script)
-		} else {
-			fmt.Fprintf(os.Stderr, "%s \n", function.name.get())
-		}
-	}
-
-	vm.resetStack()
-	*/
 }
 
 func (vm *VM) defineBuiltIn(name string, function BuiltInFn) {
@@ -270,16 +251,6 @@ func (vm *VM) invoke(name Value, argCount int) bool {
 		return vm.invokeFromClass(instance.class, name, argCount)
 	case OBJECT_MODULE:
 		module := receiver.asModule()
-		for k, v := range module.environment.vars {
-			Debugf("Invoke Found module property '%s' in environment", k)
-			if v.isClosureObject() {
-				Debugf("Found module property '%s' is a closure", k)
-				if v.asClosure().function.environment == nil {
-					Debugf("Module property '%s' has no environment", k)
-				}
-				Debugf("Property %s environment vars count = %d", k, len(v.asClosure().function.environment.vars))
-			}
-		}
 		return vm.invokeFromModule(module, name, argCount)
 	case OBJECT_FLOAT_ARRAY, OBJECT_STRING, OBJECT_LIST, OBJECT_DICT, OBJECT_GRAPHICS:
 		return vm.invokeFromBuiltin(receiver.Obj, name, argCount)
