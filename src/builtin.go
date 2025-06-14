@@ -13,7 +13,7 @@ import (
 
 func (vm *VM) defineBuiltIns() {
 
-	debug.Debug("Defining built-in functions")
+	debug.Println("Defining built-in functions")
 	// native functions
 	vm.defineBuiltIn("args", argsBuiltIn)
 	vm.defineBuiltIn("clock", clockBuiltIn)
@@ -508,7 +508,7 @@ func openFile(path string, mode string) (*os.File, error) {
 }
 
 func (vm *VM) loadBuiltInModule(source string, moduleName string) {
-	debug.Debug("Loading built-in module ")
+	debug.Println("Loading built-in module ")
 	subvm := NewVM("", false)
 	//	DebugSuppress = true
 	_, _ = subvm.Interpret(source, moduleName)

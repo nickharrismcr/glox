@@ -1142,16 +1142,16 @@ func (vm *VM) importModule(moduleName string) InterpretResult {
 		}
 	}
 	subfn := subvm.frames[0].Closure.Function
-	loxdebug.Debugf("subvm environment name = %s", subfn.Environment.Name)
+	loxdebug.Fmt("subvm environment name = %s", subfn.Environment.Name)
 	subvm_globals := subfn.Environment.Vars
 	for k, v := range subvm_globals {
-		loxdebug.Debugf("Import Found module property '%s' in subvm main func environment", k)
+		loxdebug.Fmt("Import Found module property '%s' in subvm main func environment", k)
 		if v.IsClosureObject() {
-			loxdebug.Debugf("Found module property '%s' is a closure", k)
+			loxdebug.Fmt("Found module property '%s' is a closure", k)
 			if v.AsClosure().Function.Environment == nil {
-				loxdebug.Debugf("Module property '%s' has no environment", k)
+				loxdebug.Fmt("Module property '%s' has no environment", k)
 			}
-			loxdebug.Debugf("Property %s environment vars count = %d", k, len(v.AsClosure().Function.Environment.Vars))
+			loxdebug.Fmt("Property %s environment vars count = %d", k, len(v.AsClosure().Function.Environment.Vars))
 		}
 	}
 
