@@ -84,7 +84,7 @@ func (vm *VM) SetArgs(args []string) {
 func (vm *VM) Interpret(source string, module string) (InterpretResult, string) {
 
 	vm.source = source
-	function := compiler.Compile(source, vm.script, module)
+	function := compiler.Compile(vm.script, source, module)
 	if function == nil {
 		return INTERPRET_COMPILE_ERROR, ""
 	}
