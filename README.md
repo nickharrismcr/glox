@@ -117,8 +117,7 @@ i/o
 **TODO:**
 
 - more runtime exception types 
-- exception stack trace 
-- lxcs to store pointers to original source for error reporting 
+- tuple/list unpacking
 - from module import [*|name] 
 - import module as <namespace> 
 
