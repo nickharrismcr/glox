@@ -1,22 +1,23 @@
 package lox
 
 import (
+	"glox/src/core"
 	"reflect"
 	"strings"
 )
 
-func DumpObject(obj Object) {
+func DumpObject(obj core.Object) {
 	seen := make(map[uintptr]bool)
 	dumpObject(obj, seen, 0)
 }
 
-func DumpValue(where string, val Value) {
+func DumpValue(where string, val core.Value) {
 	Debugf("Value at %s:\n", where)
 	seen := make(map[uintptr]bool)
 	dumpValue(val, seen, 0)
 }
 
-func dumpObject(obj Object, seen map[uintptr]bool, indent int) {
+func dumpObject(obj core.Object, seen map[uintptr]bool, indent int) {
 	if obj == nil {
 		Debugf("%s<nil object>\n", indentPad(indent))
 		return
@@ -31,28 +32,28 @@ func dumpObject(obj Object, seen map[uintptr]bool, indent int) {
 
 	switch o := obj.(type) {
 
-	case *FunctionObject:
-		fo := obj.(*FunctionObject)
+	case *core.FunctionObject:
+		fo := obj.(*core.FunctionObject)
 		Debugf("%s<Function %s @%p>\n", indentPad(indent), fo.name, fo)
-		if fo.environment != nil {
+		if fo.Environment != nil {
 			Debugf("%s  Env:\n", indentPad(indent))
-			dumpEnvironment(fo.environment, seen, indent+2)
+			dumpEnvironment(fo.Environment, seen, indent+2)
 		}
-		for i, c := range o.chunk.constants {
+		for i, c := range o.Chunk.Constants {
 			Debugf("%s  Const[%d]: ", indentPad(indent), i)
 			dumpValue(c, seen, indent+2)
 		}
 
-	case *ClosureObject:
+	case *core.ClosureObject:
 		Debugf("%s<Closure @%p>\n", indentPad(indent), o)
-		dumpObject(o.function, seen, indent+1)
+		dumpObject(o.Function, seen, indent+1)
 
 	default:
 		Debugf("%s<%T: %v>\n", indentPad(indent), o, o)
 	}
 }
 
-func dumpEnvironment(env *Environment, seen map[uintptr]bool, indent int) {
+func dumpEnvironment(env *core.Environment, seen map[uintptr]bool, indent int) {
 	if env == nil {
 		Debugf("%s<nil environment>\n", indentPad(indent))
 		return
@@ -73,7 +74,7 @@ func dumpEnvironment(env *Environment, seen map[uintptr]bool, indent int) {
 
 }
 
-func dumpValue(val Value, seen map[uintptr]bool, indent int) {
+func dumpValue(val core.Value, seen map[uintptr]bool, indent int) {
 	if val.IsObj() {
 		dumpObject(val.Obj, seen, indent)
 	} else {
@@ -85,7 +86,7 @@ func indentPad(n int) string {
 	return strings.Repeat("  ", n)
 }
 
-func objectPtr(obj Object) uintptr {
+func objectPtr(obj core.Object) uintptr {
 	val := reflect.ValueOf(obj)
 	switch val.Kind() {
 	case reflect.Ptr:
@@ -95,6 +96,6 @@ func objectPtr(obj Object) uintptr {
 	}
 }
 
-func environmentPtr(env *Environment) uintptr {
+func environmentPtr(env *core.Environment) uintptr {
 	return reflect.ValueOf(env).Pointer()
 }

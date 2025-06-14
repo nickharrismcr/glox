@@ -1,21 +1,21 @@
 package core
 
 type ClosureObject struct {
-	function     *FunctionObject
-	upvalues     []*UpvalueObject
-	upvalueCount int
+	Function     *FunctionObject
+	Upvalues     []*UpvalueObject
+	UpvalueCount int
 }
 
 func MakeClosureObject(function *FunctionObject) *ClosureObject {
 
 	rv := &ClosureObject{
-		function: function,
-		upvalues: []*UpvalueObject{},
+		Function: function,
+		Upvalues: []*UpvalueObject{},
 	}
 	for i := 0; i < function.UpvalueCount; i++ {
-		rv.upvalues = append(rv.upvalues, nil)
+		rv.Upvalues = append(rv.Upvalues, nil)
 	}
-	rv.upvalueCount = function.UpvalueCount
+	rv.UpvalueCount = function.UpvalueCount
 	return rv
 }
 
@@ -28,7 +28,7 @@ func (ClosureObject) GetType() ObjectType {
 
 func (f *ClosureObject) String() string {
 
-	return f.function.String()
+	return f.Function.String()
 }
 
 // -------------------------------------------------------------------------------------------

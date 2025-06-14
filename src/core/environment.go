@@ -1,15 +1,15 @@
 package core
 
 type Environment struct {
-	name string
-	vars map[string]Value
+	Name	string
+	Vars	map[string]Value
 }
 
 func NewEnvironment(name string) *Environment {
 
 	return &Environment{
-		name: name,
-		vars: map[string]Value{},
+		name:	name,
+		vars:	map[string]Value{},
 	}
 }
 func (env *Environment) SetVar(name string, value Value) {
@@ -17,14 +17,14 @@ func (env *Environment) SetVar(name string, value Value) {
 		panic("Cannot set variable in nil environment")
 	}
 
-	env.vars[name] = value
+	env.Vars[name] = value
 }
 
 func (env *Environment) GetVar(name string) (Value, bool) {
 	if env == nil {
 		panic("Cannot get variable from nil environment")
 	}
-	value, ok := env.vars[name]
+	value, ok := env.Vars[name]
 
 	return value, ok
 }
