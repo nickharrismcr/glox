@@ -16,7 +16,7 @@ but hey-ho. This is a learning exercise, the Go code is probably not very ideoma
 
 **Additions to vanilla Lox:**
 
-module imports
+Module imports
 
 - e.g `import othermodule;`
 - importing modules will cache the compiled bytecode in `__loxcache__/<module>.lxc`, subsequent imports will load from this cache unless the source is newer in which 
@@ -24,15 +24,17 @@ module imports
 
 EOL semicolons are optional 
 
-immutable vars e.g  `const a = 1;`
+Implicit var declarations e.g `a=1`
 
-integer number type:
+Immutable vars e.g  `const a = 1`
+
+Integer number type:
 
 - modulus operator %  
 
-loop `break`/`continue`
+Loop `break`/`continue`
 
-native funcs :  
+Native funcs :  
 
 - `int(number)`    - conversion
 - `float(number)`   - conversion 
@@ -46,17 +48,36 @@ native funcs :
 - `encode_rgb(r,g,b) -> float `  - encode rgb int values (0-255) as a single float 
 - `decode_rgb(f)`  - decode an encoded rgb float into a tuple of ints (0-255)     
 
-native objects :
+Native objects :
 
-- fast 2D native float array 
-- - `var a = float_array(100,100);`
-- - `a.set(10,10,0.5);`
-- - `var b=a.get(10,10);`
+Fast 2D native float array 
+- `var a = float_array(100,100);`
+- `a.set(10,10,0.5);`
+- `var b=a.get(10,10);`  
 
-built-in lox modules:
--  iterator tools, function tools, string utils, PNG plotter 
+Raylib graphics window for drawing 
+```
+const width=1500
+const height=900
+var win = window(width,height)
+win.init()
+ 
+while (!win.should_close()) {
 
-lists :
+    win.begin()
+    win.clear(10,10,10, 255) 
+    win.begin_blend_mode("add")
+    win.circle_fill(100,100, 50, 255, 0, 0, 255 ) // Draw a red circle for testing
+    win.end_blend_mode()
+    win.end()
+}
+win.close()
+```
+
+Built-in lox modules:
+-  iterator tools, function tools, math, random, colour, string utils, PNG plotters, gfx particle system
+
+Lists :
 
 - initialiser (`var a=[]; var a=[1,2,3];`)
 - `l.append(val)` -> append val to list in place  
@@ -67,20 +88,20 @@ lists :
 - adding ( `list3=list1+list2;` )
 - test for `item in list`  -> true|false 
 
-tuples : 
+Tuples : 
 
 - immutable lists
 - `var a = (1,2,3);` 
 - allows same operations as list but no append or assignment allowed.
 
-dictionaries:
+Dictionaries:
 
 - initialiser ( `var a = {}; var a = { "b":"c","d":"e"};` )
 - get ( `a[key]` or `a.get(key,default)` ) 
 - set ( `a[key]=b`)
 - `dict.keys()`   get list of keys 
 
-strings :
+Strings :
 
 - `s=s+"4"`  string addition
 - `s.replace(old,new)` -> string  - replace substring in string   
@@ -89,18 +110,15 @@ strings :
 - slices   ( `a = "abcd"; b=a[0], b=a[:2]`, etc )
 - test for presence of substring in string : `substring in string` -> true|false 
 
-foreach : 
+Foreach : 
 - iterate lists/strings with `foreach ( var i in iterable ) { block }`
 
 
-
-renamed fun to func
-
-class `toString()` magic method
+Class `toString()` magic method
 
 - if present and returns a string, will be used for print class / str(class)
 
-exceptions
+Exceptions
 
 - built in Exception class, subclass custom exception classes from it
 - `try {block} except [exception type] as [instance var] {handler}` 
@@ -109,7 +127,7 @@ exceptions
 - `raise [exception instance]` statement 
 - runtime can raise catchable exceptions e.g RunTimeError, EOFError
 
-i/o
+I/O
 
 - native file open, close, readln, write 
 - readln throws EOFError on eof 
