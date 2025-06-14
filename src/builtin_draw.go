@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"image/png"
 	"os"
+	"sync"
 )
 
 // takes a filename, and a FloatArrayObject, and a boolean indicating whether the array contains RGB encoded data
@@ -81,6 +82,9 @@ func drawPNGBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 // y offset
 // scale
 // 1D float array (RGB encoded) for colour mapping
+
+// creates a goroutine for each row of the array, which calculates the mandelbrot set for that row
+
 func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 	if argCount != 8 {
@@ -112,34 +116,62 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 	scale := scaleVal.Float
 	colours := colourVal.asFloatArray()
 
-	for row := 0; row < height; row = row + 1 {
-		for col := 0; col < width; col = col + 1 {
-
-			x0 := scale*(float64(col)-float64(width)/2)/float64(width) + xOffset
-			y0 := scale*(float64(row)-float64(height)/2)/float64(height) + yOffset
-			x, y := 0.0, 0.0
-			iteration := 0
-
-			for (x*x+y*y <= 4) && (iteration < maxIteration) {
-				xtemp := x*x - y*y + x0
-				y = 2*x*y + y0
-				x = xtemp
-				iteration++
-			}
-
-			var colour float64
-			if iteration == maxIteration {
-				colour = EncodeRGB(0, 0, 0)
-			} else {
-				index := iteration
-				if index >= colours.value.width {
-					index = colours.value.width - 1
-				}
-				colour = colours.value.get(index, 0)
-
-			}
-			array.value.set(row, col, colour)
-		}
+	var wg sync.WaitGroup
+	for row := range height {
+		wg.Add(1)
+		go func(row int) {
+			defer wg.Done()
+			mandelbrotCalcRow(row, width, height, maxIteration, scale, xOffset, yOffset, colours, array)
+		}(row)
 	}
+	wg.Wait()
 	return makeNilValue()
+}
+
+func mandelbrotCalcRow(row, width, height, maxIteration int, scale, xOffset, yOffset float64, colours *FloatArrayObject, array *FloatArrayObject) {
+
+	const periodLength = 20
+	y0 := scale*(float64(row)-float64(height)/2)/float64(height) + yOffset
+
+	for col := 0; col < width; col++ {
+
+		var xold float64 = -1.0
+		var yold float64 = -1.0
+		var period int = 0
+		x0 := scale*(float64(col)-float64(width)/2)/float64(width) + xOffset
+
+		x, y := 0.0, 0.0
+		iteration := 0
+
+		for (x*x+y*y <= 4) && (iteration < maxIteration) {
+			// optimisation : check for periodicity
+			if x == xold && y == yold {
+				iteration = maxIteration
+				goto bailout
+			}
+			period++
+			if period > periodLength {
+				period = 0
+				xold = x
+				yold = y
+			}
+
+			xtemp := x*x - y*y + x0
+			y = 2*x*y + y0
+			x = xtemp
+			iteration++
+		}
+	bailout:
+		var colour float64
+		if iteration == maxIteration {
+			colour = EncodeRGB(0, 0, 0)
+		} else {
+			index := iteration
+			if index >= colours.value.width {
+				index = colours.value.width - 1
+			}
+			colour = colours.value.get(index, 0)
+		}
+		array.value.set(row, col, colour)
+	}
 }
