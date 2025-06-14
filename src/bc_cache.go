@@ -5,7 +5,7 @@ import (
 	bin "encoding/binary"
 	"fmt"
 	"glox/src/core"
-	"glox/src/loxdebug"
+	"glox/src/debug"
 
 	"glox/src/util"
 	"io"
@@ -44,7 +44,7 @@ func loadLxc(scriptPath string) (*core.Chunk, *core.Environment, bool) {
 	if core.ForceModuleCompile {
 		return nil, nil, false
 	}
-	loxdebug.Fmt("Attempting to load lxc for %s", scriptPath)
+	debug.Fmt("Attempting to load lxc for %s", scriptPath)
 
 	// Determine cache path
 	dir := filepath.Dir(scriptPath)
@@ -69,7 +69,7 @@ func loadLxc(scriptPath string) (*core.Chunk, *core.Environment, bool) {
 			//Debug("lxc not found.")
 			return nil, nil, false
 		}
-		loxdebug.Fmt("loading lxc. %s", base)
+		debug.Fmt("loading lxc. %s", base)
 		env := core.NewEnvironment(base)
 		chunk := readChunk(reader, env)
 		return chunk, env, true

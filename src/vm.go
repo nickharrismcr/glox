@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"glox/src/compiler"
 	"glox/src/core"
-	"glox/src/loxdebug"
+	"glox/src/debug"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -413,7 +413,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				vm.showGlobals()
 			}
 			vm.showStack()
-			_ = loxdebug.DisassembleInstruction(chunk, vm.script, function.Name.Get(), frame.Depth, inst, frame.Ip)
+			_ = debug.DisassembleInstruction(chunk, vm.script, function.Name.Get(), frame.Depth, inst, frame.Ip)
 		}
 
 		frame.Ip++
@@ -1142,16 +1142,16 @@ func (vm *VM) importModule(moduleName string) InterpretResult {
 		}
 	}
 	subfn := subvm.frames[0].Closure.Function
-	loxdebug.Fmt("subvm environment name = %s", subfn.Environment.Name)
+	debug.Fmt("subvm environment name = %s", subfn.Environment.Name)
 	subvm_globals := subfn.Environment.Vars
 	for k, v := range subvm_globals {
-		loxdebug.Fmt("Import Found module property '%s' in subvm main func environment", k)
+		debug.Fmt("Import Found module property '%s' in subvm main func environment", k)
 		if v.IsClosureObject() {
-			loxdebug.Fmt("Found module property '%s' is a closure", k)
+			debug.Fmt("Found module property '%s' is a closure", k)
 			if v.AsClosure().Function.Environment == nil {
-				loxdebug.Fmt("Module property '%s' has no environment", k)
+				debug.Fmt("Module property '%s' has no environment", k)
 			}
-			loxdebug.Fmt("Property %s environment vars count = %d", k, len(v.AsClosure().Function.Environment.Vars))
+			debug.Fmt("Property %s environment vars count = %d", k, len(v.AsClosure().Function.Environment.Vars))
 		}
 	}
 
@@ -1646,7 +1646,7 @@ func (vm *VM) pauseExecution() {
 	// runtime.Stack can be used to print the Go stack trace if desired
 	// buf := make([]byte, 1<<16)
 	// runtime.Stack(buf, true)
-	runtime.Breakpoint() // halt if loxdebugger attached
+	runtime.Breakpoint() // halt if debugger attached
 	// or: pause until user input
 	//buf := bufio.NewReader(os.Stdin)
 	//fmt.Print("Press Enter to continue...")

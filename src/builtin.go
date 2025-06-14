@@ -3,7 +3,7 @@ package lox
 import (
 	"fmt"
 	"glox/src/core"
-	debug "glox/src/loxdebug"
+	debug "glox/src/debug"
 	"glox/src/util"
 	"math"
 	"math/rand"
