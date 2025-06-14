@@ -3,16 +3,15 @@ package lox
 import (
 	"bytes"
 	"fmt"
+	"glox/src/compiler"
 	"glox/src/core"
+	"glox/src/loxdebug"
 	"os"
 	"path/filepath"
 	"runtime"
-	"runtime/debug"
 	"strings"
 	"time"
 )
-
-var ForceModuleCompile = false
 
 type InterpretResult int
 
@@ -28,20 +27,12 @@ const (
 	GC_COLLECT_INTERVAL float64 = 5
 )
 
-type CallFrame struct {
-	closure  *core.ClosureObject
-	ip       int
-	slots    int // start of vm stack for this frame
-	handlers *ExceptionHandler
-	depth    int
-}
-
 type VM struct {
 	script       string
 	source       string
 	stack        [STACK_MAX]core.Value
 	stackTop     int
-	frames       [FRAMES_MAX]*CallFrame
+	frames       [FRAMES_MAX]*core.CallFrame
 	frameCount   int
 	starttime    time.Time
 	lastGC       time.Time
@@ -51,12 +42,6 @@ type VM struct {
 	stackTrace   []string
 	ModuleImport bool
 	builtIns     map[string]core.Value // global built-in functions
-}
-
-type ExceptionHandler struct {
-	exceptIP uint16
-	stackTop int
-	prev     *ExceptionHandler
 }
 
 //------------------------------------------------------------------------------------------
@@ -99,7 +84,7 @@ func (vm *VM) SetArgs(args []string) {
 func (vm *VM) Interpret(source string, module string) (InterpretResult, string) {
 
 	vm.source = source
-	function := vm.compile(source, module)
+	function := compiler.Compile(source, vm.script, module)
 	if function == nil {
 		return INTERPRET_COMPILE_ERROR, ""
 	}
@@ -152,14 +137,14 @@ func (subvm *VM) callLoadedChunk(name string, newEnv *core.Environment, chunk *c
 //------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------
 
-func (vm *VM) frame() *CallFrame {
+func (vm *VM) frame() *core.CallFrame {
 
 	return vm.frames[vm.frameCount-1]
 }
 
 func (vm *VM) getCode() []uint8 {
 
-	return vm.frame().closure.Function.Chunk.Code
+	return vm.frame().Closure.Function.Chunk.Code
 }
 
 func (vm *VM) resetStack() {
@@ -357,12 +342,12 @@ func (vm *VM) call(closure *core.ClosureObject, argCount int) bool {
 		vm.RunTimeError("Expected %d arguments but got %d.", closure.Function.Arity, argCount)
 		return false
 	}
-	frame := &CallFrame{
-		closure:  closure,
-		ip:       0,
-		slots:    vm.stackTop - argCount - 1,
-		handlers: nil,
-		depth:    vm.frameCount + 1,
+	frame := &core.CallFrame{
+		Closure:  closure,
+		Ip:       0,
+		Slots:    vm.stackTop - argCount - 1,
+		Handlers: nil,
+		Depth:    vm.frameCount + 1,
 	}
 	vm.frames[vm.frameCount] = frame
 	vm.frameCount++
@@ -376,16 +361,16 @@ func (vm *VM) call(closure *core.ClosureObject, argCount int) bool {
 
 func (vm *VM) readShort() uint16 {
 
-	vm.frame().ip += 2
-	b1 := uint16(vm.getCode()[vm.frame().ip-2])
-	b2 := uint16(vm.getCode()[vm.frame().ip-1])
+	vm.frame().Ip += 2
+	b1 := uint16(vm.getCode()[vm.frame().Ip-2])
+	b2 := uint16(vm.getCode()[vm.frame().Ip-1])
 	return uint16(b1<<8 | b2)
 }
 
 func (vm *VM) readByte() uint8 {
 
-	vm.frame().ip += 1
-	return vm.getCode()[vm.frame().ip-1]
+	vm.frame().Ip += 1
+	return vm.getCode()[vm.frame().Ip-1]
 }
 
 func (vm *VM) isFalsey(v core.Value) bool {
@@ -409,7 +394,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 	for {
 		frame := vm.frame()
-		function := frame.closure.Function
+		function := frame.Closure.Function
 		chunk := function.Chunk
 		constants := chunk.Constants
 
@@ -422,44 +407,44 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			}
 		}
 
-		inst := vm.getCode()[frame.ip]
-		if DebugTraceExecution && !DebugSuppress {
-			if DebugShowGlobals {
+		inst := vm.getCode()[frame.Ip]
+		if core.DebugTraceExecution && !core.DebugSuppress {
+			if core.DebugShowGlobals {
 				vm.showGlobals()
 			}
 			vm.showStack()
-			_ = disassembleInstruction(chunk, vm.script, frame, inst, frame.ip)
+			_ = loxdebug.DisassembleInstruction(chunk, vm.script, function.Name.Get(), frame.Depth, inst, frame.Ip)
 		}
 
-		frame.ip++
+		frame.Ip++
 		switch inst {
 
 		case core.OP_INVOKE:
-			idx := vm.getCode()[frame.ip]
-			frame.ip++
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
 			method := constants[idx]
-			argCount := vm.getCode()[frame.ip]
-			frame.ip++
+			argCount := vm.getCode()[frame.Ip]
+			frame.Ip++
 			if !vm.invoke(method, int(argCount)) {
 				goto End
 			}
 
 		case core.OP_CLOSURE:
 			// get the function indexed by operand from constants, wrap in a closure object and push onto stack
-			idx := vm.getCode()[frame.ip]
-			frame.ip++
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
 			function := constants[idx]
 			closure := core.MakeClosureObject(core.GetFunctionObjectValue(function))
 			vm.push(core.MakeObjectValue(closure, false))
 			for i := 0; i < closure.UpvalueCount; i++ {
-				isLocal := vm.getCode()[frame.ip]
-				frame.ip++
-				index := int(vm.getCode()[frame.ip])
-				frame.ip++
+				isLocal := vm.getCode()[frame.Ip]
+				frame.Ip++
+				index := int(vm.getCode()[frame.Ip])
+				frame.Ip++
 				if isLocal == 1 {
-					closure.Upvalues[i] = vm.captureUpvalue(frame.slots + index)
+					closure.Upvalues[i] = vm.captureUpvalue(frame.Slots + index)
 				} else {
-					upv := frame.closure.Upvalues[index]
+					upv := frame.Closure.Upvalues[index]
 					closure.Upvalues[i] = upv
 				}
 			}
@@ -467,26 +452,26 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		case core.OP_RETURN:
 			// exit, return the value at stack top
 			result := vm.pop()
-			vm.closeUpvalues(frame.slots)
+			vm.closeUpvalues(frame.Slots)
 			vm.frameCount--
 			if vm.frameCount == 0 {
 				vm.pop() // drop main script function obj
 				runtime.GC()
 				return INTERPRET_OK, result
 			}
-			vm.stackTop = frame.slots
+			vm.stackTop = frame.Slots
 			vm.push(result)
 
 		case core.OP_GET_UPVALUE:
-			slot := vm.getCode()[frame.ip]
-			frame.ip++
-			valIdx := frame.closure.Upvalues[slot].Location
+			slot := vm.getCode()[frame.Ip]
+			frame.Ip++
+			valIdx := frame.Closure.Upvalues[slot].Location
 			vm.push(*valIdx)
 
 		case core.OP_SET_UPVALUE:
-			slot := vm.getCode()[frame.ip]
-			frame.ip++
-			*(frame.closure.Upvalues[slot].Location) = vm.Peek(0)
+			slot := vm.getCode()[frame.Ip]
+			frame.Ip++
+			*(frame.Closure.Upvalues[slot].Location) = vm.Peek(0)
 
 		case core.OP_CLOSE_UPVALUE:
 			vm.closeUpvalues(vm.stackTop - 1)
@@ -494,14 +479,14 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		case core.OP_CONSTANT:
 			// get the constant indexed by operand and push it onto the stack
-			idx := vm.getCode()[frame.ip]
-			frame.ip++
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
 			constant := constants[idx]
 			vm.push(constant)
 
 		case core.OP_METHOD:
-			idx := vm.getCode()[frame.ip]
-			frame.ip++
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
 			name := constants[idx]
 			vm.defineMethod(core.GetStringValue(name))
 
@@ -567,8 +552,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				goto End
 			}
 
-			idx := vm.getCode()[frame.ip]
-			frame.ip++
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
 			nv := constants[idx]
 			name := core.GetStringValue(nv)
 
@@ -605,8 +590,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				vm.RunTimeError("Property not found.")
 				goto End
 			}
-			idx := vm.getCode()[frame.ip]
-			frame.ip++
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
 			name := core.GetStringValue(constants[idx])
 			switch v.Obj.GetType() {
 			case core.OBJECT_INSTANCE:
@@ -656,8 +641,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		case core.OP_DEFINE_GLOBAL:
 			// name = constant at operand index
 			// pop 1 stack value and set globals[name] to it
-			idx := vm.getCode()[frame.ip]
-			frame.ip++
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
 			name := core.GetStringValue(constants[idx])
 			value := vm.Peek(0)
 			//DumpValue("Define global", value)
@@ -667,8 +652,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		case core.OP_DEFINE_GLOBAL_CONST:
 			// name = constant at operand index
 			// pop 1 stack value and set globals[name] to it and flag as immutable
-			idx := vm.getCode()[frame.ip]
-			frame.ip++
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
 			name := core.GetStringValue(constants[idx])
 			function.Environment.SetVar(name, vm.Peek(0))
 			v, _ := function.Environment.GetVar(name)
@@ -678,8 +663,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		case core.OP_GET_GLOBAL:
 			// name = constant at operand index
 			// push globals[name] onto stack
-			idx := vm.getCode()[frame.ip]
-			frame.ip++
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
 			name := core.GetStringValue(constants[idx])
 			value, ok := function.Environment.GetVar(name)
 			//DumpValue("Get global", value)
@@ -695,8 +680,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		case core.OP_SET_GLOBAL:
 			// name = constant at operand index
 			// set globals[name] to stack top, key must exist
-			idx := vm.getCode()[frame.ip]
-			frame.ip++
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
 			name := core.GetStringValue(constants[idx])
 			// auto-declare
 			// if _, ok := vm.Environments.Vars[name]; !ok {
@@ -712,55 +697,55 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		case core.OP_GET_LOCAL:
 			// get local from stack at position = operand and push on stack top
-			slot_idx := int(vm.getCode()[frame.ip])
-			frame.ip++
-			vm.push(vm.stack[frame.slots+slot_idx])
+			slot_idx := int(vm.getCode()[frame.Ip])
+			frame.Ip++
+			vm.push(vm.stack[frame.Slots+slot_idx])
 
 		case core.OP_SET_LOCAL:
 			// get value at stack top and store it in stack at position = operand
 			val := vm.Peek(0)
-			slot_idx := int(vm.getCode()[frame.ip])
-			frame.ip++
-			if vm.stack[frame.slots+slot_idx].Immutable() {
+			slot_idx := int(vm.getCode()[frame.Ip])
+			frame.Ip++
+			if vm.stack[frame.Slots+slot_idx].Immutable() {
 				vm.RunTimeError("Cannot assign to const local.")
 				goto End
 			}
-			vm.stack[frame.slots+slot_idx] = core.Mutable(val)
+			vm.stack[frame.Slots+slot_idx] = core.Mutable(val)
 
 		case core.OP_JUMP_IF_FALSE:
 			// if stack top is falsey, jump by offset ( 2 operands )
 			offset := vm.readShort()
 			if vm.isFalsey(vm.Peek(0)) {
-				frame.ip += int(offset)
+				frame.Ip += int(offset)
 			}
 
 		case core.OP_JUMP:
 			// jump by offset ( 2 operands )
 			offset := vm.readShort()
-			frame.ip += int(offset)
+			frame.Ip += int(offset)
 
 		case core.OP_LOOP:
 			// jump back by offset ( 2 operands )
 			offset := vm.readShort()
-			frame.ip -= int(offset)
+			frame.Ip -= int(offset)
 
 		// entered a try block, IP of the except block is encoded in the next 2 instructions
 		// push an exception handler storing that info
 		case core.OP_TRY:
 			exceptIP := vm.readShort()
-			frame.handlers = &ExceptionHandler{
-				exceptIP: exceptIP,
-				stackTop: vm.stackTop,
-				prev:     frame.handlers,
+			frame.Handlers = &core.ExceptionHandler{
+				ExceptIP: exceptIP,
+				StackTop: vm.stackTop,
+				Prev:     frame.Handlers,
 			}
 
 		// ended a try block OK, so pop the handler block
 		case core.OP_END_TRY:
-			frame.handlers = frame.handlers.prev
+			frame.Handlers = frame.Handlers.Prev
 
 		// marks the start of an exception handler block.  index of exception classname is in next instruction
 		case core.OP_EXCEPT:
-			frame.ip++
+			frame.Ip++
 
 		// marks the end of an exception handler block
 		case core.OP_END_EXCEPT:
@@ -779,15 +764,15 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		case core.OP_CALL:
 			// arg count is operand, callable object is on stack after arguments, result will be stack top
-			argCount := vm.getCode()[frame.ip]
-			frame.ip++
+			argCount := vm.getCode()[frame.Ip]
+			frame.Ip++
 			if !vm.callValue(vm.Peek(int(argCount)), int(argCount)) {
 				goto End
 			}
 
 		case core.OP_CLASS:
-			idx := vm.getCode()[frame.ip]
-			frame.ip++
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
 			name := core.GetStringValue(constants[idx])
 			vm.push(core.MakeObjectValue(core.MakeClassObject(name), false))
 
@@ -810,8 +795,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			return INTERPRET_RUNTIME_ERROR, core.MakeNilValue()
 
 		case core.OP_GET_SUPER:
-			idx := vm.getCode()[frame.ip]
-			frame.ip++
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
 			name := core.GetStringValue(constants[idx])
 			v := vm.pop()
 			superclass := v.AsClass()
@@ -821,11 +806,11 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			}
 
 		case core.OP_SUPER_INVOKE:
-			idx := vm.getCode()[frame.ip]
-			frame.ip++
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
 			method := constants[idx]
-			argCount := vm.getCode()[frame.ip]
-			frame.ip++
+			argCount := vm.getCode()[frame.Ip]
+			frame.Ip++
 			superclass := vm.pop().AsClass()
 			if !vm.invokeFromClass(superclass, method, int(argCount)) {
 				return INTERPRET_RUNTIME_ERROR, core.MakeNilValue()
@@ -835,8 +820,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		case core.OP_IMPORT:
 
-			idx := vm.getCode()[frame.ip]
-			frame.ip++
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
 			mv := constants[idx]
 			module := mv.AsString().Get()
 
@@ -911,32 +896,32 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			iterableSlot := vm.readByte()
 			idxSlot := vm.readByte()
 			jumpToEnd := vm.readShort()
-			iterable := vm.stack[frame.slots+int(iterableSlot)]
+			iterable := vm.stack[frame.Slots+int(iterableSlot)]
 
 			if iterable.Type != core.VAL_OBJ {
 				vm.RunTimeError("Iterable in foreach must be list or string.")
 				goto End
 			}
-			idxVal := vm.stack[frame.slots+int(idxSlot)]
+			idxVal := vm.stack[frame.Slots+int(idxSlot)]
 			idx := idxVal.Int
 			switch iterable.Obj.GetType() {
 			case core.OBJECT_LIST:
 				t := iterable.AsList()
 				if idx >= len(t.Items) {
-					frame.ip += int(jumpToEnd - 2)
+					frame.Ip += int(jumpToEnd - 2)
 				} else {
 					val := t.Get()[idx]
-					vm.stack[frame.slots+int(slot)] = val
+					vm.stack[frame.Slots+int(slot)] = val
 				}
 
 			case core.OBJECT_STRING:
 				t := iterable.AsString()
 				if idx >= len(t.Get()) {
-					frame.ip += int(jumpToEnd - 2)
+					frame.Ip += int(jumpToEnd - 2)
 
 				} else {
 					val, _ := t.Index(idx)
-					vm.stack[frame.slots+int(slot)] = val
+					vm.stack[frame.Slots+int(slot)] = val
 				}
 
 			default:
@@ -948,10 +933,10 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 			jumpToStart := vm.readShort()
 			indexSlot := vm.readByte()
-			slot := frame.slots + int(indexSlot)
+			slot := frame.Slots + int(indexSlot)
 			indexVal := vm.stack[slot]
 			vm.stack[slot] = core.MakeIntValue(indexVal.Int+1, false)
-			frame.ip -= int(jumpToStart + 1)
+			frame.Ip -= int(jumpToStart + 1)
 
 		case core.OP_END_FOREACH:
 
@@ -1016,19 +1001,19 @@ func (vm *VM) raiseException(err core.Value) bool {
 
 	for {
 		vm.appendStackTrace()
-		handler := vm.frame().handlers
+		handler := vm.frame().Handlers
 		if handler != nil {
 
-			vm.stackTop = handler.stackTop
+			vm.stackTop = handler.StackTop
 			vm.push(err)
 			// jump to handler IP
-			vm.frame().ip = int(handler.exceptIP)
+			vm.frame().Ip = int(handler.ExceptIP)
 		inner:
 			for {
 				// get handler classname
-				vm.frame().ip += 2
-				idx := vm.getCode()[vm.frame().ip-1]
-				function := vm.frame().closure.Function
+				vm.frame().Ip += 2
+				idx := vm.getCode()[vm.frame().Ip-1]
+				function := vm.frame().Closure.Function
 				name := core.GetStringValue(function.Chunk.Constants[idx])
 				v, ok := function.Environment.GetVar(name)
 				if !ok {
@@ -1045,7 +1030,7 @@ func (vm *VM) raiseException(err core.Value) bool {
 					// yes, continue in handler block
 					vm.ErrorMsg = ""
 					vm.stackTrace = []string{}
-					vm.frame().handlers = handler.prev
+					vm.frame().Handlers = handler.Prev
 
 					return true
 				}
@@ -1069,10 +1054,10 @@ func (vm *VM) raiseException(err core.Value) bool {
 func (vm *VM) nextHandler() bool {
 
 	for {
-		vm.frame().ip++
-		if vm.getCode()[vm.frame().ip] == core.OP_END_EXCEPT {
-			if vm.getCode()[vm.frame().ip+1] == core.OP_EXCEPT {
-				vm.frame().ip += 1
+		vm.frame().Ip++
+		if vm.getCode()[vm.frame().Ip] == core.OP_END_EXCEPT {
+			if vm.getCode()[vm.frame().Ip+1] == core.OP_EXCEPT {
+				vm.frame().Ip += 1
 				return true
 			}
 			break
@@ -1086,14 +1071,14 @@ func (vm *VM) popFrame() bool {
 		return false
 	}
 	vm.frameCount--
-	vm.stackTop = vm.frames[vm.frameCount].slots
+	vm.stackTop = vm.frames[vm.frameCount].Slots
 	return true
 }
 
 func (vm *VM) appendStackTrace() {
 
 	frame := vm.frame()
-	function := frame.closure.Function
+	function := frame.Closure.Function
 	where, script := "", ""
 	if function.Name.Get() == "" {
 		script = vm.script
@@ -1102,7 +1087,7 @@ func (vm *VM) appendStackTrace() {
 		script = function.Chunk.Filename
 		where = function.Name.Get()
 	}
-	line := function.Chunk.Lines[frame.ip]
+	line := function.Chunk.Lines[frame.Ip]
 
 	s := fmt.Sprintf("File '%s' , line %d, in %s ", script, line, where)
 	vm.stackTrace = append(vm.stackTrace, s)
@@ -1156,30 +1141,30 @@ func (vm *VM) importModule(moduleName string) InterpretResult {
 			return res
 		}
 	}
-	subfn := subvm.frames[0].closure.Function
-	Debugf("subvm environment name = %s", subfn.Environment.Name)
+	subfn := subvm.frames[0].Closure.Function
+	loxdebug.Debugf("subvm environment name = %s", subfn.Environment.Name)
 	subvm_globals := subfn.Environment.Vars
 	for k, v := range subvm_globals {
-		Debugf("Import Found module property '%s' in subvm main func environment", k)
+		loxdebug.Debugf("Import Found module property '%s' in subvm main func environment", k)
 		if v.IsClosureObject() {
-			Debugf("Found module property '%s' is a closure", k)
+			loxdebug.Debugf("Found module property '%s' is a closure", k)
 			if v.AsClosure().Function.Environment == nil {
-				Debugf("Module property '%s' has no environment", k)
+				loxdebug.Debugf("Module property '%s' has no environment", k)
 			}
-			Debugf("Property %s environment vars count = %d", k, len(v.AsClosure().Function.Environment.Vars))
+			loxdebug.Debugf("Property %s environment vars count = %d", k, len(v.AsClosure().Function.Environment.Vars))
 		}
 	}
 
 	mo := core.MakeModuleObject(moduleName, *subfn.Environment)
 	v := core.MakeObjectValue(mo, false)
-	vm.frame().closure.Function.Environment.SetVar(moduleName, v)
+	vm.frame().Closure.Function.Environment.SetVar(moduleName, v)
 	return INTERPRET_OK
 }
 
-func (vm *VM) createList(frame *CallFrame) {
+func (vm *VM) createList(frame *core.CallFrame) {
 
-	itemCount := int(vm.getCode()[frame.ip])
-	frame.ip++
+	itemCount := int(vm.getCode()[frame.Ip])
+	frame.Ip++
 	list := []core.Value{}
 
 	for i := 0; i < itemCount; i++ {
@@ -1189,10 +1174,10 @@ func (vm *VM) createList(frame *CallFrame) {
 	vm.push(core.MakeObjectValue(lo, false))
 }
 
-func (vm *VM) createTuple(frame *CallFrame) {
+func (vm *VM) createTuple(frame *core.CallFrame) {
 
-	itemCount := int(vm.getCode()[frame.ip])
-	frame.ip++
+	itemCount := int(vm.getCode()[frame.Ip])
+	frame.Ip++
 	list := []core.Value{}
 
 	for i := 0; i < itemCount; i++ {
@@ -1202,10 +1187,10 @@ func (vm *VM) createTuple(frame *CallFrame) {
 	vm.push(core.MakeObjectValue(lo, true))
 }
 
-func (vm *VM) createDict(frame *CallFrame) {
+func (vm *VM) createDict(frame *core.CallFrame) {
 
-	itemCount := int(vm.getCode()[frame.ip])
-	frame.ip++
+	itemCount := int(vm.getCode()[frame.Ip])
+	frame.Ip++
 	dict := map[string]core.Value{}
 
 	for i := 0; i < itemCount; i++ {
@@ -1658,8 +1643,10 @@ func (vm *VM) pauseExecution() {
 	fmt.Println("⚠️  BREAKPOINT HIT")
 	fmt.Println("Stack:", vm.stack[:vm.stackTop])
 	// If you track them
-	debug.PrintStack()   // optional, prints Go stack trace
-	runtime.Breakpoint() // halt if debugger attached
+	// runtime.Stack can be used to print the Go stack trace if desired
+	// buf := make([]byte, 1<<16)
+	// runtime.Stack(buf, true)
+	runtime.Breakpoint() // halt if loxdebugger attached
 	// or: pause until user input
 	//buf := bufio.NewReader(os.Stdin)
 	//fmt.Print("Press Enter to continue...")
@@ -1703,4 +1690,37 @@ func getModule(fullPath string) string {
 	base := filepath.Base(fullPath)      // "foo.lox"
 	ext := filepath.Ext(base)            // ".lox"
 	return strings.TrimSuffix(base, ext) // "foo"
+}
+
+func (vm *VM) showStack() {
+
+	fmt.Printf("                                                         ")
+	for i := 1; i < vm.stackTop; i++ {
+		v := vm.stack[i]
+		s := v.String()
+
+		im := ""
+		if v.Immutable() {
+			im = "(c)"
+		}
+		if i > vm.frame().Slots {
+			fmt.Printf("%% %s%s %%", s, im)
+		} else {
+			fmt.Printf("| %s%s |", s, im)
+		}
+	}
+	fmt.Printf("\n")
+}
+func (vm *VM) showGlobals() {
+	if vm.frame().Closure.Function.Environment == nil {
+		fmt.Println("No globals (nil environment)")
+		return
+	}
+	fmt.Printf("globals: %s \n", vm.frame().Closure.Function.Environment.Name)
+	for k, v := range vm.frame().Closure.Function.Environment.Vars {
+		fmt.Printf("%s -> %s  \n", k, v)
+	}
+	//for k, v := range vm.Environments.builtins {
+	//	fmt.Printf("%s -> %s  \n", k, v)
+	//}
 }

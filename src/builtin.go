@@ -3,6 +3,7 @@ package lox
 import (
 	"fmt"
 	"glox/src/core"
+	debug "glox/src/loxdebug"
 	"glox/src/util"
 	"math"
 	"math/rand"
@@ -12,7 +13,7 @@ import (
 
 func (vm *VM) defineBuiltIns() {
 
-	Debug("Defining built-in functions")
+	debug.Debug("Defining built-in functions")
 	// native functions
 	vm.defineBuiltIn("args", argsBuiltIn)
 	vm.defineBuiltIn("clock", clockBuiltIn)
@@ -507,14 +508,14 @@ func openFile(path string, mode string) (*os.File, error) {
 }
 
 func (vm *VM) loadBuiltInModule(source string, moduleName string) {
-	Debug("Loading built-in module ")
+	debug.Debug("Loading built-in module ")
 	subvm := NewVM("", false)
 	//	DebugSuppress = true
 	_, _ = subvm.Interpret(source, moduleName)
-	for k, v := range subvm.frames[0].closure.Function.Environment.Vars {
+	for k, v := range subvm.frames[0].Closure.Function.Environment.Vars {
 		vm.builtIns[k] = v
 	}
-	DebugSuppress = false
+	core.DebugSuppress = false
 }
 
 // predefine an Exception class using Lox source

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	lox "glox/src"
+	"glox/src/core"
 	"glox/src/scanner"
 	"os"
 	"runtime/debug"
@@ -77,7 +78,7 @@ func runFile(opts *Options) {
 		scanner.PrintTokens(source)
 		os.Exit(0)
 	}
-	vm := lox.NewVM(path, !lox.DebugSkipBuiltins)
+	vm := lox.NewVM(path, !core.DebugSkipBuiltins)
 	vm.SetArgs(args)
 
 	status, result := vm.Interpret(source, "__main__")
@@ -104,16 +105,16 @@ func handleArgs(opts *Options) {
 		if arg[0] == '-' {
 			switch arg {
 			case "--debug":
-				lox.DebugPrintCode = true
-				lox.DebugTraceExecution = true
+				core.DebugPrintCode = true
+				core.DebugTraceExecution = true
 			case "--globals":
-				lox.DebugShowGlobals = true
+				core.DebugShowGlobals = true
 			case "--skip-builtins":
-				lox.DebugSkipBuiltins = true
+				core.DebugSkipBuiltins = true
 			case "--repl":
 				opts.doRepl = true
 			case "--force-compile":
-				lox.ForceModuleCompile = true
+				core.ForceModuleCompile = true
 			case "--print-tokens":
 				opts.printTokens = true
 			default:
