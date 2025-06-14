@@ -188,7 +188,7 @@ func (o *GraphicsObject) RegisterAllMethods() {
 			y := int32(yval.asInt())
 			s := sval.asString().get()
 
-			rl.DrawText(s, x, y, 120, rl.Black)
+			rl.DrawText(s, x, y, 10, rl.White)
 			return makeNilValue()
 		},
 	})

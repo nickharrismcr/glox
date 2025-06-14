@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"math"
 	"os"
 	"sync"
 )
@@ -81,13 +82,11 @@ func drawPNGBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 // x offset
 // y offset
 // scale
-// 1D float array (RGB encoded) for colour mapping
 
 // creates a goroutine for each row of the array, which calculates the mandelbrot set for that row
-
 func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
-	if argCount != 8 {
+	if argCount != 7 {
 		vm.RunTimeError("Invalid argument count to lox_mandel_array")
 		return makeNilValue()
 	}
@@ -98,11 +97,9 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 	xoffsetVal := vm.Stack(arg_stackptr + 4)
 	yoffsetVal := vm.Stack(arg_stackptr + 5)
 	scaleVal := vm.Stack(arg_stackptr + 6)
-	colourVal := vm.Stack(arg_stackptr + 7)
 
 	if !(hVal.isInt() && wVal.isInt() && maxIterVal.isInt() && xoffsetVal.isFloat() &&
-		yoffsetVal.isFloat() && arrayVal.isFloatArrayObject() && scaleVal.isFloat() &&
-		colourVal.isFloatArrayObject()) {
+		yoffsetVal.isFloat() && arrayVal.isFloatArrayObject() && scaleVal.isFloat()) {
 		vm.RunTimeError("Invalid arguments to lox_mandel_array")
 		return makeNilValue()
 	}
@@ -114,21 +111,22 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 	xOffset := xoffsetVal.Float
 	yOffset := yoffsetVal.Float
 	scale := scaleVal.Float
-	colours := colourVal.asFloatArray()
 
 	var wg sync.WaitGroup
 	for row := range height {
 		wg.Add(1)
 		go func(row int) {
 			defer wg.Done()
-			mandelbrotCalcRow(row, width, height, maxIteration, scale, xOffset, yOffset, colours, array)
+			mandelbrotCalcRow(row, width, height, maxIteration, scale, xOffset, yOffset, array)
 		}(row)
 	}
 	wg.Wait()
 	return makeNilValue()
 }
 
-func mandelbrotCalcRow(row, width, height, maxIteration int, scale, xOffset, yOffset float64, colours *FloatArrayObject, array *FloatArrayObject) {
+// mandelbrotCalcRow calculates a single row of the mandelbrot set and stores the result in the provided FloatArrayObject
+// rows are calculated in parallel using goroutines
+func mandelbrotCalcRow(row, width, height, maxIteration int, scale, xOffset, yOffset float64, array *FloatArrayObject) {
 
 	const periodLength = 20
 	y0 := scale*(float64(row)-float64(height)/2)/float64(height) + yOffset
@@ -166,12 +164,100 @@ func mandelbrotCalcRow(row, width, height, maxIteration int, scale, xOffset, yOf
 		if iteration == maxIteration {
 			colour = EncodeRGB(0, 0, 0)
 		} else {
-			index := iteration
-			if index >= colours.value.width {
-				index = colours.value.width - 1
-			}
-			colour = colours.value.get(index, 0)
+
+			//https://en.m.wikipedia.org/wiki/Plotting_algorithms_for_the_Mandelbrot_set
+
+			s := float64(iteration) / float64(maxIteration)
+			v := 1.0 - math.Pow(math.Cos(math.Pi*s), 2.0)
+			lum := 90 - (50 * v)
+			// chroma := 28+(75-(75*v))
+			// hue := int32(math.Pow(360*s, 1.5)) % 360
+
+			zn := math.Sqrt(x*x + y*y)
+			nu := math.Log2(math.Log2(zn))
+			smooth := float64(iteration) + 1 - nu
+
+			// Use a fixed scale for hue cycling, e.g. 20 or 30
+			hue := math.Mod(smooth, 360)
+			chroma := 70.0
+			//lum := 80.0
+
+			r, g, b := HCLToRGB255(float64(hue), float64(chroma), float64(lum))
+			colour = EncodeRGB(int(r), int(g), int(b))
 		}
 		array.value.set(row, col, colour)
 	}
+}
+
+// covert HCL to RGB 255
+func HCLToRGB255(h, c, l float64) (uint8, uint8, uint8) {
+	// Convert HCL to Lab
+	hr := h * math.Pi / 180.0
+	a := math.Cos(hr) * c
+	b := math.Sin(hr) * c
+
+	// Lab to XYZ
+	y := (l + 16.0) / 116.0
+	x := a/500.0 + y
+	z := y - b/200.0
+
+	refX, refY, refZ := 95.047, 100.000, 108.883
+
+	x3 := math.Pow(x, 3)
+	y3 := math.Pow(y, 3)
+	z3 := math.Pow(z, 3)
+
+	if y3 > 0.008856 {
+		y = y3
+	} else {
+		y = (y - 16.0/116.0) / 7.787
+	}
+	if x3 > 0.008856 {
+		x = x3
+	} else {
+		x = (x - 16.0/116.0) / 7.787
+	}
+	if z3 > 0.008856 {
+		z = z3
+	} else {
+		z = (z - 16.0/116.0) / 7.787
+	}
+
+	x = x * refX
+	y = y * refY
+	z = z * refZ
+
+	// XYZ to linear RGB
+	r := x*0.032406 + y*-0.015372 + z*-0.004986
+	g := x*-0.009689 + y*0.018758 + z*0.000415
+	b = x*0.000557 + y*-0.002040 + z*0.010570
+
+	// Linear RGB to sRGB
+	r = xyzToSRGB(r)
+	g = xyzToSRGB(g)
+	b = xyzToSRGB(b)
+
+	// Clamp and scale to [0,255]
+	r8 := uint8(clamp(r, 0, 1) * 255)
+	g8 := uint8(clamp(g, 0, 1) * 255)
+	b8 := uint8(clamp(b, 0, 1) * 255)
+
+	return r8, g8, b8
+}
+
+func xyzToSRGB(c float64) float64 {
+	if c <= 0.0031308 {
+		return 12.92 * c
+	}
+	return 1.055*math.Pow(c, 1.0/2.4) - 0.055
+}
+
+func clamp(x, min, max float64) float64 {
+	if x < min {
+		return min
+	}
+	if x > max {
+		return max
+	}
+	return x
 }
