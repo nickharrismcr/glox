@@ -52,19 +52,19 @@ func (o *FloatArrayObject) GetMethod(name string) *BuiltInObject {
 	switch name {
 	case "width":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				return MakeIntValue(o.Value.Width, true)
 			},
 		}
 	case "height":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				return MakeIntValue(o.Value.Height, true)
 			},
 		}
 	case "get":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				xval := vm.Stack(arg_stackptr)
 				yval := vm.Stack(arg_stackptr + 1)
 				x := xval.AsInt()
@@ -74,7 +74,7 @@ func (o *FloatArrayObject) GetMethod(name string) *BuiltInObject {
 		}
 	case "set":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				xval := vm.Stack(arg_stackptr)
 				yval := vm.Stack(arg_stackptr + 1)
 				fval := vm.Stack(arg_stackptr + 2)
@@ -87,7 +87,7 @@ func (o *FloatArrayObject) GetMethod(name string) *BuiltInObject {
 		}
 	case "clear":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				fval := vm.Stack(arg_stackptr)
 				f := fval.AsFloat()
 				o.Value.Clear(f)

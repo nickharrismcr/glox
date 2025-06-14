@@ -55,7 +55,7 @@ func Mutable(v Value) Value {
 	return MakeNilValue()
 }
 
-func valuesEqual(a, b Value, typesMustMatch bool) bool {
+func ValuesEqual(a, b Value, typesMustMatch bool) bool {
 
 	switch a.Type {
 	case VAL_BOOL:

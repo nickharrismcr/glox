@@ -121,7 +121,7 @@ func (c *Chunk) InConstants(v Value) (bool, uint8) {
 	}
 
 	for i, cv := range c.Constants {
-		if valuesEqual(v, cv, true) {
+		if ValuesEqual(v, cv, true) {
 			return true, uint8(i)
 		}
 	}

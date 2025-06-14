@@ -1,13 +1,13 @@
 package core
 
 type BuiltInObject struct {
-	function BuiltInFn
+	Function BuiltInFn
 }
 
 func MakeBuiltInObject(function BuiltInFn) *BuiltInObject {
 
 	return &BuiltInObject{
-		function: function,
+		Function: function,
 	}
 }
 

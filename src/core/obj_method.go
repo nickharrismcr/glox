@@ -1,15 +1,15 @@
 package core
 
 type BoundMethodObject struct {
-	receiver Value
-	method   *ClosureObject
+	Receiver Value
+	Method   *ClosureObject
 }
 
 func MakeBoundMethodObject(receiver Value, method *ClosureObject) *BoundMethodObject {
 
 	return &BoundMethodObject{
-		receiver: receiver,
-		method:   method,
+		Receiver: receiver,
+		Method:   method,
 	}
 }
 
@@ -22,7 +22,7 @@ func (BoundMethodObject) GetType() ObjectType {
 
 func (f *BoundMethodObject) String() string {
 
-	return f.method.String()
+	return f.Method.String()
 }
 
 // -------------------------------------------------------------------------------------------

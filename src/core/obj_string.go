@@ -8,13 +8,13 @@ import (
 )
 
 type StringObject struct {
-	chars *string
+	Chars *string
 }
 
 func MakeStringObject(s string) StringObject {
 
 	return StringObject{
-		chars: &s,
+		Chars: &s,
 	}
 }
 
@@ -31,7 +31,7 @@ func (s StringObject) GetMethod(name string) *BuiltInObject {
 
 	case "replace":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 2 {
 					vm.RunTimeError("replace takes two arguments.")
 					return MakeNilValue()
@@ -43,7 +43,7 @@ func (s StringObject) GetMethod(name string) *BuiltInObject {
 		}
 	case "join":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 1 || !vm.Peek(0).IsListObject() {
 					vm.RunTimeError("Join takes one list argument.")
 					return MakeNilValue()
@@ -65,12 +65,12 @@ func (s StringObject) GetMethod(name string) *BuiltInObject {
 
 func (s StringObject) Get() string {
 
-	return *s.chars
+	return *s.Chars
 }
 
 func (s StringObject) Contains(v Value) Value {
 
-	rv := strings.Contains(*s.chars, *v.AsString().chars)
+	rv := strings.Contains(*s.Chars, *v.AsString().Chars)
 	return MakeBooleanValue(rv, true)
 
 }
@@ -79,13 +79,13 @@ func (s StringObject) Replace(from Value, to Value) Value {
 
 	old := from.AsString().Get()
 	new := to.AsString().Get()
-	rv := strings.Replace(*s.chars, old, new, -1)
+	rv := strings.Replace(*s.Chars, old, new, -1)
 	return MakeObjectValue(MakeStringObject(rv), false)
 }
 
 func (s StringObject) String() string {
 
-	return fmt.Sprintf("\"%s\"", *s.chars)
+	return fmt.Sprintf("\"%s\"", *s.Chars)
 }
 
 func (s StringObject) Index(ix int) (Value, error) {

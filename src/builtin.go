@@ -511,7 +511,7 @@ func (vm *VM) loadBuiltInModule(source string, moduleName string) {
 	subvm := NewVM("", false)
 	//	DebugSuppress = true
 	_, _ = subvm.Interpret(source, moduleName)
-	for k, v := range subvm.frames[0].closure.function.environment.vars {
+	for k, v := range subvm.frames[0].closure.Function.Environment.Vars {
 		vm.builtIns[k] = v
 	}
 	DebugSuppress = false

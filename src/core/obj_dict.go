@@ -7,13 +7,13 @@ import (
 )
 
 type DictObject struct {
-	items map[string]Value
+	Items map[string]Value
 }
 
 func MakeDictObject(items map[string]Value) *DictObject {
 
 	return &DictObject{
-		items: items,
+		Items: items,
 	}
 }
 
@@ -25,7 +25,7 @@ func (DictObject) GetType() ObjectType {
 
 func (o *DictObject) String() string {
 	s := "Dict({ "
-	for k, v := range o.items {
+	for k, v := range o.Items {
 		s = s + fmt.Sprintf("\"%s\":%s,", k, v.String())
 	}
 	return s[:len(s)-1] + " })"
@@ -37,7 +37,7 @@ func (d *DictObject) GetMethod(name string) *BuiltInObject {
 
 	case "get":
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 2 {
 					vm.RunTimeError("Invalid argument count to get.")
 					return MakeNilValue()
@@ -62,7 +62,7 @@ func (d *DictObject) GetMethod(name string) *BuiltInObject {
 	case "keys":
 
 		return &BuiltInObject{
-			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 
 				if argCount != 0 {
 					vm.RunTimeError("Invalid argument count to keys.")
@@ -79,12 +79,12 @@ func (d *DictObject) GetMethod(name string) *BuiltInObject {
 
 func (o *DictObject) Set(key string, value Value) {
 
-	o.items[key] = value
+	o.Items[key] = value
 }
 
 func (o *DictObject) Get(key string) (Value, error) {
 
-	rv, ok := o.items[key]
+	rv, ok := o.Items[key]
 	if !ok {
 		return MakeNilValue(), errors.New("key not found")
 	}
@@ -94,7 +94,7 @@ func (o *DictObject) Get(key string) (Value, error) {
 func (o *DictObject) Keys() Value {
 
 	Keys := []Value{}
-	for k := range o.items {
+	for k := range o.Items {
 		key := strings.Replace(k, "\"", "", -1)
 		so := MakeStringObject(key)
 		v := MakeObjectValue(so, false)

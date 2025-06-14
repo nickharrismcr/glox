@@ -291,15 +291,15 @@ func invokeInstruction(c *core.Chunk, name string, offset int) int {
 }
 
 func (vm *VM) showGlobals() {
-	if vm.frame().closure.function.environment == nil {
+	if vm.frame().closure.Function.Environment == nil {
 		fmt.Println("No globals (nil environment)")
 		return
 	}
-	fmt.Printf("globals: %s \n", vm.frame().closure.function.environment.name)
-	for k, v := range vm.frame().closure.function.environment.vars {
+	fmt.Printf("globals: %s \n", vm.frame().closure.Function.Environment.Name)
+	for k, v := range vm.frame().closure.Function.Environment.Vars {
 		fmt.Printf("%s -> %s  \n", k, v)
 	}
-	//for k, v := range vm.environments.builtins {
+	//for k, v := range vm.Environments.builtins {
 	//	fmt.Printf("%s -> %s  \n", k, v)
 	//}
 }

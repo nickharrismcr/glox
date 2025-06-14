@@ -5,20 +5,20 @@ import (
 )
 
 type ClassObject struct {
-	name    StringObject
-	methods map[string]Value
-	super   *ClassObject
+	Name	StringObject
+	Methods	map[string]Value
+	Super	*ClassObject
 }
 
 func MakeClassObject(name string) *ClassObject {
 
 	return &ClassObject{
-		name:    MakeStringObject(name),
-		methods: map[string]Value{},
+		Name:		MakeStringObject(name),
+		Methods:	map[string]Value{},
 	}
 }
 
-func (ClassObject) IsObject() {}
+func (ClassObject) IsObject()	{}
 
 func (ClassObject) GetType() ObjectType {
 
@@ -27,11 +27,11 @@ func (ClassObject) GetType() ObjectType {
 
 func (f *ClassObject) String() string {
 
-	return fmt.Sprintf("<class %s>", f.name.Get())
+	return fmt.Sprintf("<class %s>", f.Name.Get())
 }
 
 func (f *ClassObject) IsSubclassOf(other *ClassObject) bool {
-	for c := f; c != nil; c = c.super {
+	for c := f; c != nil; c = c.Super {
 		if c == other {
 			return true
 		}

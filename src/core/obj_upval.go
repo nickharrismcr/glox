@@ -1,19 +1,19 @@
 package core
 
 type UpvalueObject struct {
-	location *Value
-	slot     int
-	next     *UpvalueObject
-	closed   Value
+	Location *Value
+	Slot     int
+	Next     *UpvalueObject
+	Closed   Value
 }
 
 func MakeUpvalueObject(value *Value, slot int) *UpvalueObject {
 
 	return &UpvalueObject{
-		location: value,
-		slot:     slot,
-		next:     nil,
-		closed:   MakeNilValue(),
+		Location: value,
+		Slot:     slot,
+		Next:     nil,
+		Closed:   MakeNilValue(),
 	}
 }
 

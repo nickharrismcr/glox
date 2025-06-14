@@ -5,24 +5,24 @@ import (
 )
 
 type FunctionObject struct {
-	Arity        int
-	Chunk        *Chunk
-	Name         StringObject
-	UpvalueCount int
-	Environment  *Environment
+	Arity		int
+	Chunk		*Chunk
+	Name		StringObject
+	UpvalueCount	int
+	Environment	*Environment
 }
 
 func MakeFunctionObject(filename string, environment *Environment) *FunctionObject {
 
 	return &FunctionObject{
-		Arity:       0,
-		Name:        MakeStringObject(""),
-		Chunk:       NewChunk(filename),
-		Environment: environment,
+		Arity:		0,
+		Name:		MakeStringObject(""),
+		Chunk:		NewChunk(filename),
+		Environment:	environment,
 	}
 }
 
-func (FunctionObject) IsObject() {}
+func (FunctionObject) IsObject()	{}
 
 func (FunctionObject) GetType() ObjectType {
 

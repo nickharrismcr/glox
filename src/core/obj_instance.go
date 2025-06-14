@@ -5,15 +5,15 @@ import (
 )
 
 type InstanceObject struct {
-	class  *ClassObject
-	fields map[string]Value
+	Class  *ClassObject
+	Fields map[string]Value
 }
 
 func MakeInstanceObject(class *ClassObject) *InstanceObject {
 
 	return &InstanceObject{
-		class:  class,
-		fields: map[string]Value{},
+		Class:  class,
+		Fields: map[string]Value{},
 	}
 }
 
@@ -26,7 +26,7 @@ func (InstanceObject) GetType() ObjectType {
 
 func (f *InstanceObject) String() string {
 
-	return fmt.Sprintf("<instance %s>", f.class.name.Get())
+	return fmt.Sprintf("<instance %s>", f.Class.Name.Get())
 }
 
 // -------------------------------------------------------------------------------------------

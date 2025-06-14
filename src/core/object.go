@@ -5,7 +5,7 @@ import "time"
 type ObjectType int
 
 const (
-	OBJECT_STRING ObjectType = iota
+	OBJECT_STRING	ObjectType	= iota
 	OBJECT_FUNCTION
 	OBJECT_CLOSURE
 	OBJECT_UPVALUE
