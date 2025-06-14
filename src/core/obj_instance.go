@@ -9,7 +9,7 @@ type InstanceObject struct {
 	fields map[string]Value
 }
 
-func makeInstanceObject(class *ClassObject) *InstanceObject {
+func MakeInstanceObject(class *ClassObject) *InstanceObject {
 
 	return &InstanceObject{
 		class:  class,
@@ -26,7 +26,7 @@ func (InstanceObject) GetType() ObjectType {
 
 func (f *InstanceObject) String() string {
 
-	return fmt.Sprintf("<instance %s>", f.class.name.get())
+	return fmt.Sprintf("<instance %s>", f.class.name.Get())
 }
 
 // -------------------------------------------------------------------------------------------

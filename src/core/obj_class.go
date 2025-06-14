@@ -10,10 +10,10 @@ type ClassObject struct {
 	super   *ClassObject
 }
 
-func makeClassObject(name string) *ClassObject {
+func MakeClassObject(name string) *ClassObject {
 
 	return &ClassObject{
-		name:    makeStringObject(name),
+		name:    MakeStringObject(name),
 		methods: map[string]Value{},
 	}
 }
@@ -27,7 +27,7 @@ func (ClassObject) GetType() ObjectType {
 
 func (f *ClassObject) String() string {
 
-	return fmt.Sprintf("<class %s>", f.name.get())
+	return fmt.Sprintf("<class %s>", f.name.Get())
 }
 
 func (f *ClassObject) IsSubclassOf(other *ClassObject) bool {

@@ -74,7 +74,7 @@ func dumpEnvironment(env *Environment, seen map[uintptr]bool, indent int) {
 }
 
 func dumpValue(val Value, seen map[uintptr]bool, indent int) {
-	if val.isObj() {
+	if val.IsObj() {
 		dumpObject(val.Obj, seen, indent)
 	} else {
 		Debugf("%s%v\n", indentPad(indent), val)

@@ -7,13 +7,13 @@ type UpvalueObject struct {
 	closed   Value
 }
 
-func makeUpvalueObject(value *Value, slot int) *UpvalueObject {
+func MakeUpvalueObject(value *Value, slot int) *UpvalueObject {
 
 	return &UpvalueObject{
 		location: value,
 		slot:     slot,
 		next:     nil,
-		closed:   makeNilValue(),
+		closed:   MakeNilValue(),
 	}
 }
 

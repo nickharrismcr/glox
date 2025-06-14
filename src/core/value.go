@@ -1,7 +1,10 @@
 package core
 
 import (
+	"bytes"
+	bin "encoding/binary"
 	"fmt"
+	"glox/src/util"
 )
 
 type ValueType int
@@ -27,29 +30,29 @@ func immutable(v Value) Value {
 
 	switch v.Type {
 	case VAL_INT:
-		return makeIntValue(v.Int, true)
+		return MakeIntValue(v.Int, true)
 	case VAL_FLOAT:
-		return makeFloatValue(v.Float, true)
+		return MakeFloatValue(v.Float, true)
 	case VAL_BOOL:
-		return makeBooleanValue(v.Bool, true)
+		return MakeBooleanValue(v.Bool, true)
 	case VAL_OBJ:
-		return makeObjectValue(v.Obj, true)
+		return MakeObjectValue(v.Obj, true)
 	}
-	return makeNilValue()
+	return MakeNilValue()
 }
 
 func mutable(v Value) Value {
 	switch v.Type {
 	case VAL_INT:
-		return makeIntValue(v.Int, false)
+		return MakeIntValue(v.Int, false)
 	case VAL_FLOAT:
-		return makeFloatValue(v.Float, false)
+		return MakeFloatValue(v.Float, false)
 	case VAL_BOOL:
-		return makeBooleanValue(v.Bool, false)
+		return MakeBooleanValue(v.Bool, false)
 	case VAL_OBJ:
-		return makeObjectValue(v.Obj, false)
+		return MakeObjectValue(v.Obj, false)
 	}
-	return makeNilValue()
+	return MakeNilValue()
 }
 
 func valuesEqual(a, b Value, typesMustMatch bool) bool {
@@ -111,15 +114,15 @@ func valuesEqual(a, b Value, typesMustMatch bool) bool {
 	return false
 }
 
-func (v Value) isInt() bool    { return v.Type == VAL_INT }
-func (v Value) isFloat() bool  { return v.Type == VAL_FLOAT }
-func (v Value) isNumber() bool { return v.Type == VAL_INT || v.Type == VAL_FLOAT }
-func (v Value) isBool() bool   { return v.Type == VAL_BOOL }
+func (v Value) IsInt() bool    { return v.Type == VAL_INT }
+func (v Value) IsFloat() bool  { return v.Type == VAL_FLOAT }
+func (v Value) IsNumber() bool { return v.Type == VAL_INT || v.Type == VAL_FLOAT }
+func (v Value) IsBool() bool   { return v.Type == VAL_BOOL }
 
 // func (v Value) isNil() bool    { return v.Type == VAL_NIL }
-func (v Value) isObj() bool { return v.Type == VAL_OBJ }
+func (v Value) IsObj() bool { return v.Type == VAL_OBJ }
 
-func (v Value) asFloat() float64 {
+func (v Value) AsFloat() float64 {
 	switch v.Type {
 	case VAL_INT:
 		return float64(v.Int)
@@ -130,7 +133,7 @@ func (v Value) asFloat() float64 {
 	}
 }
 
-func (v Value) asInt() int {
+func (v Value) AsInt() int {
 	switch v.Type {
 	case VAL_INT:
 		return v.Int
@@ -151,15 +154,15 @@ func isString(v Value) bool {
 
 func getStringValue(v Value) string {
 
-	return v.asString().get()
+	return v.AsString().Get()
 }
 
 func getFunctionObjectValue(v Value) *FunctionObject {
-	return v.asFunction()
+	return v.AsFunction()
 }
 
 func getClosureObjectValue(v Value) *ClosureObject {
-	return v.asClosure()
+	return v.AsClosure()
 }
 
 /* func getClassObjectValue(v Value) *ClassObject {
@@ -167,27 +170,27 @@ func getClosureObjectValue(v Value) *ClosureObject {
 } */
 
 func getInstanceObjectValue(v Value) *InstanceObject {
-	return v.asInstance()
+	return v.AsInstance()
 }
 
 // ================================================================================================
-func makeIntValue(i int, immut bool) Value {
+func MakeIntValue(i int, immut bool) Value {
 	return Value{Type: VAL_INT, Int: i, Immut: immut}
 }
 
-func makeFloatValue(f float64, immut bool) Value {
+func MakeFloatValue(f float64, immut bool) Value {
 	return Value{Type: VAL_FLOAT, Float: f, Immut: immut}
 }
 
-func makeBooleanValue(b bool, immut bool) Value {
+func MakeBooleanValue(b bool, immut bool) Value {
 	return Value{Type: VAL_BOOL, Bool: b, Immut: immut}
 }
 
-func makeNilValue() Value {
+func MakeNilValue() Value {
 	return Value{Type: VAL_NIL}
 }
 
-func makeObjectValue(obj Object, immut bool) Value {
+func MakeObjectValue(obj Object, immut bool) Value {
 	return Value{Type: VAL_OBJ, Obj: obj, Immut: immut}
 }
 
@@ -217,110 +220,151 @@ func (v Value) Immutable() bool {
 
 //================================================================================================
 
-func (v Value) isStringObject() bool {
+func (v Value) IsStringObject() bool {
 
-	return v.isObj() && v.Obj.GetType() == OBJECT_STRING
+	return v.IsObj() && v.Obj.GetType() == OBJECT_STRING
 }
 
-func (v Value) asString() StringObject {
+func (v Value) AsString() StringObject {
 
 	return v.Obj.(StringObject)
 }
 
-func (v Value) asList() *ListObject {
+func (v Value) AsList() *ListObject {
 
 	return v.Obj.(*ListObject)
 }
 
-func (v Value) asDict() *DictObject {
+func (v Value) AsDict() *DictObject {
 
 	return v.Obj.(*DictObject)
 }
 
-func (v Value) asFunction() *FunctionObject {
+func (v Value) AsFunction() *FunctionObject {
 
 	return v.Obj.(*FunctionObject)
 }
 
-func (v Value) asBuiltIn() *BuiltInObject {
+func (v Value) AsBuiltIn() *BuiltInObject {
 
 	return v.Obj.(*BuiltInObject)
 }
 
-func (v Value) asClosure() *ClosureObject {
+func (v Value) AsClosure() *ClosureObject {
 
 	return v.Obj.(*ClosureObject)
 }
 
-func (v Value) asClass() *ClassObject {
+func (v Value) AsClass() *ClassObject {
 
 	return v.Obj.(*ClassObject)
 }
 
-func (v Value) asInstance() *InstanceObject {
+func (v Value) AsInstance() *InstanceObject {
 
 	return v.Obj.(*InstanceObject)
 }
 
-func (v Value) asModule() *ModuleObject {
+func (v Value) AsModule() *ModuleObject {
 
 	return v.Obj.(*ModuleObject)
 }
 
-func (v Value) asBoundMethod() *BoundMethodObject {
+func (v Value) AsBoundMethod() *BoundMethodObject {
 
 	return v.Obj.(*BoundMethodObject)
 }
 
-func (v Value) asFloatArray() *FloatArrayObject {
+func (v Value) AsFloatArray() *FloatArrayObject {
 
 	return v.Obj.(*FloatArrayObject)
 }
 
-func (v Value) isListObject() bool {
+func (v Value) IsListObject() bool {
 
-	return v.isObj() && v.Obj.GetType() == OBJECT_LIST
+	return v.IsObj() && v.Obj.GetType() == OBJECT_LIST
 }
 
 // func (v Value) isDictObject() bool {
 
-// 	return v.isObj() && v.Obj.GetType() == OBJECT_DICT
+// 	return v.IsObj() && v.Obj.GetType() == OBJECT_DICT
 // }
 
 /*
 	 func (v Value) isFunctionObject() bool {
 
-		return v.isObj() && v.Obj.GetType() == OBJECT_FUNCTION
+		return v.IsObj() && v.Obj.GetType() == OBJECT_FUNCTION
 	}
 */
-func (v Value) isBuiltInObject() bool {
+func (v Value) IsBuiltInObject() bool {
 
-	return v.isObj() && v.Obj.GetType() == OBJECT_NATIVE
+	return v.IsObj() && v.Obj.GetType() == OBJECT_NATIVE
 }
 
-func (v Value) isClosureObject() bool {
+func (v Value) IsClosureObject() bool {
 
-	return v.isObj() && v.Obj.GetType() == OBJECT_CLOSURE
+	return v.IsObj() && v.Obj.GetType() == OBJECT_CLOSURE
 }
 
-func (v Value) isClassObject() bool {
+func (v Value) IsClassObject() bool {
 
-	return v.isObj() && v.Obj.GetType() == OBJECT_CLASS
+	return v.IsObj() && v.Obj.GetType() == OBJECT_CLASS
 }
 
 /* func (v Value) isInstanceObject() bool {
 
-	return v.isObj() && v.Obj.GetType() == OBJECT_INSTANCE
+	return v.IsObj() && v.Obj.GetType() == OBJECT_INSTANCE
 } */
 
-func (v Value) isBoundMethodObject() bool {
+func (v Value) IsBoundMethodObject() bool {
 
-	return v.isObj() && v.Obj.GetType() == OBJECT_BOUNDMETHOD
+	return v.IsObj() && v.Obj.GetType() == OBJECT_BOUNDMETHOD
 }
 
-func (v Value) isFloatArrayObject() bool {
+func (v Value) IsFloatArrayObject() bool {
 
-	return v.isObj() && v.Obj.GetType() == OBJECT_FLOAT_ARRAY
+	return v.IsObj() && v.Obj.GetType() == OBJECT_FLOAT_ARRAY
+}
+
+func (v *Value) Serialise(buffer *bytes.Buffer) {
+
+	switch v.Type {
+	case VAL_FLOAT:
+		buffer.Write([]byte{0x01})
+		bin.Write(buffer, bin.LittleEndian, v.Float)
+	case VAL_INT:
+		buffer.Write([]byte{0x02})
+		bin.Write(buffer, bin.LittleEndian, uint32(v.Int))
+	case VAL_OBJ:
+		switch v.Obj.GetType() {
+		case OBJECT_STRING:
+			buffer.Write([]byte{0x03})
+			s := v.AsString().Get()
+			bin.Write(buffer, bin.LittleEndian, uint32(len(s)))
+			buffer.Write([]byte(s))
+
+		case OBJECT_FUNCTION:
+			fo := v.AsFunction()
+			buffer.Write([]byte{0x04})
+			util.WriteString(buffer, fo.Name.Get())
+			bin.Write(buffer, bin.LittleEndian, uint32(fo.Arity))
+			bin.Write(buffer, bin.LittleEndian, uint32(fo.UpvalueCount))
+			fo.Chunk.Serialise(buffer)
+		default:
+			panic("serialise object value not handled")
+		}
+	case VAL_BOOL:
+		buffer.Write([]byte{0x05})
+		b := byte(0)
+		if v.Bool {
+			b = byte(1)
+		}
+		buffer.Write([]byte{b})
+	case VAL_NIL:
+		buffer.Write([]byte{0x06})
+	default:
+		panic("serialise value not handled")
+	}
 }
 
 //================================================================================================

@@ -10,16 +10,16 @@ type DictObject struct {
 	items map[string]Value
 }
 
-func makeDictObject(items map[string]Value) *DictObject {
+func MakeDictObject(items map[string]Value) *DictObject {
 
 	return &DictObject{
 		items: items,
 	}
 }
 
-func (DictObject) isObject()	{}
+func (DictObject) IsObject() {}
 
-func (DictObject) getType() ObjectType {
+func (DictObject) GetType() ObjectType {
 	return OBJECT_DICT
 }
 
@@ -40,14 +40,14 @@ func (d *DictObject) GetMethod(name string) *BuiltInObject {
 			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 2 {
 					vm.RunTimeError("Invalid argument count to get.")
-					return makeNilValue()
+					return MakeNilValue()
 				}
 				key := vm.Stack(arg_stackptr)
 				def := vm.Stack(arg_stackptr + 1)
 
-				if key.isStringObject() {
-					if def.isStringObject() {
-						rv, error := d.get(key.asString().get())
+				if key.IsStringObject() {
+					if def.IsStringObject() {
+						rv, error := d.Get(key.AsString().Get())
 						if error != nil {
 							return def
 						}
@@ -56,7 +56,7 @@ func (d *DictObject) GetMethod(name string) *BuiltInObject {
 				}
 
 				vm.RunTimeError("Argument to get must be key, default")
-				return makeNilValue()
+				return MakeNilValue()
 			},
 		}
 	case "keys":
@@ -66,9 +66,9 @@ func (d *DictObject) GetMethod(name string) *BuiltInObject {
 
 				if argCount != 0 {
 					vm.RunTimeError("Invalid argument count to keys.")
-					return makeNilValue()
+					return MakeNilValue()
 				}
-				return d.keys()
+				return d.Keys()
 			},
 		}
 
@@ -77,30 +77,30 @@ func (d *DictObject) GetMethod(name string) *BuiltInObject {
 	}
 }
 
-func (o *DictObject) set(key string, value Value) {
+func (o *DictObject) Set(key string, value Value) {
 
 	o.items[key] = value
 }
 
-func (o *DictObject) get(key string) (Value, error) {
+func (o *DictObject) Get(key string) (Value, error) {
 
 	rv, ok := o.items[key]
 	if !ok {
-		return makeNilValue(), errors.New("key not found")
+		return MakeNilValue(), errors.New("key not found")
 	}
 	return rv, nil
 }
 
-func (o *DictObject) keys() Value {
+func (o *DictObject) Keys() Value {
 
-	keys := []Value{}
+	Keys := []Value{}
 	for k := range o.items {
 		key := strings.Replace(k, "\"", "", -1)
-		so := makeStringObject(key)
-		v := makeObjectValue(so, false)
-		keys = append(keys, v)
+		so := MakeStringObject(key)
+		v := MakeObjectValue(so, false)
+		Keys = append(Keys, v)
 	}
-	return makeObjectValue(makeListObject(keys, false), false)
+	return MakeObjectValue(MakeListObject(Keys, false), false)
 }
 
 //-------------------------------------------------------------------------------------------

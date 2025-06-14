@@ -3,45 +3,45 @@ package core
 import "fmt"
 
 type FloatArray struct {
-	width, height int
-	data          []float64
+	Width, Height int
+	Data          []float64
 }
 
-func (f *FloatArray) get(x, y int) float64 {
-	if x < 0 || x >= f.width || y < 0 || y >= f.height {
-		panic(fmt.Sprintf("Index out of bounds: (%d, %d) for array size %dx%d", x, y, f.width, f.height))
+func (f *FloatArray) Get(x, y int) float64 {
+	if x < 0 || x >= f.Width || y < 0 || y >= f.Height {
+		panic(fmt.Sprintf("Index out of bounds: (%d, %d) for array size %dx%d", x, y, f.Width, f.Height))
 	}
-	return f.data[y*f.width+x]
+	return f.Data[y*f.Width+x]
 }
 
-func (f *FloatArray) set(x, y int, value float64) {
-	if x < 0 || x >= f.width || y < 0 || y >= f.height {
-		panic(fmt.Sprintf("Index out of bounds: (%d, %d) for array size %dx%d", x, y, f.width, f.height))
+func (f *FloatArray) Set(x, y int, value float64) {
+	if x < 0 || x >= f.Width || y < 0 || y >= f.Height {
+		panic(fmt.Sprintf("Index out of bounds: (%d, %d) for array size %dx%d", x, y, f.Width, f.Height))
 	}
-	f.data[y*f.width+x] = value
+	f.Data[y*f.Width+x] = value
 }
 
-func (f *FloatArray) clear(value float64) {
-	for i := range f.data {
-		f.data[i] = value
+func (f *FloatArray) Clear(value float64) {
+	for i := range f.Data {
+		f.Data[i] = value
 	}
 }
 
 type FloatArrayObject struct {
 	BuiltInObject
-	value *FloatArray
+	Value *FloatArray
 }
 
-func makeFloatArrayObject(w int, h int) *FloatArrayObject {
+func MakeFloatArrayObject(w int, h int) *FloatArrayObject {
 
 	return &FloatArrayObject{
 		BuiltInObject: BuiltInObject{},
-		value:         &FloatArray{width: w, height: h, data: make([]float64, w*h)},
+		Value:         &FloatArray{Width: w, Height: h, Data: make([]float64, w*h)},
 	}
 }
 
 func (o *FloatArrayObject) String() string {
-	return fmt.Sprintf("<FloatArray %dx%d>", o.value.width, o.value.height)
+	return fmt.Sprintf("<FloatArray %dx%d>", o.Value.Width, o.Value.Height)
 }
 
 func (o *FloatArrayObject) GetType() ObjectType {
@@ -53,13 +53,13 @@ func (o *FloatArrayObject) GetMethod(name string) *BuiltInObject {
 	case "width":
 		return &BuiltInObject{
 			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
-				return makeIntValue(o.value.width, true)
+				return MakeIntValue(o.Value.Width, true)
 			},
 		}
 	case "height":
 		return &BuiltInObject{
 			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
-				return makeIntValue(o.value.height, true)
+				return MakeIntValue(o.Value.Height, true)
 			},
 		}
 	case "get":
@@ -67,9 +67,9 @@ func (o *FloatArrayObject) GetMethod(name string) *BuiltInObject {
 			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				xval := vm.Stack(arg_stackptr)
 				yval := vm.Stack(arg_stackptr + 1)
-				x := xval.asInt()
-				y := yval.asInt()
-				return makeFloatValue(o.value.get(x, y), false)
+				x := xval.AsInt()
+				y := yval.AsInt()
+				return MakeFloatValue(o.Value.Get(x, y), false)
 			},
 		}
 	case "set":
@@ -78,20 +78,20 @@ func (o *FloatArrayObject) GetMethod(name string) *BuiltInObject {
 				xval := vm.Stack(arg_stackptr)
 				yval := vm.Stack(arg_stackptr + 1)
 				fval := vm.Stack(arg_stackptr + 2)
-				x := xval.asInt()
-				y := yval.asInt()
-				f := fval.asFloat()
-				o.value.set(x, y, f)
-				return makeNilValue()
+				x := xval.AsInt()
+				y := yval.AsInt()
+				f := fval.AsFloat()
+				o.Value.Set(x, y, f)
+				return MakeNilValue()
 			},
 		}
 	case "clear":
 		return &BuiltInObject{
 			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				fval := vm.Stack(arg_stackptr)
-				f := fval.asFloat()
-				o.value.clear(f)
-				return makeNilValue()
+				f := fval.AsFloat()
+				o.Value.Clear(f)
+				return MakeNilValue()
 			},
 		}
 	default:

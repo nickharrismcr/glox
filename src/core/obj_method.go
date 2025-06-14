@@ -5,7 +5,7 @@ type BoundMethodObject struct {
 	method   *ClosureObject
 }
 
-func makeBoundMethodObject(receiver Value, method *ClosureObject) *BoundMethodObject {
+func MakeBoundMethodObject(receiver Value, method *ClosureObject) *BoundMethodObject {
 
 	return &BoundMethodObject{
 		receiver: receiver,

@@ -4,7 +4,7 @@ type BuiltInObject struct {
 	function BuiltInFn
 }
 
-func makeBuiltInObject(function BuiltInFn) *BuiltInObject {
+func MakeBuiltInObject(function BuiltInFn) *BuiltInObject {
 
 	return &BuiltInObject{
 		function: function,

@@ -1,5 +1,11 @@
 package core
 
+import (
+	"bytes"
+	bin "encoding/binary"
+	"glox/src/util"
+)
+
 const (
 	OP_RETURN uint8 = iota
 	OP_CONSTANT
@@ -63,26 +69,35 @@ const (
 )
 
 type Chunk struct {
-	code      []uint8
-	constants []Value
-	lines     []int
-	filename  string // for debugging purposes
+	Code      []uint8
+	Constants []Value
+	Lines     []int
+	Filename  string // for debugging purposes
 }
 
 func NewChunk(filename string) *Chunk {
 
 	return &Chunk{
-		code:      []uint8{},
-		constants: []Value{},
-		lines:     []int{},
-		filename:  filename,
+		Code:      []uint8{},
+		Constants: []Value{},
+		Lines:     []int{},
+		Filename:  filename,
+	}
+}
+
+func MakeChunk(filename string, code []uint8, constants []Value, lines []int) *Chunk {
+	return &Chunk{
+		Code:      code,
+		Constants: constants,
+		Lines:     lines,
+		Filename:  filename,
 	}
 }
 
 func (c *Chunk) WriteOpCode(b uint8, line int) {
 
-	c.code = append(c.code, b)
-	c.lines = append(c.lines, line)
+	c.Code = append(c.Code, b)
+	c.Lines = append(c.Lines, line)
 }
 
 func (c *Chunk) AddConstant(v Value) uint8 {
@@ -92,23 +107,44 @@ func (c *Chunk) AddConstant(v Value) uint8 {
 	if ok {
 		return idx
 	}
-	c.constants = append(c.constants, v)
-	return uint8(len(c.constants) - 1)
+	c.Constants = append(c.Constants, v)
+	return uint8(len(c.Constants) - 1)
 }
 
 func (c *Chunk) InConstants(v Value) (bool, uint8) {
 
-	if v.isObj() {
+	if v.IsObj() {
 		t := v.Obj.GetType()
 		if t == OBJECT_BOUNDMETHOD || t == OBJECT_CLOSURE || t == OBJECT_FUNCTION {
 			return false, 0
 		}
 	}
 
-	for i, cv := range c.constants {
+	for i, cv := range c.Constants {
 		if valuesEqual(v, cv, true) {
 			return true, uint8(i)
 		}
 	}
 	return false, 0
+}
+
+func (c *Chunk) Serialise(b *bytes.Buffer) {
+
+	util.WriteMarker(b)
+	bin.Write(b, bin.LittleEndian, uint32(len(c.Code)))
+	b.Write(c.Code)
+	util.WriteMarker(b)
+	bin.Write(b, bin.LittleEndian, uint32(len(c.Lines)))
+	for _, line := range c.Lines {
+		bin.Write(b, bin.LittleEndian, uint32(line))
+	}
+	util.WriteMarker(b)
+	bin.Write(b, bin.LittleEndian, uint32(len(c.Constants)))
+	for _, v := range c.Constants {
+		v.Serialise(b)
+	}
+	util.WriteMarker(b)
+	bin.Write(b, bin.LittleEndian, uint32(len(c.Filename)))
+	b.Write([]byte(c.Filename))
+	util.WriteMarker(b)
 }

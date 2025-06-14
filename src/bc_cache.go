@@ -4,6 +4,8 @@ import (
 	"bytes"
 	bin "encoding/binary"
 	"fmt"
+	"glox/src/core"
+	"glox/src/util"
 	"io"
 	"os"
 	"path/filepath"
@@ -35,7 +37,7 @@ func writeToLxc(vm *VM, serialised *bytes.Buffer) {
 	}
 }
 
-func loadLxc(scriptPath string) (*Chunk, *Environment, bool) {
+func loadLxc(scriptPath string) (*core.Chunk, *core.Environment, bool) {
 
 	if ForceModuleCompile {
 		return nil, nil, false
@@ -66,89 +68,22 @@ func loadLxc(scriptPath string) (*Chunk, *Environment, bool) {
 			return nil, nil, false
 		}
 		Debugf("loading lxc. %s", base)
-		env := newEnvironment(base)
+		env := core.NewEnvironment(base)
 		chunk := readChunk(reader, env)
 		return chunk, env, true
 	}
 	return nil, nil, false
 }
 
-func (c *Chunk) serialise(b *bytes.Buffer) {
-
-	writeMarker(b)
-	bin.Write(b, bin.LittleEndian, uint32(len(c.code)))
-	b.Write(c.code)
-	writeMarker(b)
-	bin.Write(b, bin.LittleEndian, uint32(len(c.lines)))
-	for _, line := range c.lines {
-		bin.Write(b, bin.LittleEndian, uint32(line))
-	}
-	writeMarker(b)
-	bin.Write(b, bin.LittleEndian, uint32(len(c.constants)))
-	for _, v := range c.constants {
-		v.serialise(b)
-	}
-	writeMarker(b)
-	bin.Write(b, bin.LittleEndian, uint32(len(c.filename)))
-	b.Write([]byte(c.filename))
-	writeMarker(b)
-}
-
-func (v *Value) serialise(buffer *bytes.Buffer) {
-
-	switch v.Type {
-	case VAL_FLOAT:
-		buffer.Write([]byte{0x01})
-		bin.Write(buffer, bin.LittleEndian, v.Float)
-	case VAL_INT:
-		buffer.Write([]byte{0x02})
-		bin.Write(buffer, bin.LittleEndian, uint32(v.Int))
-	case VAL_OBJ:
-		switch v.Obj.GetType() {
-		case OBJECT_STRING:
-			buffer.Write([]byte{0x03})
-			s := v.asString().get()
-			bin.Write(buffer, bin.LittleEndian, uint32(len(s)))
-			buffer.Write([]byte(s))
-
-		case OBJECT_FUNCTION:
-			fo := v.asFunction()
-			buffer.Write([]byte{0x04})
-			writeString(buffer, fo.name.get())
-			bin.Write(buffer, bin.LittleEndian, uint32(fo.arity))
-			bin.Write(buffer, bin.LittleEndian, uint32(fo.upvalueCount))
-			fo.chunk.serialise(buffer)
-		default:
-			panic("serialise object value not handled")
-		}
-	case VAL_BOOL:
-		buffer.Write([]byte{0x05})
-		b := byte(0)
-		if v.Bool {
-			b = byte(1)
-		}
-		buffer.Write([]byte{b})
-	case VAL_NIL:
-		buffer.Write([]byte{0x06})
-	default:
-		panic("serialise value not handled")
-	}
-}
-
-func writeString(b *bytes.Buffer, s string) {
-	bin.Write(b, bin.LittleEndian, uint32(len(s)))
-	b.Write([]byte(s))
-}
-
-func readChunk(reader io.Reader, env *Environment) *Chunk {
+func readChunk(reader io.Reader, env *core.Environment) *core.Chunk {
 
 	var codeLen uint32
-	readMarker(reader)
+	util.ReadMarker(reader)
 	bin.Read(reader, bin.LittleEndian, &codeLen)
 	//Debugf("Code len %d", codeLen)
 	code := make([]byte, codeLen)
 	io.ReadFull(reader, code)
-	readMarker(reader)
+	util.ReadMarker(reader)
 
 	var lineCount uint32
 	bin.Read(reader, bin.LittleEndian, &lineCount)
@@ -159,29 +94,28 @@ func readChunk(reader io.Reader, env *Environment) *Chunk {
 		bin.Read(reader, bin.LittleEndian, &l)
 		lines[i] = int(l)
 	}
-	readMarker(reader)
+	util.ReadMarker(reader)
 
 	var constCount uint32
 	bin.Read(reader, bin.LittleEndian, &constCount)
 	//Debugf("Const count %d", constCount)
-	constants := make([]Value, constCount)
+	constants := make([]core.Value, constCount)
 	for i := range constants {
 		constants[i] = readValue(reader, env)
 	}
 	var filenameLen uint32
-	readMarker(reader)
+	util.ReadMarker(reader)
 	bin.Read(reader, bin.LittleEndian, &filenameLen)
 	//Debugf("Filename len %d", filenameLen)
 	filename := make([]byte, filenameLen)
 	reader.Read(filename)
 	//Debugf("String %s ", string(filename))
-	readMarker(reader)
-
-	chunk := &Chunk{code: code, lines: lines, constants: constants, filename: string(filename)}
+	util.ReadMarker(reader)
+	chunk := core.MakeChunk(string(filename), code, constants, lines)
 	return chunk
 }
 
-func readValue(r io.Reader, env *Environment) Value {
+func readValue(r io.Reader, env *core.Environment) core.Value {
 	var tag [1]byte
 	r.Read(tag[:])
 	//Debugf("Tag : %d", tag[0])
@@ -190,22 +124,22 @@ func readValue(r io.Reader, env *Environment) Value {
 		var n float64
 		bin.Read(r, bin.LittleEndian, &n)
 		//Debugf("Float %f", n)
-		return makeFloatValue(n, false)
+		return core.MakeFloatValue(n, false)
 	case 0x02:
 		var n uint32
 		bin.Read(r, bin.LittleEndian, &n)
 		//Debugf("Int %d", n)
-		return makeIntValue(int(n), false)
+		return core.MakeIntValue(int(n), false)
 	case 0x03:
 		var len uint32
 		bin.Read(r, bin.LittleEndian, &len)
 		buf := make([]byte, len)
 		r.Read(buf)
 		//Debugf("String %s ", string(buf))
-		return makeObjectValue(makeStringObject(string(buf)), false)
+		return core.MakeObjectValue(core.MakeStringObject(string(buf)), false)
 	case 0x04:
-		s := readString(r)
-		name := makeStringObject(s)
+		s := util.ReadString(r)
+		name := core.MakeStringObject(s)
 		//Debugf("Function %s", s)
 		var arity uint32
 		bin.Read(r, bin.LittleEndian, &arity)
@@ -214,42 +148,22 @@ func readValue(r io.Reader, env *Environment) Value {
 		bin.Read(r, bin.LittleEndian, &upvalueCount)
 		//Debugf("Arity %d", arity)
 		chunk := readChunk(r, env)
-		fo := makeFunctionObject(name.get(), env)
-		fo.name = name
+		fo := core.MakeFunctionObject(name.Get(), env)
+		fo.Name = name
 		//Debugf("Function %s arity %d upvalueCount %d", fo.name.get(), arity, upvalueCount)
-		fo.arity = int(arity)
-		fo.upvalueCount = int(upvalueCount)
-		fo.chunk = chunk
-		return makeObjectValue(fo, false)
+		fo.Arity = int(arity)
+		fo.UpvalueCount = int(upvalueCount)
+		fo.Chunk = chunk
+		return core.MakeObjectValue(fo, false)
 	case 0x05:
 		var b [1]byte
 		r.Read(b[:])
 		//Debugf("Bool %s", b[0] == 1)
-		return makeBooleanValue(b[0] == 1, false)
+		return core.MakeBooleanValue(b[0] == 1, false)
 	case 0x06:
 		//Debugf("Nil")
-		return makeNilValue()
+		return core.MakeNilValue()
 	default:
 		panic("unknown tag")
 	}
-}
-
-func writeMarker(b *bytes.Buffer) {
-	b.Write([]byte{0xFF})
-}
-
-func readMarker(r io.Reader) {
-	buf := make([]byte, 1)
-	r.Read(buf)
-	if buf[0] != 0xFF {
-		panic(fmt.Sprintf("Expected marker, got %d", buf[0]))
-	}
-}
-
-func readString(r io.Reader) string {
-	var len uint32
-	bin.Read(r, bin.LittleEndian, &len)
-	buf := make([]byte, len)
-	r.Read(buf)
-	return string(buf)
 }

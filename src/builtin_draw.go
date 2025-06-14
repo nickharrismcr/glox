@@ -8,40 +8,41 @@ import (
 	"os"
 	"sync"
 
+	"glox/src/core"
 	"glox/src/util"
 )
 
 // takes a filename, and a FloatArrayObject, and a boolean indicating whether the array contains RGB encoded data
-func drawPNGBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
+func drawPNGBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	if argCount != 3 {
 		vm.RunTimeError("Invalid argument count to draw_png.")
-		return makeNilValue()
+		return core.MakeNilValue()
 	}
 	nameVal := vm.Stack(arg_stackptr)
 	plotData := vm.Stack(arg_stackptr + 1)
 	colourEncoded := vm.Stack(arg_stackptr + 2)
 
-	if !nameVal.isStringObject() {
+	if !nameVal.IsStringObject() {
 		vm.RunTimeError("First argument to draw_png must be a string filename")
-		return makeNilValue()
+		return core.MakeNilValue()
 	}
 
-	if !plotData.isFloatArrayObject() {
+	if !plotData.IsFloatArrayObject() {
 		vm.RunTimeError("Second argument to draw_png must be a float array")
-		return makeNilValue()
+		return core.MakeNilValue()
 	}
-	if !colourEncoded.isBool() {
+	if !colourEncoded.IsBool() {
 		vm.RunTimeError("Third argument to draw_png must be a boolean")
 	}
 
-	fa := plotData.asFloatArray()
-	if fa.value.width <= 0 || fa.value.height <= 0 {
+	fa := plotData.AsFloatArray()
+	if fa.Value.Width <= 0 || fa.Value.Height <= 0 {
 		vm.RunTimeError("draw_png data must not be empty")
-		return makeNilValue()
+		return core.MakeNilValue()
 	}
 
-	width := fa.value.width
-	height := fa.value.height
+	width := fa.Value.Width
+	height := fa.Value.Height
 
 	if !colourEncoded.Bool {
 		img := image.NewGray(image.Rect(0, 0, width, height))
@@ -50,12 +51,12 @@ func drawPNGBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 		for y := range height {
 			for x := range width {
-				val := fa.value.get(x, y)
+				val := fa.Value.Get(x, y)
 				gray = uint8(min(val*255, 255))
 				img.SetGray(x, y, color.Gray{Y: gray})
 			}
 		}
-		file, _ := os.Create(nameVal.asString().get())
+		file, _ := os.Create(nameVal.AsString().Get())
 		defer file.Close()
 		_ = png.Encode(file, img)
 	} else {
@@ -63,17 +64,17 @@ func drawPNGBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 
 		for y := range height {
 			for x := range width {
-				val := fa.value.get(x, y)
+				val := fa.Value.Get(x, y)
 				r, g, b := util.DecodeRGB(val)
 				img.Set(x, y, color.RGBA{R: r, G: g, B: b, A: 255})
 			}
 		}
-		file, _ := os.Create(nameVal.asString().get())
+		file, _ := os.Create(nameVal.AsString().Get())
 		defer file.Close()
 		_ = png.Encode(file, img)
 	}
 
-	return makeNilValue()
+	return core.MakeNilValue()
 }
 
 // args:
@@ -86,11 +87,11 @@ func drawPNGBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 // scale
 
 // creates a goroutine for each row of the array, which calculates the mandelbrot set for that row
-func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
+func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 	if argCount != 7 {
 		vm.RunTimeError("Invalid argument count to lox_mandel_array")
-		return makeNilValue()
+		return core.MakeNilValue()
 	}
 	arrayVal := vm.Stack(arg_stackptr)
 	hVal := vm.Stack(arg_stackptr + 1)
@@ -100,13 +101,13 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 	yoffsetVal := vm.Stack(arg_stackptr + 5)
 	scaleVal := vm.Stack(arg_stackptr + 6)
 
-	if !(hVal.isInt() && wVal.isInt() && maxIterVal.isInt() && xoffsetVal.isFloat() &&
-		yoffsetVal.isFloat() && arrayVal.isFloatArrayObject() && scaleVal.isFloat()) {
+	if !(hVal.IsInt() && wVal.IsInt() && maxIterVal.IsInt() && xoffsetVal.IsFloat() &&
+		yoffsetVal.IsFloat() && arrayVal.IsFloatArrayObject() && scaleVal.IsFloat()) {
 		vm.RunTimeError("Invalid arguments to lox_mandel_array")
-		return makeNilValue()
+		return core.MakeNilValue()
 	}
 
-	array := arrayVal.asFloatArray()
+	array := arrayVal.AsFloatArray()
 	height := hVal.Int
 	width := wVal.Int
 	maxIteration := maxIterVal.Int
@@ -123,12 +124,12 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 		}(row)
 	}
 	wg.Wait()
-	return makeNilValue()
+	return core.MakeNilValue()
 }
 
 // mandelbrotCalcRow calculates a single row of the mandelbrot set and stores the result in the provided FloatArrayObject
 // rows are calculated in parallel using goroutines
-func mandelbrotCalcRow(row, width, height, maxIteration int, scale, xOffset, yOffset float64, array *FloatArrayObject) {
+func mandelbrotCalcRow(row, width, height, maxIteration int, scale, xOffset, yOffset float64, array *core.FloatArrayObject) {
 
 	const periodLength = 20
 	y0 := scale*(float64(row)-float64(height)/2)/float64(height) + yOffset
@@ -164,7 +165,7 @@ func mandelbrotCalcRow(row, width, height, maxIteration int, scale, xOffset, yOf
 	bailout:
 		var colour float64
 		if iteration == maxIteration {
-			colour = EncodeRGB(0, 0, 0)
+			colour = util.EncodeRGB(0, 0, 0)
 		} else {
 
 			//https://en.m.wikipedia.org/wiki/Plotting_algorithms_for_the_Mandelbrot_set
@@ -184,9 +185,9 @@ func mandelbrotCalcRow(row, width, height, maxIteration int, scale, xOffset, yOf
 			chroma := 70.0
 			//lum := 80.0
 
-			r, g, b := HCLToRGB255(float64(hue), float64(chroma), float64(lum))
-			colour = EncodeRGB(int(r), int(g), int(b))
+			r, g, b := util.HCLToRGB255(float64(hue), float64(chroma), float64(lum))
+			colour = util.EncodeRGB(int(r), int(g), int(b))
 		}
-		array.value.set(row, col, colour)
+		array.Value.Set(row, col, colour)
 	}
 }

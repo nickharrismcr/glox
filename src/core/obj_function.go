@@ -5,20 +5,20 @@ import (
 )
 
 type FunctionObject struct {
-	arity        int
-	chunk        *Chunk
-	name         StringObject
-	upvalueCount int
-	environment  *Environment
+	Arity        int
+	Chunk        *Chunk
+	Name         StringObject
+	UpvalueCount int
+	Environment  *Environment
 }
 
-func makeFunctionObject(filename string, environment *Environment) *FunctionObject {
+func MakeFunctionObject(filename string, environment *Environment) *FunctionObject {
 
 	return &FunctionObject{
-		arity:       0,
-		name:        makeStringObject(""),
-		chunk:       NewChunk(filename),
-		environment: environment,
+		Arity:       0,
+		Name:        MakeStringObject(""),
+		Chunk:       NewChunk(filename),
+		Environment: environment,
 	}
 }
 
@@ -31,10 +31,10 @@ func (FunctionObject) GetType() ObjectType {
 
 func (f *FunctionObject) String() string {
 
-	if f.name.get() == "" {
+	if f.Name.Get() == "" {
 		return "<script>"
 	}
-	return fmt.Sprintf("<fn %s>", f.name)
+	return fmt.Sprintf("<fn %s>", f.Name)
 }
 
 // -------------------------------------------------------------------------------------------

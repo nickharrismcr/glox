@@ -6,16 +6,16 @@ type ClosureObject struct {
 	upvalueCount int
 }
 
-func makeClosureObject(function *FunctionObject) *ClosureObject {
+func MakeClosureObject(function *FunctionObject) *ClosureObject {
 
 	rv := &ClosureObject{
 		function: function,
 		upvalues: []*UpvalueObject{},
 	}
-	for i := 0; i < function.upvalueCount; i++ {
+	for i := 0; i < function.UpvalueCount; i++ {
 		rv.upvalues = append(rv.upvalues, nil)
 	}
-	rv.upvalueCount = function.upvalueCount
+	rv.upvalueCount = function.UpvalueCount
 	return rv
 }
 

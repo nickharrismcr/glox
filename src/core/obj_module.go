@@ -9,7 +9,7 @@ type ModuleObject struct {
 	environment Environment
 }
 
-func makeModuleObject(name string, environment Environment) *ModuleObject {
+func MakeModuleObject(name string, environment Environment) *ModuleObject {
 
 	return &ModuleObject{
 		name:        name,

@@ -286,7 +286,7 @@ func (vm *VM) invokeFromBuiltin(obj Object, name Value, argCount int) bool {
 	n := getStringValue(name)
 	bobj, ok := obj.(HasMethods)
 	if ok {
-		method := bobj.GetMethod(name.asString().get())
+		method := bobj.GetMethod(name.AsString().get())
 		if method != nil {
 			builtin := method.function
 			res := builtin(argCount, vm.stackTop-argCount, vm)
@@ -646,7 +646,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 		case OP_PRINT:
 			// compiler ensures stack top will be a string object via OP_STR
 			v := vm.pop()
-			fmt.Printf("%s\n", v.asString().get())
+			fmt.Printf("%s\n", v.AsString().get())
 
 		case OP_POP:
 			// pop 1 stack value and discard
@@ -837,7 +837,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			mv := constants[idx]
-			module := mv.asString().get()
+			module := mv.AsString().get()
 
 			status := vm.importModule(module)
 			if status != INTERPRET_OK {
@@ -857,7 +857,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 					ot := ov.(StringObject)
 					s = ot.get()
 				case OBJECT_INSTANCE:
-					// get string repr of class by calling asString().get() method if present
+					// get string repr of class by calling AsString().get() method if present
 					ot := ov.(*InstanceObject)
 					if toString, ok := ot.class.methods["toString"]; ok {
 						vm.call(toString.asClosure(), 0)
@@ -929,7 +929,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 				}
 
 			case OBJECT_STRING:
-				t := iterable.asString()
+				t := iterable.AsString()
 				if idx >= len(t.get()) {
 					frame.ip += int(jumpToEnd - 2)
 
@@ -962,17 +962,17 @@ func (vm *VM) run() (InterpretResult, Value) {
 			b := vm.pop()
 			a := vm.pop()
 
-			if !(b.isStringObject() || b.isListObject()) {
+			if !(b.IsStringObject() || b.isListObject()) {
 				vm.RunTimeError("'in' requires string or list as right operand.")
 				goto End
 			}
 			switch b.Obj.GetType() {
 			case OBJECT_STRING:
-				if !a.isStringObject() {
+				if !a.IsStringObject() {
 					vm.RunTimeError("'in' requires string as left operand.")
 					goto End
 				}
-				rv := b.asString().contains(a)
+				rv := b.AsString().contains(a)
 				vm.push(rv)
 			case OBJECT_LIST:
 				rv := b.asList().contains(a)
@@ -1210,7 +1210,7 @@ func (vm *VM) createDict(frame *CallFrame) {
 	for i := 0; i < itemCount; i++ {
 		value := vm.pop()
 		key := vm.pop()
-		dict[key.asString().get()] = value
+		dict[key.AsString().get()] = value
 	}
 	do := makeDictObject(dict)
 	vm.push(makeObjectValue(do, false))
@@ -1221,7 +1221,7 @@ func (vm *VM) index() bool {
 	iv := vm.pop()
 	sv := vm.pop()
 
-	if sv.isObj() {
+	if sv.IsObj() {
 		switch sv.Obj.GetType() {
 		case OBJECT_LIST:
 			if iv.Type != VAL_INT {
@@ -1244,7 +1244,7 @@ func (vm *VM) index() bool {
 				return false
 			}
 			idx := iv.Int
-			t := sv.asString()
+			t := sv.AsString()
 			so, err := t.index(idx)
 			if err != nil {
 				vm.RunTimeError("%v", err)
@@ -1255,7 +1255,7 @@ func (vm *VM) index() bool {
 
 		case OBJECT_DICT:
 
-			key := iv.asString().get()
+			key := iv.AsString().get()
 			t := sv.asDict()
 			so, err := t.get(key)
 			if err != nil {
@@ -1298,7 +1298,7 @@ func (vm *VM) indexAssign() bool {
 			}
 		case OBJECT_DICT:
 			t := collection.asDict()
-			t.set(index.asString().get(), rhs)
+			t.set(index.AsString().get(), rhs)
 			return true
 		}
 	}
@@ -1331,7 +1331,7 @@ func (vm *VM) slice() bool {
 	}
 
 	lv := vm.pop()
-	if lv.isObj() {
+	if lv.IsObj() {
 		if lv.Obj.GetType() == OBJECT_LIST {
 			lo, err := lv.asList().slice(from_idx, to_idx)
 			if err != nil {
@@ -1342,7 +1342,7 @@ func (vm *VM) slice() bool {
 			return true
 
 		} else if lv.Obj.GetType() == OBJECT_STRING {
-			so, err := lv.asString().slice(from_idx, to_idx)
+			so, err := lv.AsString().slice(from_idx, to_idx)
 			if err != nil {
 				vm.RunTimeError("%v", err)
 				return false
@@ -1382,7 +1382,7 @@ func (vm *VM) sliceAssign() bool {
 	}
 
 	lv := vm.Peek(0)
-	if lv.isObj() {
+	if lv.IsObj() {
 
 		if lv.Obj.GetType() == OBJECT_LIST {
 			lst := lv.asList()
@@ -1443,7 +1443,7 @@ func (vm *VM) binaryAdd() bool {
 			}
 			ov1 := v1.Obj
 			if ov1.GetType() == OBJECT_STRING {
-				so := makeStringObject(v1.asString().get() + v2.asString().get())
+				so := makeStringObject(v1.AsString().get() + v2.AsString().get())
 				vm.push(makeObjectValue(so, false))
 				return true
 			}
@@ -1510,11 +1510,11 @@ func (vm *VM) binaryMultiply() bool {
 		case VAL_FLOAT:
 			vm.push(makeFloatValue(v1.Float*float64(v2.Int), false))
 		case VAL_OBJ:
-			if !v1.isStringObject() {
+			if !v1.IsStringObject() {
 				vm.RunTimeError("Invalid operand for multiply.")
 				return false
 			}
-			s := v1.asString().get()
+			s := v1.AsString().get()
 			vm.push(vm.stringMultiply(s, v2.Int))
 		default:
 			vm.RunTimeError("Invalid operand for multiply.")
@@ -1531,13 +1531,13 @@ func (vm *VM) binaryMultiply() bool {
 			return false
 		}
 	case VAL_OBJ:
-		if !v2.isStringObject() {
+		if !v2.IsStringObject() {
 			vm.RunTimeError("Invalid operand for multiply.")
 			return false
 		}
 		switch v1.Type {
 		case VAL_INT:
-			s := v2.asString().get()
+			s := v2.AsString().get()
 			vm.push(vm.stringMultiply(s, v1.Int))
 		default:
 			vm.RunTimeError("Invalid operand for multiply.")

@@ -11,7 +11,7 @@ type StringObject struct {
 	chars *string
 }
 
-func makeStringObject(s string) StringObject {
+func MakeStringObject(s string) StringObject {
 
 	return StringObject{
 		chars: &s,
@@ -34,26 +34,26 @@ func (s StringObject) GetMethod(name string) *BuiltInObject {
 			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 2 {
 					vm.RunTimeError("replace takes two arguments.")
-					return makeNilValue()
+					return MakeNilValue()
 				}
 				fromVal := vm.Peek(1)
 				toVal := vm.Peek(0)
-				return s.replace(fromVal, toVal)
+				return s.Replace(fromVal, toVal)
 			},
 		}
 	case "join":
 		return &BuiltInObject{
 			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
-				if argCount != 1 || !vm.Peek(0).isListObject() {
+				if argCount != 1 || !vm.Peek(0).IsListObject() {
 					vm.RunTimeError("Join takes one list argument.")
-					return makeNilValue()
+					return MakeNilValue()
 				}
 				lstVal := vm.Peek(0)
-				lst := lstVal.asList()
-				v, err := lst.join(s.get())
+				lst := lstVal.AsList()
+				v, err := lst.Join(s.Get())
 				if err != nil {
 					vm.RunTimeError("%v", err)
-					return makeNilValue()
+					return MakeNilValue()
 				}
 				return v
 			},
@@ -63,24 +63,24 @@ func (s StringObject) GetMethod(name string) *BuiltInObject {
 	}
 }
 
-func (s StringObject) get() string {
+func (s StringObject) Get() string {
 
 	return *s.chars
 }
 
-func (s StringObject) contains(v Value) Value {
+func (s StringObject) Contains(v Value) Value {
 
-	rv := strings.Contains(*s.chars, *v.asString().chars)
-	return makeBooleanValue(rv, true)
+	rv := strings.Contains(*s.chars, *v.AsString().chars)
+	return MakeBooleanValue(rv, true)
 
 }
 
-func (s StringObject) replace(from Value, to Value) Value {
+func (s StringObject) Replace(from Value, to Value) Value {
 
-	old := from.asString().get()
-	new := to.asString().get()
+	old := from.AsString().Get()
+	new := to.AsString().Get()
 	rv := strings.Replace(*s.chars, old, new, -1)
-	return makeObjectValue(makeStringObject(rv), false)
+	return MakeObjectValue(MakeStringObject(rv), false)
 }
 
 func (s StringObject) String() string {
@@ -88,54 +88,54 @@ func (s StringObject) String() string {
 	return fmt.Sprintf("\"%s\"", *s.chars)
 }
 
-func (s StringObject) index(ix int) (Value, error) {
+func (s StringObject) Index(ix int) (Value, error) {
 
 	if ix < 0 {
-		ix = len(s.get()) + ix
+		ix = len(s.Get()) + ix
 	}
 
-	if ix < 0 || ix > len(s.get()) {
-		return makeNilValue(), errors.New("list subscript out of range")
+	if ix < 0 || ix > len(s.Get()) {
+		return MakeNilValue(), errors.New("list subscript out of range")
 	}
 
-	so := makeStringObject(string(s.get()[ix]))
-	return makeObjectValue(so, false), nil
+	so := MakeStringObject(string(s.Get()[ix]))
+	return MakeObjectValue(so, false), nil
 }
 
-func (s StringObject) slice(from_ix, to_ix int) (Value, error) {
+func (s StringObject) Slice(from_ix, to_ix int) (Value, error) {
 
 	if to_ix < 0 {
-		to_ix = len(s.get()) + 1 + to_ix
+		to_ix = len(s.Get()) + 1 + to_ix
 	}
 	if from_ix < 0 {
-		from_ix = len(s.get()) + 1 + from_ix
+		from_ix = len(s.Get()) + 1 + from_ix
 	}
 
-	if to_ix < 0 || to_ix > len(s.get()) {
-		return makeNilValue(), errors.New("list subscript out of range")
+	if to_ix < 0 || to_ix > len(s.Get()) {
+		return MakeNilValue(), errors.New("list subscript out of range")
 	}
 
-	if from_ix < 0 || from_ix > len(s.get()) {
-		return makeNilValue(), errors.New("list subscript out of range")
+	if from_ix < 0 || from_ix > len(s.Get()) {
+		return MakeNilValue(), errors.New("list subscript out of range")
 	}
 
-	so := makeStringObject(s.get()[from_ix:to_ix])
-	return makeObjectValue(so, false), nil
+	so := MakeStringObject(s.Get()[from_ix:to_ix])
+	return MakeObjectValue(so, false), nil
 
 }
 
-func (s StringObject) parseFloat() (float64, bool) {
+func (s StringObject) ParseFloat() (float64, bool) {
 
-	f, err := strconv.ParseFloat(s.get(), 64)
+	f, err := strconv.ParseFloat(s.Get(), 64)
 	if err != nil {
 		return 0, false
 	}
 	return f, true
 }
 
-func (s StringObject) parseInt() (int, bool) {
+func (s StringObject) ParseInt() (int, bool) {
 
-	i, err := strconv.ParseInt(s.get(), 10, 64)
+	i, err := strconv.ParseInt(s.Get(), 10, 64)
 	if err != nil {
 		return 0, false
 	}

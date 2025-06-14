@@ -8,14 +8,14 @@ import (
 
 type ListObject struct {
 	items []Value
-	tuple bool
+	Tuple bool
 }
 
-func makeListObject(items []Value, isTuple bool) *ListObject {
+func MakeListObject(items []Value, isTuple bool) *ListObject {
 
 	return &ListObject{
 		items: items,
-		tuple: isTuple,
+		Tuple: isTuple,
 	}
 }
 
@@ -34,11 +34,11 @@ func (o *ListObject) GetMethod(name string) *BuiltInObject {
 			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 1 {
 					vm.RunTimeError("append takes one argument.")
-					return makeNilValue()
+					return MakeNilValue()
 				}
 				val := vm.Peek(0)
-				o.append(val)
-				return makeNilValue()
+				o.Append(val)
+				return MakeNilValue()
 			},
 		}
 	case "remove":
@@ -46,12 +46,12 @@ func (o *ListObject) GetMethod(name string) *BuiltInObject {
 			function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 1 {
 					vm.RunTimeError("remove takes one argument.")
-					return makeNilValue()
+					return MakeNilValue()
 				}
 				val := vm.Peek(0)
 				idx := val.Int
-				o.remove(idx)
-				return makeNilValue()
+				o.Remove(idx)
+				return MakeNilValue()
 			},
 		}
 
@@ -60,23 +60,23 @@ func (o *ListObject) GetMethod(name string) *BuiltInObject {
 	}
 }
 
-func (o *ListObject) get() []Value {
+func (o *ListObject) Get() []Value {
 
 	return o.items
 }
 
-func (o *ListObject) append(v Value) {
+func (o *ListObject) Append(v Value) {
 	o.items = append(o.items, v)
 }
 
-func (o *ListObject) remove(ix int) {
+func (o *ListObject) Remove(ix int) {
 	if ix < 0 || ix >= len(o.items) {
 		return
 	}
 	o.items = append(o.items[:ix], o.items[ix+1:]...)
 }
 
-func (o *ListObject) join(s string) (Value, error) {
+func (o *ListObject) Join(s string) (Value, error) {
 	rs := ""
 	ln := len(o.items)
 	if ln > 0 {
@@ -84,7 +84,7 @@ func (o *ListObject) join(s string) (Value, error) {
 			if isString(v) {
 				rs = getStringValue(v)
 			} else {
-				return makeNilValue(), errors.New("mon string in join list")
+				return MakeNilValue(), errors.New("mon string in join list")
 			}
 		}
 		if ln > 1 {
@@ -92,12 +92,12 @@ func (o *ListObject) join(s string) (Value, error) {
 				if isString(v) {
 					rs = rs + s + getStringValue(v)
 				} else {
-					return makeNilValue(), errors.New("non string in join list")
+					return MakeNilValue(), errors.New("non string in join list")
 				}
 			}
 		}
 	}
-	return makeObjectValue(makeStringObject(rs), false), nil
+	return MakeObjectValue(MakeStringObject(rs), false), nil
 }
 
 func (o *ListObject) String() string {
@@ -107,44 +107,44 @@ func (o *ListObject) String() string {
 	for _, v := range o.items {
 		list = append(list, v.String())
 	}
-	if o.tuple {
+	if o.Tuple {
 		return fmt.Sprintf("( %s )", strings.Join(list, " , "))
 	}
 	return fmt.Sprintf("[ %s ]", strings.Join(list, " , "))
 }
 
-func (o *ListObject) add(other *ListObject) *ListObject {
+func (o *ListObject) Add(other *ListObject) *ListObject {
 
 	l := []Value{}
 	l = append(l, o.items...)
 	l = append(l, other.items...)
-	return makeListObject(l, false)
+	return MakeListObject(l, false)
 }
 
-func (o *ListObject) contains(v Value) Value {
+func (o *ListObject) Contains(v Value) Value {
 
 	for _, a := range o.items {
 		if valuesEqual(a, v, true) {
-			return makeBooleanValue(true, true)
+			return MakeBooleanValue(true, true)
 		}
 	}
-	return makeBooleanValue(false, true)
+	return MakeBooleanValue(false, true)
 }
 
-func (o *ListObject) index(ix int) (Value, error) {
+func (o *ListObject) Index(ix int) (Value, error) {
 
 	if ix < 0 {
-		ix = len(o.get()) + ix
+		ix = len(o.Get()) + ix
 	}
 
-	if ix < 0 || ix >= len(o.get()) {
-		return makeNilValue(), errors.New("list subscript out of range")
+	if ix < 0 || ix >= len(o.Get()) {
+		return MakeNilValue(), errors.New("list subscript out of range")
 	}
 
-	return o.get()[ix], nil
+	return o.Get()[ix], nil
 }
 
-func (o *ListObject) slice(from_ix, to_ix int) (Value, error) {
+func (o *ListObject) Slice(from_ix, to_ix int) (Value, error) {
 
 	if to_ix < 0 {
 		to_ix = len(o.items) + 1 + to_ix
@@ -154,28 +154,28 @@ func (o *ListObject) slice(from_ix, to_ix int) (Value, error) {
 	}
 
 	if to_ix < 0 || to_ix > len(o.items) {
-		return makeNilValue(), errors.New("list subscript out of range")
+		return MakeNilValue(), errors.New("list subscript out of range")
 	}
 
 	if from_ix < 0 || from_ix > len(o.items) {
-		return makeNilValue(), errors.New("list subscript out of range")
+		return MakeNilValue(), errors.New("list subscript out of range")
 	}
 
 	if from_ix > to_ix {
-		return makeNilValue(), errors.New("invalid slice indices")
+		return MakeNilValue(), errors.New("invalid slice indices")
 	}
 
-	lo := makeListObject(o.items[from_ix:to_ix], false)
-	return makeObjectValue(lo, false), nil
+	lo := MakeListObject(o.items[from_ix:to_ix], false)
+	return MakeObjectValue(lo, false), nil
 }
 
-func (o *ListObject) assignToIndex(ix int, val Value) error {
+func (o *ListObject) AssignToIndex(ix int, val Value) error {
 
 	if ix < 0 {
-		ix = len(o.get()) + ix
+		ix = len(o.Get()) + ix
 	}
 
-	if ix < 0 || ix > len(o.get()) {
+	if ix < 0 || ix > len(o.Get()) {
 		return errors.New("list subscript out of range")
 	}
 
@@ -183,7 +183,7 @@ func (o *ListObject) assignToIndex(ix int, val Value) error {
 	return nil
 }
 
-func (o *ListObject) assignToSlice(from_ix, to_ix int, val Value) error {
+func (o *ListObject) AssignToSlice(from_ix, to_ix int, val Value) error {
 
 	if to_ix < 0 {
 		to_ix = len(o.items) + 1 + to_ix
@@ -206,8 +206,8 @@ func (o *ListObject) assignToSlice(from_ix, to_ix int, val Value) error {
 
 	if val.Type == VAL_OBJ {
 
-		if val.isListObject() {
-			lv := val.asList()
+		if val.IsListObject() {
+			lv := val.AsList()
 			tmp := []Value{}
 			tmp = append(tmp, o.items[0:from_ix]...)
 			tmp = append(tmp, lv.items...)

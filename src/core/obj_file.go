@@ -7,19 +7,19 @@ import (
 )
 
 type FileObject struct {
-	file   *os.File
-	closed bool
-	eof    bool
-	reader *bufio.Reader
-	writer *bufio.Writer
+	File   *os.File
+	Closed bool
+	Eof    bool
+	Reader *bufio.Reader
+	Writer *bufio.Writer
 }
 
-func makeFileObject(file *os.File) *FileObject {
+func MakeFileObject(file *os.File) *FileObject {
 
 	return &FileObject{
-		file:   file,
-		reader: bufio.NewReader(file),
-		writer: bufio.NewWriter(file),
+		File:   file,
+		Reader: bufio.NewReader(file),
+		Writer: bufio.NewWriter(file),
 	}
 }
 
@@ -35,36 +35,36 @@ func (f *FileObject) String() string {
 	return "<file>"
 }
 
-func (f *FileObject) close() {
-	f.writer.Flush()
-	f.file.Close()
-	f.closed = true
+func (f *FileObject) Close() {
+	f.Writer.Flush()
+	f.File.Close()
+	f.Closed = true
 }
 
-func (f *FileObject) readLine() Value {
+func (f *FileObject) ReadLine() Value {
 
-	if f.eof {
-		return makeNilValue()
+	if f.Eof {
+		return MakeNilValue()
 	}
 
-	line, err := f.reader.ReadString('\n')
+	line, err := f.Reader.ReadString('\n')
 	line = strings.TrimRight(line, "\r\n")
 	if err != nil {
 		if err.Error() == "EOF" {
-			f.eof = true
+			f.Eof = true
 			if len(line) > 0 {
-				return makeObjectValue(makeStringObject(line), false)
+				return MakeObjectValue(MakeStringObject(line), false)
 			}
 		}
 	}
-	return makeObjectValue(makeStringObject(line), false)
+	return MakeObjectValue(MakeStringObject(line), false)
 }
 
-func (f *FileObject) write(str Value) {
+func (f *FileObject) Write(str Value) {
 
-	s := str.asString().get()
+	s := str.AsString().Get()
 	s = strings.ReplaceAll(s, `\n`, "\n")
-	f.writer.WriteString(s)
+	f.Writer.WriteString(s)
 
 }
 
