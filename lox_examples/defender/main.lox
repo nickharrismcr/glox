@@ -1,0 +1,66 @@
+import mountains 
+import stars 
+import random
+
+class Controller {
+    init(vel) {
+        this.targetvel = vel  
+        this.vel = 0
+        this.counter = 0
+        this.next() 
+    }
+    next(){
+        this.nextthink = random.integer(50,300)
+    }
+    update() {
+        this.counter = this.counter + 1
+        if (this.counter >= this.nextthink) {
+            this.counter = 0
+            this.next()
+            this.targetvel = - this.targetvel  
+        }
+        if (this.vel < this.targetvel) {
+            this.vel = this.vel + 1
+        } else if (this.vel > this.targetvel) {
+            this.vel = this.vel - 1
+        }
+    }
+}
+ 
+
+const width=1000
+const height=800
+var win = window(width,height)
+win.init()
+
+cont=Controller(30)
+
+ 
+mountain=mountains.Mountain(width*10, height*0.3)
+starfield=stars.Stars(width, height*0.7, 30)
+ 
+bgxpos=0
+fgxpos=0
+
+while (!win.should_close()) {
+
+    win.begin()
+    win.clear(10,10,10, 255)
+
+    vel = cont.vel
+    cont.update()
+
+    starfield.update(-vel/5)
+    
+    fgxpos = fgxpos + vel
+    if (fgxpos > width*10) {
+        fgxpos = 0
+    }
+   
+    mountain.draw(win,height, fgxpos, width)
+    starfield.draw(win)
+   
+
+    win.end()
+}
+win.close()

@@ -1,4 +1,4 @@
-var fp = open("bin/io_read.lox","r")
+var fp = open("lox/io_read.lox","r")
 print "reading"
 var i=1
 try {

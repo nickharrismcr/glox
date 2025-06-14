@@ -1,8 +1,24 @@
+func aa(){
+    print "";
+}
 
-var f = encode_rgb(10,20,30);
-print f;
-var t = decode_rgb(f); 
+func a(){
+    print "a";
+    aa(1);
+}
+func b(){
+    print "b";
+    a();
+}
 
-print t[0];
-print t[1];
-print t[2];
+func c() {
+    print "c";
+    b();
+}
+try {
+    c();
+} 
+except Exception as e
+{
+    print "Caught "+e.msg;
+}

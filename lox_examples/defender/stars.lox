@@ -29,24 +29,35 @@ class Stars {
         }
     }
 
-    update(){
-        var a = random.integer(0, 100)
+    update(dx){
+        var a = random.integer(0, 10)
         if (a < 1) {
             var x = random.integer(0, this.width)
             var y = random.integer(0, this.height)
             var which = random.integer(0, len(this.stars)-1)
             this.stars[which].pos = math.Vector2D(x, y)
         }
+        foreach (var star in this.stars) {
+            var pos = star.get()[0]
+            pos.x = pos.x + dx
+            if (pos.x > this.width) {
+                pos.y = random.integer(0, this.height)
+                pos.x = 0
+            }
+            if (pos.x < 0) {
+                pos.y = random.integer(0, this.height)
+                pos.x = this.width
+            }
+            star.pos = pos
+        }
     }
-    draw(win,xpos,screen_width) {
+    draw(win ) {
         foreach (var star in this.stars) {
             s= star.get()
             pos=s[0]
             col=s[1]
-            relative_x = pos.x - xpos
-            if (relative_x >= 0 and relative_x < screen_width) {
-                win.circle_fill(relative_x, pos.y, 2, col.r, col.g, col.b, 255)
-            }
+            win.circle_fill(pos.x, pos.y, 2, col.r, col.g, col.b, 255)
+            
         }
     }
 }

@@ -1042,7 +1042,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 // used for vm raising errors that can be handled in lox e.g EOFError when reading a file
 func (vm *VM) RaiseExceptionByName(name string, msg string) bool {
 
-	classVal, _ := vm.builtIns[name]
+	classVal := vm.builtIns[name]
 	classObj := classVal.Obj
 	instance := makeInstanceObject(classObj.(*ClassObject))
 	instance.fields["msg"] = makeObjectValue(makeStringObject(msg), false)
@@ -1711,7 +1711,7 @@ func getPath(args []string, module string) string {
 	lox_inst_dir := os.Getenv("LOX_PATH")
 
 	if lox_inst_dir != "" {
-		lox_inst_module_dir := lox_inst_dir + "/lox/modules"
+		lox_inst_module_dir := lox_inst_dir + "/src/modules"
 		path := lox_inst_module_dir + "/" + module
 		_, err := os.Stat(path + ".lox")
 		if err == nil {

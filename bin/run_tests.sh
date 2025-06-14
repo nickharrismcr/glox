@@ -1,4 +1,4 @@
 #! /usr/bin/env bash
 
-cd tests
+cd tests 
 python test.py $*

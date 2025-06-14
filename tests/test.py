@@ -1,9 +1,14 @@
 import sys, glob,subprocess,difflib,argparse
  
 
-def run(fname):
+def run(fname,force_compile=False) :  
 
-    res = subprocess.Popen(["glox.exe","%s" % fname,"2>&1"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    cmdlst = ["glox.exe"] 
+    if force_compile:
+        cmdlst.append("--force-compile")
+    cmdlst.append(fname)
+    cmdlst.append("2>&1")
+    res = subprocess.Popen(cmdlst,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     return res
 
 def basename(path):
@@ -19,10 +24,10 @@ def format(s):
     return "\n".join([ str(i.decode("ascii")) for i in s.splitlines() ])
 
 
-def process(fname,args):
+def process(fname,args,force_compile=False,show_result=False):
 
     passed=False
-    pipe = run(fname)
+    pipe = run(fname,force_compile)  
     testdatafile="output/%s.testoutput" % basename(fname)
  
     if args.write:
@@ -36,12 +41,13 @@ def process(fname,args):
             data=infile.read()
             match=data==res[0]
             if match:
-                print ("Test %-30s : PASS" % fname)
                 passed=True
+                if args.verbose or show_result:
+                    print ("Test %-30s : PASS" % fname)
+          
             else:
-                print ("Test %-30s : FAIL" % fname)
-                if args.verbose:
-                
+                if args.verbose or show_result:
+                    print ("Test %-30s : FAIL" % fname)
                     print (f'expecting:\n'+format(data))
                     print (f'got:\n'+format(res[0]))
 
@@ -54,6 +60,21 @@ def process(fname,args):
     
     return passed 
 
+def process_all(test, args, force_compile=False):
+
+    failed = []
+    files = glob.glob(args.dir + "/*lox")
+     
+    for fname in files:
+        if not process(fname, args, force_compile):
+            failed.append(fname)
+    
+    if failed:
+        print (f"{test} : One or more tests failed.")
+        [ print(i) for i in failed ]
+    else:
+        print (f"{test} : All tests passed.")
+
 ######################################################################################################################
 
 write=False
@@ -61,20 +82,21 @@ verbose=False
 
 parser = argparse.ArgumentParser(description="Process .lox files with optional write and verbose modes.")
 parser.add_argument("file", nargs="?", help="File to process (optional; if not provided, all lox/*lox files will be processed)")
-parser.add_argument("--dir", nargs="?",default="bin")
+parser.add_argument("--dir", nargs="?",default="lox")
 parser.add_argument("--write", action="store_true", help="Enable write mode")
 parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 parser.add_argument("--diff", action="store_true", help="Show diff")
 
 args = parser.parse_args()
-all_passed=True 
+failed=[]
 if args.file:
-    all_passed=process(args.file, args)
+    print(f"Test : {args.file} : Force import compile")
+    process(args.file, args,show_result=True)
+    print(f"Test : {args.file} : Import from lxc")
+    process(args.file, args, show_result=True, force_compile=True)
 else:
-    for f in glob.glob(f"{args.dir}/*lox"):
-        ok=process(f, args)
-        if not ok:
-            all_passed=False 
+    process_all("Force import compile",args,force_compile=True)
+    process_all("Import from lxc",args)
+   
 
-if not all_passed:
-    print ("One or more tests failed.")
+   

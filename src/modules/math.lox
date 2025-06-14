@@ -55,4 +55,11 @@ func min(a, b) {
   return b;
 }
 
+func abs(n) {
+  if (n < 0) {
+    return -n;
+  }
+  return n;
+} 
+
 var PI = 3.141592653589793238462643383279;

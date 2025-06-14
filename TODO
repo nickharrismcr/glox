@@ -6,5 +6,9 @@ var x=randf(1,10);
 
 randf call does not do a module invoke,  just a call, so the module environment is not in scope and global lookups fail  ( e.g nested imports) 
 
+s
+
+ 
+
 
 can compile prevent shadowing of builtins by new vars/funcs?

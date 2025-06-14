@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"glox/lox"
+	lox "glox/src"
 	"os"
 	"runtime/debug"
 )
