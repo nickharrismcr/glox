@@ -141,15 +141,6 @@ func (subvm *VM) callLoadedChunk(name string, newEnv *Environment, chunk *Chunk)
 	subvm.push(makeObjectValue(closure, false))
 	subvm.call(closure, 0)
 	_, _ = subvm.run()
-	for k, v := range closure.function.environment.vars {
-		if v.isClosureObject() {
-			Debugf("---CallLoadedChunk closure env var %s = %s", k, v.String())
-
-			if v.asClosure().function.environment == nil {
-				Debugf("---closure '%s' has no environment", k)
-			}
-		}
-	}
 }
 
 //------------------------------------------------------------------------------------------
