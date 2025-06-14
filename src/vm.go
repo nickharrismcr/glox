@@ -245,7 +245,7 @@ func (vm *VM) invoke(name Value, argCount int) bool {
 		vm.RunTimeError("Invalid use of '.' operator")
 		return false
 	}
-	switch receiver.Obj.getType() {
+	switch receiver.Obj.GetType() {
 	case OBJECT_INSTANCE:
 		instance := receiver.asInstance()
 		return vm.invokeFromClass(instance.class, name, argCount)
@@ -571,7 +571,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			nv := constants[idx]
 			name := getStringValue(nv)
 
-			switch v.Obj.getType() {
+			switch v.Obj.GetType() {
 			case OBJECT_INSTANCE:
 				ot := v.asInstance()
 				if val, ok := ot.fields[name]; ok {
@@ -607,7 +607,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			idx := vm.getCode()[frame.ip]
 			frame.ip++
 			name := getStringValue(constants[idx])
-			switch v.Obj.getType() {
+			switch v.Obj.GetType() {
 			case OBJECT_INSTANCE:
 				ot := v.asInstance()
 				ot.fields[name] = val
@@ -852,7 +852,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			switch v.Type {
 			case VAL_OBJ:
 				ov := v.Obj
-				switch ov.getType() {
+				switch ov.GetType() {
 				case OBJECT_STRING:
 					ot := ov.(StringObject)
 					s = ot.get()
@@ -918,7 +918,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 			}
 			idxVal := vm.stack[frame.slots+int(idxSlot)]
 			idx := idxVal.Int
-			switch iterable.Obj.getType() {
+			switch iterable.Obj.GetType() {
 			case OBJECT_LIST:
 				t := iterable.asList()
 				if idx >= len(t.items) {
@@ -966,7 +966,7 @@ func (vm *VM) run() (InterpretResult, Value) {
 				vm.RunTimeError("'in' requires string or list as right operand.")
 				goto End
 			}
-			switch b.Obj.getType() {
+			switch b.Obj.GetType() {
 			case OBJECT_STRING:
 				if !a.isStringObject() {
 					vm.RunTimeError("'in' requires string as left operand.")
@@ -1222,7 +1222,7 @@ func (vm *VM) index() bool {
 	sv := vm.pop()
 
 	if sv.isObj() {
-		switch sv.Obj.getType() {
+		switch sv.Obj.GetType() {
 		case OBJECT_LIST:
 			if iv.Type != VAL_INT {
 				vm.RunTimeError("Subscript must be an integer.")
@@ -1278,7 +1278,7 @@ func (vm *VM) indexAssign() bool {
 	index := vm.pop()
 	collection := vm.Peek(0)
 	if collection.Type == VAL_OBJ {
-		switch collection.Obj.getType() {
+		switch collection.Obj.GetType() {
 		case OBJECT_LIST:
 			t := collection.asList()
 			if t.tuple {
@@ -1332,7 +1332,7 @@ func (vm *VM) slice() bool {
 
 	lv := vm.pop()
 	if lv.isObj() {
-		if lv.Obj.getType() == OBJECT_LIST {
+		if lv.Obj.GetType() == OBJECT_LIST {
 			lo, err := lv.asList().slice(from_idx, to_idx)
 			if err != nil {
 				vm.RunTimeError("%v", err)
@@ -1341,7 +1341,7 @@ func (vm *VM) slice() bool {
 			vm.push(lo)
 			return true
 
-		} else if lv.Obj.getType() == OBJECT_STRING {
+		} else if lv.Obj.GetType() == OBJECT_STRING {
 			so, err := lv.asString().slice(from_idx, to_idx)
 			if err != nil {
 				vm.RunTimeError("%v", err)
@@ -1384,7 +1384,7 @@ func (vm *VM) sliceAssign() bool {
 	lv := vm.Peek(0)
 	if lv.isObj() {
 
-		if lv.Obj.getType() == OBJECT_LIST {
+		if lv.Obj.GetType() == OBJECT_LIST {
 			lst := lv.asList()
 			if lst.tuple {
 				vm.RunTimeError("Tuples are immutable")
@@ -1435,14 +1435,14 @@ func (vm *VM) binaryAdd() bool {
 
 	case VAL_OBJ:
 		ov2 := v2.Obj
-		switch ov2.getType() {
+		switch ov2.GetType() {
 		case OBJECT_STRING:
 			if v1.Type != VAL_OBJ {
 				vm.RunTimeError("Addition type mismatch")
 				return false
 			}
 			ov1 := v1.Obj
-			if ov1.getType() == OBJECT_STRING {
+			if ov1.GetType() == OBJECT_STRING {
 				so := makeStringObject(v1.asString().get() + v2.asString().get())
 				vm.push(makeObjectValue(so, false))
 				return true
@@ -1455,7 +1455,7 @@ func (vm *VM) binaryAdd() bool {
 				return false
 			}
 			ov1 := v1.Obj
-			if ov1.getType() == OBJECT_LIST {
+			if ov1.GetType() == OBJECT_LIST {
 				lo := ov1.(*ListObject).add(ov2.(*ListObject))
 				vm.push(makeObjectValue(lo, false))
 				return true

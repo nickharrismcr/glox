@@ -104,7 +104,7 @@ func (v *Value) serialise(buffer *bytes.Buffer) {
 		buffer.Write([]byte{0x02})
 		bin.Write(buffer, bin.LittleEndian, uint32(v.Int))
 	case VAL_OBJ:
-		switch v.Obj.getType() {
+		switch v.Obj.GetType() {
 		case OBJECT_STRING:
 			buffer.Write([]byte{0x03})
 			s := v.asString().get()

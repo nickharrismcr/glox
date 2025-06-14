@@ -2,6 +2,7 @@ package lox
 
 import (
 	"fmt"
+	"glox/src/util"
 	"math"
 	"math/rand"
 	"os"
@@ -39,21 +40,6 @@ func (vm *VM) defineBuiltIns() {
 	// lox built ins e.g Exception classes
 	vm.loadBuiltInModule(exceptionSource, "exception")
 
-}
-
-func EncodeRGB(r, g, b int) float64 {
-	if r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255 {
-		panic("RGB values must be between 0 and 255")
-	}
-	return float64(uint32(r)<<16 | uint32(g)<<8 | uint32(b))
-}
-
-func DecodeRGB(color float64) (uint8, uint8, uint8) {
-	v := uint32(color)
-	r := uint8((v >> 16) & 0xFF)
-	g := uint8((v >> 8) & 0xFF)
-	b := uint8(v & 0xFF)
-	return r, g, b
 }
 
 func graphicsBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
@@ -126,7 +112,7 @@ func decodeRGBABuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 		return makeNilValue()
 	}
 	f := fVal.Float
-	r, g, b := DecodeRGB(f)
+	r, g, b := util.DecodeRGB(f)
 	rVal := makeIntValue(int(r), false)
 	gVal := makeIntValue(int(g), false)
 	bVal := makeIntValue(int(b), false)
@@ -162,7 +148,7 @@ func typeName(val Value) string {
 	case VAL_BOOL:
 		val_type = "boolean"
 	case VAL_OBJ:
-		switch val.Obj.getType() {
+		switch val.Obj.GetType() {
 		case OBJECT_STRING:
 			val_type = "string"
 		case OBJECT_FUNCTION:
@@ -230,7 +216,7 @@ func floatBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 	case VAL_INT:
 		return makeFloatValue(float64(arg.Int), false)
 	case VAL_OBJ:
-		if arg.Obj.getType() == OBJECT_STRING {
+		if arg.Obj.GetType() == OBJECT_STRING {
 			f, ok := arg.asString().parseFloat()
 			if !ok {
 				vm.RunTimeError("Could not parse string into float.")
@@ -257,7 +243,7 @@ func intBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 	case VAL_FLOAT:
 		return makeIntValue(int(arg.Float), false)
 	case VAL_OBJ:
-		if arg.Obj.getType() == OBJECT_STRING {
+		if arg.Obj.GetType() == OBJECT_STRING {
 			i, ok := arg.asString().parseInt()
 			if !ok {
 				vm.RunTimeError("Could not parse string into int.")
@@ -293,7 +279,7 @@ func lenBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 		vm.RunTimeError("Invalid argument type to len.")
 		return makeNilValue()
 	}
-	switch val.Obj.getType() {
+	switch val.Obj.GetType() {
 	case OBJECT_STRING:
 		s := val.asString().get()
 		return makeIntValue(len(s), false)
@@ -370,7 +356,7 @@ func appendBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 		return makeNilValue()
 	}
 	val2 := vm.Stack(arg_stackptr + 1)
-	switch val.Obj.getType() {
+	switch val.Obj.GetType() {
 
 	case OBJECT_LIST:
 		l := val.asList()
@@ -396,7 +382,7 @@ func replaceBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 	from := vm.Stack(arg_stackptr + 1)
 	to := vm.Stack(arg_stackptr + 2)
 
-	if target.Type != VAL_OBJ || target.Obj.getType() != OBJECT_STRING {
+	if target.Type != VAL_OBJ || target.Obj.GetType() != OBJECT_STRING {
 		vm.RunTimeError("Invalid argument type to replace.")
 		return makeNilValue()
 	}
@@ -415,8 +401,8 @@ func openBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 	path := vm.Stack(arg_stackptr)
 	mode := vm.Stack(arg_stackptr + 1)
 
-	if path.Type != VAL_OBJ || path.Obj.getType() != OBJECT_STRING ||
-		mode.Type != VAL_OBJ || mode.Obj.getType() != OBJECT_STRING {
+	if path.Type != VAL_OBJ || path.Obj.GetType() != OBJECT_STRING ||
+		mode.Type != VAL_OBJ || mode.Obj.GetType() != OBJECT_STRING {
 		vm.RunTimeError("Invalid argument type to open.")
 		return makeNilValue()
 	}
@@ -441,7 +427,7 @@ func closeBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 	}
 	fov := vm.Stack(arg_stackptr)
 
-	if fov.Type != VAL_OBJ || fov.Obj.getType() != OBJECT_FILE {
+	if fov.Type != VAL_OBJ || fov.Obj.GetType() != OBJECT_FILE {
 		vm.RunTimeError("Invalid argument type to close.")
 		return makeNilValue()
 	}
@@ -459,7 +445,7 @@ func readlnBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 	}
 	fov := vm.Stack(arg_stackptr)
 
-	if fov.Type != VAL_OBJ || fov.Obj.getType() != OBJECT_FILE {
+	if fov.Type != VAL_OBJ || fov.Obj.GetType() != OBJECT_FILE {
 		vm.RunTimeError("Invalid argument type to readln.")
 		return makeNilValue()
 	}
@@ -487,11 +473,11 @@ func writeBuiltIn(argCount int, arg_stackptr int, vm VMContext) Value {
 	fov := vm.Stack(arg_stackptr)
 	str := vm.Stack(arg_stackptr + 1)
 
-	if fov.Type != VAL_OBJ || fov.Obj.getType() != OBJECT_FILE {
+	if fov.Type != VAL_OBJ || fov.Obj.GetType() != OBJECT_FILE {
 		vm.RunTimeError("Invalid argument type to writeln.")
 		return makeNilValue()
 	}
-	if str.Type != VAL_OBJ || str.Obj.getType() != OBJECT_STRING {
+	if str.Type != VAL_OBJ || str.Obj.GetType() != OBJECT_STRING {
 		vm.RunTimeError("Invalid argument type to writeln.")
 		return makeNilValue()
 	}
