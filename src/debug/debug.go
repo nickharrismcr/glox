@@ -1,4 +1,4 @@
-package loxdebug
+package debug
 
 import (
 	"fmt"
