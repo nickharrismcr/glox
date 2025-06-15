@@ -473,14 +473,26 @@ func (p *Parser) classDeclaration() {
 
 func (p *Parser) method() {
 
+	static := false
+	if p.match(TOKEN_STATIC) {
+		static = true
+	}
+
 	p.consume(TOKEN_IDENTIFIER, "Expect method name.")
 	constant := p.identifierConstant(p.previous)
 	_type := TYPE_METHOD
-	if p.previous.Lexeme() == "init" {
-		_type = TYPE_INITIALIZER
 
+	if p.previous.Lexeme() == "init" {
+		if static {
+			p.error("Static initialisers are not allowed.")
+		}
+		_type = TYPE_INITIALIZER
 	}
 	p.function(_type)
+	if static {
+		p.emitBytes(core.OP_STATIC_METHOD, constant)
+		return
+	}
 	p.emitBytes(core.OP_METHOD, constant)
 }
 

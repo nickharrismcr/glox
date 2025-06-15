@@ -238,7 +238,10 @@ func (vm *VM) invoke(name core.Value, argCount int) bool {
 	switch receiver.Obj.GetType() {
 	case core.OBJECT_INSTANCE:
 		instance := receiver.AsInstance()
-		return vm.invokeFromClass(instance.Class, name, argCount)
+		return vm.invokeFromClass(instance.Class, name, argCount, false)
+	case core.OBJECT_CLASS:
+		class := receiver.AsClass()
+		return vm.invokeFromClass(class, name, argCount, true)
 	case core.OBJECT_MODULE:
 		module := receiver.AsModule()
 		return vm.invokeFromModule(module, name, argCount)
@@ -251,8 +254,16 @@ func (vm *VM) invoke(name core.Value, argCount int) bool {
 
 }
 
-func (vm *VM) invokeFromClass(class *core.ClassObject, name core.Value, argCount int) bool {
+func (vm *VM) invokeFromClass(class *core.ClassObject, name core.Value, argCount int, isStatic bool) bool {
 	n := core.GetStringValue(name)
+	if isStatic {
+		method, ok := class.StaticMethods[n]
+		if !ok {
+			vm.RunTimeError("Undefined static method '%s'.", n)
+			return false
+		}
+		return vm.call(method.AsClosure(), argCount)
+	}
 	method, ok := class.Methods[n]
 	if !ok {
 		vm.RunTimeError("Undefined method '%s'.", n)
@@ -333,10 +344,14 @@ func (vm *VM) closeUpvalues(last int) {
 	}
 }
 
-func (vm *VM) defineMethod(name string) {
+func (vm *VM) defineMethod(name string, isStatic bool) {
 	method := vm.Peek(0)
 	class := vm.Peek(1).AsClass()
-	class.Methods[name] = method
+	if isStatic {
+		class.StaticMethods[name] = method
+	} else {
+		class.Methods[name] = method
+	}
 	vm.pop()
 }
 
@@ -492,7 +507,13 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			idx := vm.getCode()[frame.Ip]
 			frame.Ip++
 			name := constants[idx]
-			vm.defineMethod(core.GetStringValue(name))
+			vm.defineMethod(core.GetStringValue(name), false)
+
+		case core.OP_STATIC_METHOD:
+			idx := vm.getCode()[frame.Ip]
+			frame.Ip++
+			name := constants[idx]
+			vm.defineMethod(core.GetStringValue(name), true)
 
 		case core.OP_NEGATE:
 			// negate the value at stack top
@@ -816,7 +837,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			argCount := vm.getCode()[frame.Ip]
 			frame.Ip++
 			superclass := vm.pop().AsClass()
-			if !vm.invokeFromClass(superclass, method, int(argCount)) {
+			if !vm.invokeFromClass(superclass, method, int(argCount), false) {
 				return INTERPRET_RUNTIME_ERROR, core.MakeNilValue()
 			}
 

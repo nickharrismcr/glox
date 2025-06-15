@@ -5,20 +5,22 @@ import (
 )
 
 type ClassObject struct {
-	Name	StringObject
-	Methods	map[string]Value
-	Super	*ClassObject
+	Name          StringObject
+	Methods       map[string]Value
+	StaticMethods map[string]Value
+	Super         *ClassObject
 }
 
 func MakeClassObject(name string) *ClassObject {
 
 	return &ClassObject{
-		Name:		MakeStringObject(name),
-		Methods:	map[string]Value{},
+		Name:          MakeStringObject(name),
+		Methods:       map[string]Value{},
+		StaticMethods: map[string]Value{},
 	}
 }
 
-func (ClassObject) IsObject()	{}
+func (ClassObject) IsObject() {}
 
 func (ClassObject) GetType() ObjectType {
 
@@ -40,7 +42,7 @@ func (f *ClassObject) IsSubclassOf(other *ClassObject) bool {
 }
 func
 
-//-------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
 (t *ClassObject) IsBuiltIn() bool {
 	return false
 }
