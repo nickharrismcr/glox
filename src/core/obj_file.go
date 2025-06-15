@@ -7,23 +7,23 @@ import (
 )
 
 type FileObject struct {
-	File	*os.File
-	Closed	bool
-	Eof	bool
-	Reader	*bufio.Reader
-	Writer	*bufio.Writer
+	File   *os.File
+	Closed bool
+	Eof    bool
+	Reader *bufio.Reader
+	Writer *bufio.Writer
 }
 
 func MakeFileObject(file *os.File) *FileObject {
 
 	return &FileObject{
-		File:	file,
-		Reader:	bufio.NewReader(file),
-		Writer:	bufio.NewWriter(file),
+		File:   file,
+		Reader: bufio.NewReader(file),
+		Writer: bufio.NewWriter(file),
 	}
 }
 
-func (FileObject) IsObject()	{}
+func (FileObject) IsObject() {}
 
 func (FileObject) GetType() ObjectType {
 
@@ -68,7 +68,10 @@ func (f *FileObject) Write(str Value) {
 
 }
 
-//-------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
+func (t FileObject) IsBuiltIn() bool {
+	return true
+}
 
 //-------------------------------------------------------------------------------------------
 

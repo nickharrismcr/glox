@@ -38,5 +38,9 @@ func (f *ClassObject) IsSubclassOf(other *ClassObject) bool {
 	}
 	return false
 }
+func
 
 //-------------------------------------------------------------------------------------------
+(t *ClassObject) IsBuiltIn() bool {
+	return false
+}

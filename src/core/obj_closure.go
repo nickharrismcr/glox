@@ -30,5 +30,9 @@ func (f *ClosureObject) String() string {
 
 	return f.Function.String()
 }
+func
 
 // -------------------------------------------------------------------------------------------
+(t *ClosureObject) IsBuiltIn() bool {
+	return false
+}

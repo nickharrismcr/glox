@@ -231,6 +231,10 @@ func (vm *VM) invoke(name core.Value, argCount int) bool {
 		vm.RunTimeError("Invalid use of '.' operator")
 		return false
 	}
+	if receiver.Obj.IsBuiltIn() {
+		return vm.invokeFromBuiltin(receiver.Obj, name, argCount)
+	}
+
 	switch receiver.Obj.GetType() {
 	case core.OBJECT_INSTANCE:
 		instance := receiver.AsInstance()
@@ -1142,19 +1146,6 @@ func (vm *VM) importModule(moduleName string) InterpretResult {
 		}
 	}
 	subfn := subvm.frames[0].Closure.Function
-	debug.Fmt("subvm environment name = %s", subfn.Environment.Name)
-	subvm_globals := subfn.Environment.Vars
-	for k, v := range subvm_globals {
-		debug.Fmt("Import Found module property '%s' in subvm main func environment", k)
-		if v.IsClosureObject() {
-			debug.Fmt("Found module property '%s' is a closure", k)
-			if v.AsClosure().Function.Environment == nil {
-				debug.Fmt("Module property '%s' has no environment", k)
-			}
-			debug.Fmt("Property %s environment vars count = %d", k, len(v.AsClosure().Function.Environment.Vars))
-		}
-	}
-
 	mo := core.MakeModuleObject(moduleName, *subfn.Environment)
 	v := core.MakeObjectValue(mo, false)
 	vm.frame().Closure.Function.Environment.SetVar(moduleName, v)
@@ -1694,7 +1685,7 @@ func getModule(fullPath string) string {
 
 func (vm *VM) showStack() {
 
-	fmt.Printf("                                                         ")
+	core.LogFmt(core.TRACE, "                                                         ")
 	for i := 1; i < vm.stackTop; i++ {
 		v := vm.stack[i]
 		s := v.String()
@@ -1704,23 +1695,23 @@ func (vm *VM) showStack() {
 			im = "(c)"
 		}
 		if i > vm.frame().Slots {
-			fmt.Printf("%% %s%s %%", s, im)
+			core.LogFmt(core.TRACE, "%% %s%s %%", s, im)
 		} else {
-			fmt.Printf("| %s%s |", s, im)
+			core.LogFmt(core.TRACE, "| %s%s |", s, im)
 		}
 	}
-	fmt.Printf("\n")
+	core.LogFmt(core.TRACE, "\n")
 }
 func (vm *VM) showGlobals() {
 	if vm.frame().Closure.Function.Environment == nil {
 		fmt.Println("No globals (nil environment)")
 		return
 	}
-	fmt.Printf("globals: %s \n", vm.frame().Closure.Function.Environment.Name)
+	core.LogFmt(core.TRACE, "globals: %s \n", vm.frame().Closure.Function.Environment.Name)
 	for k, v := range vm.frame().Closure.Function.Environment.Vars {
-		fmt.Printf("%s -> %s  \n", k, v)
+		core.LogFmt(core.TRACE, "%s -> %s  \n", k, v)
 	}
 	//for k, v := range vm.Environments.builtins {
-	//	fmt.Printf("%s -> %s  \n", k, v)
+	//	core.LogFmt(core.TRACE,"%s -> %s  \n", k, v)
 	//}
 }

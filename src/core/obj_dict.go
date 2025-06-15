@@ -103,4 +103,7 @@ func (o *DictObject) Keys() Value {
 	return MakeObjectValue(MakeListObject(Keys, false), false)
 }
 
-//-------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
+func (t *DictObject) IsBuiltIn() bool {
+	return true
+}

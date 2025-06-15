@@ -5,19 +5,19 @@ import (
 )
 
 type InstanceObject struct {
-	Class  *ClassObject
-	Fields map[string]Value
+	Class	*ClassObject
+	Fields	map[string]Value
 }
 
 func MakeInstanceObject(class *ClassObject) *InstanceObject {
 
 	return &InstanceObject{
-		Class:  class,
-		Fields: map[string]Value{},
+		Class:	class,
+		Fields:	map[string]Value{},
 	}
 }
 
-func (InstanceObject) IsObject() {}
+func (InstanceObject) IsObject()	{}
 
 func (InstanceObject) GetType() ObjectType {
 
@@ -28,5 +28,9 @@ func (f *InstanceObject) String() string {
 
 	return fmt.Sprintf("<instance %s>", f.Class.Name.Get())
 }
+func
 
 // -------------------------------------------------------------------------------------------
+(t *InstanceObject) IsBuiltIn() bool {
+	return false
+}

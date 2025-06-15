@@ -5,7 +5,7 @@ import "time"
 type ObjectType int
 
 const (
-	OBJECT_STRING	ObjectType	= iota
+	OBJECT_STRING ObjectType = iota
 	OBJECT_FUNCTION
 	OBJECT_CLOSURE
 	OBJECT_UPVALUE
@@ -19,12 +19,15 @@ const (
 	OBJECT_FILE
 	OBJECT_FLOAT_ARRAY
 	OBJECT_GRAPHICS
+	OBJECT_IMAGE
+	OBJECT_TEXTURE
 )
 
 type Object interface {
 	IsObject()
 	GetType() ObjectType
 	String() string
+	IsBuiltIn() bool
 }
 
 type HasMethods interface {

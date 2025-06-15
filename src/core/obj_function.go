@@ -36,5 +36,9 @@ func (f *FunctionObject) String() string {
 	}
 	return fmt.Sprintf("<fn %s>", f.Name)
 }
+func
 
 // -------------------------------------------------------------------------------------------
+(t *FunctionObject) IsBuiltIn() bool {
+	return false
+}

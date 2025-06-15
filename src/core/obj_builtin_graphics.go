@@ -223,7 +223,26 @@ func (o *GraphicsObject) RegisterAllMethods() {
 			return MakeNilValue()
 		},
 	})
+	o.RegisterMethod("draw_texture", &BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			textureVal := vm.Stack(arg_stackptr)
+			xval := vm.Stack(arg_stackptr + 1)
+			yval := vm.Stack(arg_stackptr + 2)
+
+			x := int32(xval.AsInt())
+			y := int32(yval.AsInt())
+
+			to := textureVal.Obj.(*TextureObject)
+			rect := to.Data.GetFrameRect()
+			rl.DrawTextureRec(to.Data.Texture, rect, rl.Vector2{X: float32(x), Y: float32(y)}, rl.White)
+			to.Data.Animate()
+			return MakeNilValue()
+		},
+	})
 
 }
 
-//-------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
+func (t *GraphicsObject) IsBuiltIn() bool {
+	return true
+}

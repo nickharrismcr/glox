@@ -3,7 +3,6 @@ package compiler
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"glox/src/core"
 	debug "glox/src/debug"
@@ -131,7 +130,7 @@ func NewParser() *Parser {
 func Compile(script string, source string, module string) *core.FunctionObject {
 
 	if core.DebugTraceExecution && !core.DebugSuppress {
-		fmt.Println("Compiling...")
+		fmt.Printf("Compiling %s\n", script)
 	}
 	parser := NewParser()
 
@@ -445,6 +444,9 @@ func (p *Parser) classDeclaration() {
 		variable(p, false)
 		if p.identifiersEqual(className, p.previous) {
 			p.error("A class cannot inherit from itself.")
+		}
+		if p.check(TOKEN_DOT) {
+			p.error("Super class cannot be in an imported module (for now).")
 		}
 		p.beginScope()
 		p.addLocal(SyntheticToken("super"))
@@ -1429,7 +1431,9 @@ func int_(p *Parser, canAssign bool) {
 func loxstring(p *Parser, canAssign bool) {
 
 	str := p.previous.Lexeme()
-	strobj := core.MakeStringObject(strings.Replace(str, "\"", "", -1))
+	str = str[1 : len(str)-1] // remove quotes
+
+	strobj := core.MakeStringObject(str)
 	p.emitConstant(core.MakeObjectValue(strobj, false))
 
 }

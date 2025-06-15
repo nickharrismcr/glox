@@ -5,19 +5,19 @@ import (
 )
 
 type ModuleObject struct {
-	Name        string
-	Environment Environment
+	Name		string
+	Environment	Environment
 }
 
 func MakeModuleObject(name string, environment Environment) *ModuleObject {
 
 	return &ModuleObject{
-		Name:        name,
-		Environment: environment,
+		Name:		name,
+		Environment:	environment,
 	}
 }
 
-func (ModuleObject) IsObject() {}
+func (ModuleObject) IsObject()	{}
 
 func (ModuleObject) GetType() ObjectType {
 
@@ -28,5 +28,9 @@ func (f *ModuleObject) String() string {
 
 	return fmt.Sprintf("<module %s>", f.Name)
 }
+func
 
 // -------------------------------------------------------------------------------------------
+(t *ModuleObject) IsBuiltIn() bool {
+	return false
+}

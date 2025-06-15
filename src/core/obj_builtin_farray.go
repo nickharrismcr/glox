@@ -99,4 +99,6 @@ func (o *FloatArrayObject) GetMethod(name string) *BuiltInObject {
 	}
 }
 
-//-------------------------------------------------------------------------------------------
+func (t *FloatArrayObject) IsBuiltIn() bool {
+	return true
+}

@@ -5,26 +5,14 @@ import (
 	"glox/src/core"
 )
 
-func Println(s string) {
-	if core.DebugTraceExecution {
-		println(s)
-	}
-}
-
-func Fmt(format string, args ...interface{}) {
-	if core.DebugTraceExecution {
-		fmt.Printf(format+"\n", args...)
-	}
-}
-
 func Disassemble(c *core.Chunk, name string) {
 
-	fmt.Printf("=== %s ===\n", name)
+	core.LogFmt(core.TRACE, "=== %s ===\n", name)
 	s := ""
 	for _, v := range c.Constants {
 		s = s + fmt.Sprintf("[ %s ]", v.String())
 	}
-	fmt.Println(s)
+	core.Log(core.TRACE, s)
 	offset := 0
 	for {
 		instr := c.Code[offset]
@@ -43,15 +31,15 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		if depth > 1 {
 			name = function
 		}
-
-		fmt.Printf("%02d : [%-10s] : ", depth, name)
 	}
-	fmt.Printf("%04d ", offset)
+	core.LogFmt(core.TRACE, "%02d : [%-10s] : ", depth, name)
+
+	core.LogFmt(core.TRACE, "%04d ", offset)
 	if offset > 0 && c.Lines[offset] == lastoffset {
-		fmt.Printf("   | ")
+		core.LogFmt(core.TRACE, "   | ")
 
 	} else {
-		fmt.Printf("%04d ", c.Lines[offset])
+		core.LogFmt(core.TRACE, "%04d ", c.Lines[offset])
 	}
 	lastoffset = c.Lines[offset]
 
@@ -137,9 +125,9 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		offset++
 		constant := c.Code[offset]
 		offset++
-		fmt.Printf("%-16s %04d", "OP_CLOSURE", constant)
+		core.LogFmt(core.TRACE, "%-16s %04d", "OP_CLOSURE", constant)
 		value := c.Constants[constant]
-		fmt.Printf("  %s\n", value.String())
+		core.LogFmt(core.TRACE, "  %s\n", value.String())
 		function := core.GetFunctionObjectValue(value)
 		for j := 0; j < function.UpvalueCount; j++ {
 			isLocal := c.Code[offset]
@@ -151,7 +139,7 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 			} else {
 				s = "upvalue"
 			}
-			fmt.Printf("%04d      |                     %s %d\n", offset-2, s, index)
+			core.LogFmt(core.TRACE, "%04d      |                     %s %d\n", offset-2, s, index)
 		}
 		return offset
 	case core.OP_GET_UPVALUE:
@@ -191,30 +179,30 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 	case core.OP_BREAKPOINT:
 		return simpleInstruction("OP_BREAKPOINT", offset)
 	default:
-		fmt.Printf("Unknown opcode %d", i)
+		core.LogFmt(core.TRACE, "Unknown opcode %d", i)
 		return offset + 1
 	}
 }
 
 func simpleInstruction(name string, offset int) int {
 
-	fmt.Printf("%s\n", name)
+	core.LogFmt(core.TRACE, "%s\n", name)
 	return offset + 1
 }
 
 func constantInstruction(c *core.Chunk, name string, offset int) int {
 
 	constant := c.Code[offset+1]
-	fmt.Printf("%-16s %04d", name, constant)
+	core.LogFmt(core.TRACE, "%-16s %04d", name, constant)
 	value := c.Constants[constant]
-	fmt.Printf("  %s\n", value.String())
+	core.LogFmt(core.TRACE, "  %s\n", value.String())
 	return offset + 2
 }
 
 func byteInstruction(c *core.Chunk, name string, offset int) int {
 
 	slot := c.Code[offset+1]
-	fmt.Printf("%-16s %04d\n", name, slot)
+	core.LogFmt(core.TRACE, "%-16s %04d\n", name, slot)
 	return offset + 2
 }
 
@@ -228,7 +216,7 @@ func jumpInstruction(c *core.Chunk, name string, sign int, offset int) int {
 	jump = uint16(jump1 << 8)
 	jump |= uint16(jump2)
 
-	fmt.Printf("%-16s %04d -> %d \n", name, offset, uint16(offset)+3+(uint16(sign)*jump))
+	core.LogFmt(core.TRACE, "%-16s %04d -> %d \n", name, offset, uint16(offset)+3+(uint16(sign)*jump))
 	return offset + 3
 }
 func foreachInstruction(c *core.Chunk, offset int) int {
@@ -243,7 +231,7 @@ func foreachInstruction(c *core.Chunk, offset int) int {
 	jump = uint16(jump1 << 8)
 	jump |= uint16(jump2)
 
-	fmt.Printf("%-16s %04d %04d %04d %04d -> %d \n", "OP_FOREACH", slot, iterslot, idxslot, jump, uint16(offset)+4+jump)
+	core.LogFmt(core.TRACE, "%-16s %04d %04d %04d %04d -> %d \n", "OP_FOREACH", slot, iterslot, idxslot, jump, uint16(offset)+4+jump)
 	return offset + 6
 }
 
@@ -258,7 +246,7 @@ func nextInstruction(c *core.Chunk, name string, sign int, offset int) int {
 	jump = uint16(jump1 << 8)
 	jump |= uint16(jump2)
 
-	fmt.Printf("%-16s %04d %04d -> %d \n", name, idx, offset, uint16(offset)+3+(uint16(sign)*jump))
+	core.LogFmt(core.TRACE, "%-16s %04d %04d -> %d \n", name, idx, offset, uint16(offset)+3+(uint16(sign)*jump))
 	return offset + 4
 }
 func addressInstruction(c *core.Chunk, name string, offset int) int {
@@ -271,15 +259,15 @@ func addressInstruction(c *core.Chunk, name string, offset int) int {
 	address = uint16(addr1 << 8)
 	address |= uint16(addr2)
 
-	fmt.Printf("%-16s %04d -> %d  \n", name, offset, address)
+	core.LogFmt(core.TRACE, "%-16s %04d -> %d  \n", name, offset, address)
 	return offset + 3
 }
 
 func invokeInstruction(c *core.Chunk, name string, offset int) int {
 	constant := c.Code[offset+1]
 	argCount := c.Code[offset+2]
-	fmt.Printf("%-16s (%d args) %4d", name, argCount, constant)
+	core.LogFmt(core.TRACE, "%-16s (%d args) %4d", name, argCount, constant)
 	value := c.Constants[constant]
-	fmt.Printf("  %s\n", value.String())
+	core.LogFmt(core.TRACE, "  %s\n", value.String())
 	return offset + 3
 }

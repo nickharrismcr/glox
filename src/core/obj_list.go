@@ -220,4 +220,7 @@ func (o *ListObject) AssignToSlice(from_ix, to_ix int, val Value) error {
 	return errors.New("can only assign list to list slice")
 }
 
-//-------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
+func (t *ListObject) IsBuiltIn() bool {
+	return false
+}
