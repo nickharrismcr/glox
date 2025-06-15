@@ -104,9 +104,13 @@ func handleArgs(opts *Options) {
 	for _, arg := range os.Args[1:] {
 		if arg[0] == '-' {
 			switch arg {
+			case "--info":
+				core.DebugTraceExecution = true
+				core.LogLevel = core.INFO
 			case "--debug":
 				core.DebugPrintCode = true
 				core.DebugTraceExecution = true
+				core.LogLevel = core.TRACE
 			case "--globals":
 				core.DebugShowGlobals = true
 			case "--skip-builtins":
