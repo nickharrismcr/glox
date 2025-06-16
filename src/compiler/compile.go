@@ -1357,6 +1357,7 @@ func (p *Parser) errorAt(tok Token, msg string) {
 		return
 	}
 	p.panicMode = true
+	fmt.Printf("In %s: ", p.currentCompiler.scriptName)
 	fmt.Printf("[line %d] Error ", tok.Line)
 	if tok.Tokentype == TOKEN_EOF {
 		fmt.Printf(" at end")
