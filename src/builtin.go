@@ -25,95 +25,25 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("append", appendBuiltIn)
 	vm.defineBuiltIn("float", floatBuiltIn)
 	vm.defineBuiltIn("int", intBuiltIn)
-	vm.defineBuiltIn("lox_mandel_array", MandelArrayBuiltIn)
+	vm.defineBuiltIn("lox_mandel_array", builtin.MandelArrayBuiltIn)
 	vm.defineBuiltIn("replace", replaceBuiltIn)
 	vm.defineBuiltIn("open", openBuiltIn)
 	vm.defineBuiltIn("close", closeBuiltIn)
 	vm.defineBuiltIn("readln", readlnBuiltIn)
 	vm.defineBuiltIn("write", writeBuiltIn)
 	vm.defineBuiltIn("rand", randBuiltIn)
-	vm.defineBuiltIn("draw_png", drawPNGBuiltIn)
-	vm.defineBuiltIn("float_array", floatArrayBuiltin)
+	vm.defineBuiltIn("draw_png", builtin.DrawPNGBuiltIn)
+	vm.defineBuiltIn("float_array", builtin.FloatArrayBuiltin)
 	vm.defineBuiltIn("encode_rgb", encodeRGBABuiltIn)
 	vm.defineBuiltIn("decode_rgb", decodeRGBABuiltIn)
-	vm.defineBuiltIn("window", graphicsBuiltIn)
-	vm.defineBuiltIn("texture", textureBuiltIn)
-	vm.defineBuiltIn("image", imageBuiltIn)
+	vm.defineBuiltIn("window", builtin.GraphicsBuiltIn)
+	vm.defineBuiltIn("texture", builtin.TextureBuiltIn)
+	vm.defineBuiltIn("image", builtin.ImageBuiltIn)
 	vm.defineBuiltIn("sleep", sleepBuiltIn)
 
 	// lox built ins e.g Exception classes
 	vm.loadBuiltInModule(exceptionSource, "exception")
 
-}
-
-func graphicsBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-
-	if argCount != 2 {
-		vm.RunTimeError("graphics expects 2 arguments")
-		return core.MakeNilValue()
-	}
-	wVal := vm.Stack(arg_stackptr)
-	hVal := vm.Stack(arg_stackptr + 1)
-	if !wVal.IsInt() || !hVal.IsInt() {
-		vm.RunTimeError("graphics arguments must be integers")
-		return core.MakeNilValue()
-	}
-	o := builtin.MakeGraphicsObject(wVal.Int, hVal.Int)
-	builtin.RegisterAllGraphicsMethods(o)
-	return core.MakeObjectValue(o, true)
-}
-
-func imageBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-
-	if argCount != 1 {
-		vm.RunTimeError("image expects 1 argument")
-		return core.MakeNilValue()
-	}
-	filenameVal := vm.Stack(arg_stackptr)
-	if !filenameVal.IsStringObject() {
-		vm.RunTimeError("image argument must be a string")
-		return core.MakeNilValue()
-	}
-	o := builtin.MakeImageObject(filenameVal.AsString().Get())
-	builtin.RegisterAllImageMethods(o)
-	return core.MakeObjectValue(o, true)
-}
-
-func textureBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-
-	if argCount != 4 {
-		vm.RunTimeError("texture expects 4 arguments (image, frames, start_frame, end_frame)")
-		return core.MakeNilValue()
-	}
-	imgVal := vm.Stack(arg_stackptr)
-	framesVal := vm.Stack(arg_stackptr + 1)
-	startFrameVal := vm.Stack(arg_stackptr + 2)
-	endFrameVal := vm.Stack(arg_stackptr + 3)
-
-	var to *builtin.ImageObject
-	to, ok := imgVal.Obj.(*builtin.ImageObject)
-	if !ok {
-		vm.RunTimeError("texture argument must be an image object")
-		return core.MakeNilValue()
-	}
-	frames := framesVal.Int
-	if frames < 1 {
-		vm.RunTimeError("texture frames must be at least 1")
-		return core.MakeNilValue()
-	}
-	startFrame := startFrameVal.Int
-	if startFrame < 1 || startFrame > frames {
-		vm.RunTimeError("texture start_frame must be between 1 and frames")
-		return core.MakeNilValue()
-	}
-	endFrame := endFrameVal.Int
-	if endFrame < 1 || endFrame > frames {
-		vm.RunTimeError("texture end_frame must be between 1 and frames")
-		return core.MakeNilValue()
-	}
-	o := builtin.MakeTextureObject(to.Data.Image, frames, startFrame, endFrame)
-	builtin.RegisterAllTextureMethods(o)
-	return core.MakeObjectValue(o, true)
 }
 
 func sleepBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
@@ -176,25 +106,6 @@ func decodeRGBABuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.V
 	bVal := core.MakeIntValue(int(b), false)
 	ro := core.MakeListObject([]core.Value{rVal, gVal, bVal}, true)
 	return core.MakeObjectValue(ro, false)
-}
-
-func floatArrayBuiltin(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-
-	widthval := vm.Stack(arg_stackptr)
-	heightval := vm.Stack(arg_stackptr + 1)
-	if argCount != 2 {
-		vm.RunTimeError("Invalid argument count to float_array.")
-		return core.MakeNilValue()
-	}
-	if !widthval.IsInt() || !heightval.IsInt() {
-		vm.RunTimeError("float_array arguments must be integers")
-		return core.MakeNilValue()
-	}
-	width := widthval.Int
-	height := heightval.Int
-	floatArrObj := builtin.MakeFloatArrayObject(width, height)
-	builtin.RegisterAllFloatArrayMethods(floatArrObj)
-	return core.MakeObjectValue(floatArrObj, false)
 }
 
 func typeName(val core.Value) string {

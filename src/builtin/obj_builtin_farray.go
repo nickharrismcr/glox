@@ -5,6 +5,25 @@ import (
 	"glox/src/core"
 )
 
+func FloatArrayBuiltin(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+
+	widthval := vm.Stack(arg_stackptr)
+	heightval := vm.Stack(arg_stackptr + 1)
+	if argCount != 2 {
+		vm.RunTimeError("Invalid argument count to float_array.")
+		return core.MakeNilValue()
+	}
+	if !widthval.IsInt() || !heightval.IsInt() {
+		vm.RunTimeError("float_array arguments must be integers")
+		return core.MakeNilValue()
+	}
+	width := widthval.Int
+	height := heightval.Int
+	floatArrObj := MakeFloatArrayObject(width, height)
+	RegisterAllFloatArrayMethods(floatArrObj)
+	return core.MakeObjectValue(floatArrObj, false)
+}
+
 type FloatArray struct {
 	Width, Height int
 	Data          []float64

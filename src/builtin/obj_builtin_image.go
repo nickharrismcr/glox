@@ -7,6 +7,22 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+func ImageBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+
+	if argCount != 1 {
+		vm.RunTimeError("image expects 1 argument")
+		return core.MakeNilValue()
+	}
+	filenameVal := vm.Stack(arg_stackptr)
+	if !filenameVal.IsStringObject() {
+		vm.RunTimeError("image argument must be a string")
+		return core.MakeNilValue()
+	}
+	o := MakeImageObject(filenameVal.AsString().Get())
+	RegisterAllImageMethods(o)
+	return core.MakeObjectValue(o, true)
+}
+
 type Image struct {
 	Width, Height int32
 	Image         *rl.Image

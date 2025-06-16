@@ -7,6 +7,23 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+func GraphicsBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+
+	if argCount != 2 {
+		vm.RunTimeError("graphics expects 2 arguments")
+		return core.MakeNilValue()
+	}
+	wVal := vm.Stack(arg_stackptr)
+	hVal := vm.Stack(arg_stackptr + 1)
+	if !wVal.IsInt() || !hVal.IsInt() {
+		vm.RunTimeError("graphics arguments must be integers")
+		return core.MakeNilValue()
+	}
+	o := MakeGraphicsObject(wVal.Int, hVal.Int)
+	RegisterAllGraphicsMethods(o)
+	return core.MakeObjectValue(o, true)
+}
+
 type Graphics struct {
 	Width, Height int32
 	Blend_mode    rl.BlendMode

@@ -7,6 +7,43 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+func TextureBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+
+	if argCount != 4 {
+		vm.RunTimeError("texture expects 4 arguments (image, frames, start_frame, end_frame)")
+		return core.MakeNilValue()
+	}
+	imgVal := vm.Stack(arg_stackptr)
+	framesVal := vm.Stack(arg_stackptr + 1)
+	startFrameVal := vm.Stack(arg_stackptr + 2)
+	endFrameVal := vm.Stack(arg_stackptr + 3)
+
+	var to *ImageObject
+	to, ok := imgVal.Obj.(*ImageObject)
+	if !ok {
+		vm.RunTimeError("texture argument must be an image object")
+		return core.MakeNilValue()
+	}
+	frames := framesVal.Int
+	if frames < 1 {
+		vm.RunTimeError("texture frames must be at least 1")
+		return core.MakeNilValue()
+	}
+	startFrame := startFrameVal.Int
+	if startFrame < 1 || startFrame > frames {
+		vm.RunTimeError("texture start_frame must be between 1 and frames")
+		return core.MakeNilValue()
+	}
+	endFrame := endFrameVal.Int
+	if endFrame < 1 || endFrame > frames {
+		vm.RunTimeError("texture end_frame must be between 1 and frames")
+		return core.MakeNilValue()
+	}
+	o := MakeTextureObject(to.Data.Image, frames, startFrame, endFrame)
+	RegisterAllTextureMethods(o)
+	return core.MakeObjectValue(o, true)
+}
+
 type Texture struct {
 	Width, Height int32
 	Image         *rl.Image
