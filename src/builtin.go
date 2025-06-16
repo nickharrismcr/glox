@@ -33,7 +33,7 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("write", writeBuiltIn)
 	vm.defineBuiltIn("rand", randBuiltIn)
 	vm.defineBuiltIn("draw_png", drawPNGBuiltIn)
-	vm.defineBuiltIn("float_array", MakeFloatArrayBuiltIn)
+	vm.defineBuiltIn("float_array", floatArrayBuiltin)
 	vm.defineBuiltIn("encode_rgb", encodeRGBABuiltIn)
 	vm.defineBuiltIn("decode_rgb", decodeRGBABuiltIn)
 	vm.defineBuiltIn("window", graphicsBuiltIn)
@@ -58,7 +58,7 @@ func graphicsBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Val
 		vm.RunTimeError("graphics arguments must be integers")
 		return core.MakeNilValue()
 	}
-	o := core.MakeGraphicsObject(wVal.Int, hVal.Int)
+	o := builtin.MakeGraphicsObject(wVal.Int, hVal.Int)
 	builtin.RegisterAllGraphicsMethods(o)
 	return core.MakeObjectValue(o, true)
 }
@@ -74,7 +74,8 @@ func imageBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 		vm.RunTimeError("image argument must be a string")
 		return core.MakeNilValue()
 	}
-	o := core.MakeImageObject(filenameVal.AsString().Get())
+	o := builtin.MakeImageObject(filenameVal.AsString().Get())
+	builtin.RegisterAllImageMethods(o)
 	return core.MakeObjectValue(o, true)
 }
 
@@ -89,8 +90,8 @@ func textureBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 	startFrameVal := vm.Stack(arg_stackptr + 2)
 	endFrameVal := vm.Stack(arg_stackptr + 3)
 
-	var to *core.ImageObject
-	to, ok := imgVal.Obj.(*core.ImageObject)
+	var to *builtin.ImageObject
+	to, ok := imgVal.Obj.(*builtin.ImageObject)
 	if !ok {
 		vm.RunTimeError("texture argument must be an image object")
 		return core.MakeNilValue()
@@ -110,7 +111,8 @@ func textureBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 		vm.RunTimeError("texture end_frame must be between 1 and frames")
 		return core.MakeNilValue()
 	}
-	o := core.MakeTextureObject(to.Data.Image, frames, startFrame, endFrame)
+	o := builtin.MakeTextureObject(to.Data.Image, frames, startFrame, endFrame)
+	builtin.RegisterAllTextureMethods(o)
 	return core.MakeObjectValue(o, true)
 }
 
@@ -176,7 +178,7 @@ func decodeRGBABuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.V
 	return core.MakeObjectValue(ro, false)
 }
 
-func MakeFloatArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+func floatArrayBuiltin(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 	widthval := vm.Stack(arg_stackptr)
 	heightval := vm.Stack(arg_stackptr + 1)
@@ -190,7 +192,8 @@ func MakeFloatArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) co
 	}
 	width := widthval.Int
 	height := heightval.Int
-	floatArrObj := core.MakeFloatArrayObject(width, height)
+	floatArrObj := builtin.MakeFloatArrayObject(width, height)
+	builtin.RegisterAllFloatArrayMethods(floatArrObj)
 	return core.MakeObjectValue(floatArrObj, false)
 }
 

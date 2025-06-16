@@ -7,7 +7,7 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-func RegisterAllGraphicsMethods(o *core.GraphicsObject) {
+func RegisterAllGraphicsMethods(o *GraphicsObject) {
 	o.RegisterMethod("init", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			rl.SetTraceLogLevel(rl.LogNone)
@@ -142,7 +142,7 @@ func RegisterAllGraphicsMethods(o *core.GraphicsObject) {
 	o.RegisterMethod("draw_array", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			arrVal := vm.Stack(arg_stackptr)
-			arrobj := arrVal.AsFloatArray()
+			arrobj := AsFloatArray(arrVal)
 			arr := arrobj.Value
 
 			for x := range arr.Width {
@@ -178,7 +178,7 @@ func RegisterAllGraphicsMethods(o *core.GraphicsObject) {
 			x := int32(xval.AsInt())
 			y := int32(yval.AsInt())
 
-			to := textureVal.Obj.(*core.TextureObject)
+			to := textureVal.Obj.(*TextureObject)
 			rect := to.Data.GetFrameRect()
 			rl.DrawTextureRec(to.Data.Texture, rect, rl.Vector2{X: float32(x), Y: float32(y)}, rl.White)
 			to.Data.Animate()

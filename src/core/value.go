@@ -275,11 +275,6 @@ func (v Value) AsBoundMethod() *BoundMethodObject {
 	return v.Obj.(*BoundMethodObject)
 }
 
-func (v Value) AsFloatArray() *FloatArrayObject {
-
-	return v.Obj.(*FloatArrayObject)
-}
-
 func (v Value) IsListObject() bool {
 
 	return v.IsObj() && v.Obj.GetType() == OBJECT_LIST

@@ -8,6 +8,7 @@ import (
 	"os"
 	"sync"
 
+	"glox/src/builtin"
 	"glox/src/core"
 	"glox/src/util"
 )
@@ -35,7 +36,7 @@ func drawPNGBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 		vm.RunTimeError("Third argument to draw_png must be a boolean")
 	}
 
-	fa := plotData.AsFloatArray()
+	fa := builtin.AsFloatArray(plotData)
 	if fa.Value.Width <= 0 || fa.Value.Height <= 0 {
 		vm.RunTimeError("draw_png data must not be empty")
 		return core.MakeNilValue()
@@ -107,7 +108,7 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.
 		return core.MakeNilValue()
 	}
 
-	array := arrayVal.AsFloatArray()
+	array := builtin.AsFloatArray(arrayVal)
 	height := hVal.Int
 	width := wVal.Int
 	maxIteration := maxIterVal.Int
@@ -129,7 +130,7 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.
 
 // mandelbrotCalcRow calculates a single row of the mandelbrot set and stores the result in the provided FloatArrayObject
 // rows are calculated in parallel using goroutines
-func mandelbrotCalcRow(row, width, height, maxIteration int, scale, xOffset, yOffset float64, array *core.FloatArrayObject) {
+func mandelbrotCalcRow(row, width, height, maxIteration int, scale, xOffset, yOffset float64, array *builtin.FloatArrayObject) {
 
 	const periodLength = 20
 	y0 := scale*(float64(row)-float64(height)/2)/float64(height) + yOffset
