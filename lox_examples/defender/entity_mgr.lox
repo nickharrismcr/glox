@@ -1,0 +1,28 @@
+import bullets   
+
+class EntityMgr {
+
+    init() {
+        this.entities = []
+        this.bullets = bullets.BulletPool(100)
+    }   
+    add(entity) {
+        entity.mgr = this
+        this.entities.append(entity)
+    }
+    update(worldwidth,height) {
+        foreach (var e in this.entities) {
+            e.update(worldwidth,height)
+        }
+        this.bullets.update(worldwidth, height)
+    }
+    fire_bullet(x, y, dx, dy) {
+        this.bullets.fire(x, y, dx, dy)
+    }
+    draw(g,cam) {
+        foreach (var e in this.entities) {
+            e.draw(g,cam)
+        }
+        this.bullets.draw(g, cam)
+    }
+}

@@ -1,0 +1,44 @@
+import sprite
+import random
+ 
+
+class Bullet {
+    init( ) {
+        img = image("pngs/bullet.png")
+        this.sprite = sprite.Sprite(0, 0, img, 2,1,2 )   // frames, start_frame, end_frame
+        this.sprite.animate(10)
+        this.ticks_to_live = 0 
+    }
+    position() {
+        return (this.sprite.x, this.sprite.y)
+    }
+    dead() {
+        return this.ticks_to_live <= 0
+    }
+    reset(x, y, dx, dy) {
+      
+        this.sprite.x = x
+        this.sprite.y = y
+        this.dx = dx
+        this.dy = dy
+        this.ticks_to_live = 100
+    }
+
+    update(width,height) {
+        if (this.dead()) {
+            return;
+        }
+        this.sprite.x = this.sprite.x + this.dx
+        this.sprite.y = this.sprite.y + this.dy
+        this.ticks_to_live = this.ticks_to_live - 1
+    }
+    draw(win,cam) {
+        if (this.dead()) {
+            return;
+        }
+        var spos = cam.translate(this.sprite.x)
+        if (spos != nil) {
+            win.draw_texture(this.sprite.get_texture(), spos, this.sprite.y)
+        }
+    }
+}

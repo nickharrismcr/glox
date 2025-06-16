@@ -1,6 +1,9 @@
 import mountains 
 import stars 
 import random
+import lander 
+import entity_mgr 
+import itertools
 
 class Controller {
     init(vel) {
@@ -26,18 +29,43 @@ class Controller {
         }
     }
 }
+
+class Camera {
+    init(screenwidth,width,pos ) {
+        this.width = width
+        this.x = pos
+        this.screenwidth = screenwidth
+    }
+    move(x) {
+        this.x = x
+    }
+    translate(wp) {
+        p = wp - this.x
+        if (p<0 or p > this.screenwidth) {
+            return nil
+        }
+        return p
+    }
+}
  
 
 const width=1000
 const height=800
+const worldwidth=width*10
 var win = window(width,height)
 win.init()
 
+cam=Camera(width, worldwidth, 0)
 cont=Controller(30)
-
  
-mountain=mountains.Mountain(width*10, height*0.3)
+mountain=mountains.Mountain(worldwidth, height*0.3)
 starfield=stars.Stars(width, height*0.7, 30)
+entities= entity_mgr.EntityMgr()
+foreach (var i in itertools.range(50)) {
+    entities.add(lander.Lander(random.integer(0, worldwidth), random.integer(0, height)))
+}
+ 
+ 
  
 bgxpos=0
 fgxpos=0
@@ -51,16 +79,17 @@ while (!win.should_close()) {
     cont.update()
 
     starfield.update(-vel/5)
-    
+   
     fgxpos = fgxpos + vel
     if (fgxpos > width*10) {
         fgxpos = 0
     }
-   
+    cam.move(fgxpos)
     mountain.draw(win,height, fgxpos, width)
     starfield.draw(win)
-   
-
+    entities.update(worldwidth, height)
+    entities.draw(win,cam)
+    
     win.end()
 }
 win.close()
