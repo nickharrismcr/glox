@@ -21,9 +21,9 @@ func rand_not_zero(min, max) {
 }
 
 class Bouncer {
-    init(min,max) {
-        this.x= random.integer(min, max)
-        this.dx=random.integer(1,10)
+    init(min,max,dx) {
+        this.x= 0
+        this.dx=dx
         this.min=min
         this.max=max       
     }
@@ -48,10 +48,10 @@ class Bouncer {
 
 class ColourShift {
     init() {
-        this.r = Bouncer(0, 255)
-        this.g = Bouncer(0, 255)
-        this.b = Bouncer(0, 255)
-        this.a = Bouncer(0, 255)
+        this.r = Bouncer(0, 0,0)
+        this.g = Bouncer(0, 255,10)
+        this.b = Bouncer(0, 255,5)
+        this.a = Bouncer(255, 255,0)
     }
     update() {
         this.r.update()
@@ -216,13 +216,13 @@ class Circler {
     }
     draw(g) {
         c=this.circle.col
-        g.circle_fill(this.circle.pos.x, this.circle.pos.y, this.circle.s,c.r,c.g,c.b,c.a)
+        g.circle(this.circle.pos.x, this.circle.pos.y, this.circle.s,c.r,c.g,c.b,c.a)
         c=1.0
         foreach (var l in this.hist.data[1:]) {
             c = c + 1.0
             a = 255.0 * (c / (2*len(this.hist.data))) ; 
             s = l.s * (c / len(this.hist.data))
-            g.circle_fill(l.pos.x, l.pos.y, s,l.col.r,l.col.g,l.col.b,a)
+            g.circle(l.pos.x, l.pos.y, s,l.col.r,l.col.g,l.col.b,a)
         }   
     } 
     
@@ -273,22 +273,22 @@ circles=Circlers(width, height);
 
 for (var i = 0; i < CIRCLES; i = i + 1) {
     var pos = random_vec2D(0, width, 0, height)
-    var s = random.integer(1, 5)
-    var col = colour.random_rgb();
+    var s = random.integer(10,20)
+    var col = colour.BLACK;
     circles.add_circle(pos, s, col)
 }
 
 while (!win.should_close()) {
 
     win.begin()
-    win.clear(10,10,10, 255)
+    win.clear(60,10,10, 255)
   
     lines.update()
     win.begin_blend_mode("multiply")
     lines.draw(win)
     win.end_blend_mode()
     circles.update()
-    win.begin_blend_mode("subtract")
+    win.begin_blend_mode("add")
     circles.draw(win)
     win.end_blend_mode()
     win.end()

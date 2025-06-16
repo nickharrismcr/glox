@@ -1,0 +1,21 @@
+
+class Sprite {
+
+    init(x, y, img, frames, start_frame, end_frame) { 
+        this.x = x
+        this.y = y
+        this.width = img.width()
+        this.height = img.height() 
+        this.texture = texture(img,frames,start_frame,end_frame)
+    }
+    move(x,y) {
+        this.x = x
+        this.y = y
+    }
+    animate(ticksperframe) {
+        this.texture.animate(ticksperframe)
+    }
+    get_texture() {
+        return this.texture
+    }
+}
