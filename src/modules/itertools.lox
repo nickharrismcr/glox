@@ -41,4 +41,11 @@ func sort(list, cmp) {
     return list;
 }
  
+func range(n) {
+    var arr = []
+    for (i=0; i<n; i=i+1 ) { 
+        arr.append(i)
+    }
+    return arr
+} 
     
