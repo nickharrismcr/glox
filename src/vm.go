@@ -1619,13 +1619,16 @@ func (vm *VM) binaryGreater() bool {
 	v2 := vm.pop()
 	v1 := vm.pop()
 
-	if !v1.IsNumber() || !v2.IsNumber() {
-		vm.RunTimeError("Operands must be numbers")
-		return false
+	if v1.IsNumber() && v2.IsNumber() {
+		vm.push(core.MakeBooleanValue(v1.AsFloat() > v2.AsFloat(), false))
+		return true
 	}
-
-	vm.push(core.MakeBooleanValue(v1.AsFloat() > v2.AsFloat(), false))
-	return true
+	if v1.IsStringObject() && v2.IsStringObject() {
+		vm.push(core.MakeBooleanValue(v1.AsString().Get() > v2.AsString().Get(), false))
+		return true
+	}
+	vm.RunTimeError("Invalid operands for greater than comparison.")
+	return false
 }
 
 func (vm *VM) binaryLess() bool {
@@ -1633,13 +1636,17 @@ func (vm *VM) binaryLess() bool {
 	v2 := vm.pop()
 	v1 := vm.pop()
 
-	if !v1.IsNumber() || !v2.IsNumber() {
-		vm.RunTimeError("Operands must be numbers")
-		return false
+	if v1.IsNumber() && v2.IsNumber() {
+		vm.push(core.MakeBooleanValue(v1.AsFloat() < v2.AsFloat(), false))
+		return true
 	}
+	if v1.IsStringObject() && v2.IsStringObject() {
+		vm.push(core.MakeBooleanValue(v1.AsString().Get() < v2.AsString().Get(), false))
+		return true
+	}
+	vm.RunTimeError("Invalid operands for less than comparison.")
+	return false
 
-	vm.push(core.MakeBooleanValue(v1.AsFloat() < v2.AsFloat(), false))
-	return true
 }
 
 func (vm *VM) stringMultiply(s string, x int) core.Value {

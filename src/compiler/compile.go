@@ -251,7 +251,6 @@ func (p *Parser) getRule(tok TokenType) ParseRule {
 }
 
 func (p *Parser) declaration() {
-
 	if p.match(TOKEN_CLASS) {
 		p.classDeclaration()
 	} else if p.match(TOKEN_FUNC) {
@@ -363,6 +362,8 @@ func (p *Parser) expression() {
 }
 
 func (p *Parser) block() {
+
+	// TODO first pass to add any nested functions to the current locals
 
 	for !p.check(TOKEN_RIGHT_BRACE) && !p.check(TOKEN_EOF) {
 		p.declaration()
