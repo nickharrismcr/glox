@@ -2,8 +2,8 @@ package lox
 
 import (
 	"fmt"
+	"glox/src/builtin"
 	"glox/src/core"
-
 	"glox/src/util"
 	"math"
 	"math/rand"
@@ -59,6 +59,7 @@ func graphicsBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Val
 		return core.MakeNilValue()
 	}
 	o := core.MakeGraphicsObject(wVal.Int, hVal.Int)
+	builtin.RegisterAllGraphicsMethods(o)
 	return core.MakeObjectValue(o, true)
 }
 
