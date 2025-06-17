@@ -92,6 +92,8 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		return byteInstruction(c, "OP_GET_LOCAL", offset)
 	case core.OP_SET_LOCAL:
 		return byteInstruction(c, "OP_SET_LOCAL", offset)
+	case core.OP_ADD_CONST_LOCAL:
+		return slotConstInstruction(c, "OP_ADD_CONST_LOCAL", offset)
 	case core.OP_JUMP_IF_FALSE:
 		return jumpInstruction(c, "OP_JUMP_IF_FALSE", 1, offset)
 	case core.OP_JUMP:
@@ -102,6 +104,8 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		return byteInstruction(c, "OP_CALL", offset)
 	case core.OP_CREATE_LIST:
 		return byteInstruction(c, "OP_CREATE_LIST", offset)
+	case core.OP_CREATE_TUPLE:
+		return byteInstruction(c, "OP_CREATE_TUPLE", offset)
 	case core.OP_CREATE_DICT:
 		return byteInstruction(c, "OP_CREATE_DICT", offset)
 	case core.OP_INDEX:
@@ -206,6 +210,15 @@ func byteInstruction(c *core.Chunk, name string, offset int) int {
 	slot := c.Code[offset+1]
 	core.LogFmt(core.TRACE, "%-16s %04d\n", name, slot)
 	return offset + 2
+}
+func slotConstInstruction(c *core.Chunk, name string, offset int) int {
+
+	slot := c.Code[offset+1]
+	constant := c.Code[offset+2]
+	core.LogFmt(core.TRACE, "%-16s %04d %04d", name, slot, constant)
+	value := c.Constants[constant]
+	core.LogFmt(core.TRACE, "  %s\n", value.String())
+	return offset + 3
 }
 
 func jumpInstruction(c *core.Chunk, name string, sign int, offset int) int {

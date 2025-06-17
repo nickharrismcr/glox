@@ -227,9 +227,11 @@ func (p *Parser) check(tt TokenType) bool {
 	return p.current.Tokentype == tt
 }
 
-func (p *Parser) checkNext(tt TokenType) bool {
+func (p *Parser) checkNext(tt TokenType, offset int) bool {
 
-	return p.scn.Tokens.At(p.scn.TokenIdx+1).Tokentype == tt
+	t := p.scn.Tokens.At(p.scn.TokenIdx + 1 + offset)
+	_ = t
+	return p.scn.Tokens.At(p.scn.TokenIdx+offset).Tokentype == tt
 }
 
 func (p *Parser) advance() {
@@ -529,7 +531,7 @@ func (p *Parser) constDeclaration() {
 func (p *Parser) expressionStatement() {
 
 	//handle implicit declarations
-	if p.check(TOKEN_IDENTIFIER) && p.checkNext(TOKEN_EQUAL) {
+	if p.check(TOKEN_IDENTIFIER) && p.checkNext(TOKEN_EQUAL, 0) {
 		name := p.current
 		p.consume(TOKEN_IDENTIFIER, "")
 		p.consume(TOKEN_EQUAL, "")
@@ -1192,12 +1194,42 @@ func (p *Parser) namedVariable(name Token, canAssign bool) {
 	}
 
 	if canAssign && p.match(TOKEN_EQUAL) {
+		// opcode fusion for local=local+1
+		// if the next token is a plus, and the next token is an int, then we can do this
+		if p.matchAddIntConstToVariable(name) {
+			if setOp == core.OP_SET_LOCAL {
+				p.advance() // skip the identifier token
+				p.advance() // skip the equal token
+				val, _ := strconv.ParseInt(p.current.Lexeme(), 10, 64)
+				idx := p.MakeConstant(core.MakeIntValue(int(val), true))
+				p.emitBytes(core.OP_ADD_CONST_LOCAL, uint8(arg))
+				p.emitByte(idx)
+				p.advance() // skip the int token
+				return
+			}
+		}
 		p.expression()
 		p.emitBytes(setOp, uint8(arg))
 	} else {
 		p.emitBytes(getOp, uint8(arg))
 	}
+}
 
+func (p *Parser) matchAddIntConstToVariable(name Token) bool {
+	if p.previous.Tokentype != TOKEN_IDENTIFIER {
+		return false
+	}
+	if !p.identifiersEqual(name, p.previous) {
+		return false
+	}
+	if !p.check(TOKEN_PLUS) {
+		return false
+	}
+	if !p.checkNext(TOKEN_INT, 0) {
+		return false
+	}
+
+	return true
 }
 
 func (p *Parser) addLocal(name Token) {

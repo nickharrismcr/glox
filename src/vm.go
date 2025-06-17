@@ -737,6 +737,19 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			}
 			vm.stack[frame.Slots+slot_idx] = core.Mutable(val)
 
+		// fused opcode for intvar=intvar+constant
+		// e.g. a = a + 1
+		case core.OP_ADD_CONST_LOCAL:
+
+			slot_idx := int(vm.getCode()[frame.Ip])
+			local := vm.stack[frame.Slots+slot_idx]
+			frame.Ip++
+			const_idx := vm.getCode()[frame.Ip]
+			constant := constants[const_idx]
+			frame.Ip++
+			vm.stack[frame.Slots+slot_idx] = core.MakeIntValue(local.Int+constant.Int, false)
+			vm.stackTop++
+
 		case core.OP_JUMP_IF_FALSE:
 			// if stack top is falsey, jump by offset ( 2 operands )
 			offset := vm.readShort()
@@ -1716,9 +1729,9 @@ func (vm *VM) showStack() {
 			im = "(c)"
 		}
 		if i > vm.frame().Slots {
-			core.LogFmt(core.TRACE, "%% %s%s %%", s, im)
+			core.LogFmt(core.TRACE, "[%s%s]", s, im)
 		} else {
-			core.LogFmt(core.TRACE, "| %s%s |", s, im)
+			core.LogFmt(core.TRACE, "|%s%s|", s, im)
 		}
 	}
 	core.LogFmt(core.TRACE, "\n")
