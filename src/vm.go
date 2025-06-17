@@ -436,6 +436,10 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		}
 
 		frame.Ip++
+		if inst == core.OP_NOOP {
+			continue
+		}
+
 		switch inst {
 
 		case core.OP_INVOKE:
@@ -736,6 +740,18 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				goto End
 			}
 			vm.stack[frame.Slots+slot_idx] = core.Mutable(val)
+
+		case core.OP_ADD_CONST_LOCAL:
+			// push constant value onto local slot
+			slot_idx := int(vm.getCode()[frame.Ip])
+			frame.Ip++
+			const_idx := vm.getCode()[frame.Ip]
+			frame.Ip++
+			val := vm.stack[frame.Slots+slot_idx]
+			constant := constants[const_idx]
+			// TODO handle type checking here
+			sum := val.Int + constant.Int
+			vm.stack[frame.Slots+slot_idx] = core.MakeIntValue(sum, false)
 
 		case core.OP_JUMP_IF_FALSE:
 			// if stack top is falsey, jump by offset ( 2 operands )
