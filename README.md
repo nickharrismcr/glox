@@ -88,7 +88,9 @@ Lists :
 - adding ( `list3=list1+list2;` )
 - test for `item in list`  -> true|false
 - `lst.remove(i)`
-
+- test for `item in list`  -> true|false 
+- `range(start,end,step)` -> list of ints 
+s
 Tuples : 
 
 - immutable lists

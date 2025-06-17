@@ -1,14 +1,41 @@
-if a module function is assigned to an alias e.g
+func foo(){
+    b=1
+    b=b+2
+}
+- assigns to global not local.  var b=1 works ok 
 
-import math;
-randf=math.randint;
-var x=randf(1,10);
-
-randf call does not do a module invoke,  just a call, so the module environment is not in scope and global lookups fail  ( e.g nested imports) 
-
-s
+class methods - look into scoping
+- can refer to classname inside class methods but probably also need class vars 
+ 
+method return gives compile error unless has semicolon: 
+  draw(win,cam) {
+        if (this.foo()) {
+            return  <----  
+        }
 
  
 
 
 can compile prevent shadowing of builtins by new vars/funcs?
+
+
+fix nested function scope:
+fun outer() {
+    fun a() { b(); }
+    fun b() { print "foo"; }
+    a();
+}
+
+outer();
+
+gives
+Uncaught exception: <class RunTimeError> : "Undefined variable b"
+File 'nod.lox' , line 2, in a 
+    fun a() { b(); }
+File 'nod.lox' , line 4, in outer
+    a();
+File 'nod.lox' , line 7, in <module>
+outer();
+
+as its trying to resolve b as a global.  the upvalue search in a goes to the outer function but 
+doesn't find b in its locals 

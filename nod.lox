@@ -1,24 +1,3 @@
-func aa(){
-    print "";
-}
 
-func a(){
-    print "a";
-    aa(1);
-}
-func b(){
-    print "b";
-    a();
-}
-
-func c() {
-    print "c";
-    b();
-}
-try {
-    c();
-} 
-except Exception as e
-{
-    print "Caught "+e.msg;
-}
+print range(1,10)
+ 
