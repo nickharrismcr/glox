@@ -86,7 +86,8 @@ Lists :
 - slicing (`b=a[x:y]; b=a[:y]; b=a[x:]; b=a[:];` )
 - slice assignment ( e.g `a[2:5] = [1,2,3];` )
 - adding ( `list3=list1+list2;` )
-- test for `item in list`  -> true|false 
+- test for `item in list`  -> true|false
+- `lst.remove(i)`
 
 Tuples : 
 
