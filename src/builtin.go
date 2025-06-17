@@ -40,10 +40,47 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("texture", builtin.TextureBuiltIn)
 	vm.defineBuiltIn("image", builtin.ImageBuiltIn)
 	vm.defineBuiltIn("sleep", sleepBuiltIn)
+	vm.defineBuiltIn("range", rangeBuiltIn)
 
 	// lox built ins e.g Exception classes
 	vm.loadBuiltInModule(exceptionSource, "exception")
 
+}
+func rangeBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+
+	if argCount < 1 || argCount > 3 {
+		vm.RunTimeError("range expects 1 to 3 arguments")
+		return core.MakeNilValue()
+	}
+
+	start := 0
+	end := 0
+	step := 1
+
+	switch argCount {
+	case 1:
+		end = vm.Stack(arg_stackptr).AsInt()
+	case 2:
+		start = vm.Stack(arg_stackptr).AsInt()
+		end = vm.Stack(arg_stackptr + 1).AsInt()
+	case 3:
+		start = vm.Stack(arg_stackptr).AsInt()
+		end = vm.Stack(arg_stackptr + 1).AsInt()
+		step = vm.Stack(arg_stackptr + 2).AsInt()
+	}
+
+	if step == 0 {
+		vm.RunTimeError("step cannot be zero")
+		return core.MakeNilValue()
+	}
+
+	var values []core.Value
+	for i := start; i < end; i += step {
+		values = append(values, core.MakeIntValue(i, false))
+	}
+
+	list := core.MakeListObject(values, false)
+	return core.MakeObjectValue(list, false)
 }
 
 func sleepBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
