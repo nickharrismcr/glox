@@ -63,6 +63,10 @@ func MakeFloatArrayObject(w int, h int) *FloatArrayObject {
 	}
 }
 
+func (o *FloatArrayObject) GetMethod(name string) *core.BuiltInObject {
+	return o.Methods[name]
+}
+
 func AsFloatArray(v core.Value) *FloatArrayObject {
 
 	return v.Obj.(*FloatArrayObject)
