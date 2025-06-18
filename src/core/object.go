@@ -21,6 +21,7 @@ const (
 	OBJECT_GRAPHICS
 	OBJECT_IMAGE
 	OBJECT_TEXTURE
+	OBJECT_ITERATOR
 )
 
 type Object interface {
@@ -28,6 +29,13 @@ type Object interface {
 	GetType() ObjectType
 	String() string
 	IsBuiltIn() bool
+}
+
+// lists and strings are iterable objects
+type Iterable interface {
+	GetIterator() Value
+	Index(int) (Value, error)
+	GetLength() int
 }
 
 type HasMethods interface {

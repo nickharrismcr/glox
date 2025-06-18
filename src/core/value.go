@@ -275,6 +275,11 @@ func (v Value) AsBoundMethod() *BoundMethodObject {
 	return v.Obj.(*BoundMethodObject)
 }
 
+func (v Value) AsIterator() *IteratorObject {
+
+	return v.Obj.(*IteratorObject)
+}
+
 func (v Value) IsListObject() bool {
 
 	return v.IsObj() && v.Obj.GetType() == OBJECT_LIST

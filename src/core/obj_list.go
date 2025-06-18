@@ -65,6 +65,14 @@ func (o *ListObject) Get() []Value {
 	return o.Items
 }
 
+func (o *ListObject) GetIterator() Value {
+	return MakeObjectValue(MakeIteratorObject(o), false)
+}
+
+func (o *ListObject) GetLength() int {
+	return len(o.Items)
+}
+
 func (o *ListObject) Append(v Value) {
 	o.Items = append(o.Items, v)
 }

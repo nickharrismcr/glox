@@ -915,53 +915,43 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				goto End
 			}
 
-		// local slot, end of foreach in next 3 instructions
+		// local slot, iterator slot, end of foreach in next 3 instructions
 		case core.OP_FOREACH:
 			slot := vm.readByte()
 			iterableSlot := vm.readByte()
-			idxSlot := vm.readByte()
 			jumpToEnd := vm.readShort()
 			iterable := vm.stack[frame.Slots+int(iterableSlot)]
 
 			if iterable.Type != core.VAL_OBJ {
-				vm.RunTimeError("Iterable in foreach must be list or string.")
+				vm.RunTimeError("Foreach requires an iterable object.")
 				goto End
 			}
-			idxVal := vm.stack[frame.Slots+int(idxSlot)]
-			idx := idxVal.Int
-			switch iterable.Obj.GetType() {
-			case core.OBJECT_LIST:
-				t := iterable.AsList()
-				if idx >= len(t.Items) {
-					frame.Ip += int(jumpToEnd - 2)
-				} else {
-					val := t.Get()[idx]
-					vm.stack[frame.Slots+int(slot)] = val
-				}
-
-			case core.OBJECT_STRING:
-				t := iterable.AsString()
-				if idx >= len(t.Get()) {
-					frame.Ip += int(jumpToEnd - 2)
-
-				} else {
-					val, _ := t.Index(idx)
-					vm.stack[frame.Slots+int(slot)] = val
-				}
-
-			default:
-				vm.RunTimeError("Iterable in foreach must be list or string.")
+			o, ok := iterable.Obj.(core.Iterable)
+			if !ok {
+				vm.RunTimeError("Foreach requires an iterable object.")
 				goto End
 			}
+			iterval := o.GetIterator()
+			vm.stack[frame.Slots+int(iterableSlot)] = iterval
+
+			val := iterval.AsIterator().Next()
+			if val.Type == core.VAL_NIL {
+				// empty iterable, jump to end
+				frame.Ip += int(jumpToEnd - 2)
+				continue
+			}
+			vm.stack[frame.Slots+int(slot)] = val
 
 		case core.OP_NEXT:
 
 			jumpToStart := vm.readShort()
-			indexSlot := vm.readByte()
-			slot := frame.Slots + int(indexSlot)
-			indexVal := vm.stack[slot]
-			vm.stack[slot] = core.MakeIntValue(indexVal.Int+1, false)
-			frame.Ip -= int(jumpToStart + 1)
+			iterSlot := frame.Slots + int(vm.readByte())
+			iterVal := vm.stack[iterSlot]
+			val := iterVal.AsIterator().Next()
+			if val.Type != core.VAL_NIL {
+				vm.stack[iterSlot-1] = val
+				frame.Ip -= int(jumpToStart + 1)
+			}
 
 		case core.OP_END_FOREACH:
 

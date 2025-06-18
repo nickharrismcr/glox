@@ -226,15 +226,14 @@ func foreachInstruction(c *core.Chunk, offset int) int {
 	var jump uint16
 	slot := c.Code[offset+1]
 	iterslot := c.Code[offset+2]
-	idxslot := c.Code[offset+3]
-	jump1 := uint16(c.Code[offset+4])
-	jump2 := uint16(c.Code[offset+5])
+	jump1 := uint16(c.Code[offset+3])
+	jump2 := uint16(c.Code[offset+4])
 
 	jump = uint16(jump1 << 8)
 	jump |= uint16(jump2)
 
-	core.LogFmt(core.TRACE, "%-16s %04d %04d %04d %04d -> %d \n", "OP_FOREACH", slot, iterslot, idxslot, jump, uint16(offset)+4+jump)
-	return offset + 6
+	core.LogFmt(core.TRACE, "%-16s %04d %04d %04d -> %d \n", "OP_FOREACH", slot, iterslot, jump, uint16(offset)+4+jump)
+	return offset + 5
 }
 
 func nextInstruction(c *core.Chunk, name string, sign int, offset int) int {
@@ -243,12 +242,11 @@ func nextInstruction(c *core.Chunk, name string, sign int, offset int) int {
 
 	jump1 := uint16(c.Code[offset+1])
 	jump2 := uint16(c.Code[offset+2])
-	idx := c.Code[offset+3]
-
+	iterSlot := c.Code[offset+3]
 	jump = uint16(jump1 << 8)
 	jump |= uint16(jump2)
 
-	core.LogFmt(core.TRACE, "%-16s %04d %04d -> %d \n", name, idx, offset, uint16(offset)+3+(uint16(sign)*jump))
+	core.LogFmt(core.TRACE, "%-16s %04d %04d -> %d \n", name, iterSlot, offset, uint16(offset)+3+(uint16(sign)*jump))
 	return offset + 4
 }
 func addressInstruction(c *core.Chunk, name string, offset int) int {

@@ -68,6 +68,14 @@ func (s StringObject) Get() string {
 	return *s.Chars
 }
 
+func (o StringObject) GetIterator() Value {
+	return MakeObjectValue(MakeIteratorObject(o), false)
+}
+
+func (s StringObject) GetLength() int {
+	return len(s.Get())
+}
+
 func (s StringObject) Contains(v Value) Value {
 
 	rv := strings.Contains(*s.Chars, *v.AsString().Chars)

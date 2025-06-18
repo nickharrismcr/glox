@@ -742,27 +742,20 @@ func (p *Parser) foreachStatement() {
 	iterSlot := p.currentCompiler.localCount - 1
 	p.markInitialised()
 
-	// initialise iterator index to 0 and put it in a temp local
 	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after iterable.")
-	p.emitConstant(core.MakeIntValue(0, false))
-	p.addLocal(SyntheticToken("__index"))
-	p.markInitialised()
-	indexSlot := p.currentCompiler.localCount - 1
-	// each iteration will jump back to here
-	p.currentCompiler.loop.start = len(p.currentChunk().Code)
-	jumpToEnd := p.emitForeach(uint8(slot), uint8(iterSlot), uint8(indexSlot))
 
+	jumpToEnd := p.emitForeach(uint8(slot), uint8(iterSlot))
+	// each iteration will jump back to this point
+	p.currentCompiler.loop.start = len(p.currentChunk().Code)
 	// body of foreach
 	p.statement()
 	// if it contained a continue, patch its jump to come here
 	if p.currentCompiler.loop.continue_ != 0 {
 		p.patchJump(p.currentCompiler.loop.continue_)
 	}
-	// will get index from slots and increment it, and jump to loop start
+	// jump to loop start
 	p.emitLoop(core.OP_NEXT, p.currentCompiler.loop.start)
-	// tell it what slot to look in
-	p.emitByte(uint8(indexSlot))
-
+	p.emitByte(uint8(iterSlot))
 	// iteration complete, patch foreach to come here
 	p.emitByte(core.OP_END_FOREACH)
 	p.patchForeach(jumpToEnd)
@@ -852,12 +845,11 @@ func (p *Parser) emitJump(instr uint8) int {
 	p.emitByte(0xff)
 	return len(p.currentChunk().Code) - 2
 }
-func (p *Parser) emitForeach(slot uint8, iterslot uint8, idxslot uint8) int {
+func (p *Parser) emitForeach(slot uint8, iterslot uint8) int {
 
 	p.emitByte(core.OP_FOREACH)
 	p.emitByte(slot)
 	p.emitByte(iterslot)
-	p.emitByte(idxslot)
 	p.emitByte(0xff)
 	p.emitByte(0xff)
 	return len(p.currentChunk().Code) - 3
