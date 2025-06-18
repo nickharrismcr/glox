@@ -185,5 +185,35 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 			return core.MakeNilValue()
 		},
 	})
+	o.RegisterMethod("draw_texture_rect", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			textureVal := vm.Stack(arg_stackptr)
+			xval := vm.Stack(arg_stackptr + 1)
+			yval := vm.Stack(arg_stackptr + 2)
+			rectx0Val := vm.Stack(arg_stackptr + 3)
+			recty0Val := vm.Stack(arg_stackptr + 4)
+			rectWVal := vm.Stack(arg_stackptr + 5)
+			rectHVal := vm.Stack(arg_stackptr + 6)
+
+			x := int32(xval.AsInt())
+			y := int32(yval.AsInt())
+			rectX0 := int32(rectx0Val.AsInt())
+			rectY0 := int32(recty0Val.AsInt())
+			rectW := int32(rectWVal.AsInt())
+			rectH := int32(rectHVal.AsInt())
+
+			to := textureVal.Obj.(*TextureObject)
+			rect := rl.Rectangle{
+				X:      float32(rectX0),
+				Y:      float32(rectY0),
+				Width:  float32(rectW),
+				Height: float32(rectH),
+			}
+
+			rl.DrawTextureRec(to.Data.Texture, rect, rl.Vector2{X: float32(x), Y: float32(y)}, rl.White)
+			to.Data.Animate()
+			return core.MakeNilValue()
+		},
+	})
 
 }
