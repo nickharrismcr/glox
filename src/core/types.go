@@ -13,3 +13,20 @@ type ExceptionHandler struct {
 	StackTop int
 	Prev     *ExceptionHandler
 }
+
+type VMForeachStage int
+
+const (
+	WAITING_FOR_ITER VMForeachStage = iota
+	WAITING_FOR_NEXT
+	DONE
+)
+
+type VMForeachState struct {
+	LocalSlot   int
+	IterSlot    int
+	JumpToStart int
+	JumpToEnd   int
+	Stage       VMForeachStage
+	Prev        *VMForeachState
+}

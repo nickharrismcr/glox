@@ -33,9 +33,11 @@ type Object interface {
 
 // lists and strings are iterable objects
 type Iterable interface {
-	GetIterator() Value
-	Index(int) (Value, error)
-	GetLength() int
+	GetIterator() (Value, bool)
+}
+
+type Iterator interface {
+	Next() Value
 }
 
 type HasMethods interface {

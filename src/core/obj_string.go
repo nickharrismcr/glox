@@ -68,8 +68,8 @@ func (s StringObject) Get() string {
 	return *s.Chars
 }
 
-func (o StringObject) GetIterator() Value {
-	return MakeObjectValue(MakeIteratorObject(o), false)
+func (o StringObject) GetIterator() (Value, bool) {
+	return MakeObjectValue(MakeStringIteratorObject(o), false), true
 }
 
 func (s StringObject) GetLength() int {

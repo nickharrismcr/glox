@@ -275,9 +275,13 @@ func (v Value) AsBoundMethod() *BoundMethodObject {
 	return v.Obj.(*BoundMethodObject)
 }
 
-func (v Value) AsIterator() *IteratorObject {
+func (v Value) AsIterator() Iterator {
 
-	return v.Obj.(*IteratorObject)
+	return v.Obj.(Iterator)
+}
+
+func (v Value) AsListIterator() *ListIteratorObject {
+	return v.Obj.(*ListIteratorObject)
 }
 
 func (v Value) IsListObject() bool {
@@ -311,10 +315,10 @@ func (v Value) IsClassObject() bool {
 	return v.IsObj() && v.Obj.GetType() == OBJECT_CLASS
 }
 
-/* func (v Value) isInstanceObject() bool {
+func (v Value) IsInstanceObject() bool {
 
 	return v.IsObj() && v.Obj.GetType() == OBJECT_INSTANCE
-} */
+}
 
 func (v Value) IsBoundMethodObject() bool {
 

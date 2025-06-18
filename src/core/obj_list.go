@@ -65,8 +65,8 @@ func (o *ListObject) Get() []Value {
 	return o.Items
 }
 
-func (o *ListObject) GetIterator() Value {
-	return MakeObjectValue(MakeIteratorObject(o), false)
+func (o *ListObject) GetIterator() (Value, bool) {
+	return MakeObjectValue(MakeListIteratorObject(o), false), true
 }
 
 func (o *ListObject) GetLength() int {

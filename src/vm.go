@@ -42,7 +42,12 @@ type VM struct {
 	stackTrace   []string
 	ModuleImport bool
 	builtIns     map[string]core.Value // global built-in functions
+	foreachState *core.VMForeachState  // state stack for foreach loops
+
 }
+
+var ITER_METHOD = core.MakeObjectValue(core.MakeStringObject("__iter__"), true)
+var NEXT_METHOD = core.MakeObjectValue(core.MakeStringObject("__next__"), true)
 
 //------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------
@@ -63,6 +68,7 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 		ErrorMsg:     "",
 		stackTrace:   []string{},
 		builtIns:     make(map[string]core.Value),
+		foreachState: nil,
 	}
 	vm.resetStack()
 	if defineBuiltIns {
@@ -71,11 +77,17 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 	return vm
 }
 
-// func (vm *VM) popEnvironment() {
-// 	if vm.Environments.prev != nil {
-// 		vm.Environments = vm.Environments.prev
-// 	}
-// }
+func NewVMForeachState(prev *core.VMForeachState, localSlot int, iterSlot int, jumpToStart int, jumpToEnd int) *core.VMForeachState {
+
+	return &core.VMForeachState{
+		LocalSlot:   localSlot,
+		IterSlot:    iterSlot,
+		JumpToStart: jumpToStart,
+		JumpToEnd:   jumpToEnd,
+		Stage:       core.WAITING_FOR_ITER,
+		Prev:        prev,
+	}
+}
 
 func (vm *VM) SetArgs(args []string) {
 	vm.args = args
@@ -480,6 +492,42 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			}
 			vm.stackTop = frame.Slots
 			vm.push(result)
+
+			// iterable class handling
+			// was that an __iter__ method call?
+			if vm.foreachState != nil && vm.foreachState.Stage == core.WAITING_FOR_ITER {
+				// result holds the iterator object, it had better have a __next__ method
+				if !result.IsInstanceObject() {
+					vm.RunTimeError("Foreach iterator must be a object with a __next__ method.")
+					return INTERPRET_RUNTIME_ERROR, core.MakeNilValue()
+				}
+				_, ok := result.AsInstance().Class.Methods["__next__"]
+				if !ok {
+					vm.RunTimeError("Foreach iterator must have a __next__ method.")
+					return INTERPRET_RUNTIME_ERROR, core.MakeNilValue()
+				}
+				// call __next__ method to get the first item
+				vm.foreachState.Stage = core.WAITING_FOR_NEXT
+
+				vm.stack[vm.foreachState.IterSlot] = result // store iterator object in stack
+				vm.push(result)
+				vm.invoke(NEXT_METHOD, 0)
+				continue
+			}
+			// was that a __next__ method call?
+			if vm.foreachState != nil && vm.foreachState.Stage == core.WAITING_FOR_NEXT {
+				// result holds the next item value, if nil we are done.
+				frame = vm.frame()
+				if result.Type == core.VAL_NIL {
+					frame.Ip = int(vm.foreachState.JumpToEnd)
+					vm.foreachState = vm.foreachState.Prev // pop the foreach state
+				} else {
+					// we have a value, so set it in the local slot and continue
+					vm.stack[vm.foreachState.LocalSlot] = result
+					// jump to start of foreach loop
+					frame.Ip = int(vm.foreachState.JumpToStart)
+				}
+			}
 
 		case core.OP_GET_UPVALUE:
 			slot := vm.getCode()[frame.Ip]
@@ -916,7 +964,11 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			}
 
 		// local slot, iterator slot, end of foreach in next 3 instructions
+		// can handle native iterable objects (list, string) or lox class instances
+		// with __iter__ method returning an iterator object implementing __next__ method
+
 		case core.OP_FOREACH:
+
 			slot := vm.readByte()
 			iterableSlot := vm.readByte()
 			jumpToEnd := vm.readShort()
@@ -926,31 +978,49 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				vm.RunTimeError("Foreach requires an iterable object.")
 				goto End
 			}
+			// native iterable object (list, string )
 			o, ok := iterable.Obj.(core.Iterable)
-			if !ok {
+			if ok {
+				iterval, _ := o.GetIterator()
+				vm.stack[frame.Slots+int(iterableSlot)] = iterval
+				val := iterval.AsIterator().Next()
+				if val.Type == core.VAL_NIL {
+					// empty iterable, jump to end
+					frame.Ip += int(jumpToEnd - 2)
+					continue
+				}
+				vm.stack[frame.Slots+int(slot)] = val
+
+			} else if iterable.IsInstanceObject() {
+				// lox class instance with iterator method?
+				// we need to call it to get an iterator object
+				// so set a new foreach state on the vm indicting we are running a method
+				// and waiting for an iterator
+				_, ok := iterable.AsInstance().Class.Methods["__iter__"]
+				if ok {
+					vm.invoke(ITER_METHOD, 0)
+					vm.foreachState = NewVMForeachState(vm.foreachState, frame.Slots+int(slot), frame.Slots+int(iterableSlot), int(frame.Ip), frame.Ip+int(jumpToEnd-2))
+					continue
+				}
+			} else {
 				vm.RunTimeError("Foreach requires an iterable object.")
 				goto End
 			}
-			iterval := o.GetIterator()
-			vm.stack[frame.Slots+int(iterableSlot)] = iterval
-
-			val := iterval.AsIterator().Next()
-			if val.Type == core.VAL_NIL {
-				// empty iterable, jump to end
-				frame.Ip += int(jumpToEnd - 2)
-				continue
-			}
-			vm.stack[frame.Slots+int(slot)] = val
-
 		case core.OP_NEXT:
 
 			jumpToStart := vm.readShort()
 			iterSlot := frame.Slots + int(vm.readByte())
 			iterVal := vm.stack[iterSlot]
-			val := iterVal.AsIterator().Next()
-			if val.Type != core.VAL_NIL {
-				vm.stack[iterSlot-1] = val
-				frame.Ip -= int(jumpToStart + 1)
+			if vm.foreachState == nil {
+				val := iterVal.AsIterator().Next()
+				if val.Type != core.VAL_NIL {
+					vm.stack[iterSlot-1] = val
+					frame.Ip -= int(jumpToStart + 1)
+				}
+			} else {
+				vm.pop()         // pop the iterator result from the stack
+				vm.push(iterVal) // push the iterator object onto the stack
+				vm.invoke(NEXT_METHOD, 0)
 			}
 
 		case core.OP_END_FOREACH:
