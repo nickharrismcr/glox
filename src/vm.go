@@ -493,8 +493,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			vm.stackTop = frame.Slots
 			vm.push(result)
 
-			// iterable class handling
-			// was that an __iter__ method call?
+			// #### iterable class handling ####
+			// returning from an __iter__ instance method call?
 			if vm.foreachState != nil && vm.foreachState.Stage == core.WAITING_FOR_ITER {
 				// result holds the iterator object, it had better have a __next__ method
 				if !result.IsInstanceObject() {
@@ -506,19 +506,20 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					vm.RunTimeError("Foreach iterator must have a __next__ method.")
 					return INTERPRET_RUNTIME_ERROR, core.MakeNilValue()
 				}
-				// call __next__ method to get the first item
-				vm.foreachState.Stage = core.WAITING_FOR_NEXT
-
 				vm.stack[vm.foreachState.IterSlot] = result // store iterator object in stack
-				vm.push(result)
+				// call __next__ instance method to get the first item
+				vm.foreachState.Stage = core.WAITING_FOR_NEXT
+				vm.push(result) //TODO needed? is already on stack
 				vm.invoke(NEXT_METHOD, 0)
 				continue
 			}
-			// was that a __next__ method call?
+			// returning from a __next__ instance method call?
 			if vm.foreachState != nil && vm.foreachState.Stage == core.WAITING_FOR_NEXT {
-				// result holds the next item value, if nil we are done.
+				// result holds the next item value
+				vm.pop() //TODO needed? - dup push above ?
 				frame = vm.frame()
 				if result.Type == core.VAL_NIL {
+					// we have no more items, so jump to end of foreach loop
 					frame.Ip = int(vm.foreachState.JumpToEnd)
 					vm.foreachState = vm.foreachState.Prev // pop the foreach state
 				} else {
@@ -963,6 +964,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				goto End
 			}
 
+		// ### foreach ( var a in iterable ) ###
 		// local slot, iterator slot, end of foreach in next 3 instructions
 		// can handle native iterable objects (list, string) or lox class instances
 		// with __iter__ method returning an iterator object implementing __next__ method
@@ -1018,7 +1020,6 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					frame.Ip -= int(jumpToStart + 1)
 				}
 			} else {
-				vm.pop()         // pop the iterator result from the stack
 				vm.push(iterVal) // push the iterator object onto the stack
 				vm.invoke(NEXT_METHOD, 0)
 			}

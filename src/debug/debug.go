@@ -102,6 +102,8 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		return byteInstruction(c, "OP_CALL", offset)
 	case core.OP_CREATE_LIST:
 		return byteInstruction(c, "OP_CREATE_LIST", offset)
+	case core.OP_CREATE_TUPLE:
+		return byteInstruction(c, "OP_CREATE_TUPLE", offset)
 	case core.OP_CREATE_DICT:
 		return byteInstruction(c, "OP_CREATE_DICT", offset)
 	case core.OP_INDEX:
@@ -181,7 +183,7 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 	case core.OP_BREAKPOINT:
 		return simpleInstruction("OP_BREAKPOINT", offset)
 	default:
-		core.LogFmt(core.TRACE, "Unknown opcode %d", i)
+		core.LogFmt(core.TRACE, "Unknown opcode %d\n", i)
 		return offset + 1
 	}
 }
