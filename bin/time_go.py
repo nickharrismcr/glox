@@ -8,7 +8,7 @@ def time_go_program(go_binary_path, *args):
     
     try:
         result = subprocess.run(
-            [go_binary_path, *args],
+            [go_binary_path, *args,"2>&1"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -23,6 +23,7 @@ def time_go_program(go_binary_path, *args):
     
     except subprocess.CalledProcessError as e:
         print("Error running Go program:")
+        print(e.stdout)
         print(e.stderr)
         sys.exit(1)
 

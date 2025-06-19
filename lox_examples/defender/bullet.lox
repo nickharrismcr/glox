@@ -31,6 +31,9 @@ class Bullet {
         this.sprite.x = this.sprite.x + this.dx
         this.sprite.y = this.sprite.y + this.dy
         this.ticks_to_live = this.ticks_to_live - 1
+        if (this.sprite.y < 100 or this.sprite.y > height) {
+            this.ticks_to_live = 0
+        }   
     }
     draw(win,cam) {
         if (this.dead()) {

@@ -19,16 +19,19 @@ class Mountain {
             x=x+1
             this.points.append(h)
             h = h + dh 
-            if (h < 0 or h > this.max_height) {
+            if (h <= 0 or h >= this.max_height) {
                 dh = -dh
+                h = h + dh
             }
-            if (random.integer(0, 50) == 0) {
+            if (random.integer(0, 100) == 0) {
                 dh = -dh
             }
         }
         h=0
         dh = 1
-        foreach (var i in range(this.width-1 ,0, -1)){
+        i=this.width-1 
+        while (i > 0 ){
+            i=i-1 
             if (h >= this.points[i]) {
                 break
             }
@@ -39,10 +42,11 @@ class Mountain {
     get(x){
         return this.points[x%len(this.points)] 
     }    
-    draw(win,height,xpos,width){
+    draw(win,height,cam,width){
+        // draw from screen x start to screen end
         foreach ( var x in range(0,width)){
             if (x%5==0){
-                var h = this.get(x + xpos)
+                var h = this.get(x + cam.x)
                 win.circle_fill(x,height-h,2,255,150,0,255)
             }
         }

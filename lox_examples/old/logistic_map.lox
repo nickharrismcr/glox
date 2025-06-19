@@ -1,0 +1,59 @@
+// logistic map in graphics window
+// This example generates a logistic map and displays it in a window using the Lox programming language.
+
+import plot_rgb;
+import math;
+import colour;
+
+
+
+const width =1000;
+const height = 700; 
+
+
+func logmap() {
+    
+
+    var min_r = 2.5;
+    var max_r = 4.0;
+    var steps = 100;
+    var transients = 100;
+    var gray = 1;
+
+    var plotter=plot_rgb.Plotter("",width,height);
+    plotter.clear(colour.WHITE);
+    
+    // Compute logistic map and plot points
+    for (var px = 0; px < width; px = px + 1) {
+        var r = min_r + (float(px) / float(width)) * (max_r - min_r);
+        var x = 0.5;
+        for (var i = 0; i < transients; i = i + 1) {
+            x = r * x * (1 - x); // skip transients
+        }
+        for (var i = 0; i < steps; i = i + 1) {
+            x = r * x * (1 - x);
+            var py = height - 1 - math.floor(x * height);
+            if (py >= 0 and py < height) {
+                plotter.add(px,py,colour.Colour(-gray * 255, -gray * 255, -gray * 255,255))     
+            }
+        }
+    }
+
+    return plotter.get_array() 
+}
+
+arraydata=logmap();
+
+var win=window(width,height);
+win.init();
+ 
+while (!win.should_close()) {
+ 
+    win.begin();
+    win.clear(0,0,0);
+    win.draw_array(arraydata);
+    win.end();
+   
+}
+win.close();
+

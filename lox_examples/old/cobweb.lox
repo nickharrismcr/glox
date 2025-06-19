@@ -1,0 +1,67 @@
+// Cobweb plot of the logistic map using a graphics API
+
+fun logistic(r, x) {
+    return r * x * (1 - x);
+}
+
+fun draw_cobweb(rr, x0, steps) {
+ 
+    r=255
+    g=255
+    b=255
+    a=255
+
+    var win=window(1000,1000)
+    win.init();
+
+    while (!win.should_close()) {
+
+        var x = x0;
+        var prev_x = x;
+        var prev_y = 0;
+        if (rr > 4) {
+            rr = 0.01; // Reset rr if it exceeds 4
+        }
+        rr=rr+0.001 
+        win.begin()
+        // Draw axes
+        win.clear(0,0,0);
+ 
+
+        // Draw y = x line
+        win.line(0, 1000, 1000, 0,r,g,b,a);
+
+        // Draw logistic curve
+        
+        var last_x = 0;
+        var last_y = logistic(rr, 0);
+        for (var i = 1; i <= 100; i = i + 1) {
+            var t = i / 100.0;
+            var y = logistic(rr, t);
+            win.line(1000*last_x, 1000-1000*last_y, 1000*t, 1000-1000*y,r,g,b,a);
+        
+            last_x = t;
+            last_y = y;
+        }
+
+        // Draw cobweb
+    
+        x = x0;
+        for (var i = 0; i < steps; i = i + 1) {
+            var y = logistic(rr, x);
+
+            // Vertical line: (x, prev_y) to (x, y)
+            win.line(1000*x, 1000-1000*prev_y, 1000*x, 1000-1000*y,r,0,0,a);
+
+            // Horizontal line: (x, y) to (y, y)
+            win.line(1000*x, 1000-1000*y, 1000*y, 1000-1000*y,r,0,0,a);
+
+            prev_y = y;
+            x = y;
+        }
+        win.end()
+    }
+}
+
+// Example usage:
+draw_cobweb(2, 0.2, 150);

@@ -1,41 +1,113 @@
 import sprite
 import random
 import math 
- 
- 
+import colour
 
 class Lander {
+
     init(x, y) {
         img = image("pngs/lander.png") 
+        this.img = img
         this.sprite = sprite.Sprite(x, y, img, 3,1,3 )
         this.sprite.animate(10)
-        this.dx = random.integer(-5,5)
-        this.dy = random.integer(-5,5)
-         
+        this.update_func=materialize 
+        this.draw_func=draw_exp
+        this.exp=60
+        this.radar = colour.Colour(0,150,0,255)
+        this.counter = 0 
+        this.mgr = nil
     }
     position() {
         return (this.sprite.x, this.sprite.y)
     }
     update(width,height) {
-        this.sprite.x = this.sprite.x + this.dx
-        this.sprite.y = this.sprite.y + this.dy
-        if (this.sprite.x < 0 or this.sprite.x   > width) {
-            this.dx = -this.dx
-        }
-        if (this.sprite.y < 0 or this.sprite.y   > height) {
-            this.dy = -this.dy
-        }
-        if (random.integer(0,200) ==1   ) {
-            v=math.Vector2D(1,1) 
-            v.rotate(random.float(0,math.PI*2))
-            v.scale(random.integer(5,20))
-           this.mgr.fire_bullet(this.sprite.x, this.sprite.y, v.x, v.y)
-        }
+        f=this.update_func 
+        f(this,width,height) 
     }
     draw(win,cam) {
-        var spos = cam.translate(this.sprite.x)
-        if (spos != nil) {
-            win.draw_texture(this.sprite.get_texture(), spos, this.sprite.y)
+        f=this.draw_func 
+        f(this,win,cam) 
+    }
+}
+
+func materialize(e, width, height) {
+    e.exp = e.exp - 1
+    if (e.exp < 0) {
+        e.update_func = descend
+        e.draw_func = draw_
+        e.dx = random.choice((-5,5))
+        e.dy = 5
+        e.counter = 0
+    }
+}
+
+func descend(e, width, height) {
+    e.sprite.x = e.sprite.x + e.dx
+    e.sprite.y = e.sprite.y + e.dy
+
+    mh = e.mgr.mountains.get(e.sprite.x)
+    msh = e.mgr.height - mh 
+
+    if (e.sprite.y > msh - 100 ) {
+        e.update_func = search 
+        e.dy = 0
+    }
+
+    if (random.integer(0,200) ==1   ) {
+        v=math.Vector2D(1,1) 
+        v.rotate(random.float(0,math.PI*2))
+        v.scale(random.integer(5,20))
+        e.mgr.fire_bullet(e.sprite.x, e.sprite.y, v.x, v.y)
+    }
+}
+
+func search(e, width, height) {
+    e.sprite.x = e.sprite.x + e.dx 
+    mh = e.mgr.mountains.get(e.sprite.x)
+    msh = e.mgr.height - mh 
+    e.sprite.y = msh -100 
+
+    if (random.integer(0,200) ==1   ) {
+        v=math.Vector2D(1,1) 
+        v.rotate(random.float(0,math.PI*2))
+        v.scale(random.integer(5,20))
+        e.mgr.fire_bullet(e.sprite.x, e.sprite.y, v.x, v.y)
+    }
+} 
+
+
+ 
+func draw_exp(e,win,cam) {
+    h = img.height()
+    w = img.width()/3.0
+ 
+    pixh =h/8.0
+    pixw = w/6.0
+ 
+    txt = e.sprite.get_texture()
+    var spos = cam.translate(e.sprite.x)
+    if (spos != nil) {
+        foreach( var i in range(1,7)){
+            foreach ( var j in range(1,9)) {
+                x = i * pixw
+                y = j * pixh
+                
+                subx=spos +e.exp*(x-(w/2))
+                suby=e.sprite.y+e.exp*(y-(h/2))
+                win.draw_texture_rect(txt, subx, suby, x, y, pixw, pixh)
+            }
         }
     }
 }
+
+func draw_(e,win,cam){
+    var spos = cam.translate(e.sprite.x)
+    if (spos != nil) {
+        win.draw_texture(e.sprite.get_texture(), spos, e.sprite.y)
+    }
+    
+}
+
+
+
+

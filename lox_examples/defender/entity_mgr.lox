@@ -1,16 +1,48 @@
 import bullets   
+import lander 
+import random
 
 class EntityMgr {
 
-    init() {
+    init(worldwidth, height) {
+        this.worldwidth = worldwidth
+        this.height = height
+        this.mountains = nil 
         this.entities = []
+        this.queue = []
         this.bullets = bullets.BulletPool(100)
-    }   
-    add(entity) {
-        entity.mgr = this
-        this.entities.append(entity)
+    }  
+    get_all() {
+        return this.entities
     }
+    add_to_queue(entity,delay) {
+        entity.mgr = this
+        this.queue.append([entity,delay])
+    }
+    add_landers(num,delay) {
+        foreach (var i in range(0, num)) {
+            e = lander.Lander(random.integer(0, this.worldwidth), random.integer(100, this.height))
+            this.add_to_queue(e,delay)
+        }
+    }
+
     update(worldwidth,height) {
+
+        // Process the queue 
+        i=0 
+        foreach( var q in this.queue ) {
+    
+            e = q[0]
+            delay = q[1]
+            delay = delay - 1
+            if (delay <= 0) {
+                this.entities.append(e)
+                this.queue.remove(i)
+            }
+            q[1] = delay
+            i=i+1
+        }
+
         foreach (var e in this.entities) {
             e.update(worldwidth,height)
         }

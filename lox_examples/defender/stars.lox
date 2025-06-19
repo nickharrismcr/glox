@@ -24,7 +24,7 @@ class Stars {
     add_stars() {
         foreach (var i in range(0,this.num_stars)) {
             var x = random.integer(0, this.width)
-            var y = random.integer(0, this.height)
+            var y = random.integer(100, this.height)
             this.stars.append(Star(math.Vector2D(x, y),colour.random_rgb() ))  
         }
     }
@@ -33,7 +33,7 @@ class Stars {
         var a = random.integer(0, 10)
         if (a < 1) {
             var x = random.integer(0, this.width)
-            var y = random.integer(0, this.height)
+            var y = random.integer(100, this.height)
             var which = random.integer(0, len(this.stars)-1)
             this.stars[which].pos = math.Vector2D(x, y)
         }
@@ -41,11 +41,11 @@ class Stars {
             var pos = star.get()[0]
             pos.x = pos.x + dx
             if (pos.x > this.width) {
-                pos.y = random.integer(0, this.height)
+                pos.y = random.integer(100, this.height)
                 pos.x = 0
             }
             if (pos.x < 0) {
-                pos.y = random.integer(0, this.height)
+                pos.y = random.integer(100, this.height)
                 pos.x = this.width
             }
             star.pos = pos

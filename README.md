@@ -5,7 +5,9 @@
 The aim of this project is to learn more deeply about programming in Go and the crafting of interpreters by way of implementing Bobs CLox interpreter in Go, adding Python-inspired extensions to Lox along the way.
 The extensions to the language include enhanced string operations, lists, dictionaries, exception handling, module imports with bytecode caching, string and list iteration, and I/O.  
 
-My implementation is very slow compared to CLox. The VM 
+My implementation is slow compared to CLox. Fibonacci benchmark averages 1s, CLox is around 0.5.  Python3 averages around half that.
+
+The VM :
 - does a lot of function calls in place of C macros, not all of which get inlined
 - has a large switch/case inner loop which Go compiler doesn't optimise well  
 - uses slow map[string] for globals - function code runs much quicker 
@@ -13,6 +15,7 @@ My implementation is very slow compared to CLox. The VM
 - GC is handled by the Go runtime. 
 
 but hey-ho. This is a learning exercise, the Go code is probably not very ideomatic. The fun is in figuring out how to get the interpreter to do new language stuff. 
+And I can always add more native functions :D 
 
 **Additions to vanilla Lox:**
 
@@ -71,8 +74,9 @@ while (!win.should_close()) {
     win.end_blend_mode()
     win.end()
 }
-win.close()
+win.close() 
 ```
+Raylib images and textures can be created and drawn as well as a range of primitives.
 
 Built-in lox modules:
 -  iterator tools, function tools, math, random, colour, string utils, PNG plotters, gfx particle system
@@ -90,7 +94,7 @@ Lists :
 - `lst.remove(i)`
 - test for `item in list`  -> true|false 
 - `range(start,end,step)` -> list of ints 
-s
+
 Tuples : 
 
 - immutable lists
@@ -114,7 +118,8 @@ Strings :
 - test for presence of substring in string : `substring in string` -> true|false 
 
 Foreach : 
-- iterate lists/strings with `foreach ( var i in iterable ) { block }`
+- lazy iterate iterables with `foreach ( i in iterable ) { block }`
+- iterables can be native lists/strings or lox classes that implement __iter__ (return an iterator that implements __next__ and returns a value or nil for end) 
 
 
 Class `toString()` magic method
