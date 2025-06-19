@@ -20,7 +20,7 @@ class Controller {
         if (this.counter >= this.nextthink) {
             this.counter = 0
             this.next()
-            this.targetvel = - this.targetvel  
+            //this.targetvel = - this.targetvel  
         }
         if (this.vel < this.targetvel) {
             this.vel = this.vel + 1

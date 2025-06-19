@@ -1,0 +1,30 @@
+class Iterable {
+  init(lst) {
+    this.items = lst
+    this.index = 0
+  }
+  __iter__() {
+    // Reset the index to 0 for a new iteration start !
+    this.index = 0
+    return this
+  }
+  __next__() {
+    // nil terminates the iteration 
+    if (this.index == len(this.items)) {
+      return nil
+    }
+    rv= this.items[this.index]
+    this.index = this.index + 1
+    return rv
+  }
+}
+a=Iterable(range(1,200))
+b=Iterable(range(1,200))
+
+x=0
+foreach ( var i in a ) {
+    foreach ( var j in b ) {
+        x=x+i+j
+    }   
+}
+print x

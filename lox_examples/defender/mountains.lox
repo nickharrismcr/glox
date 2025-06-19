@@ -28,7 +28,7 @@ class Mountain {
         }
         h=0
         dh = 1
-        for (var i = this.width-1; i >= 0; i = i - 1) {
+        foreach (var i in range(this.width-1 ,0, -1)){
             if (h >= this.points[i]) {
                 break
             }
@@ -40,7 +40,7 @@ class Mountain {
         return this.points[x%len(this.points)] 
     }    
     draw(win,height,xpos,width){
-        for (var x = 0; x< width; x = x + 1) {
+        foreach ( var x in range(0,width)){
             if (x%5==0){
                 var h = this.get(x + xpos)
                 win.circle_fill(x,height-h,2,255,150,0,255)

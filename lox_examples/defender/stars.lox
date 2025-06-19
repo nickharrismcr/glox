@@ -22,7 +22,7 @@ class Stars {
         this.add_stars()  
     }
     add_stars() {
-        for (var i = 0; i < this.num_stars; i = i + 1) {
+        foreach (var i in range(0,this.num_stars)) {
             var x = random.integer(0, this.width)
             var y = random.integer(0, this.height)
             this.stars.append(Star(math.Vector2D(x, y),colour.random_rgb() ))  
