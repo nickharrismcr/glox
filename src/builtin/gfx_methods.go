@@ -81,6 +81,30 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 			return core.MakeNilValue()
 		},
 	})
+	o.RegisterMethod("rectangle", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			xval := vm.Stack(arg_stackptr)
+			yval := vm.Stack(arg_stackptr + 1)
+			wval := vm.Stack(arg_stackptr + 2)
+			hval := vm.Stack(arg_stackptr + 3)
+			rval := vm.Stack(arg_stackptr + 4)
+			gval := vm.Stack(arg_stackptr + 5)
+			bval := vm.Stack(arg_stackptr + 6)
+			aval := vm.Stack(arg_stackptr + 7)
+
+			x := int32(xval.AsInt())
+			y := int32(yval.AsInt())
+			w := int32(wval.AsInt())
+			h := int32(hval.AsInt())
+			r := int32(rval.AsInt())
+			g := int32(gval.AsInt())
+			b := int32(bval.AsInt())
+			a := int32(aval.AsInt())
+
+			rl.DrawRectangle(x, y, w, h, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
+			return core.MakeNilValue()
+		},
+	})
 	o.RegisterMethod("circle_fill", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			xval := vm.Stack(arg_stackptr)
@@ -103,6 +127,27 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 			return core.MakeNilValue()
 		},
 	})
+	o.RegisterMethod("pixel", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			xval := vm.Stack(arg_stackptr)
+			yval := vm.Stack(arg_stackptr + 1)
+			rval := vm.Stack(arg_stackptr + 2)
+			gval := vm.Stack(arg_stackptr + 3)
+			bval := vm.Stack(arg_stackptr + 4)
+			aval := vm.Stack(arg_stackptr + 5)
+
+			x := int32(xval.AsInt())
+			y := int32(yval.AsInt())
+			r := int32(rval.AsInt())
+			g := int32(gval.AsInt())
+			b := int32(bval.AsInt())
+			a := int32(aval.AsInt())
+
+			rl.DrawPixel(x, y, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
+			return core.MakeNilValue()
+		},
+	})
+
 	o.RegisterMethod("circle", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			xval := vm.Stack(arg_stackptr)

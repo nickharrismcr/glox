@@ -1620,9 +1620,17 @@ func (vm *VM) binaryDivide() bool {
 	case core.VAL_INT:
 		switch v1.Type {
 		case core.VAL_INT:
+			if v2.Int == 0 {
+				vm.RunTimeError("Division by zero")
+				return false
+			}
 			vm.push(core.MakeIntValue(v1.Int/v2.Int, false))
 			return true
 		case core.VAL_FLOAT:
+			if v2.Int == 0 {
+				vm.RunTimeError("Division by zero")
+				return false
+			}
 			vm.push(core.MakeFloatValue(v1.Float/float64(v2.Int), false))
 			return true
 		}
@@ -1630,9 +1638,17 @@ func (vm *VM) binaryDivide() bool {
 	case core.VAL_FLOAT:
 		switch v1.Type {
 		case core.VAL_INT:
+			if v2.Float == 0.0 {
+				vm.RunTimeError("Division by zero")
+				return false
+			}
 			vm.push(core.MakeFloatValue(float64(v1.Int)/v2.Float, false))
 			return true
 		case core.VAL_FLOAT:
+			if v2.Float == 0.0 {
+				vm.RunTimeError("Division by zero")
+				return false
+			}
 			vm.push(core.MakeFloatValue(v1.Float/v2.Float, false))
 			return true
 		}
