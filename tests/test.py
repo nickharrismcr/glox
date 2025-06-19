@@ -3,7 +3,7 @@ import sys, glob,subprocess,difflib,argparse
 
 def run(fname,force_compile=False) :  
 
-    cmdlst = ["glox.exe"] 
+    cmdlst = ["D:/go/glox/bin/glox"]
     if force_compile:
         cmdlst.append("--force-compile")
     cmdlst.append(fname)
