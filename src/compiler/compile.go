@@ -731,7 +731,7 @@ func (p *Parser) foreachStatement() {
 
 	p.beginScope()
 	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after for.")
-	//p.consume(TOKEN_VAR, "Expect var declaration")
+	p.match(TOKEN_VAR)
 	p.varDeclaration(true)
 	slot := p.currentCompiler.localCount - 1
 	p.consume(TOKEN_IN, "Expect in after foreach variable.")
