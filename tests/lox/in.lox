@@ -5,7 +5,7 @@ print "x" in s;
 var h = "hello";
 print h in s;
 
-
+ 
 var a = ["hello","world"];
 print a;
 print "hello" in a;
@@ -13,6 +13,10 @@ print 2 in a;
 var b=2;
 print b in a;
 
+ 
+
+
 var c = {"a":1,"b":2,"c":3};
+ 
 print "a" in c.keys();
 print "X" in c.keys();
