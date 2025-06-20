@@ -21,6 +21,7 @@ func GraphicsBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Val
 	}
 	o := MakeGraphicsObject(wVal.Int, hVal.Int)
 	RegisterAllGraphicsMethods(o)
+	RegisterAllGraphicsConstants(o)
 	return core.MakeObjectValue(o, true)
 }
 
@@ -31,13 +32,13 @@ type Graphics struct {
 
 func (g *Graphics) SetBlendMode(modename string) {
 	switch modename {
-	case "add":
+	case "BLEND_ADD":
 		g.Blend_mode = rl.BlendAdditive
-	case "alpha":
+	case "BLEND_ALPHA":
 		g.Blend_mode = rl.BlendAlpha
-	case "multiply":
+	case "BLEND_MULTIPLY":
 		g.Blend_mode = rl.BlendMultiplied
-	case "subtract":
+	case "BLEND_SUBTRACT":
 		g.Blend_mode = rl.BlendSubtractColors
 	default:
 		g.Blend_mode = rl.BlendAlpha // default to alpha blending
@@ -46,8 +47,9 @@ func (g *Graphics) SetBlendMode(modename string) {
 
 type GraphicsObject struct {
 	core.BuiltInObject
-	Value   *Graphics
-	Methods map[string]*core.BuiltInObject
+	Value     *Graphics
+	Methods   map[string]*core.BuiltInObject
+	Constants map[string]core.Value
 }
 
 func MakeGraphicsObject(w int, h int) *GraphicsObject {
@@ -76,6 +78,21 @@ func (o *GraphicsObject) RegisterMethod(name string, method *core.BuiltInObject)
 		o.Methods = make(map[string]*core.BuiltInObject)
 	}
 	o.Methods[name] = method
+}
+
+func (o *GraphicsObject) GetConstant(name string) core.Value {
+	rv, ok := o.Constants[name]
+	if !ok {
+		return core.MakeNilValue()
+	}
+	return rv
+}
+
+func (o *GraphicsObject) RegisterConstant(name string, value core.Value) {
+	if o.Constants == nil {
+		o.Constants = make(map[string]core.Value)
+	}
+	o.Constants[name] = value
 }
 
 // -------------------------------------------------------------------------------------------

@@ -43,6 +43,9 @@ type Iterator interface {
 type HasMethods interface {
 	GetMethod(string) *BuiltInObject
 }
+type HasConstants interface {
+	GetConstant(string) Value
+}
 
 type VMContext interface {
 	Stack(int) Value
