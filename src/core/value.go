@@ -7,6 +7,8 @@ import (
 	"glox/src/util"
 )
 
+var NIL_VALUE = Value{Type: VAL_NIL}
+
 type ValueType int
 
 const (
@@ -18,12 +20,13 @@ const (
 )
 
 type Value struct {
-	Type  ValueType
-	Int   int
-	Float float64
-	Bool  bool
-	Obj   Object // your Object interface stays polymorphic
-	Immut bool
+	Type       ValueType
+	Int        int
+	Float      float64
+	Bool       bool
+	Obj        Object // your Object interface stays polymorphic
+	Immut      bool
+	InternedId int // for string objects, this is the interned id, saves an object cast
 }
 
 func Immutable(v Value) Value {
@@ -38,7 +41,7 @@ func Immutable(v Value) Value {
 	case VAL_OBJ:
 		return MakeObjectValue(v.Obj, true)
 	}
-	return MakeNilValue()
+	return NIL_VALUE
 }
 
 func Mutable(v Value) Value {
@@ -52,10 +55,16 @@ func Mutable(v Value) Value {
 	case VAL_OBJ:
 		return MakeObjectValue(v.Obj, false)
 	}
-	return MakeNilValue()
+	return NIL_VALUE
 }
 
 func ValuesEqual(a, b Value, typesMustMatch bool) bool {
+
+	if a.InternedId != 0 && b.InternedId != 0 && a.InternedId != b.InternedId {
+		// if the interned ids are different, we can immediately return false
+		// as its either two different value types, or two different strings
+		return false
+	}
 
 	switch a.Type {
 	case VAL_BOOL:
@@ -99,11 +108,14 @@ func ValuesEqual(a, b Value, typesMustMatch bool) bool {
 			return false
 		}
 	case VAL_OBJ:
+
 		switch b.Type {
 		case VAL_OBJ:
 			av := a.Obj
 			bv := b.Obj
-			if av.GetType() != bv.GetType() {
+			avt := av.GetType()
+			bvt := bv.GetType()
+			if avt != bvt {
 				return false
 			}
 			return av.String() == bv.String()
@@ -186,8 +198,9 @@ func MakeBooleanValue(b bool, immut bool) Value {
 	return Value{Type: VAL_BOOL, Bool: b, Immut: immut}
 }
 
-func MakeNilValue() Value {
-	return Value{Type: VAL_NIL}
+func MakeStringObjectValue(s string, immut bool) Value {
+	so := MakeStringObject(s)
+	return Value{Type: VAL_OBJ, Obj: so, Immut: immut, InternedId: so.InternedId}
 }
 
 func MakeObjectValue(obj Object, immut bool) Value {

@@ -11,12 +11,12 @@ func ImageBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 
 	if argCount != 1 {
 		vm.RunTimeError("image expects 1 argument")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	filenameVal := vm.Stack(arg_stackptr)
 	if !filenameVal.IsStringObject() {
 		vm.RunTimeError("image argument must be a string")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	o := MakeImageObject(filenameVal.AsString().Get())
 	RegisterAllImageMethods(o)

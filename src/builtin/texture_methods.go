@@ -25,10 +25,10 @@ func RegisterAllTextureMethods(o *TextureObject) {
 			ticksVal := vm.Stack(arg_stackptr)
 			if !ticksVal.IsNumber() {
 				vm.RunTimeError("animate requires a number argument for ticks per frame")
-				return core.MakeNilValue()
+				return core.NIL_VALUE
 			}
 			o.Data.TicksPerFrame = ticksVal.Int
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 }

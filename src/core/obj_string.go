@@ -8,13 +8,16 @@ import (
 )
 
 type StringObject struct {
-	Chars *string
+	Chars      *string
+	InternedId int
 }
 
 func MakeStringObject(s string) StringObject {
 
+	id := InternName(s)
 	return StringObject{
-		Chars: &s,
+		Chars:      &idToName[id],
+		InternedId: id,
 	}
 }
 
@@ -34,7 +37,7 @@ func (s StringObject) GetMethod(name string) *BuiltInObject {
 			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 2 {
 					vm.RunTimeError("replace takes two arguments.")
-					return MakeNilValue()
+					return NIL_VALUE
 				}
 				fromVal := vm.Peek(1)
 				toVal := vm.Peek(0)
@@ -46,14 +49,14 @@ func (s StringObject) GetMethod(name string) *BuiltInObject {
 			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 1 || !vm.Peek(0).IsListObject() {
 					vm.RunTimeError("Join takes one list argument.")
-					return MakeNilValue()
+					return NIL_VALUE
 				}
 				lstVal := vm.Peek(0)
 				lst := lstVal.AsList()
 				v, err := lst.Join(s.Get())
 				if err != nil {
 					vm.RunTimeError("%v", err)
-					return MakeNilValue()
+					return NIL_VALUE
 				}
 				return v
 			},
@@ -88,7 +91,7 @@ func (s StringObject) Replace(from Value, to Value) Value {
 	old := from.AsString().Get()
 	new := to.AsString().Get()
 	rv := strings.Replace(*s.Chars, old, new, -1)
-	return MakeObjectValue(MakeStringObject(rv), false)
+	return MakeStringObjectValue(rv, false)
 }
 
 func (s StringObject) String() string {
@@ -103,11 +106,10 @@ func (s StringObject) Index(ix int) (Value, error) {
 	}
 
 	if ix < 0 || ix > len(s.Get()) {
-		return MakeNilValue(), errors.New("list subscript out of range")
+		return NIL_VALUE, errors.New("list subscript out of range")
 	}
 
-	so := MakeStringObject(string(s.Get()[ix]))
-	return MakeObjectValue(so, false), nil
+	return MakeStringObjectValue(string(s.Get()[ix]), false), nil
 }
 
 func (s StringObject) Slice(from_ix, to_ix int) (Value, error) {
@@ -120,15 +122,14 @@ func (s StringObject) Slice(from_ix, to_ix int) (Value, error) {
 	}
 
 	if to_ix < 0 || to_ix > len(s.Get()) {
-		return MakeNilValue(), errors.New("list subscript out of range")
+		return NIL_VALUE, errors.New("list subscript out of range")
 	}
 
 	if from_ix < 0 || from_ix > len(s.Get()) {
-		return MakeNilValue(), errors.New("list subscript out of range")
+		return NIL_VALUE, errors.New("list subscript out of range")
 	}
 
-	so := MakeStringObject(s.Get()[from_ix:to_ix])
-	return MakeObjectValue(so, false), nil
+	return MakeStringObjectValue(s.Get()[from_ix:to_ix], false), nil
 
 }
 

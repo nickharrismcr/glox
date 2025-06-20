@@ -12,14 +12,14 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			rl.SetTraceLogLevel(rl.LogNone)
 			rl.InitWindow(o.Value.Width, o.Value.Height, "GLOX")
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("begin", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			rl.BeginDrawing()
 			rl.BeginBlendMode(rl.BlendAdditive)
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("begin_blend_mode", &core.BuiltInObject{
@@ -27,20 +27,20 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 			modeVal := vm.Stack(arg_stackptr)
 			o.Value.SetBlendMode(modeVal.AsString().Get())
 			rl.BeginBlendMode(o.Value.Blend_mode)
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("end_blend_mode", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			rl.EndBlendMode()
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("end", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			rl.DrawFPS(10, 10)
 			rl.EndDrawing()
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("clear", &core.BuiltInObject{
@@ -54,7 +54,7 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 			b := bval.AsInt()
 			a := aval.AsInt()
 			rl.ClearBackground(rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("line", &core.BuiltInObject{
@@ -78,7 +78,7 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 			a := int32(aval.AsInt())
 
 			rl.DrawLine(x1, y1, x2, y2, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("rectangle", &core.BuiltInObject{
@@ -102,7 +102,7 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 			a := int32(aval.AsInt())
 
 			rl.DrawRectangle(x, y, w, h, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("circle_fill", &core.BuiltInObject{
@@ -124,7 +124,7 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 			a := int32(aval.AsInt())
 
 			rl.DrawCircle(x, y, rad, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("pixel", &core.BuiltInObject{
@@ -144,7 +144,7 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 			a := int32(aval.AsInt())
 
 			rl.DrawPixel(x, y, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 
@@ -167,7 +167,7 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 			a := int32(aval.AsInt())
 
 			rl.DrawCircleLines(x, y, rad, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("text", &core.BuiltInObject{
@@ -181,7 +181,7 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 			s := sval.AsString().Get()
 
 			rl.DrawText(s, x, y, 10, rl.White)
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("draw_array", &core.BuiltInObject{
@@ -199,7 +199,7 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 				}
 			}
 
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 
@@ -211,7 +211,7 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 	o.RegisterMethod("close", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			rl.CloseWindow()
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("draw_texture", &core.BuiltInObject{
@@ -227,7 +227,7 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 			rect := to.Data.GetFrameRect()
 			rl.DrawTextureRec(to.Data.Texture, rect, rl.Vector2{X: float32(x), Y: float32(y)}, rl.White)
 			to.Data.Animate()
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("draw_texture_rect", &core.BuiltInObject{
@@ -257,7 +257,7 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 
 			rl.DrawTextureRec(to.Data.Texture, rect, rl.Vector2{X: float32(x), Y: float32(y)}, rl.White)
 			to.Data.Animate()
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 

@@ -6,8 +6,8 @@ import (
 
 type ClassObject struct {
 	Name          StringObject
-	Methods       map[string]Value
-	StaticMethods map[string]Value
+	Methods       map[int]Value
+	StaticMethods map[int]Value
 	Super         *ClassObject
 }
 
@@ -15,8 +15,8 @@ func MakeClassObject(name string) *ClassObject {
 
 	return &ClassObject{
 		Name:          MakeStringObject(name),
-		Methods:       map[string]Value{},
-		StaticMethods: map[string]Value{},
+		Methods:       map[int]Value{},
+		StaticMethods: map[int]Value{},
 	}
 }
 

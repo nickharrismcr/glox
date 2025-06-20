@@ -137,7 +137,7 @@ func readValue(r io.Reader, env *core.Environment) core.Value {
 		buf := make([]byte, len)
 		r.Read(buf)
 		//Debugf("String %s ", string(buf))
-		return core.MakeObjectValue(core.MakeStringObject(string(buf)), false)
+		return core.MakeStringObjectValue(string(buf), false)
 	case 0x04:
 		s := util.ReadString(r)
 		name := core.MakeStringObject(s)
@@ -163,7 +163,7 @@ func readValue(r io.Reader, env *core.Environment) core.Value {
 		return core.MakeBooleanValue(b[0] == 1, false)
 	case 0x06:
 		//Debugf("Nil")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	default:
 		panic("unknown tag")
 	}
