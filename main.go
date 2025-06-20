@@ -18,6 +18,19 @@ type Options struct {
 
 func main() {
 
+	// // Start CPU profiling
+	// f, err := os.Create("cpu.pprof")
+	// if err != nil {
+	// 	log.Fatal("could not create CPU profile: ", err)
+	// }
+	// if err := pprof.StartCPUProfile(f); err != nil {
+	// 	log.Fatal("could not start CPU profile: ", err)
+	// }
+	// defer func() {
+	// 	pprof.StopCPUProfile()
+	// 	f.Close()
+	// }()
+
 	opts := &Options{}
 
 	handleArgs(opts)
