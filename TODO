@@ -13,7 +13,7 @@ method return gives compile error unless has semicolon:
             return  <----  
         }
 
- 
+replace MakeNilValue() with constant core.NILVALUE 
 
 
 can compile prevent shadowing of builtins by new vars/funcs?

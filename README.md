@@ -118,8 +118,9 @@ Strings :
 - test for presence of substring in string : `substring in string` -> true|false 
 
 Foreach : 
-- lazy iterate iterables with `foreach ( i in iterable ) { block }`
-- iterables can be native lists/strings or lox classes that implement __iter__ (return an iterator that implements __next__ and returns a value or nil for end) 
+- `foreach ( i in iterable ) { block }`
+- iterable "next" method called until end reached
+- iterables can be native lists/strings or lox classes that implement `__iter__` (return an iterator that implements `__next__` and returns a value or nil for end) 
 
 
 Class `toString()` magic method
@@ -142,8 +143,10 @@ I/O
 
 **TODO:**
 
-- more runtime exception types 
-- tuple/list unpacking
+- more runtime exception types
+- comprehensive raylib gfx bindings 
+- tuple/list unpacking  `a,b = [ 1,2 ]`
+- named function parameters with defaults  `func foo(bar,baz=1)` 
 - from module import [*|name] 
 - import module as <namespace> 
 
