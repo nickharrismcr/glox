@@ -196,14 +196,14 @@ func typeBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	val := vm.Stack(arg_stackptr)
 	name := typeName(val)
 
-	return core.MakeObjectValue(core.MakeStringObject(name), true)
+	return core.MakeStringObjectValue(name, true)
 }
 
 func argsBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 	argvList := []core.Value{}
 	for _, a := range vm.Args() {
-		argvList = append(argvList, core.MakeObjectValue(core.MakeStringObject(a), true))
+		argvList = append(argvList, core.MakeStringObjectValue(a, true))
 	}
 	list := core.MakeListObject(argvList, false)
 	return core.MakeObjectValue(list, false)

@@ -6,14 +6,14 @@ import (
 
 type InstanceObject struct {
 	Class  *ClassObject
-	Fields map[string]Value
+	Fields map[int]Value
 }
 
 func MakeInstanceObject(class *ClassObject) *InstanceObject {
 
 	return &InstanceObject{
 		Class:  class,
-		Fields: map[string]Value{},
+		Fields: map[int]Value{},
 	}
 }
 

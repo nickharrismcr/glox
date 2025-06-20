@@ -105,7 +105,7 @@ func (o *ListObject) Join(s string) (Value, error) {
 			}
 		}
 	}
-	return MakeObjectValue(MakeStringObject(rs), false), nil
+	return MakeStringObjectValue(rs, false), nil
 }
 
 func (o *ListObject) String() string {

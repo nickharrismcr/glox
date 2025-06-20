@@ -137,7 +137,7 @@ func readValue(r io.Reader, env *core.Environment) core.Value {
 		buf := make([]byte, len)
 		r.Read(buf)
 		//Debugf("String %s ", string(buf))
-		return core.MakeObjectValue(core.MakeStringObject(string(buf)), false)
+		return core.MakeStringObjectValue(string(buf), false)
 	case 0x04:
 		s := util.ReadString(r)
 		name := core.MakeStringObject(s)

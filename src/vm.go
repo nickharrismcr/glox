@@ -34,6 +34,7 @@ type VM struct {
 	stackTop     int
 	frames       [FRAMES_MAX]*core.CallFrame
 	frameCount   int
+	currCode     []uint8 // current code being executed
 	starttime    time.Time
 	lastGC       time.Time
 	openUpValues *core.UpvalueObject // head of list
@@ -41,13 +42,13 @@ type VM struct {
 	ErrorMsg     string
 	stackTrace   []string
 	ModuleImport bool
-	builtIns     map[string]core.Value // global built-in functions
-	foreachState *core.VMForeachState  // state stack for foreach loops
+	builtIns     map[int]core.Value   // global built-in functions
+	foreachState *core.VMForeachState // state stack for foreach loops
 
 }
 
-var ITER_METHOD = core.MakeObjectValue(core.MakeStringObject("__iter__"), true)
-var NEXT_METHOD = core.MakeObjectValue(core.MakeStringObject("__next__"), true)
+var ITER_METHOD = core.MakeStringObjectValue("__iter__", true)
+var NEXT_METHOD = core.MakeStringObjectValue("__next__", true)
 
 //------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------
@@ -67,7 +68,7 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 		args:         []string{},
 		ErrorMsg:     "",
 		stackTrace:   []string{},
-		builtIns:     make(map[string]core.Value),
+		builtIns:     make(map[int]core.Value),
 		foreachState: nil,
 	}
 	vm.resetStack()
@@ -171,7 +172,8 @@ func (vm *VM) RunTimeError(format string, args ...any) {
 }
 
 func (vm *VM) defineBuiltIn(name string, function core.BuiltInFn) {
-	vm.builtIns[name] = core.MakeObjectValue(core.MakeBuiltInObject(function), false)
+	id := core.InternName(name)
+	vm.builtIns[id] = core.MakeObjectValue(core.MakeBuiltInObject(function), false)
 }
 
 func (vm *VM) push(v core.Value) {
@@ -218,7 +220,7 @@ func (vm *VM) callValue(callee core.Value, argCount int) bool {
 		} else if callee.IsClassObject() {
 			class := callee.AsClass()
 			vm.stack[vm.stackTop-argCount-1] = core.MakeObjectValue(core.MakeInstanceObject(class), false)
-			if initialiser, ok := class.Methods["init"]; ok {
+			if initialiser, ok := class.Methods[core.INIT]; ok {
 				return vm.call(initialiser.AsClosure(), argCount)
 			} else if argCount != 0 {
 				vm.RunTimeError("Expected 0 arguments but got %d", argCount)
@@ -267,27 +269,28 @@ func (vm *VM) invoke(name core.Value, argCount int) bool {
 }
 
 func (vm *VM) invokeFromClass(class *core.ClassObject, name core.Value, argCount int, isStatic bool) bool {
-	n := core.GetStringValue(name)
+	i := name.InternedId
 	if isStatic {
-		method, ok := class.StaticMethods[n]
+		method, ok := class.StaticMethods[i]
 		if !ok {
-			vm.RunTimeError("Undefined static method '%s'.", n)
+			vm.RunTimeError("Undefined static method '%s'.", core.GetStringValue(name))
 			return false
 		}
 		return vm.call(method.AsClosure(), argCount)
 	}
-	method, ok := class.Methods[n]
+	method, ok := class.Methods[i]
 	if !ok {
-		vm.RunTimeError("Undefined method '%s'.", n)
+		vm.RunTimeError("Undefined method '%s'.", core.GetStringValue(name))
 		return false
 	}
 	return vm.call(method.AsClosure(), argCount)
 }
 
 func (vm *VM) invokeFromModule(module *core.ModuleObject, name core.Value, argCount int) bool {
-	n := core.GetStringValue(name)
-	fn, ok := module.Environment.GetVar(n)
+
+	fn, ok := module.Environment.GetVar(name.InternedId)
 	if !ok {
+		n := core.GetStringValue(name)
 		vm.RunTimeError("Undefined module property '%s'.", n)
 		return false
 	}
@@ -313,10 +316,10 @@ func (vm *VM) invokeFromBuiltin(obj core.Object, name core.Value, argCount int) 
 
 }
 
-func (vm *VM) bindMethod(class *core.ClassObject, name string) bool {
-	method, ok := class.Methods[name]
+func (vm *VM) bindMethod(class *core.ClassObject, stringId int) bool {
+	method, ok := class.Methods[stringId]
 	if !ok {
-		vm.RunTimeError("Undefined property '%s'", name)
+		vm.RunTimeError("Undefined property '%s'", core.NameFromID(stringId))
 		return false
 	}
 	bound := core.MakeBoundMethodObject(vm.Peek(0), method.AsClosure())
@@ -356,13 +359,13 @@ func (vm *VM) closeUpvalues(last int) {
 	}
 }
 
-func (vm *VM) defineMethod(name string, isStatic bool) {
+func (vm *VM) defineMethod(stringID int, isStatic bool) {
 	method := vm.Peek(0)
 	class := vm.Peek(1).AsClass()
 	if isStatic {
-		class.StaticMethods[name] = method
+		class.StaticMethods[stringID] = method
 	} else {
-		class.Methods[name] = method
+		class.Methods[stringID] = method
 	}
 	vm.pop()
 }
@@ -393,15 +396,15 @@ func (vm *VM) call(closure *core.ClosureObject, argCount int) bool {
 func (vm *VM) readShort() uint16 {
 
 	vm.frame().Ip += 2
-	b1 := uint16(vm.getCode()[vm.frame().Ip-2])
-	b2 := uint16(vm.getCode()[vm.frame().Ip-1])
+	b1 := uint16(vm.currCode[vm.frame().Ip-2])
+	b2 := uint16(vm.currCode[vm.frame().Ip-1])
 	return uint16(b1<<8 | b2)
 }
 
 func (vm *VM) readByte() uint8 {
 
 	vm.frame().Ip += 1
-	return vm.getCode()[vm.frame().Ip-1]
+	return vm.currCode[vm.frame().Ip-1]
 }
 
 func (vm *VM) isFalsey(v core.Value) bool {
@@ -428,6 +431,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		function := frame.Closure.Function
 		chunk := function.Chunk
 		constants := chunk.Constants
+		vm.currCode = chunk.Code
 
 		counter++
 		if counter%100000 == 0 {
@@ -438,7 +442,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			}
 		}
 
-		inst := vm.getCode()[frame.Ip]
+		inst := vm.currCode[frame.Ip]
 		if core.DebugTraceExecution && !core.DebugSuppress {
 			if core.DebugShowGlobals {
 				vm.showGlobals()
@@ -451,10 +455,10 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		switch inst {
 
 		case core.OP_INVOKE:
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			method := constants[idx]
-			argCount := vm.getCode()[frame.Ip]
+			argCount := vm.currCode[frame.Ip]
 			frame.Ip++
 			if !vm.invoke(method, int(argCount)) {
 				goto End
@@ -462,15 +466,15 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		case core.OP_CLOSURE:
 			// get the function indexed by operand from constants, wrap in a closure object and push onto stack
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			function := constants[idx]
 			closure := core.MakeClosureObject(core.GetFunctionObjectValue(function))
 			vm.push(core.MakeObjectValue(closure, false))
 			for i := 0; i < closure.UpvalueCount; i++ {
-				isLocal := vm.getCode()[frame.Ip]
+				isLocal := vm.currCode[frame.Ip]
 				frame.Ip++
-				index := int(vm.getCode()[frame.Ip])
+				index := int(vm.currCode[frame.Ip])
 				frame.Ip++
 				if isLocal == 1 {
 					closure.Upvalues[i] = vm.captureUpvalue(frame.Slots + index)
@@ -501,7 +505,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					vm.RunTimeError("Foreach iterator must be a object with a __next__ method.")
 					return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 				}
-				_, ok := result.AsInstance().Class.Methods["__next__"]
+				_, ok := result.AsInstance().Class.Methods[core.NEXT]
 				if !ok {
 					vm.RunTimeError("Foreach iterator must have a __next__ method.")
 					return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
@@ -531,13 +535,13 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			}
 
 		case core.OP_GET_UPVALUE:
-			slot := vm.getCode()[frame.Ip]
+			slot := vm.currCode[frame.Ip]
 			frame.Ip++
 			valIdx := frame.Closure.Upvalues[slot].Location
 			vm.push(*valIdx)
 
 		case core.OP_SET_UPVALUE:
-			slot := vm.getCode()[frame.Ip]
+			slot := vm.currCode[frame.Ip]
 			frame.Ip++
 			*(frame.Closure.Upvalues[slot].Location) = vm.Peek(0)
 
@@ -547,34 +551,97 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		case core.OP_CONSTANT:
 			// get the constant indexed by operand and push it onto the stack
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			constant := constants[idx]
 			vm.push(constant)
 
 		case core.OP_METHOD:
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			name := constants[idx]
-			vm.defineMethod(core.GetStringValue(name), false)
+			vm.defineMethod(name.InternedId, false)
 
 		case core.OP_STATIC_METHOD:
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			name := constants[idx]
-			vm.defineMethod(core.GetStringValue(name), true)
+			vm.defineMethod(name.InternedId, true)
 
 		case core.OP_NEGATE:
 			// negate the value at stack top
-			if !vm.unaryNegate() {
-				goto End
+			v := vm.pop()
+			switch v.Type {
+			case core.VAL_FLOAT:
+				f := v.Float
+				vm.push(core.MakeFloatValue(-f, false))
+				continue
+			case core.VAL_INT:
+				f := v.Int
+				vm.push(core.MakeIntValue(-f, false))
+				continue
 			}
+			vm.RunTimeError("Operand must be a number")
+			goto End
 
 		case core.OP_ADD:
 			// pop 2 stack values, add them and push onto the stack
-			if !vm.binaryAdd() {
+			v2 := vm.pop()
+			v1 := vm.pop()
+			switch v2.Type {
+			case core.VAL_INT:
+				switch v1.Type {
+				case core.VAL_INT:
+					vm.push(core.MakeIntValue(v1.Int+v2.Int, false))
+					continue
+				case core.VAL_FLOAT:
+					vm.push(core.MakeFloatValue(v1.Float+float64(v2.Int), false))
+					continue
+				}
+				vm.RunTimeError("Addition type mismatch")
 				goto End
+
+			case core.VAL_FLOAT:
+				switch v1.Type {
+				case core.VAL_INT:
+					vm.push(core.MakeFloatValue(float64(v1.Int)+v2.Float, false))
+					continue
+				case core.VAL_FLOAT:
+					vm.push(core.MakeFloatValue(v1.Float+v2.Float, false))
+					continue
+				}
+				vm.RunTimeError("Addition type mismatch")
+				goto End
+
+			case core.VAL_OBJ:
+				ov2 := v2.Obj
+				switch ov2.GetType() {
+				case core.OBJECT_STRING:
+					if v1.Type != core.VAL_OBJ {
+						vm.RunTimeError("Addition type mismatch")
+						goto End
+					}
+					ov1 := v1.Obj
+					if ov1.GetType() == core.OBJECT_STRING {
+						vm.push(core.MakeStringObjectValue(v1.AsString().Get()+v2.AsString().Get(), false))
+
+						continue
+					}
+				case core.OBJECT_LIST:
+					if v1.Type != core.VAL_OBJ {
+						vm.RunTimeError("Addition type mismatch")
+						goto End
+					}
+					ov1 := v1.Obj
+					if ov1.GetType() == core.OBJECT_LIST {
+						lo := ov1.(*core.ListObject).Add(ov2.(*core.ListObject))
+						vm.push(core.MakeObjectValue(lo, false))
+						continue
+					}
+				}
 			}
+			vm.RunTimeError("Operands must be numbers or strings")
+			goto End
 
 		case core.OP_SUBTRACT:
 			// pop 2 stack values, subtract and push onto the stack
@@ -626,32 +693,35 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				goto End
 			}
 
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			nv := constants[idx]
-			name := core.GetStringValue(nv)
+			stringId := nv.InternedId
 
 			switch v.Obj.GetType() {
 			case core.OBJECT_INSTANCE:
 				ot := v.AsInstance()
-				if val, ok := ot.Fields[name]; ok {
+				if val, ok := ot.Fields[stringId]; ok {
 					vm.pop()
 					vm.push(val)
 				} else {
-					if !vm.bindMethod(ot.Class, name) {
+					if !vm.bindMethod(ot.Class, stringId) {
 						goto End
 					}
 				}
 			case core.OBJECT_MODULE:
 				ot := v.AsModule()
-				if val, ok := ot.Environment.GetVar(name); ok {
+
+				if val, ok := ot.Environment.GetVar(nv.InternedId); ok {
 					vm.pop()
 					vm.push(val)
 				} else {
+					name := core.GetStringValue(nv)
 					vm.RunTimeError("Property '%s' not found.", name)
 					goto End
 				}
 			default:
+				name := core.GetStringValue(nv)
 				vm.RunTimeError("Property '%s' not found.", name)
 				goto End
 			}
@@ -664,24 +734,24 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				vm.RunTimeError("Property not found.")
 				goto End
 			}
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
-			name := core.GetStringValue(constants[idx])
+			stringId := constants[idx].InternedId
 			switch v.Obj.GetType() {
 			case core.OBJECT_INSTANCE:
 				ot := v.AsInstance()
-				ot.Fields[name] = val
+				ot.Fields[stringId] = val
 				tmp := vm.pop()
 				vm.pop()
 				vm.push(tmp)
 			case core.OBJECT_MODULE:
 				ot := v.AsModule()
-				ot.Environment.SetVar(name, val)
+				ot.Environment.SetVar(constants[idx].InternedId, val)
 				tmp := vm.pop()
 				vm.pop()
 				vm.push(tmp)
 			default:
-				vm.RunTimeError("Property not found.")
+				vm.RunTimeError("Property '%s' not found.", core.GetStringValue(constants[idx]))
 				goto End
 			}
 
@@ -693,15 +763,25 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		case core.OP_GREATER:
 			// pop 2 stack values, stack top = boolean
-			if !vm.binaryGreater() {
+
+			v2 := vm.pop()
+			v1 := vm.pop()
+			if !v1.IsNumber() || !v2.IsNumber() {
+				vm.RunTimeError("Operands must be numbers")
 				goto End
 			}
+			vm.push(core.MakeBooleanValue(v1.AsFloat() > v2.AsFloat(), false))
 
 		case core.OP_LESS:
 			// pop 2 stack values, stack top = boolean
-			if !vm.binaryLess() {
+
+			v2 := vm.pop()
+			v1 := vm.pop()
+			if !v1.IsNumber() || !v2.IsNumber() {
+				vm.RunTimeError("Operands must be numbers")
 				goto End
 			}
+			vm.push(core.MakeBooleanValue(v1.AsFloat() < v2.AsFloat(), false))
 
 		case core.OP_PRINT:
 			// compiler ensures stack top will be a string object via core.OP_STR
@@ -715,36 +795,38 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		case core.OP_DEFINE_GLOBAL:
 			// name = constant at operand index
 			// pop 1 stack value and set globals[name] to it
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
-			name := core.GetStringValue(constants[idx])
+
 			value := vm.Peek(0)
 			//DumpValue("Define global", value)
-			function.Environment.SetVar(name, value)
+			function.Environment.SetVar(constants[idx].InternedId, value)
 			vm.pop()
 
 		case core.OP_DEFINE_GLOBAL_CONST:
 			// name = constant at operand index
 			// pop 1 stack value and set globals[name] to it and flag as immutable
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
-			name := core.GetStringValue(constants[idx])
-			function.Environment.SetVar(name, vm.Peek(0))
-			v, _ := function.Environment.GetVar(name)
-			function.Environment.SetVar(name, core.Immutable(v))
+			id := constants[idx].InternedId
+			function.Environment.SetVar(id, vm.Peek(0))
+			v, _ := function.Environment.GetVar(id)
+			function.Environment.SetVar(id, core.Immutable(v))
 			vm.pop()
 
 		case core.OP_GET_GLOBAL:
 			// name = constant at operand index
 			// push globals[name] onto stack
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
-			name := core.GetStringValue(constants[idx])
-			value, ok := function.Environment.GetVar(name)
+			id := constants[idx].InternedId
+
+			value, ok := function.Environment.GetVar(id)
 			//DumpValue("Get global", value)
 			if !ok {
-				value, ok = vm.builtIns[name]
+				value, ok = vm.builtIns[id]
 				if !ok {
+					name := core.GetStringValue(constants[idx])
 					vm.RunTimeError("Undefined variable %s", name)
 					goto End
 				}
@@ -754,31 +836,28 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		case core.OP_SET_GLOBAL:
 			// name = constant at operand index
 			// set globals[name] to stack top, key must exist
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
-			name := core.GetStringValue(constants[idx])
-			// auto-declare
-			// if _, ok := vm.Environments.Vars[name]; !ok {
-			// 	vm.RunTimeError("Undefined variable %s\n", name)
-			// 	goto End
-			// }
-			v, _ := function.Environment.GetVar(name)
+			id := constants[idx].InternedId
+
+			v, _ := function.Environment.GetVar(id)
 			if v.Immutable() {
+				name := core.GetStringValue(constants[idx])
 				vm.RunTimeError("Cannot assign to const %s", name)
 				goto End
 			}
-			function.Environment.SetVar(name, core.Mutable(vm.Peek(0))) // in case of assignment of const
+			function.Environment.SetVar(id, core.Mutable(vm.Peek(0))) // in case of assignment of const
 
 		case core.OP_GET_LOCAL:
 			// get local from stack at position = operand and push on stack top
-			slot_idx := int(vm.getCode()[frame.Ip])
+			slot_idx := int(vm.currCode[frame.Ip])
 			frame.Ip++
 			vm.push(vm.stack[frame.Slots+slot_idx])
 
 		case core.OP_SET_LOCAL:
 			// get value at stack top and store it in stack at position = operand
 			val := vm.Peek(0)
-			slot_idx := int(vm.getCode()[frame.Ip])
+			slot_idx := int(vm.currCode[frame.Ip])
 			frame.Ip++
 			if vm.stack[frame.Slots+slot_idx].Immutable() {
 				vm.RunTimeError("Cannot assign to const local.")
@@ -838,14 +917,14 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		case core.OP_CALL:
 			// arg count is operand, callable object is on stack after arguments, result will be stack top
-			argCount := vm.getCode()[frame.Ip]
+			argCount := vm.currCode[frame.Ip]
 			frame.Ip++
 			if !vm.callValue(vm.Peek(int(argCount)), int(argCount)) {
 				goto End
 			}
 
 		case core.OP_CLASS:
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			name := core.GetStringValue(constants[idx])
 			vm.push(core.MakeObjectValue(core.MakeClassObject(name), false))
@@ -869,21 +948,22 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 
 		case core.OP_GET_SUPER:
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
-			name := core.GetStringValue(constants[idx])
+			name := constants[idx].AsString()
+			stringId := name.InternedId
 			v := vm.pop()
 			superclass := v.AsClass()
 
-			if !vm.bindMethod(superclass, name) {
+			if !vm.bindMethod(superclass, stringId) {
 				return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 			}
 
 		case core.OP_SUPER_INVOKE:
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			method := constants[idx]
-			argCount := vm.getCode()[frame.Ip]
+			argCount := vm.currCode[frame.Ip]
 			frame.Ip++
 			superclass := vm.pop().AsClass()
 			if !vm.invokeFromClass(superclass, method, int(argCount), false) {
@@ -894,7 +974,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		case core.OP_IMPORT:
 
-			idx := vm.getCode()[frame.Ip]
+			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			mv := constants[idx]
 			module := mv.AsString().Get()
@@ -919,7 +999,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				case core.OBJECT_INSTANCE:
 					// get string repr of class by calling AsString().Get() method if present
 					ot := ov.(*core.InstanceObject)
-					if toString, ok := ot.Class.Methods["toString"]; ok {
+					if toString, ok := ot.Class.Methods[core.TO_STRING]; ok {
 						vm.call(toString.AsClosure(), 0)
 						continue
 					}
@@ -927,7 +1007,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				}
 			}
 			vm.pop()
-			vm.push(core.MakeObjectValue(core.MakeStringObject(s), false))
+			vm.push(core.MakeStringObjectValue(s, false))
 
 		case core.OP_CREATE_LIST:
 			// item count is operand, expects items on stack,  list object will be stack top
@@ -998,7 +1078,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				// we need to call it to get an iterator object
 				// so set a new foreach state on the vm indicting we are running a method
 				// and waiting for an iterator
-				_, ok := iterable.AsInstance().Class.Methods["__iter__"]
+				_, ok := iterable.AsInstance().Class.Methods[core.ITER]
 				if ok {
 					vm.invoke(ITER_METHOD, 0)
 					vm.foreachState = NewVMForeachState(vm.foreachState, frame.Slots+int(slot), frame.Slots+int(iterableSlot), int(frame.Ip), frame.Ip+int(jumpToEnd-2))
@@ -1076,10 +1156,10 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 // used for vm raising errors that can be handled in lox e.g EOFError when reading a file
 func (vm *VM) RaiseExceptionByName(name string, msg string) bool {
 
-	classVal := vm.builtIns[name]
+	classVal := vm.builtIns[core.InternName(name)]
 	classObj := classVal.Obj
 	instance := core.MakeInstanceObject(classObj.(*core.ClassObject))
-	instance.Fields["msg"] = core.MakeObjectValue(core.MakeStringObject(msg), false)
+	instance.Fields[core.MSG] = core.MakeStringObjectValue(msg, false)
 	return vm.raiseException(core.MakeObjectValue(instance, false))
 }
 
@@ -1100,11 +1180,12 @@ func (vm *VM) raiseException(err core.Value) bool {
 				vm.frame().Ip += 2
 				idx := vm.getCode()[vm.frame().Ip-1]
 				function := vm.frame().Closure.Function
-				name := core.GetStringValue(function.Chunk.Constants[idx])
-				v, ok := function.Environment.GetVar(name)
+				id := function.Chunk.Constants[idx].InternedId
+				v, ok := function.Environment.GetVar(id)
 				if !ok {
-					v, ok = vm.builtIns[name]
+					v, ok = vm.builtIns[id]
 					if !ok {
+						name := core.GetStringValue(function.Chunk.Constants[idx])
 						vm.RunTimeError("Undefined exception handler '%s'.", name)
 						return false
 					}
@@ -1131,7 +1212,7 @@ func (vm *VM) raiseException(err core.Value) bool {
 
 		if !vm.popFrame() {
 			exc := err.AsInstance()
-			vm.RunTimeError("Uncaught exception: %s : %s ", exc.Class, exc.Fields["msg"])
+			vm.RunTimeError("Uncaught exception: %s : %s ", exc.Class, exc.Fields[core.MSG])
 			return false
 		}
 	}
@@ -1139,10 +1220,11 @@ func (vm *VM) raiseException(err core.Value) bool {
 
 func (vm *VM) nextHandler() bool {
 
+	code := vm.getCode()
 	for {
 		vm.frame().Ip++
-		if vm.getCode()[vm.frame().Ip] == core.OP_END_EXCEPT {
-			if vm.getCode()[vm.frame().Ip+1] == core.OP_EXCEPT {
+		if code[vm.frame().Ip] == core.OP_END_EXCEPT {
+			if code[vm.frame().Ip+1] == core.OP_EXCEPT {
 				vm.frame().Ip += 1
 				return true
 			}
@@ -1230,13 +1312,13 @@ func (vm *VM) importModule(moduleName string) InterpretResult {
 	subfn := subvm.frames[0].Closure.Function
 	mo := core.MakeModuleObject(moduleName, *subfn.Environment)
 	v := core.MakeObjectValue(mo, false)
-	vm.frame().Closure.Function.Environment.SetVar(moduleName, v)
+	vm.frame().Closure.Function.Environment.SetVar(core.InternName(moduleName), v)
 	return INTERPRET_OK
 }
 
 func (vm *VM) createList(frame *core.CallFrame) {
 
-	itemCount := int(vm.getCode()[frame.Ip])
+	itemCount := int(vm.currCode[frame.Ip])
 	frame.Ip++
 	list := []core.Value{}
 
@@ -1249,7 +1331,7 @@ func (vm *VM) createList(frame *core.CallFrame) {
 
 func (vm *VM) createTuple(frame *core.CallFrame) {
 
-	itemCount := int(vm.getCode()[frame.Ip])
+	itemCount := int(vm.currCode[frame.Ip])
 	frame.Ip++
 	list := []core.Value{}
 
@@ -1262,7 +1344,7 @@ func (vm *VM) createTuple(frame *core.CallFrame) {
 
 func (vm *VM) createDict(frame *core.CallFrame) {
 
-	itemCount := int(vm.getCode()[frame.Ip])
+	itemCount := int(vm.currCode[frame.Ip])
 	frame.Ip++
 	dict := map[string]core.Value{}
 
@@ -1461,70 +1543,6 @@ func (vm *VM) sliceAssign() bool {
 	return false
 }
 
-// numbers and strings only
-func (vm *VM) binaryAdd() bool {
-
-	v2 := vm.pop()
-	v1 := vm.pop()
-
-	switch v2.Type {
-	case core.VAL_INT:
-		switch v1.Type {
-		case core.VAL_INT:
-			vm.push(core.MakeIntValue(v1.Int+v2.Int, false))
-			return true
-		case core.VAL_FLOAT:
-			vm.push(core.MakeFloatValue(v1.Float+float64(v2.Int), false))
-			return true
-		}
-		vm.RunTimeError("Addition type mismatch")
-		return false
-
-	case core.VAL_FLOAT:
-		switch v1.Type {
-		case core.VAL_INT:
-			vm.push(core.MakeFloatValue(float64(v1.Int)+v2.Float, false))
-			return true
-		case core.VAL_FLOAT:
-			vm.push(core.MakeFloatValue(v1.Float+v2.Float, false))
-			return true
-		}
-		vm.RunTimeError("Addition type mismatch")
-		return false
-
-	case core.VAL_OBJ:
-		ov2 := v2.Obj
-		switch ov2.GetType() {
-		case core.OBJECT_STRING:
-			if v1.Type != core.VAL_OBJ {
-				vm.RunTimeError("Addition type mismatch")
-				return false
-			}
-			ov1 := v1.Obj
-			if ov1.GetType() == core.OBJECT_STRING {
-				so := core.MakeStringObject(v1.AsString().Get() + v2.AsString().Get())
-				vm.push(core.MakeObjectValue(so, false))
-				return true
-			}
-
-		case core.OBJECT_LIST:
-
-			if v1.Type != core.VAL_OBJ {
-				vm.RunTimeError("Addition type mismatch")
-				return false
-			}
-			ov1 := v1.Obj
-			if ov1.GetType() == core.OBJECT_LIST {
-				lo := ov1.(*core.ListObject).Add(ov2.(*core.ListObject))
-				vm.push(core.MakeObjectValue(lo, false))
-				return true
-			}
-		}
-	}
-	vm.RunTimeError("Operands must be numbers or strings")
-	return false
-}
-
 func (vm *VM) binarySubtract() bool {
 
 	v2 := vm.pop()
@@ -1672,60 +1690,13 @@ func (vm *VM) binaryModulus() bool {
 	return true
 }
 
-func (vm *VM) unaryNegate() bool {
-
-	v := vm.pop()
-	switch v.Type {
-	case core.VAL_FLOAT:
-		f := v.Float
-		vm.push(core.MakeFloatValue(-f, false))
-		return true
-	case core.VAL_INT:
-		f := v.Int
-		vm.push(core.MakeIntValue(-f, false))
-		return true
-	}
-
-	vm.RunTimeError("Operand must be a number")
-	return false
-
-}
-
-func (vm *VM) binaryGreater() bool {
-
-	v2 := vm.pop()
-	v1 := vm.pop()
-
-	if !v1.IsNumber() || !v2.IsNumber() {
-		vm.RunTimeError("Operands must be numbers")
-		return false
-	}
-
-	vm.push(core.MakeBooleanValue(v1.AsFloat() > v2.AsFloat(), false))
-	return true
-}
-
-func (vm *VM) binaryLess() bool {
-
-	v2 := vm.pop()
-	v1 := vm.pop()
-
-	if !v1.IsNumber() || !v2.IsNumber() {
-		vm.RunTimeError("Operands must be numbers")
-		return false
-	}
-
-	vm.push(core.MakeBooleanValue(v1.AsFloat() < v2.AsFloat(), false))
-	return true
-}
-
 func (vm *VM) stringMultiply(s string, x int) core.Value {
 
 	rv := ""
 	for i := 0; i < x; i++ {
 		rv += s
 	}
-	return core.MakeObjectValue(core.MakeStringObject(rv), false)
+	return core.MakeStringObjectValue(rv, false)
 }
 func (vm *VM) pauseExecution() {
 

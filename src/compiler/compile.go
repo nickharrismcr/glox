@@ -942,7 +942,9 @@ func (p *Parser) identifierConstant(t Token) uint8 {
 
 	x := t.Lexeme()
 	p.globals[x] = true
-	return p.MakeConstant(core.MakeObjectValue(core.MakeStringObject(t.Lexeme()), false))
+	s := t.Lexeme()
+	v := core.MakeStringObjectValue(s, false)
+	return p.MakeConstant(v)
 }
 
 func (p *Parser) identifiersEqual(a, b Token) bool {
@@ -1438,8 +1440,8 @@ func loxstring(p *Parser, canAssign bool) {
 	str := p.previous.Lexeme()
 	str = str[1 : len(str)-1] // remove quotes
 
-	strobj := core.MakeStringObject(str)
-	p.emitConstant(core.MakeObjectValue(strobj, false))
+	v := core.MakeStringObjectValue(str, false)
+	p.emitConstant(v)
 
 }
 

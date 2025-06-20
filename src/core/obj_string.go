@@ -8,13 +8,16 @@ import (
 )
 
 type StringObject struct {
-	Chars *string
+	Chars      *string
+	InternedId int
 }
 
 func MakeStringObject(s string) StringObject {
 
+	id := InternName(s)
 	return StringObject{
-		Chars: &s,
+		Chars:      &idToName[id],
+		InternedId: id,
 	}
 }
 
@@ -88,7 +91,7 @@ func (s StringObject) Replace(from Value, to Value) Value {
 	old := from.AsString().Get()
 	new := to.AsString().Get()
 	rv := strings.Replace(*s.Chars, old, new, -1)
-	return MakeObjectValue(MakeStringObject(rv), false)
+	return MakeStringObjectValue(rv, false)
 }
 
 func (s StringObject) String() string {
@@ -106,8 +109,7 @@ func (s StringObject) Index(ix int) (Value, error) {
 		return NIL_VALUE, errors.New("list subscript out of range")
 	}
 
-	so := MakeStringObject(string(s.Get()[ix]))
-	return MakeObjectValue(so, false), nil
+	return MakeStringObjectValue(string(s.Get()[ix]), false), nil
 }
 
 func (s StringObject) Slice(from_ix, to_ix int) (Value, error) {
@@ -127,8 +129,7 @@ func (s StringObject) Slice(from_ix, to_ix int) (Value, error) {
 		return NIL_VALUE, errors.New("list subscript out of range")
 	}
 
-	so := MakeStringObject(s.Get()[from_ix:to_ix])
-	return MakeObjectValue(so, false), nil
+	return MakeStringObjectValue(s.Get()[from_ix:to_ix], false), nil
 
 }
 

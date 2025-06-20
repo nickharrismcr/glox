@@ -53,11 +53,11 @@ func (f *FileObject) ReadLine() Value {
 		if err.Error() == "EOF" {
 			f.Eof = true
 			if len(line) > 0 {
-				return MakeObjectValue(MakeStringObject(line), false)
+				return MakeStringObjectValue(line, false)
 			}
 		}
 	}
-	return MakeObjectValue(MakeStringObject(line), false)
+	return MakeStringObjectValue(line, false)
 }
 
 func (f *FileObject) Write(str Value) {
