@@ -50,7 +50,7 @@ func rangeBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 
 	if argCount < 1 || argCount > 3 {
 		vm.RunTimeError("range expects 1 to 3 arguments")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 
 	start := 0
@@ -71,7 +71,7 @@ func rangeBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 
 	if step == 0 {
 		vm.RunTimeError("step cannot be zero")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 
 	var values []core.Value
@@ -87,12 +87,12 @@ func sleepBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 
 	if argCount != 1 {
 		vm.RunTimeError("sleep expects 1 argument")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	tVal := vm.Stack(arg_stackptr)
 	if !tVal.IsNumber() {
 		vm.RunTimeError("sleep argument must be number")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	var dur time.Duration
 	if tVal.IsInt() {
@@ -102,21 +102,21 @@ func sleepBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 		dur = time.Duration(tVal.AsFloat()) * time.Second
 	}
 	time.Sleep(dur)
-	return core.MakeNilValue()
+	return core.NIL_VALUE
 }
 
 func encodeRGBABuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 	if argCount != 3 {
 		vm.RunTimeError("encode_rgb expects 3 arguments")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	rVal := vm.Stack(arg_stackptr)
 	gVal := vm.Stack(arg_stackptr + 1)
 	bVal := vm.Stack(arg_stackptr + 2)
 	if !rVal.IsInt() || !gVal.IsInt() || !bVal.IsInt() {
 		vm.RunTimeError("encode_rgb arguments must be integers")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	r := rVal.Int
 	g := gVal.Int
@@ -128,13 +128,13 @@ func encodeRGBABuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.V
 func decodeRGBABuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	if argCount != 1 {
 		vm.RunTimeError("decode_rgb expects 1 float argument")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	fVal := vm.Stack(arg_stackptr)
 
 	if !fVal.IsFloat() {
 		vm.RunTimeError("decode_rgb argument must be a float")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	f := fVal.Float
 	r, g, b := util.DecodeRGB(f)
@@ -191,7 +191,7 @@ func typeBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 	if argCount != 1 {
 		vm.RunTimeError("Single argument expected.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	val := vm.Stack(arg_stackptr)
 	name := typeName(val)
@@ -213,7 +213,7 @@ func floatBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 
 	if argCount != 1 {
 		vm.RunTimeError("Single argument expected.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	arg := vm.Stack(arg_stackptr)
 
@@ -227,20 +227,20 @@ func floatBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 			f, ok := arg.AsString().ParseFloat()
 			if !ok {
 				vm.RunTimeError("Could not parse string into float.")
-				return core.MakeNilValue()
+				return core.NIL_VALUE
 			}
 			return core.MakeFloatValue(f, false)
 		}
 	}
 	vm.RunTimeError("Argument must be number or valid string")
-	return core.MakeNilValue()
+	return core.NIL_VALUE
 }
 
 func intBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 	if argCount != 1 {
 		vm.RunTimeError("Single argument expected.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	arg := vm.Stack(arg_stackptr)
 
@@ -254,13 +254,13 @@ func intBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			i, ok := arg.AsString().ParseInt()
 			if !ok {
 				vm.RunTimeError("Could not parse string into int.")
-				return core.MakeNilValue()
+				return core.NIL_VALUE
 			}
 			return core.MakeIntValue(i, false)
 		}
 	}
 	vm.RunTimeError("Argument must be number or valid string.")
-	return core.MakeNilValue()
+	return core.NIL_VALUE
 }
 
 func clockBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
@@ -279,12 +279,12 @@ func lenBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 	if argCount != 1 {
 		vm.RunTimeError("Invalid argument count to len.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	val := vm.Stack(arg_stackptr)
 	if val.Type != core.VAL_OBJ {
 		vm.RunTimeError("Invalid argument type to len.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	switch val.Obj.GetType() {
 	case core.OBJECT_STRING:
@@ -295,7 +295,7 @@ func lenBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 		return core.MakeIntValue(len(l), false)
 	}
 	vm.RunTimeError("Invalid argument type to len.")
-	return core.MakeNilValue()
+	return core.NIL_VALUE
 }
 
 // sin(number)
@@ -303,13 +303,13 @@ func sinBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 	if argCount != 1 {
 		vm.RunTimeError("Invalid argument count to sin.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	vnum := vm.Stack(arg_stackptr)
 
 	if vnum.Type != core.VAL_FLOAT {
 		vm.RunTimeError("Invalid argument type to sin.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	n := vnum.Float
 	return core.MakeFloatValue(math.Sin(n), false)
@@ -320,14 +320,14 @@ func cosBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 	if argCount != 1 {
 		vm.RunTimeError("Invalid argument count to cos.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	vnum := vm.Stack(arg_stackptr)
 
 	if vnum.Type != core.VAL_FLOAT {
 
 		vm.RunTimeError("Invalid argument type to cos.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	n := vnum.Float
 	return core.MakeFloatValue(math.Cos(n), false)
@@ -337,14 +337,14 @@ func sqrtBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 	if argCount != 1 {
 		vm.RunTimeError("Invalid argument count to sqrt.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	vnum := vm.Stack(arg_stackptr)
 
 	if vnum.Type != core.VAL_FLOAT {
 
 		vm.RunTimeError("Invalid argument type to sqrt.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	n := vnum.Float
 	return core.MakeFloatValue(math.Sqrt(n), false)
@@ -355,12 +355,12 @@ func appendBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value
 
 	if argCount != 2 {
 		vm.RunTimeError("Invalid argument count to append.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	val := vm.Stack(arg_stackptr)
 	if val.Type != core.VAL_OBJ {
 		vm.RunTimeError("Argument 1 to append must be list.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	val2 := vm.Stack(arg_stackptr + 1)
 	switch val.Obj.GetType() {
@@ -369,13 +369,13 @@ func appendBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value
 		l := val.AsList()
 		if l.Tuple {
 			vm.RunTimeError("Tuples are immutable")
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		}
 		l.Append(val2)
 		return core.MakeObjectValue(l, false)
 	}
 	vm.RunTimeError("Argument 1 to append must be list.")
-	return core.MakeNilValue()
+	return core.NIL_VALUE
 }
 
 // replace( string|list )
@@ -383,7 +383,7 @@ func replaceBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 
 	if argCount != 3 {
 		vm.RunTimeError("Invalid argument count to replace.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	target := vm.Stack(arg_stackptr)
 	from := vm.Stack(arg_stackptr + 1)
@@ -391,7 +391,7 @@ func replaceBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 
 	if target.Type != core.VAL_OBJ || target.Obj.GetType() != core.OBJECT_STRING {
 		vm.RunTimeError("Invalid argument type to replace.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 
 	s := target.AsString()
@@ -403,7 +403,7 @@ func openBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 	if argCount != 2 {
 		vm.RunTimeError("Invalid argument count to open.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	path := vm.Stack(arg_stackptr)
 	mode := vm.Stack(arg_stackptr + 1)
@@ -411,7 +411,7 @@ func openBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	if path.Type != core.VAL_OBJ || path.Obj.GetType() != core.OBJECT_STRING ||
 		mode.Type != core.VAL_OBJ || mode.Obj.GetType() != core.OBJECT_STRING {
 		vm.RunTimeError("Invalid argument type to open.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 
 	s_path := path.AsString().Get()
@@ -419,7 +419,7 @@ func openBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	fp, err := openFile(s_path, s_mode)
 	if err != nil {
 		vm.RunTimeError("%v", err)
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	file := core.MakeObjectValue(core.MakeFileObject(fp), true)
 	return file
@@ -430,13 +430,13 @@ func closeBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 
 	if argCount != 1 {
 		vm.RunTimeError("Invalid argument count to close.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	fov := vm.Stack(arg_stackptr)
 
 	if fov.Type != core.VAL_OBJ || fov.Obj.GetType() != core.OBJECT_FILE {
 		vm.RunTimeError("Invalid argument type to close.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 
 	fo := fov.Obj.(*core.FileObject)
@@ -448,19 +448,19 @@ func readlnBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value
 
 	if argCount != 1 {
 		vm.RunTimeError("Invalid argument count to readln.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	fov := vm.Stack(arg_stackptr)
 
 	if fov.Type != core.VAL_OBJ || fov.Obj.GetType() != core.OBJECT_FILE {
 		vm.RunTimeError("Invalid argument type to readln.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 
 	fo := fov.Obj.(*core.FileObject)
 	if fo.Closed {
 		vm.RunTimeError("readln attempted on closed file.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 
 	rv := fo.ReadLine()
@@ -475,24 +475,24 @@ func writeBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 
 	if argCount != 2 {
 		vm.RunTimeError("Invalid argument count to writeln.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	fov := vm.Stack(arg_stackptr)
 	str := vm.Stack(arg_stackptr + 1)
 
 	if fov.Type != core.VAL_OBJ || fov.Obj.GetType() != core.OBJECT_FILE {
 		vm.RunTimeError("Invalid argument type to writeln.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	if str.Type != core.VAL_OBJ || str.Obj.GetType() != core.OBJECT_STRING {
 		vm.RunTimeError("Invalid argument type to writeln.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 
 	fo := fov.Obj.(*core.FileObject)
 	if fo.Closed {
 		vm.RunTimeError("writeln attempted on closed file.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 
 	fo.Write(str)

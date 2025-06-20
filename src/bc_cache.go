@@ -163,7 +163,7 @@ func readValue(r io.Reader, env *core.Environment) core.Value {
 		return core.MakeBooleanValue(b[0] == 1, false)
 	case 0x06:
 		//Debugf("Nil")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	default:
 		panic("unknown tag")
 	}

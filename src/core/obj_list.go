@@ -34,11 +34,11 @@ func (o *ListObject) GetMethod(name string) *BuiltInObject {
 			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 1 {
 					vm.RunTimeError("append takes one argument.")
-					return MakeNilValue()
+					return NIL_VALUE
 				}
 				val := vm.Peek(0)
 				o.Append(val)
-				return MakeNilValue()
+				return NIL_VALUE
 			},
 		}
 	case "remove":
@@ -46,12 +46,12 @@ func (o *ListObject) GetMethod(name string) *BuiltInObject {
 			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 1 {
 					vm.RunTimeError("remove takes one argument.")
-					return MakeNilValue()
+					return NIL_VALUE
 				}
 				val := vm.Peek(0)
 				idx := val.Int
 				o.Remove(idx)
-				return MakeNilValue()
+				return NIL_VALUE
 			},
 		}
 
@@ -92,7 +92,7 @@ func (o *ListObject) Join(s string) (Value, error) {
 			if IsString(v) {
 				rs = GetStringValue(v)
 			} else {
-				return MakeNilValue(), errors.New("mon string in join list")
+				return NIL_VALUE, errors.New("mon string in join list")
 			}
 		}
 		if ln > 1 {
@@ -100,7 +100,7 @@ func (o *ListObject) Join(s string) (Value, error) {
 				if IsString(v) {
 					rs = rs + s + GetStringValue(v)
 				} else {
-					return MakeNilValue(), errors.New("non string in join list")
+					return NIL_VALUE, errors.New("non string in join list")
 				}
 			}
 		}
@@ -146,7 +146,7 @@ func (o *ListObject) Index(ix int) (Value, error) {
 	}
 
 	if ix < 0 || ix >= len(o.Get()) {
-		return MakeNilValue(), errors.New("list subscript out of range")
+		return NIL_VALUE, errors.New("list subscript out of range")
 	}
 
 	return o.Get()[ix], nil
@@ -162,15 +162,15 @@ func (o *ListObject) Slice(from_ix, to_ix int) (Value, error) {
 	}
 
 	if to_ix < 0 || to_ix > len(o.Items) {
-		return MakeNilValue(), errors.New("list subscript out of range")
+		return NIL_VALUE, errors.New("list subscript out of range")
 	}
 
 	if from_ix < 0 || from_ix > len(o.Items) {
-		return MakeNilValue(), errors.New("list subscript out of range")
+		return NIL_VALUE, errors.New("list subscript out of range")
 	}
 
 	if from_ix > to_ix {
-		return MakeNilValue(), errors.New("invalid slice indices")
+		return NIL_VALUE, errors.New("invalid slice indices")
 	}
 
 	lo := MakeListObject(o.Items[from_ix:to_ix], false)

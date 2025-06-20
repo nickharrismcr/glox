@@ -40,7 +40,7 @@ func (d *DictObject) GetMethod(name string) *BuiltInObject {
 			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 2 {
 					vm.RunTimeError("Invalid argument count to get.")
-					return MakeNilValue()
+					return NIL_VALUE
 				}
 				key := vm.Stack(arg_stackptr)
 				def := vm.Stack(arg_stackptr + 1)
@@ -56,7 +56,7 @@ func (d *DictObject) GetMethod(name string) *BuiltInObject {
 				}
 
 				vm.RunTimeError("Argument to get must be key, default")
-				return MakeNilValue()
+				return NIL_VALUE
 			},
 		}
 	case "keys":
@@ -66,7 +66,7 @@ func (d *DictObject) GetMethod(name string) *BuiltInObject {
 
 				if argCount != 0 {
 					vm.RunTimeError("Invalid argument count to keys.")
-					return MakeNilValue()
+					return NIL_VALUE
 				}
 				return d.Keys()
 			},
@@ -86,7 +86,7 @@ func (o *DictObject) Get(key string) (Value, error) {
 
 	rv, ok := o.Items[key]
 	if !ok {
-		return MakeNilValue(), errors.New("key not found")
+		return NIL_VALUE, errors.New("key not found")
 	}
 	return rv, nil
 }

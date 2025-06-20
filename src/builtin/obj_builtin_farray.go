@@ -11,11 +11,11 @@ func FloatArrayBuiltin(argCount int, arg_stackptr int, vm core.VMContext) core.V
 	heightval := vm.Stack(arg_stackptr + 1)
 	if argCount != 2 {
 		vm.RunTimeError("Invalid argument count to float_array.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	if !widthval.IsInt() || !heightval.IsInt() {
 		vm.RunTimeError("float_array arguments must be integers")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	width := widthval.Int
 	height := heightval.Int

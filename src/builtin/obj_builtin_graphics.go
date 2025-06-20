@@ -11,13 +11,13 @@ func GraphicsBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Val
 
 	if argCount != 2 {
 		vm.RunTimeError("graphics expects 2 arguments")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	wVal := vm.Stack(arg_stackptr)
 	hVal := vm.Stack(arg_stackptr + 1)
 	if !wVal.IsInt() || !hVal.IsInt() {
 		vm.RunTimeError("graphics arguments must be integers")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	o := MakeGraphicsObject(wVal.Int, hVal.Int)
 	RegisterAllGraphicsMethods(o)

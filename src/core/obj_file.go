@@ -44,7 +44,7 @@ func (f *FileObject) Close() {
 func (f *FileObject) ReadLine() Value {
 
 	if f.Eof {
-		return MakeNilValue()
+		return NIL_VALUE
 	}
 
 	line, err := f.Reader.ReadString('\n')

@@ -34,7 +34,7 @@ func RegisterAllFloatArrayMethods(o *FloatArrayObject) {
 			y := yval.AsInt()
 			f := fval.AsFloat()
 			o.Value.Set(x, y, f)
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("clear", &core.BuiltInObject{
@@ -42,7 +42,7 @@ func RegisterAllFloatArrayMethods(o *FloatArrayObject) {
 			fval := vm.Stack(arg_stackptr)
 			f := fval.AsFloat()
 			o.Value.Clear(f)
-			return core.MakeNilValue()
+			return core.NIL_VALUE
 		},
 	})
 }

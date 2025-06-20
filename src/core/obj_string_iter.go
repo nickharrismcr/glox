@@ -29,7 +29,7 @@ func (o *StringIteratorObject) GetType() ObjectType {
 func (o *StringIteratorObject) Next() Value {
 
 	if o.Index >= o.Data.GetLength() {
-		return MakeNilValue()
+		return NIL_VALUE
 	}
 	rv, _ := o.Data.Index(o.Index)
 	o.Index++

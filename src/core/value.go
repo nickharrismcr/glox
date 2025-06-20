@@ -7,6 +7,8 @@ import (
 	"glox/src/util"
 )
 
+var NIL_VALUE = Value{Type: VAL_NIL}
+
 type ValueType int
 
 const (
@@ -38,7 +40,7 @@ func Immutable(v Value) Value {
 	case VAL_OBJ:
 		return MakeObjectValue(v.Obj, true)
 	}
-	return MakeNilValue()
+	return NIL_VALUE
 }
 
 func Mutable(v Value) Value {
@@ -52,7 +54,7 @@ func Mutable(v Value) Value {
 	case VAL_OBJ:
 		return MakeObjectValue(v.Obj, false)
 	}
-	return MakeNilValue()
+	return NIL_VALUE
 }
 
 func ValuesEqual(a, b Value, typesMustMatch bool) bool {
@@ -184,10 +186,6 @@ func MakeFloatValue(f float64, immut bool) Value {
 
 func MakeBooleanValue(b bool, immut bool) Value {
 	return Value{Type: VAL_BOOL, Bool: b, Immut: immut}
-}
-
-func MakeNilValue() Value {
-	return Value{Type: VAL_NIL}
 }
 
 func MakeObjectValue(obj Object, immut bool) Value {

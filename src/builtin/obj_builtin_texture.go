@@ -11,7 +11,7 @@ func TextureBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 
 	if argCount != 4 {
 		vm.RunTimeError("texture expects 4 arguments (image, frames, start_frame, end_frame)")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	imgVal := vm.Stack(arg_stackptr)
 	framesVal := vm.Stack(arg_stackptr + 1)
@@ -22,22 +22,22 @@ func TextureBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 	to, ok := imgVal.Obj.(*ImageObject)
 	if !ok {
 		vm.RunTimeError("texture argument must be an image object")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	frames := framesVal.Int
 	if frames < 1 {
 		vm.RunTimeError("texture frames must be at least 1")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	startFrame := startFrameVal.Int
 	if startFrame < 1 || startFrame > frames {
 		vm.RunTimeError("texture start_frame must be between 1 and frames")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	endFrame := endFrameVal.Int
 	if endFrame < 1 || endFrame > frames {
 		vm.RunTimeError("texture end_frame must be between 1 and frames")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	o := MakeTextureObject(to.Data.Image, frames, startFrame, endFrame)
 	RegisterAllTextureMethods(o)

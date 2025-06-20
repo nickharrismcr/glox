@@ -16,7 +16,7 @@ import (
 func DrawPNGBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	if argCount != 3 {
 		vm.RunTimeError("Invalid argument count to draw_png.")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	nameVal := vm.Stack(arg_stackptr)
 	plotData := vm.Stack(arg_stackptr + 1)
@@ -24,12 +24,12 @@ func DrawPNGBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 
 	if !nameVal.IsStringObject() {
 		vm.RunTimeError("First argument to draw_png must be a string filename")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 
 	if !plotData.IsFloatArrayObject() {
 		vm.RunTimeError("Second argument to draw_png must be a float array")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	if !colourEncoded.IsBool() {
 		vm.RunTimeError("Third argument to draw_png must be a boolean")
@@ -38,7 +38,7 @@ func DrawPNGBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 	fa := AsFloatArray(plotData)
 	if fa.Value.Width <= 0 || fa.Value.Height <= 0 {
 		vm.RunTimeError("draw_png data must not be empty")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 
 	width := fa.Value.Width
@@ -74,7 +74,7 @@ func DrawPNGBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 		_ = png.Encode(file, img)
 	}
 
-	return core.MakeNilValue()
+	return core.NIL_VALUE
 }
 
 // args:
@@ -91,7 +91,7 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.
 
 	if argCount != 7 {
 		vm.RunTimeError("Invalid argument count to lox_mandel_array")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	arrayVal := vm.Stack(arg_stackptr)
 	hVal := vm.Stack(arg_stackptr + 1)
@@ -104,7 +104,7 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.
 	if !(hVal.IsInt() && wVal.IsInt() && maxIterVal.IsInt() && xoffsetVal.IsFloat() &&
 		yoffsetVal.IsFloat() && arrayVal.IsFloatArrayObject() && scaleVal.IsFloat()) {
 		vm.RunTimeError("Invalid arguments to lox_mandel_array")
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 
 	array := AsFloatArray(arrayVal)
@@ -124,7 +124,7 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.
 		}(row)
 	}
 	wg.Wait()
-	return core.MakeNilValue()
+	return core.NIL_VALUE
 }
 
 // mandelbrotCalcRow calculates a single row of the mandelbrot set and stores the result in the provided FloatArrayObject

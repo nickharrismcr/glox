@@ -115,7 +115,7 @@ func (vm *VM) Interpret(source string, module string) (InterpretResult, string) 
 func (vm *VM) Stack(index int) core.Value {
 
 	if index < 0 || index >= vm.stackTop {
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	return vm.stack[index]
 }
@@ -183,7 +183,7 @@ func (vm *VM) push(v core.Value) {
 func (vm *VM) pop() core.Value {
 
 	if vm.stackTop == 0 {
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	vm.stackTop--
 	return vm.stack[vm.stackTop]
@@ -499,12 +499,12 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				// result holds the iterator object, it had better have a __next__ method
 				if !result.IsInstanceObject() {
 					vm.RunTimeError("Foreach iterator must be a object with a __next__ method.")
-					return INTERPRET_RUNTIME_ERROR, core.MakeNilValue()
+					return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 				}
 				_, ok := result.AsInstance().Class.Methods["__next__"]
 				if !ok {
 					vm.RunTimeError("Foreach iterator must have a __next__ method.")
-					return INTERPRET_RUNTIME_ERROR, core.MakeNilValue()
+					return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 				}
 				vm.stack[vm.foreachState.IterSlot] = result // store iterator object in stack
 				// call __next__ instance method to get the first item
@@ -602,7 +602,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		case core.OP_NIL:
 			// push nil val onto the stack
-			vm.push(core.MakeNilValue())
+			vm.push(core.NIL_VALUE)
 
 		case core.OP_TRUE:
 			// push true bool val onto the stack
@@ -833,7 +833,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		case core.OP_RAISE:
 			err := vm.pop()
 			if !vm.raiseException(err) {
-				return INTERPRET_RUNTIME_ERROR, core.MakeNilValue()
+				return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 			}
 
 		case core.OP_CALL:
@@ -866,7 +866,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			}
 
 			vm.RunTimeError("Superclass must be a class.")
-			return INTERPRET_RUNTIME_ERROR, core.MakeNilValue()
+			return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 
 		case core.OP_GET_SUPER:
 			idx := vm.getCode()[frame.Ip]
@@ -876,7 +876,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			superclass := v.AsClass()
 
 			if !vm.bindMethod(superclass, name) {
-				return INTERPRET_RUNTIME_ERROR, core.MakeNilValue()
+				return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 			}
 
 		case core.OP_SUPER_INVOKE:
@@ -887,7 +887,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			frame.Ip++
 			superclass := vm.pop().AsClass()
 			if !vm.invokeFromClass(superclass, method, int(argCount), false) {
-				return INTERPRET_RUNTIME_ERROR, core.MakeNilValue()
+				return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 			}
 
 		// NJH added:
@@ -901,7 +901,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 			status := vm.importModule(module)
 			if status != INTERPRET_OK {
-				return status, core.MakeNilValue()
+				return status, core.NIL_VALUE
 			}
 
 		case core.OP_STR:
@@ -1062,11 +1062,11 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		if vm.ErrorMsg != "" {
 			if !vm.RaiseExceptionByName("RunTimeError", vm.ErrorMsg) {
-				return INTERPRET_RUNTIME_ERROR, core.MakeNilValue()
+				return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 			}
 		}
 	}
-	//return INTERPRET_RUNTIME_ERROR, core.MakeNilValue()
+	//return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 }
 
 // natively raise an exception given a name:
