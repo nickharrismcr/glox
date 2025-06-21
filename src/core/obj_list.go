@@ -66,7 +66,21 @@ func (o *ListObject) RegisterAllListMethods() {
 			return NIL_VALUE
 		},
 	})
-
+	o.RegisterMethod("find", &BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			if argCount != 1 {
+				vm.RunTimeError("find takes one argument.")
+				return NIL_VALUE
+			}
+			val := vm.Peek(0)
+			for i, item := range o.Items {
+				if ValuesEqual(item, val, true) {
+					return MakeIntValue(i, true)
+				}
+			}
+			return NIL_VALUE
+		},
+	})
 }
 
 func (o *ListObject) Get() []Value {

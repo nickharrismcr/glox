@@ -82,6 +82,27 @@ func (d *DictObject) RegisterAllDictMethods() {
 			return d.Keys()
 		},
 	})
+	d.RegisterMethod("remove", &BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			if argCount != 1 {
+				vm.RunTimeError("Invalid argument count to remove.")
+				return NIL_VALUE
+			}
+			key := vm.Stack(arg_stackptr)
+
+			if key.IsStringObject() {
+				rv, error := d.Get(key.AsString().Get())
+				if error != nil {
+					return NIL_VALUE
+				}
+				delete(d.Items, key.AsString().Get())
+				return rv
+			}
+
+			vm.RunTimeError("Argument to remove must be key.")
+			return NIL_VALUE
+		},
+	})
 
 }
 
