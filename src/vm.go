@@ -1457,7 +1457,7 @@ func (vm *VM) importFunctionFromModule(module string, name string) bool {
 		// import all functions from the module
 		moduleObj := moduleVal.AsModule()
 		for k, v := range moduleObj.Environment.Vars {
-			if v.Type == core.VAL_OBJ && v.Obj.GetType() == core.OBJECT_FUNCTION {
+			if v.Type == core.VAL_OBJ && v.Obj.GetType() == core.OBJECT_CLOSURE {
 				vm.frame().Closure.Function.Environment.SetVar(k, v)
 			}
 		}

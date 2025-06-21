@@ -437,7 +437,6 @@ func (s *Scanner) SkipEOL() bool {
 		prev == TOKEN_MINUS ||
 		prev == TOKEN_PLUS ||
 		prev == TOKEN_SLASH ||
-		prev == TOKEN_STAR ||
 		prev == TOKEN_PERCENT {
 		return true
 	}
