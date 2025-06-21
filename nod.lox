@@ -1,3 +1,24 @@
+class Test {
+    init() {
+        this.a = 1// This is a test class
+    }   
+    update() {
+        this.a = this.a + 1
+    }
+    get() {
+        return this.a
+    }
+}
 
-print range(1,10)
- 
+func main() {
+   t = Test()  
+    c = 0 
+    while (t.get() < 1000000 ) {
+        t.update()
+        c=c+(t.get())
+    }
+    print(c)   
+}
+
+
+main()

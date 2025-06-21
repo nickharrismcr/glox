@@ -83,7 +83,7 @@ stars = make_stars();
 while (!win.should_close()) {
 
     win.begin();
-    win.begin_blend_mode("add");
+    win.begin_blend_mode("BLEND_ADD");
     win.clear(col.r,col.g,col.b,col.a);
     if (!emitters.update() and emitters.queue_length() < 20) {
         queue_random_emitter(width,height,random.integer(50,500));

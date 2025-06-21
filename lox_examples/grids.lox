@@ -165,7 +165,7 @@ while (!win.should_close()) {
 
     win.begin()
     win.clear(50,10,10, 255)
-    win.begin_blend_mode("add") 
+    win.begin_blend_mode("BLEND_ADD") 
     size.update()
     x.update()
     y.update()

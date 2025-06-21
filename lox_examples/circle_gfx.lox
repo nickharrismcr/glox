@@ -125,7 +125,7 @@ while (!win.should_close()) {
     win.clear(10,10,10, 255)
 
     circles.update()
-    win.begin_blend_mode("add")
+    win.begin_blend_mode("BLEND_ADD")
     circles.draw(win)
     win.end_blend_mode()
     win.end()

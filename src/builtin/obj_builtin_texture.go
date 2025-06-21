@@ -77,7 +77,7 @@ func (t *Texture) Animate() {
 type TextureObject struct {
 	core.BuiltInObject
 	Data    Texture
-	Methods map[string]*core.BuiltInObject
+	Methods map[int]*core.BuiltInObject
 }
 
 func MakeTextureObject(image *rl.Image, frames int, startFrame int, endFrame int) *TextureObject {
@@ -123,14 +123,14 @@ func (o *TextureObject) GetType() core.ObjectType {
 	return core.OBJECT_TEXTURE
 }
 
-func (o *TextureObject) GetMethod(name string) *core.BuiltInObject {
-	return o.Methods[name]
+func (o *TextureObject) GetMethod(stringId int) *core.BuiltInObject {
+	return o.Methods[stringId]
 }
 func (o *TextureObject) RegisterMethod(name string, method *core.BuiltInObject) {
 	if o.Methods == nil {
-		o.Methods = make(map[string]*core.BuiltInObject)
+		o.Methods = make(map[int]*core.BuiltInObject)
 	}
-	o.Methods[name] = method
+	o.Methods[core.InternName(name)] = method
 }
 
 func (t *TextureObject) IsBuiltIn() bool {

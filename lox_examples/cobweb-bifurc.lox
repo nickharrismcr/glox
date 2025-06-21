@@ -11,7 +11,7 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
     var r_min = 2.5;
     var r_max = 4.0;
     var r_steps = 1000;
-    var iters = 200;
+    var iters = 500;
     var keep = 50;
 
     // We'll accumulate bifurcation points as we go

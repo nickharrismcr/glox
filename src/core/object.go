@@ -41,10 +41,10 @@ type Iterator interface {
 }
 
 type HasMethods interface {
-	GetMethod(string) *BuiltInObject
+	GetMethod(int) *BuiltInObject
 }
 type HasConstants interface {
-	GetConstant(string) Value
+	GetConstant(int) Value
 }
 
 type VMContext interface {

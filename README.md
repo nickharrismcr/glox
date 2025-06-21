@@ -69,7 +69,7 @@ while (!win.should_close()) {
 
     win.begin()
     win.clear(10,10,10, 255) 
-    win.begin_blend_mode("add")
+    win.begin_blend_mode("BLEND_ADD")
     win.circle_fill(100,100, 50, 255, 0, 0, 255 ) // Draw a red circle for testing
     win.end_blend_mode()
     win.end()

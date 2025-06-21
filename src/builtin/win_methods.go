@@ -7,7 +7,7 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-func RegisterAllGraphicsMethods(o *GraphicsObject) {
+func RegisterAllWindowMethods(o *WindowObject) {
 	o.RegisterMethod("init", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			rl.SetTraceLogLevel(rl.LogNone)
@@ -263,7 +263,7 @@ func RegisterAllGraphicsMethods(o *GraphicsObject) {
 
 }
 
-func RegisterAllGraphicsConstants(o *GraphicsObject) {
+func RegisterAllWindowConstants(o *WindowObject) {
 	o.RegisterConstant("BLEND_ADD", core.MakeIntValue(int(rl.BlendAdditive), true))
 	o.RegisterConstant("BLEND_ALPHA", core.MakeIntValue(int(rl.BlendAlpha), true))
 	o.RegisterConstant("BLEND_MULTIPLY", core.MakeIntValue(int(rl.BlendMultiplied), true))

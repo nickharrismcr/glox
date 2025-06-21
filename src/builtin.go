@@ -36,7 +36,7 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("float_array", builtin.FloatArrayBuiltin)
 	vm.defineBuiltIn("encode_rgb", encodeRGBABuiltIn)
 	vm.defineBuiltIn("decode_rgb", decodeRGBABuiltIn)
-	vm.defineBuiltIn("window", builtin.GraphicsBuiltIn)
+	vm.defineBuiltIn("window", builtin.WindowBuiltIn)
 	vm.defineBuiltIn("texture", builtin.TextureBuiltIn)
 	vm.defineBuiltIn("image", builtin.ImageBuiltIn)
 	vm.defineBuiltIn("sleep", sleepBuiltIn)

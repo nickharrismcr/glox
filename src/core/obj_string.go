@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+var REPLACE = InternName("replace")
+var JOIN = InternName("join")
+
 type StringObject struct {
 	Chars      *string
 	InternedId int
@@ -28,11 +31,11 @@ func (StringObject) GetType() ObjectType {
 	return OBJECT_STRING
 }
 
-func (s StringObject) GetMethod(name string) *BuiltInObject {
+func (s StringObject) GetMethod(stringId int) *BuiltInObject {
 
-	switch name {
+	switch stringId {
 
-	case "replace":
+	case REPLACE:
 		return &BuiltInObject{
 			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 2 {
@@ -44,7 +47,7 @@ func (s StringObject) GetMethod(name string) *BuiltInObject {
 				return s.Replace(fromVal, toVal)
 			},
 		}
-	case "join":
+	case JOIN:
 		return &BuiltInObject{
 			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 1 || !vm.Peek(0).IsListObject() {
