@@ -229,7 +229,7 @@ func (p *Parser) check(tt TokenType) bool {
 
 func (p *Parser) checkNext(tt TokenType) bool {
 
-	return p.scn.Tokens.At(p.scn.TokenIdx+1).Tokentype == tt
+	return p.scn.Tokens.At(p.scn.TokenIdx).Tokentype == tt
 }
 
 func (p *Parser) advance() {
@@ -531,26 +531,22 @@ func (p *Parser) expressionStatement() {
 	//handle implicit declarations
 	if p.check(TOKEN_IDENTIFIER) && p.checkNext(TOKEN_EQUAL) {
 		name := p.current
-		p.consume(TOKEN_IDENTIFIER, "")
-		p.consume(TOKEN_EQUAL, "")
 		l := name.Lexeme()
 		if p.currentCompiler.scopeDepth > 0 {
 			if p.resolveLocal(p.currentCompiler, name) == -1 &&
 				p.resolveUpvalue(p.currentCompiler, name) == -1 &&
 				!p.checkGlobals(l) {
-				p.addLocal(name)
-				p.currentCompiler.locals[p.currentCompiler.localCount-1].depth = p.currentCompiler.scopeDepth
-				p.expression()
-				p.consume(TOKEN_SEMICOLON, "Expect ';' after expression.")
+				p.varDeclaration(false)
+				return
 			}
+
 		} else {
-			if _, ok := p.globals[l]; !ok {
+			if !p.checkGlobals(l) {
 				p.globals[l] = true
-				p.expression()
-				p.emitBytes(core.OP_DEFINE_GLOBAL, p.identifierConstant(name))
+				p.varDeclaration(false)
+				return
 			}
 		}
-		return
 	}
 
 	p.expression()
@@ -1066,6 +1062,7 @@ func (p *Parser) defineVariable(global uint8) {
 		p.markInitialised()
 		return
 	}
+
 	p.emitBytes(core.OP_DEFINE_GLOBAL, global)
 }
 
