@@ -7,7 +7,7 @@ import math;
 class Particle {
     init(pos,init_function, update_function) {
         this.pos = pos; // Position of the particle
-        this.dpos = math.Vector2D(0, 0); // Change in position
+        this.dpos = vec2(0, 0); // Change in position
         init_function(this);
         this.function = update_function;
         this.age = 0;
@@ -46,7 +46,7 @@ class Emitter {
         }
     }
     emit_particle() {
-        var particle = Particle(this.pos.copy(),this.init_function, this.update_function);
+        var particle = Particle(vec2(this.pos.x, this.pos.y),this.init_function, this.update_function);
         this.particles.append(particle);
     }
     update() {

@@ -1,37 +1,21 @@
 
+// TODO move all vector stuff into native  
 
-class Vector2D {
-
-    init(x, y) {
-        this.x = x;
-        this.y = y;
-    }
-    add(v2d) {
-      this.x = this.x + v2d.x
-      this.y = this.y + v2d.y 
-      return this
-    }
-    scale(scalar) {
-      this.x = this.x * scalar;
-      this.y = this.y * scalar;
-    }
- 
-    rotate(angle) {
-        var cosA = cos(angle);
-        var sinA = sin(angle);
-        var xNew = this.x * cosA - this.y * sinA;
-        var yNew = this.x * sinA + this.y * cosA;
-        this.x = xNew;
-        this.y = yNew;
-    }
-    copy() {
-        return Vector2D(this.x, this.y);
-    }
-    toString() {
-        return "Vector2D(" + str(this.x) + ", " + str(this.y) + ")";
-    } 
+func rotate2d(v2, angle) {
+    cosA = cos(angle);
+    sinA = sin(angle);
+    xNew = v2.x * cosA - v2.y * sinA;
+    yNew = v2.x * sinA + v2.y * cosA;
+    return vec2(xNew, yNew)
+}
+func add2d(v1, v2) {
+    return vec2(v1.x + v2.x, v1.y + v2.y);
+}
+func scale2d(v2, scalar) {
+    return vec2(v2.x * scalar, v2.y * scalar);
 }
 
+ 
 
 
 func floor(n) {

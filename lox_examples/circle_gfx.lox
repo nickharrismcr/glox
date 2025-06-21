@@ -8,7 +8,7 @@ const TRAIL=50
 const CIRCLES=100
 
 func random_vec2D (minX, maxX, minY, maxY) {
-    return math.Vector2D(random.integer(minX, maxX), random.integer(minY, maxY))
+    return vec2(random.integer(minX, maxX), random.integer(minY, maxY))
 }
 
 // A simple buffer that rotates its contents when full
@@ -55,7 +55,8 @@ class Circle {
     }
     move(){
         this.hist.append(this.copy()); 
-        this.pos.add(this.dpos)
+        this.pos.x= this.pos.x + this.dpos.x
+        this.pos.y= this.pos.y + this.dpos.y
         if (this.pos.x < 0 or this.pos.x > this.width) {
             this.dpos.x = -this.dpos.x
         }
@@ -65,17 +66,18 @@ class Circle {
     }
     draw(g) {
         c=this.col
-        g.circle_fill(this.pos.x, this.pos.y, this.s,c.r,c.g,c.b,c.a)
+ 
+        g.circle_fill(this.pos.x, this.pos.y, this.s,c)
         c=1.0
         foreach (var l in this.hist.data[1:]) {
             c = c + 1.0
             a = 255.0 * (c / (2*len(this.hist.data))) ; 
             s = l.s * (c / len(this.hist.data))
-            g.circle_fill(l.pos.x, l.pos.y, s,l.col.r,l.col.g,l.col.b,a)
+            g.circle_fill(l.pos.x, l.pos.y, s,l.col)
         }   
     } 
     copy() {
-        return Circle(this.pos.copy(),this.s, this.col,this.width,this.height)
+        return Circle(vec2(this.pos.x, this.pos.y),this.s, this.col,this.width,this.height)
     }
 }
 
@@ -122,7 +124,7 @@ for (var i = 0; i < CIRCLES; i = i + 1) {
 while (!win.should_close()) {
 
     win.begin()
-    win.clear(10,10,10, 255)
+    win.clear(vec4(0, 0, 0, 255)) // Clear the window with black
 
     circles.update()
     win.begin_blend_mode("BLEND_ADD")

@@ -28,7 +28,7 @@ while (!win.should_close()) {
    
     calc(array_rgb,width,height,max_iteration,scale,xOffset,yOffset);
     win.begin();
-    win.clear(0,0,0);
+    win.clear(colour.BLACK);
     win.draw_array(array_rgb);
     win.end();
     scale=scale*0.9;

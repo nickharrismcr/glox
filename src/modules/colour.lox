@@ -1,58 +1,30 @@
  
 import random;
 
-class Colour {
-    init(r,g,b,a){
-        this.r=r;
-        this.g=g;
-        this.b=b;
-        this.a=a;
-    }
-    scale(scalar) {
-        this.r = int(this.r * scalar);
-        this.g = int(this.g * scalar);
-        this.b = int(this.b * scalar);
-    }
-    copy() {
-        return Colour(this.r, this.g, this.b, this.a);
-    }
-    encode() {
-        if (this.r < 0 ) {
-            this.r = 0;
-        }           
-        if (this.g < 0 ) {
-            this.g = 0;
-        }
-        if (this.b < 0 ) {
-            this.b = 0;
-        }
-        if (this.r > 255 ) {
-            this.r = 255;
-        }   
-        if (this.g > 255 ) {
-            this.g = 255;
-        }   
-        if (this.b > 255 ) {
-            this.b = 255;
-        }
-        return encode_rgb(int(this.r), int( this.g), int(this.b));
-    }
-}
+func scale_colour(colour, scalar) {
+    colour.x = int(colour.x * scalar);
+    colour.y = int(colour.y * scalar);
+    colour.z = int(colour.z * scalar);
+    colour.w = int(colour.w * scalar);
+    return colour;
+}   
+ 
+ 
 
  
 func ColourFromEncoded(value) {
     rgb= decode_rgb(value);
-    return Colour(rgb[0], rgb[1], rgb[2], 255);
+    return vec4(rgb[0], rgb[1], rgb[2], 255);
 }
 
-const RED     = Colour(255, 0, 0, 255);
-const GREEN   = Colour(0, 255, 0, 255);
-const BLUE    = Colour(0, 0, 255, 255);
-const YELLOW  = Colour(255, 255, 0, 255);
-const CYAN    = Colour(0, 255, 255, 255);
-const MAGENTA = Colour(255, 0, 255, 255);
-const BLACK   = Colour(0, 0, 0, 255);
-const WHITE   = Colour(255, 255, 255, 255);
+const RED     = vec4(255, 0, 0, 255);
+const GREEN   = vec4(0, 255, 0, 255);
+const BLUE    = vec4(0, 0, 255, 255);
+const YELLOW  = vec4(255, 255, 0, 255);
+const CYAN    = vec4(0, 255, 255, 255);
+const MAGENTA = vec4(255, 0, 255, 255);
+const BLACK   = vec4(0, 0, 0, 255);
+const WHITE   = vec4(255, 255, 255, 255);
 
 
 func primary_colours() {
@@ -73,6 +45,6 @@ func random_rgb(){
     var g=random.integer(0,255);
     var b=random.integer(0,255);
     var r=random.integer(0,255);
-    return Colour(r,g,b,255);
+    return vec4(r,g,b,255);
 }
 

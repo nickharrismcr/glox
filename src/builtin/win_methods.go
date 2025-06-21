@@ -46,37 +46,47 @@ func RegisterAllWindowMethods(o *WindowObject) {
 	})
 	o.RegisterMethod("clear", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-			rval := vm.Stack(arg_stackptr)
-			gval := vm.Stack(arg_stackptr + 1)
-			bval := vm.Stack(arg_stackptr + 2)
-			aval := vm.Stack(arg_stackptr + 3)
-			r := rval.AsInt()
-			g := gval.AsInt()
-			b := bval.AsInt()
-			a := aval.AsInt()
+			v4val := vm.Stack(arg_stackptr)
+			if v4val.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vec4 for clear color")
+				return core.NIL_VALUE
+			}
+			v4obj := v4val.Obj.(*core.Vec4Object)
+			r := v4obj.X
+			g := v4obj.Y
+			b := v4obj.Z
+			a := v4obj.W
 			rl.ClearBackground(rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
 			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("line", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-			x1val := vm.Stack(arg_stackptr)
-			y1val := vm.Stack(arg_stackptr + 1)
-			x2val := vm.Stack(arg_stackptr + 2)
-			y2val := vm.Stack(arg_stackptr + 3)
-			rval := vm.Stack(arg_stackptr + 4)
-			gval := vm.Stack(arg_stackptr + 5)
-			bval := vm.Stack(arg_stackptr + 6)
-			aval := vm.Stack(arg_stackptr + 7)
+			l1 := vm.Stack(arg_stackptr)
+			if l1.Type != core.VAL_VEC2 {
+				vm.RunTimeError("Expected Vec2 for line start position")
+				return core.NIL_VALUE
+			}
+			l2 := vm.Stack(arg_stackptr + 1)
+			if l2.Type != core.VAL_VEC2 {
+				vm.RunTimeError("Expected Vec2 for line end position")
+				return core.NIL_VALUE
+			}
+			colVal := vm.Stack(arg_stackptr + 2)
+			if colVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vec4 for line color")
+				return core.NIL_VALUE
+			}
+			v4obj := colVal.Obj.(*core.Vec4Object)
+			r := int32(v4obj.X)
+			g := int32(v4obj.Y)
+			b := int32(v4obj.Z)
+			a := int32(v4obj.W)
 
-			x1 := int32(x1val.AsInt())
-			y1 := int32(y1val.AsInt())
-			x2 := int32(x2val.AsInt())
-			y2 := int32(y2val.AsInt())
-			r := int32(rval.AsInt())
-			g := int32(gval.AsInt())
-			b := int32(bval.AsInt())
-			a := int32(aval.AsInt())
+			x1 := int32(l1.AsVec2().X)
+			y1 := int32(l1.AsVec2().Y)
+			x2 := int32(l2.AsVec2().X)
+			y2 := int32(l2.AsVec2().Y)
 
 			rl.DrawLine(x1, y1, x2, y2, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
 			return core.NIL_VALUE
@@ -88,19 +98,21 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			yval := vm.Stack(arg_stackptr + 1)
 			wval := vm.Stack(arg_stackptr + 2)
 			hval := vm.Stack(arg_stackptr + 3)
-			rval := vm.Stack(arg_stackptr + 4)
-			gval := vm.Stack(arg_stackptr + 5)
-			bval := vm.Stack(arg_stackptr + 6)
-			aval := vm.Stack(arg_stackptr + 7)
+			colVal := vm.Stack(arg_stackptr + 4)
+			if colVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vec4 for rectangle color")
+				return core.NIL_VALUE
+			}
+			v4obj := colVal.Obj.(*core.Vec4Object)
+			r := int32(v4obj.X)
+			g := int32(v4obj.Y)
+			b := int32(v4obj.Z)
+			a := int32(v4obj.W)
 
 			x := int32(xval.AsInt())
 			y := int32(yval.AsInt())
 			w := int32(wval.AsInt())
 			h := int32(hval.AsInt())
-			r := int32(rval.AsInt())
-			g := int32(gval.AsInt())
-			b := int32(bval.AsInt())
-			a := int32(aval.AsInt())
 
 			rl.DrawRectangle(x, y, w, h, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
 			return core.NIL_VALUE
@@ -108,43 +120,52 @@ func RegisterAllWindowMethods(o *WindowObject) {
 	})
 	o.RegisterMethod("circle_fill", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-			xval := vm.Stack(arg_stackptr)
-			yval := vm.Stack(arg_stackptr + 1)
-			radVal := vm.Stack(arg_stackptr + 2)
-			rval := vm.Stack(arg_stackptr + 3)
-			gval := vm.Stack(arg_stackptr + 4)
-			bval := vm.Stack(arg_stackptr + 5)
-			aval := vm.Stack(arg_stackptr + 6)
+			pval := vm.Stack(arg_stackptr)
+			if pval.Type != core.VAL_VEC2 {
+				vm.RunTimeError("Expected Vec2 for circle position")
+				return core.NIL_VALUE
+			}
+			radVal := vm.Stack(arg_stackptr + 1)
+			colVal := vm.Stack(arg_stackptr + 2)
+			if colVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vec4 for circle color")
+				return core.NIL_VALUE
+			}
+			v4obj := colVal.Obj.(*core.Vec4Object)
+			r := int32(v4obj.X)
+			g := int32(v4obj.Y)
+			b := int32(v4obj.Z)
+			a := int32(v4obj.W)
 
-			x := int32(xval.AsInt())
-			y := int32(yval.AsInt())
+			pobj := pval.Obj.(*core.Vec2Object)
+			xval := pobj.X
+			yval := pobj.Y
+
 			rad := float32(radVal.AsInt())
-			r := int32(rval.AsInt())
-			g := int32(gval.AsInt())
-			b := int32(bval.AsInt())
-			a := int32(aval.AsInt())
 
-			rl.DrawCircle(x, y, rad, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
+			rl.DrawCircle(int32(xval), int32(yval), rad, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
 			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("pixel", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-			xval := vm.Stack(arg_stackptr)
-			yval := vm.Stack(arg_stackptr + 1)
-			rval := vm.Stack(arg_stackptr + 2)
-			gval := vm.Stack(arg_stackptr + 3)
-			bval := vm.Stack(arg_stackptr + 4)
-			aval := vm.Stack(arg_stackptr + 5)
+			v2val := vm.Stack(arg_stackptr)
+			colVal := vm.Stack(arg_stackptr + 1)
+			if colVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vec4 for rectangle color")
+				return core.NIL_VALUE
+			}
+			v4obj := colVal.Obj.(*core.Vec4Object)
+			r := int32(v4obj.X)
+			g := int32(v4obj.Y)
+			b := int32(v4obj.Z)
+			a := int32(v4obj.W)
 
-			x := int32(xval.AsInt())
-			y := int32(yval.AsInt())
-			r := int32(rval.AsInt())
-			g := int32(gval.AsInt())
-			b := int32(bval.AsInt())
-			a := int32(aval.AsInt())
+			v2o := v2val.Obj.(*core.Vec2Object)
+			xval := v2o.X
+			yval := v2o.Y
 
-			rl.DrawPixel(x, y, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
+			rl.DrawPixel(int32(xval), int32(yval), rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
 			return core.NIL_VALUE
 		},
 	})
@@ -154,18 +175,20 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			xval := vm.Stack(arg_stackptr)
 			yval := vm.Stack(arg_stackptr + 1)
 			radVal := vm.Stack(arg_stackptr + 2)
-			rval := vm.Stack(arg_stackptr + 3)
-			gval := vm.Stack(arg_stackptr + 4)
-			bval := vm.Stack(arg_stackptr + 5)
-			aval := vm.Stack(arg_stackptr + 6)
+			colVal := vm.Stack(arg_stackptr + 3)
+			if colVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vec4 for rectangle color")
+				return core.NIL_VALUE
+			}
+			v4obj := colVal.Obj.(*core.Vec4Object)
+			r := int32(v4obj.X)
+			g := int32(v4obj.Y)
+			b := int32(v4obj.Z)
+			a := int32(v4obj.W)
 
 			x := int32(xval.AsInt())
 			y := int32(yval.AsInt())
 			rad := float32(radVal.AsInt())
-			r := int32(rval.AsInt())
-			g := int32(gval.AsInt())
-			b := int32(bval.AsInt())
-			a := int32(aval.AsInt())
 
 			rl.DrawCircleLines(x, y, rad, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
 			return core.NIL_VALUE
@@ -218,11 +241,14 @@ func RegisterAllWindowMethods(o *WindowObject) {
 	o.RegisterMethod("draw_texture", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			textureVal := vm.Stack(arg_stackptr)
-			xval := vm.Stack(arg_stackptr + 1)
-			yval := vm.Stack(arg_stackptr + 2)
-
-			x := int32(xval.AsInt())
-			y := int32(yval.AsInt())
+			v2val := vm.Stack(arg_stackptr + 1)
+			if v2val.Type != core.VAL_VEC2 {
+				vm.RunTimeError("Expected Vec2 for texture position")
+				return core.NIL_VALUE
+			}
+			v2obj := v2val.Obj.(*core.Vec2Object)
+			x := v2obj.X
+			y := v2obj.Y
 
 			to := textureVal.Obj.(*TextureObject)
 			rect := to.Data.GetFrameRect()
@@ -234,11 +260,14 @@ func RegisterAllWindowMethods(o *WindowObject) {
 	o.RegisterMethod("draw_render_texture", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			renderTextureVal := vm.Stack(arg_stackptr)
-			xval := vm.Stack(arg_stackptr + 1)
-			yval := vm.Stack(arg_stackptr + 2)
-
-			x := int32(xval.AsInt())
-			y := int32(yval.AsInt())
+			v2val := vm.Stack(arg_stackptr + 1)
+			if v2val.Type != core.VAL_VEC2 {
+				vm.RunTimeError("Expected Vec2 for render texture position")
+				return core.NIL_VALUE
+			}
+			v2obj := v2val.Obj.(*core.Vec2Object)
+			x := v2obj.X
+			y := v2obj.Y
 
 			to := renderTextureVal.Obj.(*RenderTextureObject)
 			target := to.Data.RenderTexture.Texture
@@ -250,15 +279,20 @@ func RegisterAllWindowMethods(o *WindowObject) {
 	o.RegisterMethod("draw_texture_rect", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			textureVal := vm.Stack(arg_stackptr)
-			xval := vm.Stack(arg_stackptr + 1)
-			yval := vm.Stack(arg_stackptr + 2)
-			rectx0Val := vm.Stack(arg_stackptr + 3)
-			recty0Val := vm.Stack(arg_stackptr + 4)
-			rectWVal := vm.Stack(arg_stackptr + 5)
-			rectHVal := vm.Stack(arg_stackptr + 6)
+			v2val := vm.Stack(arg_stackptr + 1)
+			if v2val.Type != core.VAL_VEC2 {
+				vm.RunTimeError("Expected Vec2 for texture position")
+				return core.NIL_VALUE
+			}
+			v2obj := v2val.Obj.(*core.Vec2Object)
+			x := v2obj.X
+			y := v2obj.Y
 
-			x := int32(xval.AsInt())
-			y := int32(yval.AsInt())
+			rectx0Val := vm.Stack(arg_stackptr + 2)
+			recty0Val := vm.Stack(arg_stackptr + 3)
+			rectWVal := vm.Stack(arg_stackptr + 4)
+			rectHVal := vm.Stack(arg_stackptr + 5)
+
 			rectX0 := int32(rectx0Val.AsInt())
 			rectY0 := int32(recty0Val.AsInt())
 			rectW := int32(rectWVal.AsInt())

@@ -1,24 +1,84 @@
-class Test {
-    init() {
-        this.a = 1// This is a test class
-    }   
-    update() {
-        this.a = this.a + 1
-    }
-    get() {
-        return this.a
+// Cobweb plot and live bifurcation diagram of the logistic map using a graphics API
+import colour 
+
+fun logistic(r, x) {
+    return r * x * (1 - x);
+}
+
+fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
+    var win = window(1000, 1000);
+    win.init();
+
+    var r_min = 2.5;
+    var r_max = 4.0;
+    var r_steps = 1000;
+    var iters = 500;
+    var keep = 50;
+
+    // We'll accumulate bifurcation points as we go
+    var bif_points = [];
+
+    while (!win.should_close()) {
+       
+        // Compute bifurcation points for this rr
+        var x = 0.5;
+        for (var j = 0; j < iters - keep; j = j + 1) {
+            x = logistic(rr, x);
+        }
+        for (var j = 0; j < keep; j = j + 1) {
+            x = logistic(rr, x);
+            bif_points.append([rr, x]);
+        }
+
+        win.begin();
+ 
+        win.clear(colour.BLACK); // Clear the window with black
+        col=vec4(0,200,255,255);
+
+        // Draw bifurcation diagram (left half)
+        for (var i = 0; i < len(bif_points); i = i + 1) {
+            var r = bif_points[i][0];
+            var bx = bif_points[i][1];
+            // Map r in [r_min, r_max] to [0, 500]
+            var px = 500 * (r - r_min) / (r_max - r_min);
+            // Map x in [0,1] to [1000,0]
+            var py = 1000 - 1000 * bx;
+            win.pixel(vec2(px,py), col);
+        }
+
+        // Draw y = x line (right half)
+        win.line(vec2(500, 1000), vec2(1000, 500), colour.WHITE);
+
+        // Draw logistic curve (right half)
+        var last_x = 0;
+        var last_y = logistic(rr, 0);
+        for (var i = 1; i <= 100; i = i + 1) {
+            var t = i / 100.0;
+            var y = logistic(rr, t);
+            win.line(vec2(500 + 500 * last_x, 1000 - 500 * last_y), vec2(500 + 500 * t, 1000 - 500 * y), colour.WHITE);
+            last_x = t;
+            last_y = y;
+        }
+
+        // Draw cobweb (right half)
+        x = x0;
+        var prev_y = 0;
+        for (var i = 0; i < steps; i = i + 1) {
+            var y = logistic(rr, x);
+            // Vertical line
+            win.line(vec2(500 + 500 * x, 1000 - 500 * prev_y), vec2(500 + 500 * x, 1000 - 500 * y), colour.RED);
+            // Horizontal line
+            win.line(vec2(500 + 500 * x, 1000 - 500 * y), vec2(500 + 500 * y, 1000 - 500 * y), colour.RED);
+            prev_y = y;
+            x = y;
+        }
+
+        win.end();
+        if ( rr < r_max ) {
+            rr = rr + 0.003; // Increment rr for the next frame
+        }
     }
 }
 
-func main() {
-   t = Test()  
-    c = 0 
-    while (t.get() < 1000000 ) {
-        t.update()
-        c=c+(t.get())
-    }
-    print(c)   
-}
-
-
-main()
+// Example usage:
+draw_cobweb_and_live_bifurcation(2.5, 0.2, 150);

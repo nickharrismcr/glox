@@ -41,8 +41,17 @@ func Immutable(v Value) Value {
 		return MakeFloatValue(v.Float, true)
 	case VAL_BOOL:
 		return MakeBooleanValue(v.Bool, true)
-	case VAL_OBJ, VAL_VEC2, VAL_VEC3, VAL_VEC4:
+	case VAL_OBJ:
 		return MakeObjectValue(v.Obj, true)
+	case VAL_VEC2:
+		vec2 := v.Obj.(*Vec2Object)
+		return MakeVec2Value(vec2.X, vec2.Y, true)
+	case VAL_VEC3:
+		vec3 := v.Obj.(*Vec3Object)
+		return MakeVec3Value(vec3.X, vec3.Y, vec3.Z, true)
+	case VAL_VEC4:
+		vec4 := v.Obj.(*Vec4Object)
+		return MakeVec4Value(vec4.X, vec4.Y, vec4.Z, vec4.W, true)
 
 	}
 	return NIL_VALUE
@@ -56,8 +65,17 @@ func Mutable(v Value) Value {
 		return MakeFloatValue(v.Float, false)
 	case VAL_BOOL:
 		return MakeBooleanValue(v.Bool, false)
-	case VAL_OBJ, VAL_VEC2, VAL_VEC3, VAL_VEC4:
+	case VAL_OBJ:
 		return MakeObjectValue(v.Obj, false)
+	case VAL_VEC2:
+		vec2 := v.Obj.(*Vec2Object)
+		return MakeVec2Value(vec2.X, vec2.Y, false)
+	case VAL_VEC3:
+		vec3 := v.Obj.(*Vec3Object)
+		return MakeVec3Value(vec3.X, vec3.Y, vec3.Z, false)
+	case VAL_VEC4:
+		vec4 := v.Obj.(*Vec4Object)
+		return MakeVec4Value(vec4.X, vec4.Y, vec4.Z, vec4.W, false)
 	}
 	return NIL_VALUE
 }
@@ -256,6 +274,15 @@ func (v Value) String() string {
 		return "nil"
 	case VAL_OBJ:
 		return v.Obj.String()
+	case VAL_VEC2:
+		vec2 := v.Obj.(*Vec2Object)
+		return fmt.Sprintf("vec2(%g, %g)", vec2.X, vec2.Y)
+	case VAL_VEC3:
+		vec3 := v.Obj.(*Vec3Object)
+		return fmt.Sprintf("vec3(%g, %g, %g)", vec3.X, vec3.Y, vec3.Z)
+	case VAL_VEC4:
+		vec4 := v.Obj.(*Vec4Object)
+		return fmt.Sprintf("vec4(%g, %g, %g, %g)", vec4.X, vec4.Y, vec4.Z, vec4.W)
 	default:
 		return "<unknown>"
 	}

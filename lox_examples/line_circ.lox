@@ -9,7 +9,7 @@ const LINES=20
 const CIRCLES=20
 
 func random_vec2D (minX, maxX, minY, maxY) {
-    return math.Vector2D(random.integer(minX, maxX), random.integer(minY, maxY))
+    return vec2(random.integer(minX, maxX), random.integer(minY, maxY))
 }
 
 func rand_not_zero(min, max) {
@@ -60,7 +60,7 @@ class ColourShift {
         this.a.update()
     }
     get() {
-        return colour.Colour(this.r.get(), this.g.get(), this.b.get(), this.a.get())
+        return vec4(this.r.get(), this.g.get(), this.b.get(), this.a.get())
     }
 
 }
@@ -139,12 +139,12 @@ class Line {
         
     }
     draw(g) {
-        g.line(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a)
+        g.line(vec2(this.x1, this.y1), vec2(this.x2, this.y2), vec4(this.r, this.g, this.b, this.a))
         c=1.0
         foreach (var l in this.hist.data[1:]) {
             c = c + 1.0
             a = 255.0 * (c / (1.1*len(this.hist.data))) ; 
-            g.line(l.x1, l.y1, l.x2, l.y2, l.r, l.g, l.b, a)
+            g.line(vec2(l.x1, l.y1), vec2(l.x2, l.y2), vec4(l.r, l.g, l.b, a))
         }   
     }
 
@@ -188,7 +188,7 @@ class Circle {
         this.col = col
     }
     copy() {
-        return Circle(this.pos.copy(), this.s, this.col)
+        return Circle(vec2(this.pos.x, this.pos.y), this.s, vec4(this.col.x, this.col.y, this.col.z, this.col.w))
     }
 }
 
@@ -203,26 +203,28 @@ class Circler {
         this.shifter=   ColourShift()
     }
     move(){
+        pos=this.circle.pos
         this.hist.append(this.circle.copy()); 
-        this.circle.pos.add(this.dpos)
-        if (this.circle.pos.x < 0 or this.circle.pos.x > this.width) {
+        pos=math.add2d(pos,this.dpos)
+        if (pos.x < 0 or pos.x > this.width) {
             this.dpos.x = -this.dpos.x
         }
-        if (this.circle.pos.y < 0 or this.circle.pos.y > this.height) {
+        if (pos.y < 0 or pos.y > this.height) {
             this.dpos.y = -this.dpos.y
         }
         this.shifter.update()
         this.circle.col = this.shifter.get()
+        this.circle.pos = pos
     }
     draw(g) {
         c=this.circle.col
-        g.circle(this.circle.pos.x, this.circle.pos.y, this.circle.s,c.r,c.g,c.b,c.a)
+        g.circle(this.circle.pos.x, this.circle.pos.y, this.circle.s,c)
         c=1.0
         foreach (var l in this.hist.data[1:]) {
             c = c + 1.0
             a = 255.0 * (c / (2*len(this.hist.data))) ; 
             s = l.s * (c / len(this.hist.data))
-            g.circle(l.pos.x, l.pos.y, s,l.col.r,l.col.g,l.col.b,a)
+            g.circle(l.pos, s,l.col.r,colour.WHITE)  
         }   
     } 
     
@@ -281,14 +283,14 @@ for (var i = 0; i < CIRCLES; i = i + 1) {
 while (!win.should_close()) {
 
     win.begin()
-    win.clear(60,10,10, 255)
-  
+    win.clear(vec4(60,10,10, 255))
+
     lines.update()
-    win.begin_blend_mode("BLEND_MULTIPLY")
+    win.begin_blend_mode(win.BLEND_MULTIPLY)
     lines.draw(win)
     win.end_blend_mode()
     circles.update()
-    win.begin_blend_mode("BLEND_ADD")
+    win.begin_blend_mode(win.BLEND_ADD)
     circles.draw(win)
     win.end_blend_mode()
     win.end()

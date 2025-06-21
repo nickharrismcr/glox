@@ -1,4 +1,5 @@
 // Cobweb plot and live bifurcation diagram of the logistic map using a graphics API
+import colour 
 
 fun logistic(r, x) {
     return r * x * (1 - x);
@@ -11,7 +12,7 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
     var r_min = 2.5;
     var r_max = 4.0;
     var r_steps = 1000;
-    var iters = 500;
+    var iters = 1500;
     var keep = 50;
 
     // We'll accumulate bifurcation points as we go
@@ -30,7 +31,9 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
         }
 
         win.begin();
-        win.clear(0, 0, 0);
+ 
+        win.clear(colour.BLACK); // Clear the window with black
+        col=vec4(0,200,255,255);
 
         // Draw bifurcation diagram (left half)
         for (var i = 0; i < len(bif_points); i = i + 1) {
@@ -40,11 +43,11 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
             var px = 500 * (r - r_min) / (r_max - r_min);
             // Map x in [0,1] to [1000,0]
             var py = 1000 - 1000 * bx;
-            win.pixel(px, py, 0, 200, 255, 180);
+            win.pixel(vec2(px,py), col);
         }
 
         // Draw y = x line (right half)
-        win.line(500, 1000, 1000, 500, 255, 255, 255, 255);
+        win.line(vec2(500, 1000), vec2(1000, 500), colour.WHITE);
 
         // Draw logistic curve (right half)
         var last_x = 0;
@@ -52,7 +55,7 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
         for (var i = 1; i <= 100; i = i + 1) {
             var t = i / 100.0;
             var y = logistic(rr, t);
-            win.line(500 + 500 * last_x, 1000 - 500 * last_y, 500 + 500 * t, 1000 - 500 * y, 255, 255, 255, 255);
+            win.line(vec2(500 + 500 * last_x, 1000 - 500 * last_y), vec2(500 + 500 * t, 1000 - 500 * y), colour.WHITE);
             last_x = t;
             last_y = y;
         }
@@ -63,9 +66,9 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
         for (var i = 0; i < steps; i = i + 1) {
             var y = logistic(rr, x);
             // Vertical line
-            win.line(500 + 500 * x, 1000 - 500 * prev_y, 500 + 500 * x, 1000 - 500 * y, 255, 0, 0, 255);
+            win.line(vec2(500 + 500 * x, 1000 - 500 * prev_y), vec2(500 + 500 * x, 1000 - 500 * y), colour.RED);
             // Horizontal line
-            win.line(500 + 500 * x, 1000 - 500 * y, 500 + 500 * y, 1000 - 500 * y, 255, 0, 0, 255);
+            win.line(vec2(500 + 500 * x, 1000 - 500 * y), vec2(500 + 500 * y, 1000 - 500 * y), colour.RED);
             prev_y = y;
             x = y;
         }

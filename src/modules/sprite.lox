@@ -1,16 +1,15 @@
 
 class Sprite {
 
-    init(x, y, img, frames, start_frame, end_frame) { 
-        this.x = x
-        this.y = y
+    init(pos, img, frames, start_frame, end_frame) { 
+        this.pos = pos
         this.width = img.width()
         this.height = img.height() 
         this.texture = texture(img,frames,start_frame,end_frame)
     }
-    move(x,y) {
-        this.x = x
-        this.y = y
+    move(newpos) {
+        this.pos.x = newpos.x
+        this.pos.y = newpos.y
     }
     animate(ticksperframe) {
         this.texture.animate(ticksperframe)

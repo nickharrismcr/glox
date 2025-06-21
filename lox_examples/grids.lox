@@ -66,7 +66,7 @@ class ColourShift {
        
     }
     get() {
-        return colour.Colour(this.r.get(), this.g.get(), this.b.get(), 255)
+        return vec4(this.r.get(), this.g.get(), this.b.get(), 255)
     }
 
 }
@@ -89,7 +89,7 @@ class Grid {
         this.speed = speed
     }
     copy() {
-        return Grid(this.cx, this.cy, this.size, this.cells , this.angle, this.col.copy(), this.speed)
+        return Grid(this.cx, this.cy, this.size, this.cells , this.angle, vec4(this.col.x, this.col.y, this.col.z, this.col.w), this.speed)
     }
     update(x,y,size) {
         
@@ -118,7 +118,7 @@ class Grid {
             var ry0 = this.cy + x0 * sin(a) + y0 * cos(a);
             var rx1 = this.cx + x1 * cos(a) - y1 * sin(a);
             var ry1 = this.cy + x1 * sin(a) + y1 * cos(a);
-            win.line(rx0, ry0, rx1, ry1,this.col.r, this.col.g, this.col.b, alpha);
+            win.line(vec2(rx0, ry0), vec2(rx1, ry1), this.col )
 
             // Horizontal lines
             var x2 = -sz;
@@ -129,7 +129,7 @@ class Grid {
             var ry2 = this.cy + x2 * sin(a) + y2 * cos(a);
             var rx3 = this.cx + x3 * cos(a) - y3 * sin(a);
             var ry3 = this.cy + x3 * sin(a) + y3 * cos(a);
-            win.line(rx2, ry2, rx3, ry3,this.col.r, this.col.g, this.col.b, alpha);
+            win.line(vec2(rx2, ry2), vec2(rx3, ry3), this.col)
         }
     }
 }
@@ -154,7 +154,7 @@ y=Bouncer(0, height, 5)
 cells = 3
 speed = random.integer(1, 5)
 rot=random.float(0, 2*math.PI)
-grids=[Grid(posx, posy, size.get(), cells, rot, colour.Colour(255, 255, 255, 255),speed)]
+grids=[Grid(posx, posy, size.get(), cells, rot, vec4(255, 255, 255, 255),speed)]
 shift = ColourShift()
 for (var i = 1; i < gridcount; i = i + 1) {
     grids.append(false)
@@ -164,7 +164,7 @@ c=0
 while (!win.should_close()) {
 
     win.begin()
-    win.clear(50,10,10, 255)
+    win.clear(vec4(50,10,10, 255))
     win.begin_blend_mode("BLEND_ADD") 
     size.update()
     x.update()
