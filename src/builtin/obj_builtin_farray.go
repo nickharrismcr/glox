@@ -52,7 +52,7 @@ func (f *FloatArray) Clear(value float64) {
 type FloatArrayObject struct {
 	core.BuiltInObject
 	Value   *FloatArray
-	Methods map[string]*core.BuiltInObject
+	Methods map[int]*core.BuiltInObject
 }
 
 func MakeFloatArrayObject(w int, h int) *FloatArrayObject {
@@ -63,8 +63,8 @@ func MakeFloatArrayObject(w int, h int) *FloatArrayObject {
 	}
 }
 
-func (o *FloatArrayObject) GetMethod(name string) *core.BuiltInObject {
-	return o.Methods[name]
+func (o *FloatArrayObject) GetMethod(stringId int) *core.BuiltInObject {
+	return o.Methods[stringId]
 }
 
 func AsFloatArray(v core.Value) *FloatArrayObject {
@@ -82,9 +82,9 @@ func (o *FloatArrayObject) GetType() core.ObjectType {
 
 func (o *FloatArrayObject) RegisterMethod(name string, method *core.BuiltInObject) {
 	if o.Methods == nil {
-		o.Methods = make(map[string]*core.BuiltInObject)
+		o.Methods = make(map[int]*core.BuiltInObject)
 	}
-	o.Methods[name] = method
+	o.Methods[core.InternName(name)] = method
 }
 
 func (t *FloatArrayObject) IsBuiltIn() bool {

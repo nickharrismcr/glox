@@ -7,21 +7,21 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-func GraphicsBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+func WindowBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 	if argCount != 2 {
-		vm.RunTimeError("graphics expects 2 arguments")
+		vm.RunTimeError("window expects 2 arguments")
 		return core.NIL_VALUE
 	}
 	wVal := vm.Stack(arg_stackptr)
 	hVal := vm.Stack(arg_stackptr + 1)
 	if !wVal.IsInt() || !hVal.IsInt() {
-		vm.RunTimeError("graphics arguments must be integers")
+		vm.RunTimeError("window arguments must be integers")
 		return core.NIL_VALUE
 	}
-	o := MakeGraphicsObject(wVal.Int, hVal.Int)
-	RegisterAllGraphicsMethods(o)
-	RegisterAllGraphicsConstants(o)
+	o := MakeWindowObject(wVal.Int, hVal.Int)
+	RegisterAllWindowMethods(o)
+	RegisterAllWindowConstants(o)
 	return core.MakeObjectValue(o, true)
 }
 
@@ -45,16 +45,16 @@ func (g *Graphics) SetBlendMode(modename string) {
 	}
 }
 
-type GraphicsObject struct {
+type WindowObject struct {
 	core.BuiltInObject
 	Value     *Graphics
-	Methods   map[string]*core.BuiltInObject
-	Constants map[string]core.Value
+	Methods   map[int]*core.BuiltInObject
+	Constants map[int]core.Value
 }
 
-func MakeGraphicsObject(w int, h int) *GraphicsObject {
+func MakeWindowObject(w int, h int) *WindowObject {
 
-	rv := &GraphicsObject{
+	rv := &WindowObject{
 		BuiltInObject: core.BuiltInObject{},
 		Value:         &Graphics{Width: int32(w), Height: int32(h), Blend_mode: rl.BlendAlpha},
 	}
@@ -62,40 +62,40 @@ func MakeGraphicsObject(w int, h int) *GraphicsObject {
 	return rv
 }
 
-func (o *GraphicsObject) String() string {
+func (o *WindowObject) String() string {
 	return fmt.Sprintf("<Graphics %dx%d>", o.Value.Width, o.Value.Height)
 }
 
-func (o *GraphicsObject) GetType() core.ObjectType {
+func (o *WindowObject) GetType() core.ObjectType {
 	return core.OBJECT_GRAPHICS
 }
 
-func (o *GraphicsObject) GetMethod(name string) *core.BuiltInObject {
-	return o.Methods[name]
+func (o *WindowObject) GetMethod(stringId int) *core.BuiltInObject {
+	return o.Methods[stringId]
 }
-func (o *GraphicsObject) RegisterMethod(name string, method *core.BuiltInObject) {
+func (o *WindowObject) RegisterMethod(name string, method *core.BuiltInObject) {
 	if o.Methods == nil {
-		o.Methods = make(map[string]*core.BuiltInObject)
+		o.Methods = make(map[int]*core.BuiltInObject)
 	}
-	o.Methods[name] = method
+	o.Methods[core.InternName(name)] = method
 }
 
-func (o *GraphicsObject) GetConstant(name string) core.Value {
-	rv, ok := o.Constants[name]
+func (o *WindowObject) GetConstant(stringId int) core.Value {
+	rv, ok := o.Constants[stringId]
 	if !ok {
-		return core.MakeNilValue()
+		return core.NIL_VALUE
 	}
 	return rv
 }
 
-func (o *GraphicsObject) RegisterConstant(name string, value core.Value) {
+func (o *WindowObject) RegisterConstant(name string, value core.Value) {
 	if o.Constants == nil {
-		o.Constants = make(map[string]core.Value)
+		o.Constants = make(map[int]core.Value)
 	}
-	o.Constants[name] = value
+	o.Constants[core.InternName(name)] = value
 }
 
 // -------------------------------------------------------------------------------------------
-func (t *GraphicsObject) IsBuiltIn() bool {
+func (t *WindowObject) IsBuiltIn() bool {
 	return true
 }

@@ -150,7 +150,7 @@ while (!win.should_close()) {
     win.clear(10,10,10, 255)
   
     lines.update()
-    win.begin_blend_mode("multiply")
+    win.begin_blend_mode("BLEND_MULTIPLY")
     lines.draw(win)
     win.end_blend_mode()
     win.end()

@@ -7,16 +7,19 @@ import (
 )
 
 type ListObject struct {
-	Items []Value
-	Tuple bool
+	Items   []Value
+	Tuple   bool
+	Methods map[int]*BuiltInObject
 }
 
 func MakeListObject(items []Value, isTuple bool) *ListObject {
 
-	return &ListObject{
+	rv := &ListObject{
 		Items: items,
 		Tuple: isTuple,
 	}
+	rv.RegisterAllListMethods()
+	return rv
 }
 
 func (ListObject) IsObject() {}
@@ -26,38 +29,44 @@ func (ListObject) GetType() ObjectType {
 	return OBJECT_LIST
 }
 
-func (o *ListObject) GetMethod(name string) *BuiltInObject {
+func (o *ListObject) RegisterMethod(name string, method *BuiltInObject) {
 
-	switch name {
-	case "append":
-		return &BuiltInObject{
-			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
-				if argCount != 1 {
-					vm.RunTimeError("append takes one argument.")
-					return NIL_VALUE
-				}
-				val := vm.Peek(0)
-				o.Append(val)
-				return NIL_VALUE
-			},
-		}
-	case "remove":
-		return &BuiltInObject{
-			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
-				if argCount != 1 {
-					vm.RunTimeError("remove takes one argument.")
-					return NIL_VALUE
-				}
-				val := vm.Peek(0)
-				idx := val.Int
-				o.Remove(idx)
-				return NIL_VALUE
-			},
-		}
-
-	default:
-		return nil
+	if o.Methods == nil {
+		o.Methods = make(map[int]*BuiltInObject)
 	}
+	o.Methods[InternName(name)] = method
+}
+
+func (d *ListObject) GetMethod(stringId int) *BuiltInObject {
+
+	return d.Methods[stringId]
+}
+
+func (o *ListObject) RegisterAllListMethods() {
+	o.RegisterMethod("append", &BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			if argCount != 1 {
+				vm.RunTimeError("append takes one argument.")
+				return NIL_VALUE
+			}
+			val := vm.Peek(0)
+			o.Append(val)
+			return NIL_VALUE
+		},
+	})
+	o.RegisterMethod("remove", &BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			if argCount != 1 {
+				vm.RunTimeError("remove takes one argument.")
+				return NIL_VALUE
+			}
+			val := vm.Peek(0)
+			idx := val.Int
+			o.Remove(idx)
+			return NIL_VALUE
+		},
+	})
+
 }
 
 func (o *ListObject) Get() []Value {

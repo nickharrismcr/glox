@@ -308,7 +308,7 @@ func (vm *VM) invokeFromBuiltin(obj core.Object, name core.Value, argCount int) 
 	n := core.GetStringValue(name)
 	bobj, ok := obj.(core.HasMethods)
 	if ok {
-		method := bobj.GetMethod(name.AsString().Get())
+		method := bobj.GetMethod(name.InternedId)
 		if method != nil {
 			builtin := method.Function
 			res := builtin(argCount, vm.stackTop-argCount, vm)

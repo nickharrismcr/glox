@@ -31,7 +31,7 @@ type Image struct {
 type ImageObject struct {
 	core.BuiltInObject
 	Data    *Image
-	Methods map[string]*core.BuiltInObject
+	Methods map[int]*core.BuiltInObject
 }
 
 func MakeImageObject(filename string) *ImageObject {
@@ -62,14 +62,14 @@ func (o *ImageObject) GetType() core.ObjectType {
 	return core.OBJECT_IMAGE
 }
 
-func (o *ImageObject) GetMethod(name string) *core.BuiltInObject {
-	return o.Methods[name]
+func (o *ImageObject) GetMethod(stringId int) *core.BuiltInObject {
+	return o.Methods[stringId]
 }
 func (o *ImageObject) RegisterMethod(name string, method *core.BuiltInObject) {
 	if o.Methods == nil {
-		o.Methods = make(map[string]*core.BuiltInObject)
+		o.Methods = make(map[int]*core.BuiltInObject)
 	}
-	o.Methods[name] = method
+	o.Methods[core.InternName(name)] = method
 }
 
 func (t *ImageObject) IsBuiltIn() bool {

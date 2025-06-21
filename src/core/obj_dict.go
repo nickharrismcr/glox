@@ -7,14 +7,17 @@ import (
 )
 
 type DictObject struct {
-	Items map[string]Value
+	Items   map[string]Value
+	Methods map[int]*BuiltInObject
 }
 
 func MakeDictObject(items map[string]Value) *DictObject {
 
-	return &DictObject{
+	rv := &DictObject{
 		Items: items,
 	}
+	rv.RegisterAllDictMethods()
+	return rv
 }
 
 func (DictObject) IsObject() {}
@@ -31,50 +34,55 @@ func (o *DictObject) String() string {
 	return s[:len(s)-1] + " })"
 }
 
-func (d *DictObject) GetMethod(name string) *BuiltInObject {
+func (o *DictObject) RegisterMethod(name string, method *BuiltInObject) {
 
-	switch name {
-
-	case "get":
-		return &BuiltInObject{
-			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
-				if argCount != 2 {
-					vm.RunTimeError("Invalid argument count to get.")
-					return NIL_VALUE
-				}
-				key := vm.Stack(arg_stackptr)
-				def := vm.Stack(arg_stackptr + 1)
-
-				if key.IsStringObject() {
-					if def.IsStringObject() {
-						rv, error := d.Get(key.AsString().Get())
-						if error != nil {
-							return def
-						}
-						return rv
-					}
-				}
-
-				vm.RunTimeError("Argument to get must be key, default")
-				return NIL_VALUE
-			},
-		}
-	case "keys":
-
-		return &BuiltInObject{
-			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
-
-				if argCount != 0 {
-					vm.RunTimeError("Invalid argument count to keys.")
-					return NIL_VALUE
-				}
-				return d.Keys()
-			},
-		}
-
-	default:
-		return nil
+	if o.Methods == nil {
+		o.Methods = make(map[int]*BuiltInObject)
 	}
+	o.Methods[InternName(name)] = method
+}
+
+func (d *DictObject) GetMethod(stringId int) *BuiltInObject {
+
+	return d.Methods[stringId]
+}
+
+func (d *DictObject) RegisterAllDictMethods() {
+
+	d.RegisterMethod("get", &BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			if argCount != 2 {
+				vm.RunTimeError("Invalid argument count to get.")
+				return NIL_VALUE
+			}
+			key := vm.Stack(arg_stackptr)
+			def := vm.Stack(arg_stackptr + 1)
+
+			if key.IsStringObject() {
+				if def.IsStringObject() {
+					rv, error := d.Get(key.AsString().Get())
+					if error != nil {
+						return def
+					}
+					return rv
+				}
+			}
+
+			vm.RunTimeError("Argument to get must be key, default")
+			return NIL_VALUE
+		},
+	})
+	d.RegisterMethod("keys", &BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+
+			if argCount != 0 {
+				vm.RunTimeError("Invalid argument count to keys.")
+				return NIL_VALUE
+			}
+			return d.Keys()
+		},
+	})
+
 }
 
 func (o *DictObject) Set(key string, value Value) {

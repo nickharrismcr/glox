@@ -1,12 +1,24 @@
-win=window(800,600)
-win.init() 
-
-while (!win.should_close()) {
-    win.begin()
-    win.clear()
-    win.text(10, 10, "Hello, Lox!")
-    win.end()
-    if (win.key_down("KEY_SPACE")) {
-        win.close()
+class Test {
+    init() {
+        this.a = 1// This is a test class
+    }   
+    update() {
+        this.a = this.a + 1
+    }
+    get() {
+        return this.a
     }
 }
+
+func main() {
+   t = Test()  
+    c = 0 
+    while (t.get() < 1000000 ) {
+        t.update()
+        c=c+(t.get())
+    }
+    print(c)   
+}
+
+
+main()

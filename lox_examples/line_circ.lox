@@ -284,11 +284,11 @@ while (!win.should_close()) {
     win.clear(60,10,10, 255)
   
     lines.update()
-    win.begin_blend_mode("multiply")
+    win.begin_blend_mode("BLEND_MULTIPLY")
     lines.draw(win)
     win.end_blend_mode()
     circles.update()
-    win.begin_blend_mode("add")
+    win.begin_blend_mode("BLEND_ADD")
     circles.draw(win)
     win.end_blend_mode()
     win.end()
