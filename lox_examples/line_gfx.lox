@@ -137,10 +137,10 @@ for (var i = 0; i < LINES; i = i + 1) {
 while (!win.should_close()) {
 
     win.begin()
-    win.clear(vec4(100,0,0,255))
+    win.clear(vec4(10,10,10,255))
   
     lines.update()
-    win.begin_blend_mode(win.BLEND_MULTIPLY)
+    win.begin_blend_mode(win.BLEND_ALPHA)
     lines.draw(win)
     win.end_blend_mode()
     win.end()
