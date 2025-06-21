@@ -526,29 +526,118 @@ func (p *Parser) constDeclaration() {
 	p.defineConstVariable(v)
 }
 
-func (p *Parser) expressionStatement() {
+// Checks if a variable is already defined in the current scope or as a global.
+func (p *Parser) isVariableDefined(name Token, lexeme string) bool {
 
-	//handle implicit declarations
+	var rv bool
+	// core.LogFmt(core.DEBUG, "Checking if variable %s is defined\n", lexeme)
+	// core.LogFmt(core.DEBUG, "p.globals: %v\n", p.globals)
+	if p.currentCompiler.scopeDepth > 0 {
+		rv = !(p.resolveLocal(p.currentCompiler, name) == -1 &&
+			p.resolveUpvalue(p.currentCompiler, name) == -1 &&
+			!p.checkGlobals(lexeme))
+	} else {
+		rv = p.checkGlobals(lexeme)
+	}
+	// core.LogFmt(core.DEBUG, "Variable %s is defined: %t\n", lexeme, rv)
+	return rv
+}
+
+func (p *Parser) handleImplicitDeclaration() bool {
 	if p.check(TOKEN_IDENTIFIER) && p.checkNext(TOKEN_EQUAL) {
 		name := p.current
 		l := name.Lexeme()
-		if p.currentCompiler.scopeDepth > 0 {
-			if p.resolveLocal(p.currentCompiler, name) == -1 &&
-				p.resolveUpvalue(p.currentCompiler, name) == -1 &&
-				!p.checkGlobals(l) {
+		if !p.isVariableDefined(name, l) {
+			if p.currentCompiler.scopeDepth > 0 {
 				p.varDeclaration(false)
-				return
-			}
-
-		} else {
-			if !p.checkGlobals(l) {
+			} else {
+				// core.LogFmt(core.DEBUG, "Implicitly declaring global variable %s\n", l)
 				p.globals[l] = true
 				p.varDeclaration(false)
-				return
 			}
+			return true
 		}
 	}
+	return false
+}
 
+// Handles tuple/list unpacking assignment: a, b, c = expr;
+
+// This allows unpacking multiple values from a list or tuple into separate variables.
+// It expects identifiers separated by commas on the left side of the assignment.
+// For example: a, b, c = [1, 2, 3] or a, b, c = (4, 5, 6).
+// It emits an OP_UNPACK opcode followed by the number of variables being unpacked.
+// The right-hand side expression is parsed as usual and will be on stack top
+// for OP_UNPACK to use. OP_UNPACK will then push the values onto the stack.
+// Each variable is then assigned in order, popping the value off the stack.
+
+type Name struct {
+	Token Token
+	Str   string
+}
+
+func (p *Parser) handleUnpackingAssignment() bool {
+
+	if p.check(TOKEN_IDENTIFIER) && p.checkNext(TOKEN_COMMA) {
+		var names []Name
+		// Parse identifiers separated by commas
+		for {
+			names = append(names, Name{p.current, p.current.Lexeme()})
+			p.advance()
+			if !p.match(TOKEN_COMMA) {
+				break
+			}
+			if !p.check(TOKEN_IDENTIFIER) {
+				p.errorAtCurrent("Expect variable name in unpacking assignment.")
+				return false
+			}
+		}
+		p.consume(TOKEN_EQUAL, "Expect '=' after unpacking variables.")
+		p.expression() // Parse RHS expression
+
+		// Emit unpacking assignment opcode
+		p.emitByte(core.OP_UNPACK)
+		p.emitByte(uint8(len(names)))
+
+		// Assign to each variable.
+		//  - locals we can update in place
+		//  - globals we need to set with OP_SET_GLOBAL in reverse order
+		if p.currentCompiler.scopeDepth > 0 {
+			for _, name := range names {
+				if !p.isVariableDefined(name.Token, name.Str) {
+					if p.currentCompiler.scopeDepth > 0 {
+						p.addLocal(name.Token)
+						p.markInitialised()
+					}
+				}
+			}
+		} else {
+			for i := len(names) - 1; i >= 0; i-- {
+				name := names[i]
+				if !p.isVariableDefined(name.Token, name.Str) {
+					//core.LogFmt(core.DEBUG, "Implicitly declaring global variable %s\n", name.Str)
+					p.globals[name.Str] = true
+					arg := int(p.identifierConstant(name.Token))
+					p.emitBytes(core.OP_SET_GLOBAL, uint8(arg))
+					p.emitByte(core.OP_POP) // Pop the value off the stack after assignment
+				}
+			}
+		}
+
+		p.consume(TOKEN_SEMICOLON, "Expect ';' after unpacking assignment.")
+		return true
+	}
+	return false
+}
+
+func (p *Parser) expressionStatement() {
+
+	if p.handleUnpackingAssignment() {
+		return
+	}
+	if p.handleImplicitDeclaration() {
+		return
+	}
 	p.expression()
 	p.consume(TOKEN_SEMICOLON, "Expect ';' after expression.")
 	p.emitByte(core.OP_POP)
@@ -936,8 +1025,6 @@ func (p *Parser) parsePredence(prec Precedence) {
 
 func (p *Parser) identifierConstant(t Token) uint8 {
 
-	x := t.Lexeme()
-	p.globals[x] = true
 	s := t.Lexeme()
 	v := core.MakeStringObjectValue(s, false)
 	return p.MakeConstant(v)
@@ -1062,7 +1149,9 @@ func (p *Parser) defineVariable(global uint8) {
 		p.markInitialised()
 		return
 	}
-
+	x := p.currentChunk().Constants[global].AsString().Get()
+	// core.LogFmt(core.DEBUG, "Adding global identifier '%s'\n", x)
+	p.globals[x] = true
 	p.emitBytes(core.OP_DEFINE_GLOBAL, global)
 }
 
@@ -1166,6 +1255,7 @@ func (p *Parser) checkGlobals(name string) bool {
 
 func (p *Parser) namedVariable(name Token, canAssign bool) {
 
+	// core.LogFmt(core.DEBUG, "namedVariable %s canAssign %t\n", name.Lexeme(), canAssign)
 	var getOp, setOp uint8
 	a := name.Lexeme()
 	_ = a
@@ -1173,13 +1263,17 @@ func (p *Parser) namedVariable(name Token, canAssign bool) {
 	if arg != -1 {
 		getOp = core.OP_GET_LOCAL
 		setOp = core.OP_SET_LOCAL
+		// core.LogFmt(core.DEBUG, "Local variable %s found at index %d\n", name.Lexeme(), arg)
 	} else if arg = p.resolveUpvalue(p.currentCompiler, name); arg != -1 {
 		getOp = core.OP_GET_UPVALUE
 		setOp = core.OP_SET_UPVALUE
+		// core.LogFmt(core.DEBUG, "Upvalue %s found at index %d\n", name.Lexeme(), arg)
+
 	} else {
 		arg = int(p.identifierConstant(name))
 		getOp = core.OP_GET_GLOBAL
 		setOp = core.OP_SET_GLOBAL
+		// core.LogFmt(core.DEBUG, "Global variable %s found at index %d\n", name.Lexeme(), arg)
 	}
 
 	if canAssign && p.match(TOKEN_EQUAL) {
@@ -1205,6 +1299,7 @@ func (p *Parser) addLocal(name Token) {
 	}
 	p.currentCompiler.locals[p.currentCompiler.localCount] = local
 	p.currentCompiler.localCount++
+	// core.LogFmt(core.DEBUG, "Added local %d %s at depth %d\n", p.currentCompiler.localCount, local.lexeme, p.currentCompiler.scopeDepth)
 }
 
 func (p *Parser) emitConstant(value core.Value) {
