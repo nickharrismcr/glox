@@ -16,6 +16,7 @@ class Human {
         this.radar = colour.Colour(150,0,150,255)
         this.counter = 0 
         this.mgr = nil
+        this.chosen = false 
     }
     position() {
         return (this.sprite.x, this.sprite.y)

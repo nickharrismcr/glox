@@ -18,7 +18,7 @@ type Options struct {
 
 func main() {
 
-	// // Start CPU profiling
+	// // // Start CPU profiling
 	// f, err := os.Create("cpu.pprof")
 	// if err != nil {
 	// 	log.Fatal("could not create CPU profile: ", err)

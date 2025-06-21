@@ -14,7 +14,11 @@ class Lander {
         this.update_func=materialize 
         this.draw_func=draw_exp
         this.exp=60
-        this.radar = colour.Colour(0,150,0,255)
+        this.g = colour.Colour(0,200,0,255)
+        this.r = colour.Colour(255,0,0,255)
+        this.b = colour.Colour(0,0,255,255)
+        this.m = colour.Colour(255,0,255,255)
+        this.radar = this.g
         this.counter = 0 
         this.mgr = nil
     }
@@ -29,6 +33,9 @@ class Lander {
         f=this.draw_func 
         f(this,win,cam) 
     }
+    near(x1, x2) {
+        return (math.abs(x1 - x2) < 5)
+    }   
 }
 
 func materialize(e, width, height) {
@@ -39,6 +46,7 @@ func materialize(e, width, height) {
         e.dx = random.choice((-5,5))
         e.dy = 5
         e.counter = 0
+        mutate(e)
     }
 }
 
@@ -49,7 +57,8 @@ func descend(e, width, height) {
     mh = e.mgr.mountains.get(e.sprite.x)
     msh = e.mgr.height - mh 
 
-    if (e.sprite.y > msh - 200 ) {
+    if (e.sprite.y > msh - 100 ) {
+        e.human = e.mgr.pick_a_human() 
         e.update_func = search 
         e.dy = 0
     }
@@ -74,13 +83,14 @@ func search(e, width, height) {
         v.scale(random.integer(5,20))
         e.mgr.fire_bullet(e.sprite.x, e.sprite.y, v.x, v.y)
     }
-    human = e.mgr.human_at(e.sprite.x) 
-    if (human != nil) { 
-        e.human = human 
-        e.update_func = grab
-        e.dx = 0 
-        e.dy = 3
+    if (e.human != nil) {
+        if (e.near(e.human.sprite.x, e.sprite.x)) {
+            e.update_func = grab
+            e.dx = 0
+            e.dy = 3
+        }
     }
+    
 } 
 
 func grab(e,width, height) {
@@ -98,13 +108,46 @@ func abduct(e,width, height) {
     e.sprite.y = e.sprite.y + e.dy
     e.human.sprite.x = e.sprite.x 
     e.human.sprite.y = e.sprite.y + 50
+    if (e.sprite.y < 150 ) {
+        mutate(e)
+    }
+}
+
+func mutate(e) {
+    e.update_func = mutated
+    e.image = image
+    //e.human.sprite.y = -1000
+    e.human = nil
+    img = image("pngs/mutant.png") 
+    e.type = "mutant"
+    e.img = img
+    e.sprite = sprite.Sprite(e.sprite.x, e.sprite.y, img, 6,1,6 )
+    e.sprite.animate(2)
+    e.dx = random.choice((-15,15))
+    e.dy = 0 
+    e.counter = 0 
+}
+
+func mutated(e,width, height) {
+    e.radar = random.choice([e.r,e.g,e.b,e.m])
+    e.sprite.x = e.sprite.x + e.dx 
+    e.sprite.y = e.sprite.y + e.dy
+    if (e.counter %20 == 0) {
+        e.dy = random.choice((-5,5))
+    }
+    if (e.sprite.y < 100 ) {
+        e.sprite.y = 100
+        if (e.dy < 0) {
+            e.dy = 5
+        }
+    }
 }
 
 
  
 func draw_exp(e,win,cam) {
-    h = img.height()
-    w = img.width()/3.0
+    h = e.img.height()
+    w = e.img.width()/3.0
  
     pixh =h/8.0
     pixw = w/6.0
