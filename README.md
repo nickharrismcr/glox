@@ -77,6 +77,7 @@ while (!win.should_close()) {
 win.close() 
 ```
 Raylib images and textures can be created and drawn as well as a range of primitives.
+Keyboard state can be read.
 
 Built-in lox modules:
 -  iterator tools, function tools, math, random, colour, string utils, PNG plotters, gfx particle system
@@ -94,12 +95,14 @@ Lists :
 - `lst.remove(i)`
 - test for `item in list`  -> true|false 
 - `range(start,end,step)` -> list of ints 
+- `a,b,c = [1,2,3]` -> list unpacking 
 
 Tuples : 
 
 - immutable lists
 - `var a = (1,2,3);` 
 - allows same operations as list but no append or assignment allowed.
+- `a,b,c = (1,2,3)` : Tuple unpacking
 
 Dictionaries:
 
@@ -116,6 +119,7 @@ Strings :
 - multiply by integer ( a la python, e.g  `"@" * 3`,  `3 * "@"` = `"@@@"` )
 - slices   ( `a = "abcd"; b=a[0], b=a[:2]`, etc )
 - test for presence of substring in string : `substring in string` -> true|false 
+- All VM strings are interned, runtime refers to integer string ID keys 
 
 Foreach : 
 - `foreach ( i in iterable ) { block }`
