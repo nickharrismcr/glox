@@ -1,5 +1,6 @@
 import bullets   
 import lander 
+import human
 import random
 
 class EntityMgr {
@@ -21,10 +22,26 @@ class EntityMgr {
     }
     add_landers(num,delay) {
         foreach (var i in range(0, num)) {
-            e = lander.Lander(random.integer(0, this.worldwidth), random.integer(100, this.height))
+            e = lander.Lander(random.integer(0, this.worldwidth), random.integer(100, this.height/2))
             this.add_to_queue(e,delay)
         }
     }
+    add_humans(num) {
+        foreach ( i in range ( 0,num )) {
+            e = human.Human(random.integer(0, this.worldwidth), this.height ) 
+            this.add_to_queue(e,0)
+        }
+    }
+    human_at(x) {
+        foreach (var e in this.entities) {
+            if (e.type == "human") {
+                if (e.sprite.x > x-5 and e.sprite.x < x+5) {
+                    return e
+                }
+            }
+        }
+        return nil
+    }   
 
     update(worldwidth,height) {
 
