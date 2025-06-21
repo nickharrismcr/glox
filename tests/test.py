@@ -70,8 +70,16 @@ def process_all(test, args, force_compile=False):
     files = glob.glob(args.dir + "/*lox")
      
     for fname in files:
-        if not process(fname, args, force_compile):
+        if args.write: 
+            testdatafile="output/%s.testoutput" % basename(fname)
+            if not os.path.exists(testdatafile):
+                print (f"Test {test} : {fname} : Creating test output file")
+                process(fname, args, force_compile)
+        elif not process(fname, args, force_compile):
             failed.append(fname)
+    
+    if args.write:
+        return 
     
     if failed:
         print (f"{test} : One or more tests failed.")
