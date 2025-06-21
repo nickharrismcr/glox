@@ -44,10 +44,10 @@ func queue_random_emitter(width,height,delay){
     
     emitters.queue(particle_sys.Emitter(pos, init(ecol1,ecol2), move), random.integer(10, 500), delay); 
 }
-
+STARS=300 
 func make_stars(){
     var stars=[];
-    for ( var i = 0; i < 300; i=i+1 ){
+    for ( var i = 0; i < STARS ; i=i+1 ){
         var pos=random_vec_2D(0,width,0,height);
         var size=1;
         var a=random.integer(1,255);
@@ -62,9 +62,7 @@ func update_stars(stars) {
         if (random.integer(0,1000) < 5) {
             s[2] = random.integer(1, 255); // Randomly change alpha
         }
-        var pos = s[0];
-        var size = s[1];
-        var a = s[2];
+        pos,size,a = s
         win.circle_fill(pos.x, pos.y, size, 255, 255, 255, a);
     }
 }   

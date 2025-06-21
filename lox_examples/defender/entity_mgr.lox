@@ -3,6 +3,7 @@ import lander
 import human
 import random
 import functools
+import event 
 
 class EntityMgr {
 
@@ -13,6 +14,7 @@ class EntityMgr {
         this.entities = []
         this.queue = []
         this.bullets = bullets.BulletPool(100)
+        this.events = event.EventDispatcher()
     }  
     get_all() {
         return this.entities

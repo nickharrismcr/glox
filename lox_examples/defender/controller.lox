@@ -8,14 +8,14 @@ class Controller {
    
     update(win) {
         
-        if (win.key_down("KEY_SPACE")) {
+        if (win.key_down(win.KEY_SPACE)) {
             this.targetvel = 40 * this.dir
             this.accel = 2 
         } else {
             this.targetvel = 0
             this.accel = 0.5
         }
-        if (win.key_pressed("KEY_ENTER")) {
+        if (win.key_pressed(win.KEY_ENTER)) {
             this.dir = -this.dir
         }
         if (this.vel < this.targetvel) {

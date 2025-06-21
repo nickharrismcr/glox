@@ -2,6 +2,7 @@ import sprite
 import random
 import math 
 import colour
+import event
 
 class Lander {
 
@@ -84,6 +85,7 @@ func descend(e, width, height) {
         e.human = e.mgr.pick_a_human() 
         e.update_func = search 
         e.dy = 0
+        e.mgr.events.emit("lander_searching", e)
     }
 
     e.maybe_fire_bullet()
@@ -170,6 +172,7 @@ func die(e) {
     e.dy = 0 
     e.update_func = explode
     e.radar = nil 
+   
 }
 
 func explode(e,width, height) {
