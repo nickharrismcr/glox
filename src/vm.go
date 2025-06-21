@@ -462,339 +462,6 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		frame.Ip++
 		switch inst {
 
-		case core.OP_INVOKE:
-			idx := vm.currCode[frame.Ip]
-			frame.Ip++
-			method := constants[idx]
-			argCount := vm.currCode[frame.Ip]
-			frame.Ip++
-			if !vm.invoke(method, int(argCount)) {
-				goto End
-			}
-
-		case core.OP_CLOSURE:
-			// get the function indexed by operand from constants, wrap in a closure object and push onto stack
-			idx := vm.currCode[frame.Ip]
-			frame.Ip++
-			function := constants[idx]
-			closure := core.MakeClosureObject(core.GetFunctionObjectValue(function))
-			vm.stack[vm.stackTop] = core.MakeObjectValue(closure, false)
-			vm.stackTop++
-			for i := 0; i < closure.UpvalueCount; i++ {
-				isLocal := vm.currCode[frame.Ip]
-				frame.Ip++
-				index := int(vm.currCode[frame.Ip])
-				frame.Ip++
-				if isLocal == 1 {
-					closure.Upvalues[i] = vm.captureUpvalue(frame.Slots + index)
-				} else {
-					upv := frame.Closure.Upvalues[index]
-					closure.Upvalues[i] = upv
-				}
-			}
-
-		case core.OP_RETURN:
-			// exit, return the value at stack top
-			result := vm.pop()
-			vm.closeUpvalues(frame.Slots)
-			vm.frameCount--
-			if vm.frameCount == 0 {
-				vm.pop() // drop main script function obj
-				runtime.GC()
-				return INTERPRET_OK, result
-			}
-			vm.stackTop = frame.Slots
-			vm.stack[vm.stackTop] = result
-			vm.stackTop++
-
-			// #### iterable class handling ####
-			// returning from an __iter__ instance method call?
-			if vm.foreachState != nil && vm.foreachState.Stage == core.WAITING_FOR_ITER {
-				// result holds the iterator object, it had better have a __next__ method
-				if !result.IsInstanceObject() {
-					vm.RunTimeError("Foreach iterator must be a object with a __next__ method.")
-					return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
-				}
-				_, ok := result.AsInstance().Class.Methods[core.NEXT]
-				if !ok {
-					vm.RunTimeError("Foreach iterator must have a __next__ method.")
-					return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
-				}
-				vm.stack[vm.foreachState.IterSlot] = result // store iterator object in stack
-				// call __next__ instance method to get the first item
-				vm.foreachState.Stage = core.WAITING_FOR_NEXT
-				vm.stack[vm.stackTop] = result
-				vm.stackTop++ //TODO needed? is already on stack
-				vm.invoke(NEXT_METHOD, 0)
-				continue
-			}
-			// returning from a __next__ instance method call?
-			if vm.foreachState != nil && vm.foreachState.Stage == core.WAITING_FOR_NEXT {
-				// result holds the next item value
-				vm.pop() //TODO needed? - dup push above ?
-				frame = vm.frame()
-				if result.Type == core.VAL_NIL {
-					// we have no more items, so jump to end of foreach loop
-					frame.Ip = int(vm.foreachState.JumpToEnd)
-					vm.foreachState = vm.foreachState.Prev // pop the foreach state
-				} else {
-					// we have a value, so set it in the local slot and continue
-					vm.stack[vm.foreachState.LocalSlot] = result
-					// jump to start of foreach loop
-					frame.Ip = int(vm.foreachState.JumpToStart)
-				}
-			}
-
-		case core.OP_GET_UPVALUE:
-			slot := vm.currCode[frame.Ip]
-			frame.Ip++
-			valIdx := frame.Closure.Upvalues[slot].Location
-			vm.stack[vm.stackTop] = *valIdx
-			vm.stackTop++
-
-		case core.OP_SET_UPVALUE:
-			slot := vm.currCode[frame.Ip]
-			frame.Ip++
-			*(frame.Closure.Upvalues[slot].Location) = vm.Peek(0)
-
-		case core.OP_CLOSE_UPVALUE:
-			vm.closeUpvalues(vm.stackTop - 1)
-			vm.pop()
-
-		case core.OP_CONSTANT:
-			// get the constant indexed by operand and push it onto the stack
-			idx := vm.currCode[frame.Ip]
-			frame.Ip++
-			constant := constants[idx]
-			vm.stack[vm.stackTop] = constant
-			vm.stackTop++
-
-		case core.OP_METHOD:
-			idx := vm.currCode[frame.Ip]
-			frame.Ip++
-			name := constants[idx]
-			vm.defineMethod(name.InternedId, false)
-
-		case core.OP_STATIC_METHOD:
-			idx := vm.currCode[frame.Ip]
-			frame.Ip++
-			name := constants[idx]
-			vm.defineMethod(name.InternedId, true)
-
-		case core.OP_NEGATE:
-			// negate the value at stack top
-			v := vm.pop()
-			switch v.Type {
-			case core.VAL_FLOAT:
-				f := v.Float
-				vm.stack[vm.stackTop] = core.MakeFloatValue(-f, false)
-				vm.stackTop++
-				continue
-			case core.VAL_INT:
-				f := v.Int
-				vm.stack[vm.stackTop] = core.MakeIntValue(-f, false)
-				vm.stackTop++
-				continue
-			}
-			vm.RunTimeError("Operand must be a number")
-			goto End
-
-		case core.OP_ADD:
-			// pop 2 stack values, add them and push onto the stack
-			v2 := vm.pop()
-			v1 := vm.pop()
-			switch v2.Type {
-			case core.VAL_INT:
-				switch v1.Type {
-				case core.VAL_INT:
-					vm.stack[vm.stackTop] = core.MakeIntValue(v1.Int+v2.Int, false)
-					vm.stackTop++
-					continue
-				case core.VAL_FLOAT:
-					vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float+float64(v2.Int), false)
-					vm.stackTop++
-					continue
-				}
-				vm.RunTimeError("Addition type mismatch")
-				goto End
-
-			case core.VAL_FLOAT:
-				switch v1.Type {
-				case core.VAL_INT:
-					vm.stack[vm.stackTop] = core.MakeFloatValue(float64(v1.Int)+v2.Float, false)
-					vm.stackTop++
-					continue
-				case core.VAL_FLOAT:
-					vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float+v2.Float, false)
-					vm.stackTop++
-					continue
-				}
-				vm.RunTimeError("Addition type mismatch")
-				goto End
-
-			case core.VAL_OBJ:
-				ov2 := v2.Obj
-				switch ov2.GetType() {
-				case core.OBJECT_STRING:
-					if v1.Type != core.VAL_OBJ {
-						vm.RunTimeError("Addition type mismatch")
-						goto End
-					}
-					ov1 := v1.Obj
-					if ov1.GetType() == core.OBJECT_STRING {
-						vm.stack[vm.stackTop] = core.MakeStringObjectValue(v1.AsString().Get()+v2.AsString().Get(), false)
-						vm.stackTop++
-
-						continue
-					}
-				case core.OBJECT_LIST:
-					if v1.Type != core.VAL_OBJ {
-						vm.RunTimeError("Addition type mismatch")
-						goto End
-					}
-					ov1 := v1.Obj
-					if ov1.GetType() == core.OBJECT_LIST {
-						lo := ov1.(*core.ListObject).Add(ov2.(*core.ListObject))
-						vm.stack[vm.stackTop] = core.MakeObjectValue(lo, false)
-						vm.stackTop++
-						continue
-					}
-				}
-			}
-			vm.RunTimeError("Operands must be numbers or strings")
-			goto End
-
-		case core.OP_SUBTRACT:
-			// pop 2 stack values, subtract and push onto the stack
-			if !vm.binarySubtract() {
-				goto End
-			}
-
-		case core.OP_MULTIPLY:
-			// pop 2 stack values, multiply and push onto the stack
-			if !vm.binaryMultiply() {
-				goto End
-			}
-
-		case core.OP_MODULUS:
-			// pop 2 stack values, take modulus and push onto the stack
-			if !vm.binaryModulus() {
-				goto End
-			}
-
-		case core.OP_DIVIDE:
-			// pop 2 stack values, divide and push onto the stack
-			if !vm.binaryDivide() {
-				goto End
-			}
-
-		case core.OP_NIL:
-			// push nil val onto the stack
-			vm.stack[vm.stackTop] = core.NIL_VALUE
-			vm.stackTop++
-
-		case core.OP_TRUE:
-			// push true bool val onto the stack
-			vm.stack[vm.stackTop] = core.MakeBooleanValue(true, false)
-			vm.stackTop++
-
-		case core.OP_FALSE:
-			// push false bool val onto the stack
-			vm.stack[vm.stackTop] = core.MakeBooleanValue(false, false)
-			vm.stackTop++
-
-		case core.OP_NOT:
-			// replace stack top with boolean not of itself
-			v := vm.pop()
-			bv := vm.isFalsey(v)
-			vm.stack[vm.stackTop] = core.MakeBooleanValue(bv, false)
-			vm.stackTop++
-
-		case core.OP_GET_PROPERTY:
-
-			v := vm.Peek(0)
-			if v.Type != core.VAL_OBJ {
-				vm.RunTimeError("Attempt to access property of non-object.")
-				goto End
-			}
-
-			idx := vm.currCode[frame.Ip]
-			frame.Ip++
-			nv := constants[idx]
-			stringId := nv.InternedId
-
-			bobj, ok := v.Obj.(core.HasConstants)
-			if ok {
-				val := bobj.GetConstant(stringId)
-				vm.pop() // pop the object
-				vm.stack[vm.stackTop] = val
-				vm.stackTop++
-				continue
-			}
-
-			switch v.Obj.GetType() {
-			case core.OBJECT_INSTANCE:
-				ot := v.AsInstance()
-				if val, ok := ot.Fields[stringId]; ok {
-					vm.pop()
-					vm.stack[vm.stackTop] = val
-					vm.stackTop++
-				} else {
-					if !vm.bindMethod(ot.Class, stringId) {
-						goto End
-					}
-				}
-
-			case core.OBJECT_MODULE:
-				ot := v.AsModule()
-
-				if val, ok := ot.Environment.GetVar(nv.InternedId); ok {
-					vm.pop()
-					vm.stack[vm.stackTop] = val
-					vm.stackTop++
-				} else {
-					name := core.GetStringValue(nv)
-					vm.RunTimeError("Property '%s' not found.", name)
-					goto End
-				}
-
-			default:
-				name := core.GetStringValue(nv)
-				vm.RunTimeError("Property '%s' not found.", name)
-				goto End
-			}
-
-		case core.OP_SET_PROPERTY:
-
-			val := vm.Peek(0)
-			v := vm.Peek(1)
-			if v.Type != core.VAL_OBJ {
-				vm.RunTimeError("Property not found.")
-				goto End
-			}
-			idx := vm.currCode[frame.Ip]
-			frame.Ip++
-			stringId := constants[idx].InternedId
-			switch v.Obj.GetType() {
-			case core.OBJECT_INSTANCE:
-				ot := v.AsInstance()
-				ot.Fields[stringId] = val
-				tmp := vm.pop()
-				vm.pop()
-				vm.stack[vm.stackTop] = tmp
-				vm.stackTop++
-			case core.OBJECT_MODULE:
-				ot := v.AsModule()
-				ot.Environment.SetVar(constants[idx].InternedId, val)
-				tmp := vm.pop()
-				vm.pop()
-				vm.stack[vm.stackTop] = tmp
-				vm.stackTop++
-			default:
-				vm.RunTimeError("Property '%s' not found.", core.GetStringValue(constants[idx]))
-				goto End
-			}
-
 		case core.OP_EQUAL:
 			// pop 2 stack values, stack top = boolean
 			a := vm.pop()
@@ -922,10 +589,351 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			offset := vm.readShort()
 			frame.Ip += int(offset)
 
+		case core.OP_GET_UPVALUE:
+			slot := vm.currCode[frame.Ip]
+			frame.Ip++
+			valIdx := frame.Closure.Upvalues[slot].Location
+			vm.stack[vm.stackTop] = *valIdx
+			vm.stackTop++
+
+		case core.OP_SET_UPVALUE:
+			slot := vm.currCode[frame.Ip]
+			frame.Ip++
+			*(frame.Closure.Upvalues[slot].Location) = vm.Peek(0)
+
+		case core.OP_CLOSE_UPVALUE:
+			vm.closeUpvalues(vm.stackTop - 1)
+			vm.pop()
+
+		case core.OP_CONSTANT:
+			// get the constant indexed by operand and push it onto the stack
+			idx := vm.currCode[frame.Ip]
+			frame.Ip++
+			constant := constants[idx]
+			vm.stack[vm.stackTop] = constant
+			vm.stackTop++
+
+		case core.OP_CALL:
+			// arg count is operand, callable object is on stack after arguments, result will be stack top
+			argCount := vm.currCode[frame.Ip]
+			frame.Ip++
+			if !vm.callValue(vm.Peek(int(argCount)), int(argCount)) {
+				goto End
+			}
+
+		case core.OP_ADD:
+			// pop 2 stack values, add them and push onto the stack
+			v2 := vm.pop()
+			v1 := vm.pop()
+			switch v2.Type {
+			case core.VAL_INT:
+				switch v1.Type {
+				case core.VAL_INT:
+					vm.stack[vm.stackTop] = core.MakeIntValue(v1.Int+v2.Int, false)
+					vm.stackTop++
+					continue
+				case core.VAL_FLOAT:
+					vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float+float64(v2.Int), false)
+					vm.stackTop++
+					continue
+				}
+				vm.RunTimeError("Addition type mismatch")
+				goto End
+
+			case core.VAL_FLOAT:
+				switch v1.Type {
+				case core.VAL_INT:
+					vm.stack[vm.stackTop] = core.MakeFloatValue(float64(v1.Int)+v2.Float, false)
+					vm.stackTop++
+					continue
+				case core.VAL_FLOAT:
+					vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float+v2.Float, false)
+					vm.stackTop++
+					continue
+				}
+				vm.RunTimeError("Addition type mismatch")
+				goto End
+
+			case core.VAL_OBJ:
+				ov2 := v2.Obj
+				switch ov2.GetType() {
+				case core.OBJECT_STRING:
+					if v1.Type != core.VAL_OBJ {
+						vm.RunTimeError("Addition type mismatch")
+						goto End
+					}
+					ov1 := v1.Obj
+					if ov1.GetType() == core.OBJECT_STRING {
+						vm.stack[vm.stackTop] = core.MakeStringObjectValue(v1.AsString().Get()+v2.AsString().Get(), false)
+						vm.stackTop++
+
+						continue
+					}
+				case core.OBJECT_LIST:
+					if v1.Type != core.VAL_OBJ {
+						vm.RunTimeError("Addition type mismatch")
+						goto End
+					}
+					ov1 := v1.Obj
+					if ov1.GetType() == core.OBJECT_LIST {
+						lo := ov1.(*core.ListObject).Add(ov2.(*core.ListObject))
+						vm.stack[vm.stackTop] = core.MakeObjectValue(lo, false)
+						vm.stackTop++
+						continue
+					}
+				}
+			}
+			vm.RunTimeError("Operands must be numbers or strings")
+			goto End
+
+		case core.OP_SUBTRACT:
+			// pop 2 stack values, subtract and push onto the stack
+			if !vm.binarySubtract() {
+				goto End
+			}
+
+		case core.OP_MULTIPLY:
+			// pop 2 stack values, multiply and push onto the stack
+			if !vm.binaryMultiply() {
+				goto End
+			}
+
+		case core.OP_MODULUS:
+			// pop 2 stack values, take modulus and push onto the stack
+			if !vm.binaryModulus() {
+				goto End
+			}
+
+		case core.OP_DIVIDE:
+			// pop 2 stack values, divide and push onto the stack
+			if !vm.binaryDivide() {
+				goto End
+			}
+
+		case core.OP_NIL:
+			// push nil val onto the stack
+			vm.stack[vm.stackTop] = core.NIL_VALUE
+			vm.stackTop++
+
+		case core.OP_TRUE:
+			// push true bool val onto the stack
+			vm.stack[vm.stackTop] = core.MakeBooleanValue(true, false)
+			vm.stackTop++
+
+		case core.OP_FALSE:
+			// push false bool val onto the stack
+			vm.stack[vm.stackTop] = core.MakeBooleanValue(false, false)
+			vm.stackTop++
+
+		case core.OP_NOT:
+			// replace stack top with boolean not of itself
+			v := vm.pop()
+			bv := vm.isFalsey(v)
+			vm.stack[vm.stackTop] = core.MakeBooleanValue(bv, false)
+			vm.stackTop++
+
 		case core.OP_LOOP:
 			// jump back by offset ( 2 operands )
 			offset := vm.readShort()
 			frame.Ip -= int(offset)
+
+		case core.OP_INVOKE:
+			idx := vm.currCode[frame.Ip]
+			frame.Ip++
+			method := constants[idx]
+			argCount := vm.currCode[frame.Ip]
+			frame.Ip++
+			if !vm.invoke(method, int(argCount)) {
+				goto End
+			}
+
+		case core.OP_CLOSURE:
+			// get the function indexed by operand from constants, wrap in a closure object and push onto stack
+			idx := vm.currCode[frame.Ip]
+			frame.Ip++
+			function := constants[idx]
+			closure := core.MakeClosureObject(core.GetFunctionObjectValue(function))
+			vm.stack[vm.stackTop] = core.MakeObjectValue(closure, false)
+			vm.stackTop++
+			for i := 0; i < closure.UpvalueCount; i++ {
+				isLocal := vm.currCode[frame.Ip]
+				frame.Ip++
+				index := int(vm.currCode[frame.Ip])
+				frame.Ip++
+				if isLocal == 1 {
+					closure.Upvalues[i] = vm.captureUpvalue(frame.Slots + index)
+				} else {
+					upv := frame.Closure.Upvalues[index]
+					closure.Upvalues[i] = upv
+				}
+			}
+
+		case core.OP_RETURN:
+			// exit, return the value at stack top
+			result := vm.pop()
+			vm.closeUpvalues(frame.Slots)
+			vm.frameCount--
+			if vm.frameCount == 0 {
+				vm.pop() // drop main script function obj
+				runtime.GC()
+				return INTERPRET_OK, result
+			}
+			vm.stackTop = frame.Slots
+			vm.stack[vm.stackTop] = result
+			vm.stackTop++
+
+			// #### iterable class handling ####
+			// returning from an __iter__ instance method call?
+			if vm.foreachState != nil && vm.foreachState.Stage == core.WAITING_FOR_ITER {
+				// result holds the iterator object, it had better have a __next__ method
+				if !result.IsInstanceObject() {
+					vm.RunTimeError("Foreach iterator must be a object with a __next__ method.")
+					return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
+				}
+				_, ok := result.AsInstance().Class.Methods[core.NEXT]
+				if !ok {
+					vm.RunTimeError("Foreach iterator must have a __next__ method.")
+					return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
+				}
+				vm.stack[vm.foreachState.IterSlot] = result // store iterator object in stack
+				// call __next__ instance method to get the first item
+				vm.foreachState.Stage = core.WAITING_FOR_NEXT
+				vm.stack[vm.stackTop] = result
+				vm.stackTop++ //TODO needed? is already on stack
+				vm.invoke(NEXT_METHOD, 0)
+				continue
+			}
+			// returning from a __next__ instance method call?
+			if vm.foreachState != nil && vm.foreachState.Stage == core.WAITING_FOR_NEXT {
+				// result holds the next item value
+				vm.pop() //TODO needed? - dup push above ?
+				frame = vm.frame()
+				if result.Type == core.VAL_NIL {
+					// we have no more items, so jump to end of foreach loop
+					frame.Ip = int(vm.foreachState.JumpToEnd)
+					vm.foreachState = vm.foreachState.Prev // pop the foreach state
+				} else {
+					// we have a value, so set it in the local slot and continue
+					vm.stack[vm.foreachState.LocalSlot] = result
+					// jump to start of foreach loop
+					frame.Ip = int(vm.foreachState.JumpToStart)
+				}
+			}
+
+		case core.OP_METHOD:
+			idx := vm.currCode[frame.Ip]
+			frame.Ip++
+			name := constants[idx]
+			vm.defineMethod(name.InternedId, false)
+
+		case core.OP_STATIC_METHOD:
+			idx := vm.currCode[frame.Ip]
+			frame.Ip++
+			name := constants[idx]
+			vm.defineMethod(name.InternedId, true)
+
+		case core.OP_NEGATE:
+			// negate the value at stack top
+			v := vm.pop()
+			switch v.Type {
+			case core.VAL_FLOAT:
+				f := v.Float
+				vm.stack[vm.stackTop] = core.MakeFloatValue(-f, false)
+				vm.stackTop++
+				continue
+			case core.VAL_INT:
+				f := v.Int
+				vm.stack[vm.stackTop] = core.MakeIntValue(-f, false)
+				vm.stackTop++
+				continue
+			}
+			vm.RunTimeError("Operand must be a number")
+			goto End
+
+		case core.OP_GET_PROPERTY:
+
+			v := vm.Peek(0)
+			if v.Type != core.VAL_OBJ {
+				vm.RunTimeError("Attempt to access property of non-object.")
+				goto End
+			}
+
+			idx := vm.currCode[frame.Ip]
+			frame.Ip++
+			nv := constants[idx]
+			stringId := nv.InternedId
+
+			bobj, ok := v.Obj.(core.HasConstants)
+			if ok {
+				val := bobj.GetConstant(stringId)
+				vm.pop() // pop the object
+				vm.stack[vm.stackTop] = val
+				vm.stackTop++
+				continue
+			}
+
+			switch v.Obj.GetType() {
+			case core.OBJECT_INSTANCE:
+				ot := v.AsInstance()
+				if val, ok := ot.Fields[stringId]; ok {
+					vm.pop()
+					vm.stack[vm.stackTop] = val
+					vm.stackTop++
+				} else {
+					if !vm.bindMethod(ot.Class, stringId) {
+						goto End
+					}
+				}
+
+			case core.OBJECT_MODULE:
+				ot := v.AsModule()
+
+				if val, ok := ot.Environment.GetVar(nv.InternedId); ok {
+					vm.pop()
+					vm.stack[vm.stackTop] = val
+					vm.stackTop++
+				} else {
+					name := core.GetStringValue(nv)
+					vm.RunTimeError("Property '%s' not found.", name)
+					goto End
+				}
+
+			default:
+				name := core.GetStringValue(nv)
+				vm.RunTimeError("Property '%s' not found.", name)
+				goto End
+			}
+
+		case core.OP_SET_PROPERTY:
+
+			val := vm.Peek(0)
+			v := vm.Peek(1)
+			if v.Type != core.VAL_OBJ {
+				vm.RunTimeError("Property not found.")
+				goto End
+			}
+			idx := vm.currCode[frame.Ip]
+			frame.Ip++
+			stringId := constants[idx].InternedId
+			switch v.Obj.GetType() {
+			case core.OBJECT_INSTANCE:
+				ot := v.AsInstance()
+				ot.Fields[stringId] = val
+				tmp := vm.pop()
+				vm.pop()
+				vm.stack[vm.stackTop] = tmp
+				vm.stackTop++
+			case core.OBJECT_MODULE:
+				ot := v.AsModule()
+				ot.Environment.SetVar(constants[idx].InternedId, val)
+				tmp := vm.pop()
+				vm.pop()
+				vm.stack[vm.stackTop] = tmp
+				vm.stackTop++
+			default:
+				vm.RunTimeError("Property '%s' not found.", core.GetStringValue(constants[idx]))
+				goto End
+			}
 
 		// entered a try block, IP of the except block is encoded in the next 2 instructions
 		// push an exception handler storing that info
@@ -958,14 +966,6 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			err := vm.pop()
 			if !vm.raiseException(err) {
 				return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
-			}
-
-		case core.OP_CALL:
-			// arg count is operand, callable object is on stack after arguments, result will be stack top
-			argCount := vm.currCode[frame.Ip]
-			frame.Ip++
-			if !vm.callValue(vm.Peek(int(argCount)), int(argCount)) {
-				goto End
 			}
 
 		case core.OP_CLASS:
@@ -1183,6 +1183,38 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		case core.OP_BREAKPOINT:
 			// hit a breakpoint, pause execution
 			vm.pauseExecution()
+
+		//unpack a tuple or list on stack top.
+		// byte will be the number of items to unpack
+		case core.OP_UNPACK:
+
+			count := int(vm.readByte())
+			if count == 0 {
+				vm.RunTimeError("Unpack count cannot be zero.")
+				goto End
+			}
+			top := vm.Peek(0)
+			if top.Type != core.VAL_OBJ {
+				vm.RunTimeError("Unpack requires a list or tuple on stack top.")
+				goto End
+			}
+			if top.Obj.GetType() != core.OBJECT_LIST {
+				vm.RunTimeError("Unpack requires a list or tuple on stack top.")
+				goto End
+			}
+			// check we have enough items in the list or tuple
+			lo := top.AsList()
+			if lo.GetLength() != int(count) {
+				vm.RunTimeError("Unpack count %d not the same as list/tuple size %d.", count, lo.GetLength())
+				goto End
+			}
+			vm.pop() // pop the list/tuple from the stack
+			// now push the items onto the stack in reverse order
+			for i := range count {
+				item, _ := lo.Index(int(i))
+				vm.stack[vm.stackTop] = item
+				vm.stackTop++
+			}
 
 		default:
 			vm.RunTimeError("Invalid Opcode")
