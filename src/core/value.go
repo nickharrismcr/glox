@@ -17,6 +17,9 @@ const (
 	VAL_INT
 	VAL_FLOAT
 	VAL_OBJ
+	VAL_VEC2
+	VAL_VEC3
+	VAL_VEC4
 )
 
 type Value struct {
@@ -38,8 +41,9 @@ func Immutable(v Value) Value {
 		return MakeFloatValue(v.Float, true)
 	case VAL_BOOL:
 		return MakeBooleanValue(v.Bool, true)
-	case VAL_OBJ:
+	case VAL_OBJ, VAL_VEC2, VAL_VEC3, VAL_VEC4:
 		return MakeObjectValue(v.Obj, true)
+
 	}
 	return NIL_VALUE
 }
@@ -52,7 +56,7 @@ func Mutable(v Value) Value {
 		return MakeFloatValue(v.Float, false)
 	case VAL_BOOL:
 		return MakeBooleanValue(v.Bool, false)
-	case VAL_OBJ:
+	case VAL_OBJ, VAL_VEC2, VAL_VEC3, VAL_VEC4:
 		return MakeObjectValue(v.Obj, false)
 	}
 	return NIL_VALUE
@@ -121,6 +125,36 @@ func ValuesEqual(a, b Value, typesMustMatch bool) bool {
 			return av.String() == bv.String()
 		default:
 			return false
+		}
+	case VAL_VEC2:
+		switch b.Type {
+		case VAL_VEC2:
+			av := a.Obj.(*Vec2Object)
+			bv := b.Obj.(*Vec2Object)
+			return av.X == bv.X && av.Y == bv.Y
+		default:
+			return false
+
+		}
+	case VAL_VEC3:
+		switch b.Type {
+		case VAL_VEC3:
+			av := a.Obj.(*Vec3Object)
+			bv := b.Obj.(*Vec3Object)
+			return av.X == bv.X && av.Y == bv.Y && av.Z == bv.Z
+		default:
+			return false
+
+		}
+	case VAL_VEC4:
+		switch b.Type {
+		case VAL_VEC4:
+			av := a.Obj.(*Vec4Object)
+			bv := b.Obj.(*Vec4Object)
+			return av.X == bv.X && av.Y == bv.Y && av.Z == bv.Z && av.W == bv.W
+		default:
+			return false
+
 		}
 	}
 	return false
@@ -384,5 +418,33 @@ func (v *Value) Serialise(buffer *bytes.Buffer) {
 	}
 }
 
-//================================================================================================
-//================================================================================================
+// built in vectors
+
+func MakeVec2Value(x, y float64, immut bool) Value {
+	return Value{Type: VAL_VEC2, Obj: MakeVec2Object(x, y), Immut: immut}
+}
+func MakeVec3Value(x, y, z float64, immut bool) Value {
+	return Value{Type: VAL_VEC3, Obj: MakeVec3Object(x, y, z), Immut: immut}
+}
+func MakeVec4Value(x, y, z, w float64, immut bool) Value {
+	return Value{Type: VAL_VEC4, Obj: MakeVec4Object(x, y, z, w), Immut: immut}
+}
+
+func (v Value) AsVec2() *Vec2Object {
+	return v.Obj.(*Vec2Object)
+}
+func (v Value) AsVec3() *Vec3Object {
+	return v.Obj.(*Vec3Object)
+}
+func (v Value) AsVec4() *Vec4Object {
+	return v.Obj.(*Vec4Object)
+}
+func (v Value) IsVec2() bool {
+	return v.Type == VAL_VEC2
+}
+func (v Value) IsVec3() bool {
+	return v.Type == VAL_VEC3
+}
+func (v Value) IsVec4() bool {
+	return v.Type == VAL_VEC4
+}

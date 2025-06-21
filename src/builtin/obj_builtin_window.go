@@ -30,19 +30,9 @@ type Graphics struct {
 	Blend_mode    rl.BlendMode
 }
 
-func (g *Graphics) SetBlendMode(modename string) {
-	switch modename {
-	case "BLEND_ADD":
-		g.Blend_mode = rl.BlendAdditive
-	case "BLEND_ALPHA":
-		g.Blend_mode = rl.BlendAlpha
-	case "BLEND_MULTIPLY":
-		g.Blend_mode = rl.BlendMultiplied
-	case "BLEND_SUBTRACT":
-		g.Blend_mode = rl.BlendSubtractColors
-	default:
-		g.Blend_mode = rl.BlendAlpha // default to alpha blending
-	}
+func (g *Graphics) SetBlendMode(mode int) {
+	g.Blend_mode = (rl.BlendMode)(mode)
+
 }
 
 type WindowObject struct {

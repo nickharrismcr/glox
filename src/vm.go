@@ -853,7 +853,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		case core.OP_GET_PROPERTY:
 
 			v := vm.Peek(0)
-			if v.Type != core.VAL_OBJ {
+			if v.Type != core.VAL_OBJ && v.Type != core.VAL_VEC2 && v.Type != core.VAL_VEC3 && v.Type != core.VAL_VEC4 {
 				vm.RunTimeError("Attempt to access property of non-object.")
 				goto End
 			}
@@ -873,6 +873,64 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			}
 
 			switch v.Obj.GetType() {
+			case core.OBJECT_VEC2:
+				// special case for Vec2, which has x and y properties
+				switch stringId {
+				case core.X:
+					vm.pop()
+					vm.stack[vm.stackTop] = core.MakeFloatValue(v.AsVec2().X, false)
+					vm.stackTop++
+					continue
+				case core.Y:
+					vm.pop()
+					vm.stack[vm.stackTop] = core.MakeFloatValue(v.AsVec2().Y, false)
+					vm.stackTop++
+					continue
+				}
+			case core.OBJECT_VEC3:
+				// special case for Vec3, which has x, y and z properties
+				switch stringId {
+				case core.X:
+					vm.pop()
+					vm.stack[vm.stackTop] = core.MakeFloatValue(v.AsVec3().X, false)
+					vm.stackTop++
+					continue
+				case core.Y:
+					vm.pop()
+					vm.stack[vm.stackTop] = core.MakeFloatValue(v.AsVec3().Y, false)
+					vm.stackTop++
+					continue
+				case core.Z:
+					vm.pop()
+					vm.stack[vm.stackTop] = core.MakeFloatValue(v.AsVec3().Z, false)
+					vm.stackTop++
+					continue
+				}
+			case core.OBJECT_VEC4:
+				// special case for Vec4, which has x, y, z and w properties
+				switch stringId {
+				case core.X, core.R:
+					vm.pop()
+					vm.stack[vm.stackTop] = core.MakeFloatValue(v.AsVec4().X, false)
+					vm.stackTop++
+					continue
+				case core.Y, core.G:
+					vm.pop()
+					vm.stack[vm.stackTop] = core.MakeFloatValue(v.AsVec4().Y, false)
+					vm.stackTop++
+					continue
+				case core.Z, core.B:
+					vm.pop()
+					vm.stack[vm.stackTop] = core.MakeFloatValue(v.AsVec4().Z, false)
+					vm.stackTop++
+					continue
+				case core.W, core.A:
+					vm.pop()
+					vm.stack[vm.stackTop] = core.MakeFloatValue(v.AsVec4().W, false)
+					vm.stackTop++
+					continue
+				}
+
 			case core.OBJECT_INSTANCE:
 				ot := v.AsInstance()
 				if val, ok := ot.Fields[stringId]; ok {
@@ -904,11 +962,13 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				goto End
 			}
 
+		// stack top is value, byte operand is the index of the property name in constants,
+		// stack + 1 is the object to set the property on.
 		case core.OP_SET_PROPERTY:
 
 			val := vm.Peek(0)
 			v := vm.Peek(1)
-			if v.Type != core.VAL_OBJ {
+			if v.Type != core.VAL_OBJ && v.Type != core.VAL_VEC2 && v.Type != core.VAL_VEC3 && v.Type != core.VAL_VEC4 {
 				vm.RunTimeError("Property not found.")
 				goto End
 			}
@@ -916,6 +976,93 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			frame.Ip++
 			stringId := constants[idx].InternedId
 			switch v.Obj.GetType() {
+			case core.OBJECT_VEC2:
+				// special case for Vec2, which has x and y properties
+				switch stringId {
+				case core.X:
+					tmp := vm.pop() // pop the value
+					vm.pop()        // pop the object
+					o := v.AsVec2()
+					o.SetX(tmp.AsFloat())
+					vm.stack[vm.stackTop] = tmp // push the value back on the stack
+					vm.stackTop++
+				case core.Y:
+					tmp := vm.pop() // pop the value
+					vm.pop()        // pop the object
+					o := v.AsVec2()
+					o.SetY(tmp.AsFloat())
+					vm.stack[vm.stackTop] = tmp // push the value back on the stack
+					vm.stackTop++
+
+				default:
+					vm.RunTimeError("Property '%s' not found.", core.GetStringValue(constants[idx]))
+					goto End
+				}
+			case core.OBJECT_VEC3:
+				// special case for Vec3, which has x, y and z properties
+				switch stringId {
+				case core.X:
+					tmp := vm.pop() // pop the value
+					vm.pop()        // pop the object
+					o := v.AsVec3()
+					o.SetX(tmp.AsFloat())
+					vm.stack[vm.stackTop] = tmp // push the value back on the stack
+					vm.stackTop++
+				case core.Y:
+					tmp := vm.pop() // pop the value
+					vm.pop()        // pop the object
+					o := v.AsVec3()
+					o.SetY(tmp.AsFloat())
+					vm.stack[vm.stackTop] = tmp // push the value back on the stack
+					vm.stackTop++
+				case core.Z:
+					tmp := vm.pop() // pop the value
+					vm.pop()        // pop the object
+					o := v.AsVec3()
+					o.SetZ(tmp.AsFloat())
+					vm.stack[vm.stackTop] = tmp // push the value back on the stack
+					vm.stackTop++
+
+				default:
+					vm.RunTimeError("Property '%s' not found.", core.GetStringValue(constants[idx]))
+					goto End
+				}
+			case core.OBJECT_VEC4:
+				// special case for Vec4, which has x, y, z and w properties
+				switch stringId {
+				case core.X, core.R:
+					tmp := vm.pop() // pop the value
+					vm.pop()        // pop the object
+					o := v.AsVec4()
+					o.SetX(tmp.AsFloat())
+					vm.stack[vm.stackTop] = tmp // push the value back on the stack
+					vm.stackTop++
+				case core.Y, core.G:
+					tmp := vm.pop() // pop the value
+					vm.pop()        // pop the object
+					o := v.AsVec4()
+					o.SetY(tmp.AsFloat())
+					vm.stack[vm.stackTop] = tmp // push the value back on the stack
+					vm.stackTop++
+				case core.Z, core.B:
+					tmp := vm.pop() // pop the value
+					vm.pop()        // pop the object
+					o := v.AsVec4()
+					o.SetZ(tmp.AsFloat())
+					vm.stack[vm.stackTop] = tmp // push the value back on the stack
+					vm.stackTop++
+				case core.W, core.A:
+					tmp := vm.pop() // pop the value
+					vm.pop()        // pop the object
+					o := v.AsVec4()
+					o.SetW(tmp.AsFloat())
+					vm.stack[vm.stackTop] = tmp // push the value back on the stack
+					vm.stackTop++
+				default:
+					vm.RunTimeError("Property '%s' not found.", core.GetStringValue(constants[idx]))
+					goto End
+				}
+
 			case core.OBJECT_INSTANCE:
 				ot := v.AsInstance()
 				ot.Fields[stringId] = val

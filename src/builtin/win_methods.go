@@ -24,8 +24,9 @@ func RegisterAllWindowMethods(o *WindowObject) {
 	})
 	o.RegisterMethod("begin_blend_mode", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+
 			modeVal := vm.Stack(arg_stackptr)
-			o.Value.SetBlendMode(modeVal.AsString().Get())
+			o.Value.SetBlendMode(modeVal.Int)
 			rl.BeginBlendMode(o.Value.Blend_mode)
 			return core.NIL_VALUE
 		},
@@ -227,6 +228,22 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			rect := to.Data.GetFrameRect()
 			rl.DrawTextureRec(to.Data.Texture, rect, rl.Vector2{X: float32(x), Y: float32(y)}, rl.White)
 			to.Data.Animate()
+			return core.NIL_VALUE
+		},
+	})
+	o.RegisterMethod("draw_render_texture", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			renderTextureVal := vm.Stack(arg_stackptr)
+			xval := vm.Stack(arg_stackptr + 1)
+			yval := vm.Stack(arg_stackptr + 2)
+
+			x := int32(xval.AsInt())
+			y := int32(yval.AsInt())
+
+			to := renderTextureVal.Obj.(*RenderTextureObject)
+			target := to.Data.RenderTexture.Texture
+			rl.DrawTextureRec(target, rl.Rectangle{X: 0, Y: 0, Width: float32(target.Width), Height: float32(-target.Height)}, rl.Vector2{X: float32(x), Y: float32(y)}, rl.White)
+
 			return core.NIL_VALUE
 		},
 	})

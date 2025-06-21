@@ -38,14 +38,70 @@ func (vm *VM) defineBuiltIns() {
 	vm.defineBuiltIn("decode_rgb", decodeRGBABuiltIn)
 	vm.defineBuiltIn("window", builtin.WindowBuiltIn)
 	vm.defineBuiltIn("texture", builtin.TextureBuiltIn)
+	vm.defineBuiltIn("render_texture", builtin.RenderTextureBuiltIn)
 	vm.defineBuiltIn("image", builtin.ImageBuiltIn)
 	vm.defineBuiltIn("sleep", sleepBuiltIn)
 	vm.defineBuiltIn("range", rangeBuiltIn)
+	vm.defineBuiltIn("vec2", Vec2BuiltIn)
+	vm.defineBuiltIn("vec3", Vec3BuiltIn)
+	vm.defineBuiltIn("vec4", Vec4BuiltIn)
 
 	// lox built ins e.g Exception classes
 	vm.loadBuiltInModule(exceptionSource, "exception")
 
 }
+
+func Vec2BuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+	if argCount != 2 {
+		vm.RunTimeError("vec2 expects 2 arguments (x,y)")
+		return core.NIL_VALUE
+	}
+	xVal := vm.Stack(arg_stackptr)
+	yVal := vm.Stack(arg_stackptr + 1)
+
+	if !xVal.IsNumber() || !yVal.IsNumber() {
+		vm.RunTimeError("vec2 arguments must be numbers")
+		return core.NIL_VALUE
+	}
+
+	return core.MakeVec2Value(float64(xVal.AsFloat()), float64(yVal.AsFloat()), false)
+}
+
+func Vec3BuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+	if argCount != 3 {
+		vm.RunTimeError("vec3 expects 3 arguments (x,y,z)")
+		return core.NIL_VALUE
+	}
+	xVal := vm.Stack(arg_stackptr)
+	yVal := vm.Stack(arg_stackptr + 1)
+	zVal := vm.Stack(arg_stackptr + 2)
+
+	if !xVal.IsNumber() || !yVal.IsNumber() || !zVal.IsNumber() {
+		vm.RunTimeError("vec3 arguments must be numbers")
+		return core.NIL_VALUE
+	}
+
+	return core.MakeVec3Value(float64(xVal.AsFloat()), float64(yVal.AsFloat()), float64(zVal.AsFloat()), false)
+}
+
+func Vec4BuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+	if argCount != 4 {
+		vm.RunTimeError("vec4 expects 4 arguments (x,y,z,w)")
+		return core.NIL_VALUE
+	}
+	xVal := vm.Stack(arg_stackptr)
+	yVal := vm.Stack(arg_stackptr + 1)
+	zVal := vm.Stack(arg_stackptr + 2)
+	wVal := vm.Stack(arg_stackptr + 3)
+
+	if !xVal.IsNumber() || !yVal.IsNumber() || !zVal.IsNumber() || !wVal.IsNumber() {
+		vm.RunTimeError("vec4 arguments must be numbers")
+		return core.NIL_VALUE
+	}
+
+	return core.MakeVec4Value(float64(xVal.AsFloat()), float64(yVal.AsFloat()), float64(zVal.AsFloat()), float64(wVal.AsFloat()), false)
+}
+
 func rangeBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 	if argCount < 1 || argCount > 3 {
