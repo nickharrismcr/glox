@@ -1,0 +1,27 @@
+class Controller {
+    init(vel) {
+        this.targetvel = vel  
+        this.dir = 1
+        this.vel = 0
+        this.accel = 0.5
+    }
+   
+    update(win) {
+        
+        if (win.key_down("KEY_SPACE")) {
+            this.targetvel = 40 * this.dir
+            this.accel = 2 
+        } else {
+            this.targetvel = 0
+            this.accel = 0.5
+        }
+        if (win.key_pressed("KEY_ENTER")) {
+            this.dir = -this.dir
+        }
+        if (this.vel < this.targetvel) {
+            this.vel = this.vel + this.accel
+        } else if (this.vel > this.targetvel) {
+            this.vel = this.vel - this.accel
+        }
+    }
+}

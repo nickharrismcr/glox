@@ -57,7 +57,7 @@ func descend(e, width, height) {
     mh = e.mgr.mountains.get(e.sprite.x)
     msh = e.mgr.height - mh 
 
-    if (e.sprite.y > msh - 100 ) {
+    if (e.sprite.y > msh - 200 ) {
         e.human = e.mgr.pick_a_human() 
         e.update_func = search 
         e.dy = 0

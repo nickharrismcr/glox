@@ -5,52 +5,8 @@ import lander
 import entity_mgr 
 import itertools
 import radar
-
-class Controller {
-    init(vel) {
-        this.targetvel = vel  
-        this.dir = 1
-        this.vel = 0
-        this.accel = 0.5
-    }
-   
-    update(win) {
-        
-        if (win.key_down("KEY_SPACE")) {
-            this.targetvel = 40 * this.dir
-            this.accel = 2 
-        } else {
-            this.targetvel = 0
-            this.accel = 0.5
-        }
-        if (win.key_pressed("KEY_ENTER")) {
-            this.dir = -this.dir
-        }
-        if (this.vel < this.targetvel) {
-            this.vel = this.vel + this.accel
-        } else if (this.vel > this.targetvel) {
-            this.vel = this.vel - this.accel
-        }
-    }
-}
-
-class Camera {
-    init(screenwidth,width,pos ) {
-        this.width = width
-        this.x = pos
-        this.screenwidth = screenwidth
-    }
-    move(x) {
-        this.x = x
-    }
-    translate(wp) {
-        p = wp - this.x
-        if (p<0 or p > this.screenwidth) {
-            return nil
-        }
-        return p
-    }
-}
+import controller
+import camera
  
 
 const width=1000
@@ -59,8 +15,8 @@ const worldwidth=width*10
 var win = window(width,height)
 win.init()
 
-cam=Camera(width, worldwidth, 0)
-cont=Controller(10)
+cam=camera.Camera(width, worldwidth, 0)
+cont=controller.Controller(10)
  
 mountain=mountains.Mountain(worldwidth, height*0.3)
 starfield=stars.Stars(width, height*0.7, 30)

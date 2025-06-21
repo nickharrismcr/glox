@@ -1,0 +1,17 @@
+class Camera {
+    init(screenwidth,width,pos ) {
+        this.width = width
+        this.x = pos
+        this.screenwidth = screenwidth
+    }
+    move(x) {
+        this.x = x
+    }
+    translate(wp) {
+        p = wp - this.x
+        if (p<0 or p > this.screenwidth) {
+            return nil
+        }
+        return p
+    }
+}
