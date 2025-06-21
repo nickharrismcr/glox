@@ -723,6 +723,15 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			nv := constants[idx]
 			stringId := nv.InternedId
 
+			bobj, ok := v.Obj.(core.HasConstants)
+			if ok {
+				val := bobj.GetConstant(stringId)
+				vm.pop() // pop the object
+				vm.stack[vm.stackTop] = val
+				vm.stackTop++
+				continue
+			}
+
 			switch v.Obj.GetType() {
 			case core.OBJECT_INSTANCE:
 				ot := v.AsInstance()
@@ -735,6 +744,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 						goto End
 					}
 				}
+
 			case core.OBJECT_MODULE:
 				ot := v.AsModule()
 
@@ -747,6 +757,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					vm.RunTimeError("Property '%s' not found.", name)
 					goto End
 				}
+
 			default:
 				name := core.GetStringValue(nv)
 				vm.RunTimeError("Property '%s' not found.", name)

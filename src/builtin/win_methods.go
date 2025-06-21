@@ -264,25 +264,26 @@ func RegisterAllWindowMethods(o *WindowObject) {
 	o.RegisterMethod("key_down", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 1 {
-				vm.RunTimeError("key_down takes one argument.")
+				vm.RunTimeError("key_down takes one win.KEY_XXX argument.")
 				return core.NIL_VALUE
 			}
 			keyVal := vm.Stack(arg_stackptr)
-			keyId := keyVal.InternedId
-			isDown := rl.IsKeyDown(int32(o.GetConstant(keyId).Int))
+
+			isDown := rl.IsKeyDown(int32(keyVal.Int))
 			return core.MakeBooleanValue(isDown, true)
 		},
 	})
+	// arg should be an rl.KeyCode looked up in the constants
 	o.RegisterMethod("key_pressed", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 1 {
-				vm.RunTimeError("key_down takes one argument.")
+				vm.RunTimeError("key_pressed takes one win.KEY_XXX argument.")
 				return core.NIL_VALUE
 			}
 			keyVal := vm.Stack(arg_stackptr)
-			keyId := keyVal.InternedId
-			isDown := rl.IsKeyPressed(int32(o.GetConstant(keyId).Int))
-			return core.MakeBooleanValue(isDown, true)
+
+			isPressed := rl.IsKeyPressed(int32(keyVal.Int))
+			return core.MakeBooleanValue(isPressed, true)
 		},
 	})
 
