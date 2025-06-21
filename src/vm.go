@@ -111,7 +111,8 @@ func (vm *VM) Interpret(source string, module string) (InterpretResult, string) 
 		writeToLxc(vm, b)
 	}
 	closure := core.MakeClosureObject(function)
-	vm.push(core.MakeObjectValue(closure, false))
+	vm.stack[vm.stackTop] = core.MakeObjectValue(closure, false)
+	vm.stackTop++
 	vm.call(closure, 0)
 	res, val := vm.run()
 	return res, val.String()
@@ -218,7 +219,8 @@ func (vm *VM) callValue(callee core.Value, argCount int) bool {
 				return false
 			}
 			vm.stackTop -= argCount + 1
-			vm.push(res)
+			vm.stack[vm.stackTop] = res
+			vm.stackTop++
 			return true
 
 		} else if callee.IsClassObject() {
@@ -311,7 +313,8 @@ func (vm *VM) invokeFromBuiltin(obj core.Object, name core.Value, argCount int) 
 			builtin := method.Function
 			res := builtin(argCount, vm.stackTop-argCount, vm)
 			vm.stackTop -= argCount + 1
-			vm.push(res)
+			vm.stack[vm.stackTop] = res
+			vm.stackTop++
 			return true
 		}
 	}
@@ -328,7 +331,8 @@ func (vm *VM) bindMethod(class *core.ClassObject, stringId int) bool {
 	}
 	bound := core.MakeBoundMethodObject(vm.Peek(0), method.AsClosure())
 	vm.pop()
-	vm.push(core.MakeObjectValue(bound, false))
+	vm.stack[vm.stackTop] = core.MakeObjectValue(bound, false)
+	vm.stackTop++
 	return true
 }
 
@@ -474,7 +478,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			frame.Ip++
 			function := constants[idx]
 			closure := core.MakeClosureObject(core.GetFunctionObjectValue(function))
-			vm.push(core.MakeObjectValue(closure, false))
+			vm.stack[vm.stackTop] = core.MakeObjectValue(closure, false)
+			vm.stackTop++
 			for i := 0; i < closure.UpvalueCount; i++ {
 				isLocal := vm.currCode[frame.Ip]
 				frame.Ip++
@@ -499,7 +504,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				return INTERPRET_OK, result
 			}
 			vm.stackTop = frame.Slots
-			vm.push(result)
+			vm.stack[vm.stackTop] = result
+			vm.stackTop++
 
 			// #### iterable class handling ####
 			// returning from an __iter__ instance method call?
@@ -517,7 +523,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				vm.stack[vm.foreachState.IterSlot] = result // store iterator object in stack
 				// call __next__ instance method to get the first item
 				vm.foreachState.Stage = core.WAITING_FOR_NEXT
-				vm.push(result) //TODO needed? is already on stack
+				vm.stack[vm.stackTop] = result
+				vm.stackTop++ //TODO needed? is already on stack
 				vm.invoke(NEXT_METHOD, 0)
 				continue
 			}
@@ -542,7 +549,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			slot := vm.currCode[frame.Ip]
 			frame.Ip++
 			valIdx := frame.Closure.Upvalues[slot].Location
-			vm.push(*valIdx)
+			vm.stack[vm.stackTop] = *valIdx
+			vm.stackTop++
 
 		case core.OP_SET_UPVALUE:
 			slot := vm.currCode[frame.Ip]
@@ -558,7 +566,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			constant := constants[idx]
-			vm.push(constant)
+			vm.stack[vm.stackTop] = constant
+			vm.stackTop++
 
 		case core.OP_METHOD:
 			idx := vm.currCode[frame.Ip]
@@ -578,11 +587,13 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			switch v.Type {
 			case core.VAL_FLOAT:
 				f := v.Float
-				vm.push(core.MakeFloatValue(-f, false))
+				vm.stack[vm.stackTop] = core.MakeFloatValue(-f, false)
+				vm.stackTop++
 				continue
 			case core.VAL_INT:
 				f := v.Int
-				vm.push(core.MakeIntValue(-f, false))
+				vm.stack[vm.stackTop] = core.MakeIntValue(-f, false)
+				vm.stackTop++
 				continue
 			}
 			vm.RunTimeError("Operand must be a number")
@@ -596,10 +607,12 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			case core.VAL_INT:
 				switch v1.Type {
 				case core.VAL_INT:
-					vm.push(core.MakeIntValue(v1.Int+v2.Int, false))
+					vm.stack[vm.stackTop] = core.MakeIntValue(v1.Int+v2.Int, false)
+					vm.stackTop++
 					continue
 				case core.VAL_FLOAT:
-					vm.push(core.MakeFloatValue(v1.Float+float64(v2.Int), false))
+					vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float+float64(v2.Int), false)
+					vm.stackTop++
 					continue
 				}
 				vm.RunTimeError("Addition type mismatch")
@@ -608,10 +621,12 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			case core.VAL_FLOAT:
 				switch v1.Type {
 				case core.VAL_INT:
-					vm.push(core.MakeFloatValue(float64(v1.Int)+v2.Float, false))
+					vm.stack[vm.stackTop] = core.MakeFloatValue(float64(v1.Int)+v2.Float, false)
+					vm.stackTop++
 					continue
 				case core.VAL_FLOAT:
-					vm.push(core.MakeFloatValue(v1.Float+v2.Float, false))
+					vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float+v2.Float, false)
+					vm.stackTop++
 					continue
 				}
 				vm.RunTimeError("Addition type mismatch")
@@ -627,7 +642,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					}
 					ov1 := v1.Obj
 					if ov1.GetType() == core.OBJECT_STRING {
-						vm.push(core.MakeStringObjectValue(v1.AsString().Get()+v2.AsString().Get(), false))
+						vm.stack[vm.stackTop] = core.MakeStringObjectValue(v1.AsString().Get()+v2.AsString().Get(), false)
+						vm.stackTop++
 
 						continue
 					}
@@ -639,7 +655,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					ov1 := v1.Obj
 					if ov1.GetType() == core.OBJECT_LIST {
 						lo := ov1.(*core.ListObject).Add(ov2.(*core.ListObject))
-						vm.push(core.MakeObjectValue(lo, false))
+						vm.stack[vm.stackTop] = core.MakeObjectValue(lo, false)
+						vm.stackTop++
 						continue
 					}
 				}
@@ -673,21 +690,25 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		case core.OP_NIL:
 			// push nil val onto the stack
-			vm.push(core.NIL_VALUE)
+			vm.stack[vm.stackTop] = core.NIL_VALUE
+			vm.stackTop++
 
 		case core.OP_TRUE:
 			// push true bool val onto the stack
-			vm.push(core.MakeBooleanValue(true, false))
+			vm.stack[vm.stackTop] = core.MakeBooleanValue(true, false)
+			vm.stackTop++
 
 		case core.OP_FALSE:
 			// push false bool val onto the stack
-			vm.push(core.MakeBooleanValue(false, false))
+			vm.stack[vm.stackTop] = core.MakeBooleanValue(false, false)
+			vm.stackTop++
 
 		case core.OP_NOT:
 			// replace stack top with boolean not of itself
 			v := vm.pop()
 			bv := vm.isFalsey(v)
-			vm.push(core.MakeBooleanValue(bv, false))
+			vm.stack[vm.stackTop] = core.MakeBooleanValue(bv, false)
+			vm.stackTop++
 
 		case core.OP_GET_PROPERTY:
 
@@ -707,7 +728,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				ot := v.AsInstance()
 				if val, ok := ot.Fields[stringId]; ok {
 					vm.pop()
-					vm.push(val)
+					vm.stack[vm.stackTop] = val
+					vm.stackTop++
 				} else {
 					if !vm.bindMethod(ot.Class, stringId) {
 						goto End
@@ -718,7 +740,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 				if val, ok := ot.Environment.GetVar(nv.InternedId); ok {
 					vm.pop()
-					vm.push(val)
+					vm.stack[vm.stackTop] = val
+					vm.stackTop++
 				} else {
 					name := core.GetStringValue(nv)
 					vm.RunTimeError("Property '%s' not found.", name)
@@ -747,13 +770,15 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				ot.Fields[stringId] = val
 				tmp := vm.pop()
 				vm.pop()
-				vm.push(tmp)
+				vm.stack[vm.stackTop] = tmp
+				vm.stackTop++
 			case core.OBJECT_MODULE:
 				ot := v.AsModule()
 				ot.Environment.SetVar(constants[idx].InternedId, val)
 				tmp := vm.pop()
 				vm.pop()
-				vm.push(tmp)
+				vm.stack[vm.stackTop] = tmp
+				vm.stackTop++
 			default:
 				vm.RunTimeError("Property '%s' not found.", core.GetStringValue(constants[idx]))
 				goto End
@@ -763,7 +788,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			// pop 2 stack values, stack top = boolean
 			a := vm.pop()
 			b := vm.pop()
-			vm.push(core.MakeBooleanValue(core.ValuesEqual(a, b, false), false))
+			vm.stack[vm.stackTop] = core.MakeBooleanValue(core.ValuesEqual(a, b, false), false)
+			vm.stackTop++
 
 		case core.OP_GREATER:
 			// pop 2 stack values, stack top = boolean
@@ -774,7 +800,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				vm.RunTimeError("Operands must be numbers")
 				goto End
 			}
-			vm.push(core.MakeBooleanValue(v1.AsFloat() > v2.AsFloat(), false))
+			vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsFloat() > v2.AsFloat(), false)
+			vm.stackTop++
 
 		case core.OP_LESS:
 			// pop 2 stack values, stack top = boolean
@@ -785,7 +812,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				vm.RunTimeError("Operands must be numbers")
 				goto End
 			}
-			vm.push(core.MakeBooleanValue(v1.AsFloat() < v2.AsFloat(), false))
+			vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsFloat() < v2.AsFloat(), false)
+			vm.stackTop++
 
 		case core.OP_PRINT:
 			// compiler ensures stack top will be a string object via core.OP_STR
@@ -835,7 +863,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					goto End
 				}
 			}
-			vm.push(value)
+			vm.stack[vm.stackTop] = value
+			vm.stackTop++
 
 		case core.OP_SET_GLOBAL:
 			// name = constant at operand index
@@ -856,7 +885,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			// get local from stack at position = operand and push on stack top
 			slot_idx := int(vm.currCode[frame.Ip])
 			frame.Ip++
-			vm.push(vm.stack[frame.Slots+slot_idx])
+			vm.stack[vm.stackTop] = vm.stack[frame.Slots+slot_idx]
+			vm.stackTop++
 
 		case core.OP_SET_LOCAL:
 			// get value at stack top and store it in stack at position = operand
@@ -931,7 +961,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			name := core.GetStringValue(constants[idx])
-			vm.push(core.MakeObjectValue(core.MakeClassObject(name), false))
+			vm.stack[vm.stackTop] = core.MakeObjectValue(core.MakeClassObject(name), false)
+			vm.stackTop++
 
 		case core.OP_INHERIT:
 			superclass := vm.Peek(1)
@@ -1011,7 +1042,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				}
 			}
 			vm.pop()
-			vm.push(core.MakeStringObjectValue(s, false))
+			vm.stack[vm.stackTop] = core.MakeStringObjectValue(s, false)
+			vm.stackTop++
 
 		case core.OP_CREATE_LIST:
 			// item count is operand, expects items on stack,  list object will be stack top
@@ -1104,7 +1136,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					frame.Ip -= int(jumpToStart + 1)
 				}
 			} else {
-				vm.push(iterVal) // push the iterator object onto the stack
+				vm.stack[vm.stackTop] = iterVal
+				vm.stackTop++ // push the iterator object onto the stack
 				vm.invoke(NEXT_METHOD, 0)
 			}
 
@@ -1129,10 +1162,12 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					goto End
 				}
 				rv := b.AsString().Contains(a)
-				vm.push(rv)
+				vm.stack[vm.stackTop] = rv
+				vm.stackTop++
 			case core.OBJECT_LIST:
 				rv := b.AsList().Contains(a)
-				vm.push(rv)
+				vm.stack[vm.stackTop] = rv
+				vm.stackTop++
 			}
 		case core.OP_BREAKPOINT:
 			// hit a breakpoint, pause execution
@@ -1175,7 +1210,8 @@ func (vm *VM) raiseException(err core.Value) bool {
 		if handler != nil {
 
 			vm.stackTop = handler.StackTop
-			vm.push(err)
+			vm.stack[vm.stackTop] = err
+			vm.stackTop++
 			// jump to handler IP
 			vm.frame().Ip = int(handler.ExceptIP)
 		inner:
@@ -1330,7 +1366,8 @@ func (vm *VM) createList(frame *core.CallFrame) {
 		list = append([]core.Value{vm.pop()}, list...) // reverse order
 	}
 	lo := core.MakeListObject(list, false)
-	vm.push(core.MakeObjectValue(lo, false))
+	vm.stack[vm.stackTop] = core.MakeObjectValue(lo, false)
+	vm.stackTop++
 }
 
 func (vm *VM) createTuple(frame *core.CallFrame) {
@@ -1343,7 +1380,8 @@ func (vm *VM) createTuple(frame *core.CallFrame) {
 		list = append([]core.Value{vm.pop()}, list...) // reverse order
 	}
 	lo := core.MakeListObject(list, true)
-	vm.push(core.MakeObjectValue(lo, true))
+	vm.stack[vm.stackTop] = core.MakeObjectValue(lo, true)
+	vm.stackTop++
 }
 
 func (vm *VM) createDict(frame *core.CallFrame) {
@@ -1358,7 +1396,8 @@ func (vm *VM) createDict(frame *core.CallFrame) {
 		dict[key.AsString().Get()] = value
 	}
 	do := core.MakeDictObject(dict)
-	vm.push(core.MakeObjectValue(do, false))
+	vm.stack[vm.stackTop] = core.MakeObjectValue(do, false)
+	vm.stackTop++
 }
 
 func (vm *VM) index() bool {
@@ -1380,7 +1419,8 @@ func (vm *VM) index() bool {
 				vm.RunTimeError("%v", err)
 				return false
 			}
-			vm.push(lo)
+			vm.stack[vm.stackTop] = lo
+			vm.stackTop++
 			return true
 
 		case core.OBJECT_STRING:
@@ -1395,7 +1435,8 @@ func (vm *VM) index() bool {
 				vm.RunTimeError("%v", err)
 				return false
 			}
-			vm.push(so)
+			vm.stack[vm.stackTop] = so
+			vm.stackTop++
 			return true
 
 		case core.OBJECT_DICT:
@@ -1407,7 +1448,8 @@ func (vm *VM) index() bool {
 				vm.RunTimeError("%v", err)
 				return false
 			}
-			vm.push(so)
+			vm.stack[vm.stackTop] = so
+			vm.stackTop++
 			return true
 		}
 
@@ -1483,7 +1525,8 @@ func (vm *VM) slice() bool {
 				vm.RunTimeError("%v", err)
 				return false
 			}
-			vm.push(lo)
+			vm.stack[vm.stackTop] = lo
+			vm.stackTop++
 			return true
 
 		} else if lv.Obj.GetType() == core.OBJECT_STRING {
@@ -1492,7 +1535,8 @@ func (vm *VM) slice() bool {
 				vm.RunTimeError("%v", err)
 				return false
 			}
-			vm.push(so)
+			vm.stack[vm.stackTop] = so
+			vm.stackTop++
 			return true
 		}
 	}
@@ -1556,20 +1600,24 @@ func (vm *VM) binarySubtract() bool {
 	case core.VAL_INT:
 		switch v1.Type {
 		case core.VAL_INT:
-			vm.push(core.MakeIntValue(v1.Int-v2.Int, false))
+			vm.stack[vm.stackTop] = core.MakeIntValue(v1.Int-v2.Int, false)
+			vm.stackTop++
 			return true
 		case core.VAL_FLOAT:
-			vm.push(core.MakeFloatValue(v1.Float-float64(v2.Int), false))
+			vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float-float64(v2.Int), false)
+			vm.stackTop++
 			return true
 		}
 
 	case core.VAL_FLOAT:
 		switch v1.Type {
 		case core.VAL_INT:
-			vm.push(core.MakeFloatValue(float64(v1.Int)-v2.Float, false))
+			vm.stack[vm.stackTop] = core.MakeFloatValue(float64(v1.Int)-v2.Float, false)
+			vm.stackTop++
 			return true
 		case core.VAL_FLOAT:
-			vm.push(core.MakeFloatValue(v1.Float-v2.Float, false))
+			vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float-v2.Float, false)
+			vm.stackTop++
 			return true
 		}
 	}
@@ -1587,16 +1635,19 @@ func (vm *VM) binaryMultiply() bool {
 	case core.VAL_INT:
 		switch v1.Type {
 		case core.VAL_INT:
-			vm.push(core.MakeIntValue(v1.Int*v2.Int, false))
+			vm.stack[vm.stackTop] = core.MakeIntValue(v1.Int*v2.Int, false)
+			vm.stackTop++
 		case core.VAL_FLOAT:
-			vm.push(core.MakeFloatValue(v1.Float*float64(v2.Int), false))
+			vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float*float64(v2.Int), false)
+			vm.stackTop++
 		case core.VAL_OBJ:
 			if !v1.IsStringObject() {
 				vm.RunTimeError("Invalid operand for multiply.")
 				return false
 			}
 			s := v1.AsString().Get()
-			vm.push(vm.stringMultiply(s, v2.Int))
+			vm.stack[vm.stackTop] = vm.stringMultiply(s, v2.Int)
+			vm.stackTop++
 		default:
 			vm.RunTimeError("Invalid operand for multiply.")
 			return false
@@ -1604,9 +1655,11 @@ func (vm *VM) binaryMultiply() bool {
 	case core.VAL_FLOAT:
 		switch v1.Type {
 		case core.VAL_INT:
-			vm.push(core.MakeFloatValue(float64(v1.Int)*v2.Float, false))
+			vm.stack[vm.stackTop] = core.MakeFloatValue(float64(v1.Int)*v2.Float, false)
+			vm.stackTop++
 		case core.VAL_FLOAT:
-			vm.push(core.MakeFloatValue(v1.Float*v2.Float, false))
+			vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float*v2.Float, false)
+			vm.stackTop++
 		default:
 			vm.RunTimeError("Invalid operand for multiply.")
 			return false
@@ -1619,7 +1672,8 @@ func (vm *VM) binaryMultiply() bool {
 		switch v1.Type {
 		case core.VAL_INT:
 			s := v2.AsString().Get()
-			vm.push(vm.stringMultiply(s, v1.Int))
+			vm.stack[vm.stackTop] = vm.stringMultiply(s, v1.Int)
+			vm.stackTop++
 		default:
 			vm.RunTimeError("Invalid operand for multiply.")
 			return false
@@ -1646,14 +1700,16 @@ func (vm *VM) binaryDivide() bool {
 				vm.RunTimeError("Division by zero")
 				return false
 			}
-			vm.push(core.MakeIntValue(v1.Int/v2.Int, false))
+			vm.stack[vm.stackTop] = core.MakeIntValue(v1.Int/v2.Int, false)
+			vm.stackTop++
 			return true
 		case core.VAL_FLOAT:
 			if v2.Int == 0 {
 				vm.RunTimeError("Division by zero")
 				return false
 			}
-			vm.push(core.MakeFloatValue(v1.Float/float64(v2.Int), false))
+			vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float/float64(v2.Int), false)
+			vm.stackTop++
 			return true
 		}
 
@@ -1664,14 +1720,16 @@ func (vm *VM) binaryDivide() bool {
 				vm.RunTimeError("Division by zero")
 				return false
 			}
-			vm.push(core.MakeFloatValue(float64(v1.Int)/v2.Float, false))
+			vm.stack[vm.stackTop] = core.MakeFloatValue(float64(v1.Int)/v2.Float, false)
+			vm.stackTop++
 			return true
 		case core.VAL_FLOAT:
 			if v2.Float == 0.0 {
 				vm.RunTimeError("Division by zero")
 				return false
 			}
-			vm.push(core.MakeFloatValue(v1.Float/v2.Float, false))
+			vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float/v2.Float, false)
+			vm.stackTop++
 			return true
 		}
 	}
@@ -1689,7 +1747,8 @@ func (vm *VM) binaryModulus() bool {
 		vm.RunTimeError("Operands must be integers")
 		return false
 	}
-	vm.push(core.MakeIntValue(v1.Int%v2.Int, false))
+	vm.stack[vm.stackTop] = core.MakeIntValue(v1.Int%v2.Int, false)
+	vm.stackTop++
 
 	return true
 }
@@ -1782,7 +1841,7 @@ func (vm *VM) showGlobals() {
 	}
 	core.LogFmt(core.TRACE, "globals: %s \n", vm.frame().Closure.Function.Environment.Name)
 	for k, v := range vm.frame().Closure.Function.Environment.Vars {
-		core.LogFmt(core.TRACE, "%s -> %s  \n", k, v)
+		core.LogFmt(core.TRACE, "%s -> %s  \n", core.NameFromID(k), v)
 	}
 	//for k, v := range vm.Environments.builtins {
 	//	core.LogFmt(core.TRACE,"%s -> %s  \n", k, v)
