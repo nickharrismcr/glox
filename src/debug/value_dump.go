@@ -68,7 +68,7 @@ func dumpEnvironment(env *core.Environment, seen map[uintptr]bool, indent int) {
 	core.LogFmt(core.TRACE, "%s<Environment @%p '%s'>\n", indentPad(indent), env, env.Name)
 	core.LogFmt(core.TRACE, "%sVars:\n", indentPad(indent))
 	for k, v := range env.Vars {
-		core.LogFmt(core.TRACE, "%s%s: ", indentPad(indent+1), k)
+		core.LogFmt(core.TRACE, "%s%s: ", indentPad(indent+1), core.NameFromID(k))
 		dumpValue(v, seen, indent+2)
 	}
 

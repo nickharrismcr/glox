@@ -1017,7 +1017,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			}
 
 		// NJH added:
-
+		// import a module by name (1) and alias (2)
 		case core.OP_IMPORT:
 
 			idx := vm.currCode[frame.Ip]
@@ -1025,9 +1025,53 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			mv := constants[idx]
 			module := mv.AsString().Get()
 
-			status := vm.importModule(module)
+			idx = vm.currCode[frame.Ip]
+			frame.Ip++
+			alv := constants[idx]
+			alias := alv.AsString().Get()
+
+			status := vm.importModule(module, alias)
 			if status != INTERPRET_OK {
 				return status, core.NIL_VALUE
+			}
+
+		// import functions from a module, or all functions
+		// byte operand 1 is the index of the module name in constants
+		// byte operand 2 is the number of functions to import
+		// 0 = import all functions
+		// byte operands 3..n are the indices of the functions to import
+		case core.OP_IMPORT_FROM:
+
+			idx := vm.currCode[frame.Ip]
+			frame.Ip++
+			mv := constants[idx]
+			module := mv.AsString().Get()
+
+			lv := vm.currCode[frame.Ip]
+			frame.Ip++
+			length := int(lv)
+
+			status := vm.importModule(module, module)
+			if status != INTERPRET_OK {
+				return status, core.NIL_VALUE
+			}
+
+			if length == 0 {
+				if !vm.importFunctionFromModule(module, "__all__") {
+					vm.RunTimeError("Failed to import function '%s' from module '%s'.", "__all__", module)
+					return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
+				}
+			} else {
+				for i := 0; i < length; i++ {
+					idx = vm.currCode[frame.Ip]
+					frame.Ip++
+					fv := constants[idx]
+					name := fv.AsString().Get()
+					if !vm.importFunctionFromModule(module, name) {
+						vm.RunTimeError("Failed to import function '%s' from module '%s'.", name, module)
+						return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
+					}
+				}
 			}
 
 		case core.OP_STR:
@@ -1367,7 +1411,7 @@ func (vm *VM) sourceLine(script string, line int) string {
 	return ""
 }
 
-func (vm *VM) importModule(moduleName string) InterpretResult {
+func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 
 	searchPath := getPath(vm.Args(), moduleName) + ".lox"
 	bytes, err := os.ReadFile(searchPath)
@@ -1395,8 +1439,45 @@ func (vm *VM) importModule(moduleName string) InterpretResult {
 	subfn := subvm.frames[0].Closure.Function
 	mo := core.MakeModuleObject(moduleName, *subfn.Environment)
 	v := core.MakeObjectValue(mo, false)
-	vm.frame().Closure.Function.Environment.SetVar(core.InternName(moduleName), v)
+	vm.frame().Closure.Function.Environment.SetVar(core.InternName(alias), v)
 	return INTERPRET_OK
+}
+
+func (vm *VM) importFunctionFromModule(module string, name string) bool {
+
+	moduleId := core.InternName(module)
+	nameId := core.InternName(name)
+
+	moduleVal, ok := vm.frame().Closure.Function.Environment.GetVar(moduleId)
+	if !ok {
+		vm.RunTimeError("Module '%s' is not imported.", module)
+		return false
+	}
+	if name == "__all__" {
+		// import all functions from the module
+		moduleObj := moduleVal.AsModule()
+		for k, v := range moduleObj.Environment.Vars {
+			if v.Type == core.VAL_OBJ && v.Obj.GetType() == core.OBJECT_FUNCTION {
+				vm.frame().Closure.Function.Environment.SetVar(k, v)
+			}
+		}
+		return true
+	} else {
+
+		moduleObj := moduleVal.AsModule()
+		fn, ok := moduleObj.Environment.GetVar(nameId)
+		if !ok {
+			vm.RunTimeError("Function '%s' not found in module '%s'.", name, module)
+			return false
+		}
+		if fn.Type != core.VAL_OBJ || fn.Obj.GetType() != core.OBJECT_CLOSURE {
+			vm.RunTimeError("Function '%s' not found in module '%s'.", name, module)
+			return false
+		}
+		vm.frame().Closure.Function.Environment.SetVar(nameId, fn)
+		return true
+	}
+
 }
 
 func (vm *VM) createList(frame *core.CallFrame) {

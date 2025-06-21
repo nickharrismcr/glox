@@ -72,6 +72,7 @@ const (
 	TOKEN_IN
 	TOKEN_BREAKPOINT
 	TOKEN_STATIC
+	TOKEN_FROM
 )
 
 var keywords = map[string]TokenType{
@@ -106,6 +107,7 @@ var keywords = map[string]TokenType{
 	"in":         TOKEN_IN,
 	"breakpoint": TOKEN_BREAKPOINT,
 	"static":     TOKEN_STATIC,
+	"from":       TOKEN_FROM,
 }
 
 var repr = map[TokenType]string{
@@ -169,6 +171,7 @@ var repr = map[TokenType]string{
 	TOKEN_IN:            "TOKEN_IN",
 	TOKEN_BREAKPOINT:    "TOKEN_BREAKPOINT",
 	TOKEN_STATIC:        "TOKEN_STATIC",
+	TOKEN_FROM:          "TOKEN_FROM",
 }
 
 type Scanner struct {

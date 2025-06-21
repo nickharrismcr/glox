@@ -83,6 +83,11 @@ type Compiler struct {
 	environment *core.Environment
 }
 
+type Name struct {
+	Token Token
+	Str   string
+}
+
 func NewCompiler(type_ FunctionType, scriptName string, parent *Compiler, environment *core.Environment) *Compiler {
 
 	rv := &Compiler{
@@ -274,6 +279,8 @@ func (p *Parser) statement() {
 		p.printStatement()
 	} else if p.match(TOKEN_IMPORT) {
 		p.importStatement()
+	} else if p.match(TOKEN_FROM) {
+		p.importFromStatement()
 	} else if p.match(TOKEN_BREAK) {
 		p.breakStatement()
 	} else if p.match(TOKEN_BREAKPOINT) {
@@ -344,6 +351,13 @@ func (p *Parser) raiseStatement() {
 	p.emitByte(core.OP_RAISE)
 }
 
+// importStatement parses import statements of the form:
+// import module_name [as alias_name][, module_name [as alias_name]]*;
+// It allows importing multiple modules in a single statement, separated by commas.
+// Each module can optionally have an alias using the 'as' keyword.
+
+// OP_IMPORT is used to import a module, takes two byte arguments
+// - the first is the module name constant, the second is the alias constant.
 func (p *Parser) importStatement() {
 	c := 0
 	for {
@@ -351,12 +365,56 @@ func (p *Parser) importStatement() {
 		nameConstant := p.identifierConstant(p.previous)
 		c = c + 1
 		p.emitBytes(core.OP_IMPORT, nameConstant)
+		if p.match(TOKEN_AS) {
+			p.consume(TOKEN_IDENTIFIER, "Expect alias name.")
+			aliasConstant := p.identifierConstant(p.previous)
+			p.emitByte(aliasConstant)
+		} else {
+			// no alias, use module name as alias
+			p.emitByte(nameConstant)
+		}
 		if !p.match(TOKEN_COMMA) {
 			break
 		}
 	}
 	p.consume(TOKEN_SEMICOLON, "Expect ';' after import list.")
 }
+
+// importFromStatement parses import statements of the form:
+// from module_name import name1, name2, ...
+// from module_name import *
+// It allows importing specific names from a module or all names using '*'.
+
+func (p *Parser) importFromStatement() {
+
+	p.consume(TOKEN_IDENTIFIER, "Expect module name.")
+	nameConstant := p.identifierConstant(p.previous)
+	p.emitBytes(core.OP_IMPORT_FROM, nameConstant)
+	p.consume(TOKEN_IMPORT, "Expect 'import' after module name.")
+	if p.match(TOKEN_STAR) {
+		p.emitByte(0) // 0 means import all names
+		p.consume(TOKEN_SEMICOLON, "Expect ';' after import list.")
+		return
+	}
+	var names []Token
+	for {
+		p.consume(TOKEN_IDENTIFIER, "Expect name.")
+		name := p.previous
+		names = append(names, name)
+		if !p.match(TOKEN_COMMA) {
+			break
+		}
+	}
+	// emit names
+	length := len(names)
+	p.emitByte(uint8(length)) // number of names to import
+	for _, name := range names {
+		constant := p.identifierConstant(name)
+		p.emitByte(constant) // emit the constant for each name
+	}
+	p.consume(TOKEN_SEMICOLON, "Expect ';' after import list.")
+}
+
 func (p *Parser) expression() {
 
 	p.parsePredence(PREC_ASSIGNMENT)
@@ -570,11 +628,6 @@ func (p *Parser) handleImplicitDeclaration() bool {
 // The right-hand side expression is parsed as usual and will be on stack top
 // for OP_UNPACK to use. OP_UNPACK will then push the values onto the stack.
 // Each variable is then assigned in order, popping the value off the stack.
-
-type Name struct {
-	Token Token
-	Str   string
-}
 
 func (p *Parser) handleUnpackingAssignment() bool {
 

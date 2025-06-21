@@ -169,7 +169,7 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 	case core.OP_SUPER_INVOKE:
 		return invokeInstruction(c, "OP_SUPER_INVOKE", offset)
 	case core.OP_IMPORT:
-		return constantInstruction(c, "OP_IMPORT", offset)
+		return twoConstantInstruction(c, "OP_IMPORT", offset)
 	case core.OP_TRY:
 		return addressInstruction(c, "OP_TRY", offset)
 	case core.OP_END_TRY:
@@ -184,6 +184,8 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		return simpleInstruction("OP_BREAKPOINT", offset)
 	case core.OP_UNPACK:
 		return byteInstruction(c, "OP_UNPACK", offset)
+	case core.OP_IMPORT_FROM:
+		return importFromInstruction(c, "OP_IMPORT_FROM", offset)
 	default:
 		core.LogFmt(core.TRACE, "Unknown opcode %d\n", i)
 		return offset + 1
@@ -203,6 +205,18 @@ func constantInstruction(c *core.Chunk, name string, offset int) int {
 	value := c.Constants[constant]
 	core.LogFmt(core.TRACE, "  %s\n", value.String())
 	return offset + 2
+}
+
+func twoConstantInstruction(c *core.Chunk, name string, offset int) int {
+
+	constant1 := c.Code[offset+1]
+	constant2 := c.Code[offset+2]
+	core.LogFmt(core.TRACE, "%-16s %04d %04d", name, constant1, constant2)
+	value1 := c.Constants[constant1]
+	value2 := c.Constants[constant2]
+	core.LogFmt(core.TRACE, "  %s", value1.String())
+	core.LogFmt(core.TRACE, "  %s\n", value2.String())
+	return offset + 3
 }
 
 func byteInstruction(c *core.Chunk, name string, offset int) int {
@@ -274,4 +288,21 @@ func invokeInstruction(c *core.Chunk, name string, offset int) int {
 	value := c.Constants[constant]
 	core.LogFmt(core.TRACE, "  %s\n", value.String())
 	return offset + 3
+}
+
+func importFromInstruction(c *core.Chunk, name string, offset int) int {
+	constant := c.Code[offset+1]
+	moduleName := c.Constants[constant].String()
+	listLength := c.Code[offset+2]
+	if listLength == 0 {
+		core.LogFmt(core.TRACE, "%-16s %s -> all\n", name, moduleName)
+	} else {
+		core.LogFmt(core.TRACE, "%-16s %s (%d items) -> ", name, moduleName, listLength)
+		for i := 0; i < int(listLength); i++ {
+			constant = c.Code[offset+3+i]
+			core.LogFmt(core.TRACE, "  %s", c.Constants[constant].String())
+		}
+		core.LogFmt(core.TRACE, "\n")
+	}
+	return offset + 3 + int(listLength)
 }
