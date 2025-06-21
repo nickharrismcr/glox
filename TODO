@@ -1,25 +1,16 @@
-func foo(){
-    b=1
-    b=b+2
-}
-- assigns to global not local.  var b=1 works ok 
+ 
+
+
 
 class methods - look into scoping
 - can refer to classname inside class methods but probably also need class vars 
  
-method return gives compile error unless has semicolon: 
-  draw(win,cam) {
-        if (this.foo()) {
-            return  <----  
-        }
+ 
 
-replace NIL_VAL with constant core.NILVALUE 
-
-
-can compile prevent shadowing of builtins by new vars/funcs?
-
-
+===========================================
 fix nested function scope:
+===========================================
+
 fun outer() {
     fun a() { b(); }
     fun b() { print "foo"; }
@@ -39,3 +30,8 @@ outer();
 
 as its trying to resolve b as a global.  the upvalue search in a goes to the outer function but 
 doesn't find b in its locals 
+need two passes to resolve this:
+    1. First pass: add functions to locals 
+    2. Second pass:  compile the function body  
+
+===========================================
