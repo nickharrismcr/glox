@@ -67,6 +67,8 @@ const (
 	OP_CREATE_TUPLE
 	OP_IN
 	OP_BREAKPOINT
+	OP_ADD_CONST_LOCAL
+	OP_NOOP
 )
 
 type Chunk struct {
