@@ -869,7 +869,6 @@ func (p *Parser) endCompiler() *core.FunctionObject {
 	p.emitReturn()
 
 	function := p.currentCompiler.function
-	PeepHoleOptimise(function.Chunk)
 	s := ""
 	if function.Name.Get() == "" {
 		s = p.currentCompiler.scriptName

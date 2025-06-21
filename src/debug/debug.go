@@ -44,8 +44,6 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 	lastoffset = c.Lines[offset]
 
 	switch i {
-	case core.OP_NOOP:
-		return simpleInstruction("OP_NOOP", offset)
 	case core.OP_RETURN:
 		return simpleInstruction("OP_RETURN", offset)
 	case core.OP_CONSTANT:
@@ -94,8 +92,6 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		return byteInstruction(c, "OP_GET_LOCAL", offset)
 	case core.OP_SET_LOCAL:
 		return byteInstruction(c, "OP_SET_LOCAL", offset)
-	case core.OP_ADD_CONST_LOCAL:
-		return slotConstantInstruction(c, "OP_ADD_CONST_LOCAL", offset)
 	case core.OP_JUMP_IF_FALSE:
 		return jumpInstruction(c, "OP_JUMP_IF_FALSE", 1, offset)
 	case core.OP_JUMP:
@@ -212,17 +208,6 @@ func byteInstruction(c *core.Chunk, name string, offset int) int {
 	slot := c.Code[offset+1]
 	core.LogFmt(core.TRACE, "%-16s %04d\n", name, slot)
 	return offset + 2
-}
-
-func slotConstantInstruction(c *core.Chunk, name string, offset int) int {
-
-	slot := c.Code[offset+1]
-	core.LogFmt(core.TRACE, "%-16s %04d", name, slot)
-	constant := c.Code[offset+2]
-	core.LogFmt(core.TRACE, "  %04d ", constant)
-	value := c.Constants[constant]
-	core.LogFmt(core.TRACE, "  %s\n", value.String())
-	return offset + 3
 }
 
 func jumpInstruction(c *core.Chunk, name string, sign int, offset int) int {
