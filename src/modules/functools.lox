@@ -16,3 +16,13 @@ func reduce(list,function) {
   return acc;
 }
 
+func filter(list,function) {
+    var rv = [];
+    foreach (a in list) {
+        if (function(a)) {
+            rv.append(a);
+        }
+    }
+    return rv;
+} 
+

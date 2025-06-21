@@ -27,6 +27,9 @@ class Human {
             f(this,width,height) 
             this.counter = this.counter + 1
         }
+        if (this.chosen){
+            this.radar = colour.Colour(255,255,255,255)
+        }
     }
     draw(win,cam) {
        var spos = cam.translate(this.sprite.x)

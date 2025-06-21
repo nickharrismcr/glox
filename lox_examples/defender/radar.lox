@@ -42,6 +42,11 @@ class Radar {
         }
 
         foreach (var entity in entities.get_all()) {
+
+            if (!entity.alive or entity.radar == nil) {
+                continue
+            }
+
             pos = entity.position()
              
             ex = pos[0] 

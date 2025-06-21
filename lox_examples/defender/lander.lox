@@ -21,21 +21,44 @@ class Lander {
         this.radar = this.g
         this.counter = 0 
         this.mgr = nil
+        this.alive = true 
     }
     position() {
         return (this.sprite.x, this.sprite.y)
     }
     update(width,height) {
+        if (!this.alive) {
+            return
+        }   
+        this.counter = this.counter + 1
         f=this.update_func 
         f(this,width,height) 
+        
+        if (this.sprite.x > this.mgr.worldwidth) {
+            this.sprite.x = 0
+        }
+        if (this.sprite.x < 0) {
+            this.sprite.x = this.mgr.worldwidth
+        }
     }
     draw(win,cam) {
+        if (!this.alive) {
+            return
+        }
         f=this.draw_func 
         f(this,win,cam) 
     }
     near(x1, x2) {
         return (math.abs(x1 - x2) < 5)
     }   
+    maybe_fire_bullet() {
+        if (random.integer(0,200) ==1   ) {
+            v=math.Vector2D(1,1) 
+            v.rotate(random.float(0,math.PI*2))
+            v.scale(random.integer(5,20))
+            this.mgr.fire_bullet(this.sprite.x, this.sprite.y, v.x, v.y)
+        }
+    }
 }
 
 func materialize(e, width, height) {
@@ -63,12 +86,7 @@ func descend(e, width, height) {
         e.dy = 0
     }
 
-    if (random.integer(0,200) ==1   ) {
-        v=math.Vector2D(1,1) 
-        v.rotate(random.float(0,math.PI*2))
-        v.scale(random.integer(5,20))
-        e.mgr.fire_bullet(e.sprite.x, e.sprite.y, v.x, v.y)
-    }
+    e.maybe_fire_bullet()
 }
 
 func search(e, width, height) {
@@ -76,13 +94,8 @@ func search(e, width, height) {
     mh = e.mgr.mountains.get(e.sprite.x)
     msh = e.mgr.height - mh 
     e.sprite.y = msh - 200
-
-    if (random.integer(0,200) ==1   ) {
-        v=math.Vector2D(1,1) 
-        v.rotate(random.float(0,math.PI*2))
-        v.scale(random.integer(5,20))
-        e.mgr.fire_bullet(e.sprite.x, e.sprite.y, v.x, v.y)
-    }
+    e.maybe_fire_bullet()
+  
     if (e.human != nil) {
         if (e.near(e.human.sprite.x, e.sprite.x)) {
             e.update_func = grab
@@ -102,6 +115,7 @@ func grab(e,width, height) {
        
         e.dy = -4 
     }
+    e.maybe_fire_bullet()
 }
 
 func abduct(e,width, height) {
@@ -111,6 +125,7 @@ func abduct(e,width, height) {
     if (e.sprite.y < 150 ) {
         mutate(e)
     }
+    e.maybe_fire_bullet()
 }
 
 func mutate(e) {
@@ -132,7 +147,7 @@ func mutated(e,width, height) {
     e.radar = random.choice([e.r,e.g,e.b,e.m])
     e.sprite.x = e.sprite.x + e.dx 
     e.sprite.y = e.sprite.y + e.dy
-    if (e.counter %20 == 0) {
+    if (e.counter%20 == 0) {
         e.dy = random.choice((-5,5))
     }
     if (e.sprite.y < 100 ) {
@@ -141,9 +156,28 @@ func mutated(e,width, height) {
             e.dy = 5
         }
     }
+    e.maybe_fire_bullet()
+
+    if (e.counter > 150 ) {
+        die(e)
+    }
 }
 
+func die(e) {
+    e.draw_func = draw_exp
+    e.exp = 0 
+    e.dx = 0 
+    e.dy = 0 
+    e.update_func = explode
+    e.radar = nil 
+}
 
+func explode(e,width, height) {
+    e.exp = e.exp + 1
+    if (e.exp > 60) {
+        e.alive = false
+    }
+}
  
 func draw_exp(e,win,cam) {
     h = e.img.height()

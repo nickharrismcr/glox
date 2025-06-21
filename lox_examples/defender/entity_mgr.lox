@@ -2,6 +2,7 @@ import bullets
 import lander 
 import human
 import random
+import functools
 
 class EntityMgr {
 
@@ -46,6 +47,16 @@ class EntityMgr {
         return nil
     }
 
+    count_type(type) {
+
+        func check(e) {
+            print e.type
+            return e.type == type
+        }
+        lst=functools.filter(this.entities, check)
+        return len(lst)
+    }
+
 
     update(worldwidth,height) {
 
@@ -57,6 +68,7 @@ class EntityMgr {
             delay = q[1]
             delay = delay - 1
             if (delay <= 0) {
+                e.alive = true 
                 this.entities.append(e)
                 this.queue.remove(i)
             }
