@@ -1,4 +1,4 @@
-import sys, glob,subprocess,difflib,argparse
+import sys, glob,subprocess,difflib,argparse,os
  
 
 def run(fname,force_compile=False) :  
@@ -7,7 +7,7 @@ def run(fname,force_compile=False) :
     if force_compile:
         cmdlst.append("--force-compile")
     cmdlst.append(fname)
-    cmdlst.append("2>&1")
+ 
     res = subprocess.Popen(cmdlst,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     return res
 
@@ -26,6 +26,11 @@ def format(s):
 
 def process(fname,args,force_compile=False,show_result=False):
 
+    if args.verbose or show_result:
+        print ("Test %-30s" % fname,end='')
+        sys.stdout.flush()
+        
+    
     passed=False
     pipe = run(fname,force_compile)  
     testdatafile="output/%s.testoutput" % basename(fname)
@@ -43,11 +48,10 @@ def process(fname,args,force_compile=False,show_result=False):
             if match:
                 passed=True
                 if args.verbose or show_result:
-                    print ("Test %-30s : PASS" % fname)
-          
+                    print ( ": PASS")
             else:
                 if args.verbose or show_result:
-                    print ("Test %-30s : FAIL" % fname)
+                    print (": FAIL")
                     print (f'expecting:\n'+format(data))
                     print (f'got:\n'+format(res[0]))
 
