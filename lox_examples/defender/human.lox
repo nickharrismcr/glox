@@ -1,0 +1,52 @@
+import sprite
+import random
+import math 
+import colour
+
+class Human {
+
+    init(x, y) {
+        img = image("pngs/human.png") 
+        this.type = "human"
+        this.img = img
+        this.sprite = sprite.Sprite(x, y, img, 1,1,1 )
+        this.update_func=walk
+        this.dx=1
+        this.exp=60
+        this.radar = colour.Colour(150,0,150,255)
+        this.counter = 0 
+        this.mgr = nil
+    }
+    position() {
+        return (this.sprite.x, this.sprite.y)
+    }
+    update(width,height) {
+        f=this.update_func 
+        if ( f != nil ) {  
+            f(this,width,height) 
+            this.counter = this.counter + 1
+        }
+    }
+    draw(win,cam) {
+       var spos = cam.translate(this.sprite.x)
+        if (spos != nil) {
+            win.draw_texture(this.sprite.get_texture(), spos, this.sprite.y)
+        }
+    }
+}
+ 
+
+func walk(e, width, height) {
+    if (e.counter % 10 == 0) {
+        e.sprite.x = e.sprite.x + e.dx 
+        mh = e.mgr.mountains.get(e.sprite.x)
+        msh = e.mgr.height - mh 
+        e.sprite.y = msh  
+    }
+
+} 
+
+
+ 
+
+
