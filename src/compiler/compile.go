@@ -224,7 +224,7 @@ func (p *Parser) match(tt TokenType) bool {
 
 func (p *Parser) check(tt TokenType) bool {
 
-	return p.current.Tokentype == tt
+	return p.current.Tokentype == tt || (tt == TOKEN_SEMICOLON && p.current.Tokentype == TOKEN_EOL)
 }
 
 func (p *Parser) checkNext(tt TokenType) bool {
