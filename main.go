@@ -120,19 +120,21 @@ func handleArgs(opts *Options) {
 			case "--info":
 				core.DebugTraceExecution = true
 				core.LogLevel = core.INFO
-			case "--debug":
+			case "--debug", "-d":
 				core.DebugPrintCode = true
 				core.DebugTraceExecution = true
 				core.LogLevel = core.TRACE
-			case "--globals":
+			case "--compile-only", "-c":
+				core.DebugCompileOnly = true
+			case "--globals", "-g":
 				core.DebugShowGlobals = true
-			case "--skip-builtins":
+			case "--skip-builtins", "-s":
 				core.DebugSkipBuiltins = true
 			case "--repl":
 				opts.doRepl = true
-			case "--force-compile":
+			case "--force-compile", "-f":
 				core.ForceModuleCompile = true
-			case "--print-tokens":
+			case "--print-tokens", "-p":
 				opts.printTokens = true
 			default:
 				usage()

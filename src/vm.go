@@ -72,7 +72,7 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 		foreachState: nil,
 	}
 	vm.resetStack()
-	if defineBuiltIns {
+	if defineBuiltIns && !core.DebugCompileOnly {
 		vm.defineBuiltIns()
 	}
 	return vm
@@ -101,6 +101,10 @@ func (vm *VM) Interpret(source string, module string) (InterpretResult, string) 
 	if function == nil {
 		return INTERPRET_COMPILE_ERROR, ""
 	}
+	if core.DebugCompileOnly {
+		return INTERPRET_OK, ""
+	}
+
 	if vm.ModuleImport {
 		b := new(bytes.Buffer)
 		function.Chunk.Serialise(b)
