@@ -182,6 +182,8 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		return simpleInstruction("OP_END_EXCEPT", offset)
 	case core.OP_BREAKPOINT:
 		return simpleInstruction("OP_BREAKPOINT", offset)
+	case core.OP_UNPACK:
+		return byteInstruction(c, "OP_UNPACK", offset)
 	default:
 		core.LogFmt(core.TRACE, "Unknown opcode %d\n", i)
 		return offset + 1
@@ -205,8 +207,8 @@ func constantInstruction(c *core.Chunk, name string, offset int) int {
 
 func byteInstruction(c *core.Chunk, name string, offset int) int {
 
-	slot := c.Code[offset+1]
-	core.LogFmt(core.TRACE, "%-16s %04d\n", name, slot)
+	byte_ := c.Code[offset+1]
+	core.LogFmt(core.TRACE, "%-16s %04d\n", name, byte_)
 	return offset + 2
 }
 
