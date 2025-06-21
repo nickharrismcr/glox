@@ -46,7 +46,7 @@ func materialize(e, width, height) {
         e.dx = random.choice((-5,5))
         e.dy = 5
         e.counter = 0
-        mutate(e)
+       
     }
 }
 
@@ -116,7 +116,7 @@ func abduct(e,width, height) {
 func mutate(e) {
     e.update_func = mutated
     e.image = image
-    //e.human.sprite.y = -1000
+    e.human.sprite.y = -1000
     e.human = nil
     img = image("pngs/mutant.png") 
     e.type = "mutant"
