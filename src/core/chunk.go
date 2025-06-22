@@ -69,6 +69,8 @@ const (
 	OP_BREAKPOINT
 	OP_UNPACK
 	OP_IMPORT_FROM
+	OP_ONE
+	OP_DUP
 )
 
 type Chunk struct {

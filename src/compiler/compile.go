@@ -236,6 +236,10 @@ func (p *Parser) checkNext(tt TokenType) bool {
 
 	return p.scn.Tokens.At(p.scn.TokenIdx).Tokentype == tt
 }
+func (p *Parser) checkAhead(tt TokenType, offset int) bool {
+
+	return p.scn.Tokens.At(p.scn.TokenIdx+offset).Tokentype == tt
+}
 
 func (p *Parser) advance() {
 
@@ -601,6 +605,42 @@ func (p *Parser) isVariableDefined(name Token, lexeme string) bool {
 	return rv
 }
 
+func (p *Parser) handleIncrement() bool {
+
+	//(1) var++
+	//(2) obj.prop++
+
+	if p.check(TOKEN_IDENTIFIER) && p.checkNext(TOKEN_PLUS_PLUS) {
+
+		name := p.current
+		p.consume(TOKEN_IDENTIFIER, "Expect variable name.")
+		p.consume(TOKEN_PLUS_PLUS, "Expect '++' after variable name.")
+		p.consume(TOKEN_SEMICOLON, "Expect ';' after increment.")
+		arg, getOp, setOp := p.resolveVariable(name)
+		p.emitBytes(getOp, uint8(arg))
+		p.emitByte(core.OP_ONE)
+		p.emitByte(core.OP_ADD)
+		p.emitBytes(setOp, uint8(arg))
+		return true
+
+	}
+	if p.check(TOKEN_IDENTIFIER) && p.checkNext(TOKEN_DOT) && p.checkAhead(TOKEN_IDENTIFIER, 1) && p.checkAhead(TOKEN_PLUS_PLUS, 2) {
+
+		p.expression()
+		name := p.identifierConstant(p.previous)
+		p.consume(TOKEN_PLUS_PLUS, "Expect '++' after variable name.")
+		p.consume(TOKEN_SEMICOLON, "Expect ';' after increment.")
+
+		p.emitByte(core.OP_ONE)
+		p.emitByte(core.OP_ADD)
+		p.emitBytes(core.OP_SET_PROPERTY, name)
+		p.emitByte(core.OP_POP)
+		return true
+	}
+
+	return false
+}
+
 func (p *Parser) handleImplicitDeclaration() bool {
 	if p.check(TOKEN_IDENTIFIER) && p.checkNext(TOKEN_EQUAL) {
 		name := p.current
@@ -685,6 +725,9 @@ func (p *Parser) handleUnpackingAssignment() bool {
 
 func (p *Parser) expressionStatement() {
 
+	if p.handleIncrement() {
+		return
+	}
 	if p.handleUnpackingAssignment() {
 		return
 	}
@@ -1306,7 +1349,7 @@ func (p *Parser) checkGlobals(name string) bool {
 	return ok
 }
 
-func (p *Parser) namedVariable(name Token, canAssign bool) {
+func (p *Parser) resolveVariable(name Token) (int, uint8, uint8) {
 
 	// core.LogFmt(core.DEBUG, "namedVariable %s canAssign %t\n", name.Lexeme(), canAssign)
 	var getOp, setOp uint8
@@ -1328,6 +1371,12 @@ func (p *Parser) namedVariable(name Token, canAssign bool) {
 		setOp = core.OP_SET_GLOBAL
 		// core.LogFmt(core.DEBUG, "Global variable %s found at index %d\n", name.Lexeme(), arg)
 	}
+	return arg, getOp, setOp
+}
+
+func (p *Parser) namedVariable(name Token, canAssign bool) {
+
+	arg, getOp, setOp := p.resolveVariable(name)
 
 	if canAssign && p.match(TOKEN_EQUAL) {
 		p.expression()
@@ -1335,7 +1384,6 @@ func (p *Parser) namedVariable(name Token, canAssign bool) {
 	} else {
 		p.emitBytes(getOp, uint8(arg))
 	}
-
 }
 
 func (p *Parser) addLocal(name Token) {
@@ -1659,6 +1707,9 @@ func dot(p *Parser, canAssign bool) {
 		p.emitBytes(core.OP_INVOKE, name)
 		p.emitByte(argCount)
 	} else {
+		if p.check(TOKEN_PLUS_PLUS) {
+			p.emitByte(core.OP_DUP) // duplicate the object for propesrty ++
+		}
 		p.emitBytes(core.OP_GET_PROPERTY, name)
 	}
 }

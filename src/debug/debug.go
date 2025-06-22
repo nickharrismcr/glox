@@ -44,6 +44,10 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 	lastoffset = c.Lines[offset]
 
 	switch i {
+	case core.OP_ONE:
+		return simpleInstruction("OP_ONE", offset)
+	case core.OP_DUP:
+		return simpleInstruction("OP_DUP", offset)
 	case core.OP_RETURN:
 		return simpleInstruction("OP_RETURN", offset)
 	case core.OP_CONSTANT:

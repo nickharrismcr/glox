@@ -469,6 +469,10 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			vm.stack[vm.stackTop] = core.MakeBooleanValue(core.ValuesEqual(a, b, false), false)
 			vm.stackTop++
 
+		case core.OP_ONE:
+			vm.stack[vm.stackTop] = core.MakeIntValue(1, false)
+			vm.stackTop++
+
 		case core.OP_GREATER:
 			// pop 2 stack values, stack top = boolean
 
@@ -709,6 +713,12 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			if !vm.binaryDivide() {
 				goto End
 			}
+
+		case core.OP_DUP:
+
+			// duplicate the value at stack top
+			vm.stack[vm.stackTop] = vm.stack[vm.stackTop-1]
+			vm.stackTop++
 
 		case core.OP_NIL:
 			// push nil val onto the stack
@@ -953,13 +963,13 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					vm.stackTop++
 				} else {
 					name := core.GetStringValue(nv)
-					vm.RunTimeError("Property '%s' not found.", name)
+					vm.RunTimeError("Get property '%s' not found.", name)
 					goto End
 				}
 
 			default:
 				name := core.GetStringValue(nv)
-				vm.RunTimeError("Property '%s' not found.", name)
+				vm.RunTimeError("Get property : '%s' not found.", name)
 				goto End
 			}
 
@@ -970,7 +980,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			val := vm.Peek(0)
 			v := vm.Peek(1)
 			if v.Type != core.VAL_OBJ && v.Type != core.VAL_VEC2 && v.Type != core.VAL_VEC3 && v.Type != core.VAL_VEC4 {
-				vm.RunTimeError("Property not found.")
+				vm.RunTimeError("Set property : not found.")
 				goto End
 			}
 			idx := vm.currCode[frame.Ip]
@@ -996,7 +1006,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					vm.stackTop++
 
 				default:
-					vm.RunTimeError("Property '%s' not found.", core.GetStringValue(constants[idx]))
+					vm.RunTimeError("Set property : '%s' not found.", core.GetStringValue(constants[idx]))
 					goto End
 				}
 			case core.OBJECT_VEC3:
@@ -1025,7 +1035,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					vm.stackTop++
 
 				default:
-					vm.RunTimeError("Property '%s' not found.", core.GetStringValue(constants[idx]))
+					vm.RunTimeError("Set property : '%s' not found.", core.GetStringValue(constants[idx]))
 					goto End
 				}
 			case core.OBJECT_VEC4:
@@ -1060,7 +1070,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					vm.stack[vm.stackTop] = tmp // push the value back on the stack
 					vm.stackTop++
 				default:
-					vm.RunTimeError("Property '%s' not found.", core.GetStringValue(constants[idx]))
+					vm.RunTimeError("Set property : '%s' not found.", core.GetStringValue(constants[idx]))
 					goto End
 				}
 
@@ -1079,7 +1089,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				vm.stack[vm.stackTop] = tmp
 				vm.stackTop++
 			default:
-				vm.RunTimeError("Property '%s' not found.", core.GetStringValue(constants[idx]))
+				vm.RunTimeError("Set property : '%s' not found.", core.GetStringValue(constants[idx]))
 				goto End
 			}
 
