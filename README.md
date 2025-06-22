@@ -10,20 +10,20 @@ My implementation is slow compared to CLox. Fibonacci benchmark averages 1s, CLo
 The VM :
 - does a lot of function calls in place of C macros, not all of which get inlined
 - has a large switch/case inner loop which Go compiler doesn't optimise at all well ( no computed goto ) 
-- uses slow map[string] for globals - function code runs much quicker 
+- uses slow map for globals - function code runs much quicker 
 - uses interface{} for objects ( values are tagged union structs for speed but contain a pointer for objects ) 
 - GC is handled by the Go runtime. 
 
-but hey-ho. This is a learning exercise, the Go code is probably not very ideomatic. The fun is in figuring out how to get the interpreter to do new language stuff. 
-And I can always add more native functions :D 
+but hey-ho. This is a learning exercise, the Go code is probably not very ideomatic. The fun is in figuring out how to get the interpreter to do new language stuff.
+  
+There are some optimisations such as string interning to allow integer hash keys for method lookup, singleton NIL_VALUE, inlined functions in the main run loop.  And I can always add more native functions :D 
 
 **Additions to vanilla Lox:**
 
 Module imports
 
-- e.g `import othermodule;`
-- importing modules will cache the compiled bytecode in `__loxcache__/<module>.lxc`, subsequent imports will load from this cache unless the source is newer in which 
-  case the module will be recompiled. 
+- e.g `import othermodule, othermodule2 as om2`
+- importing modules will cache the compiled bytecode in `__loxcache__/<module>.lxc`, subsequent imports will load from this cache unless the source is newer in which case the module will be recompiled. 
 
 EOL semicolons are optional 
 
@@ -36,6 +36,8 @@ Integer number type:
 - modulus operator %  
 
 Loop `break`/`continue`
+
+Incrementor `a++` `b.x++`
 
 Native funcs :  
 
@@ -57,6 +59,8 @@ Fast 2D native float array
 - `var a = float_array(100,100);`
 - `a.set(10,10,0.5);`
 - `var b=a.get(10,10);`  
+
+Fast native vector containers vec2, vec3, vec4 
 
 Raylib graphics window for drawing 
 ```
@@ -100,16 +104,17 @@ Lists :
 Tuples : 
 
 - immutable lists
-- `var a = (1,2,3);` 
+- `a = (1,2,3);` 
 - allows same operations as list but no append or assignment allowed.
 - `a,b,c = (1,2,3)` : Tuple unpacking
 
 Dictionaries:
 
-- initialiser ( `var a = {}; var a = { "b":"c","d":"e"};` )
+-- initialiser ( `var a = {}; var a = { "b":"c","d":"e"};` )
 - get ( `a[key]` or `a.get(key,default)` ) 
 - set ( `a[key]=b`)
 - `dict.keys()`   get list of keys 
+- `a.remove(key)`
 
 Strings :
 
@@ -149,10 +154,9 @@ I/O
 
 - more runtime exception types
 - comprehensive raylib gfx bindings 
-- tuple/list unpacking  `a,b = [ 1,2 ]`
 - named function parameters with defaults  `func foo(bar,baz=1)` 
-- from module import [*|name] 
-- import module as <namespace> 
+- from module import [*|name[,name][...]] 
+ 
 
 - etc.
  
