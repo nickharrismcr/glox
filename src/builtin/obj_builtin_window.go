@@ -57,7 +57,7 @@ func (o *WindowObject) String() string {
 }
 
 func (o *WindowObject) GetType() core.ObjectType {
-	return core.OBJECT_GRAPHICS
+	return core.OBJECT_NATIVE
 }
 
 func (o *WindowObject) GetMethod(stringId int) *core.BuiltInObject {

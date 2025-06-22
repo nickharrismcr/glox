@@ -24,6 +24,11 @@ func FloatArrayBuiltin(argCount int, arg_stackptr int, vm core.VMContext) core.V
 	return core.MakeObjectValue(floatArrObj, false)
 }
 
+func IsFloatArrayObject(v core.Value) bool {
+	_, ok := v.Obj.(*FloatArrayObject)
+	return ok
+}
+
 type FloatArray struct {
 	Width, Height int
 	Data          []float64
@@ -77,7 +82,7 @@ func (o *FloatArrayObject) String() string {
 }
 
 func (o *FloatArrayObject) GetType() core.ObjectType {
-	return core.OBJECT_FLOAT_ARRAY
+	return core.OBJECT_NATIVE
 }
 
 func (o *FloatArrayObject) RegisterMethod(name string, method *core.BuiltInObject) {

@@ -21,16 +21,18 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 
 	o.RegisterMethod("clear", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-			rval := vm.Stack(arg_stackptr)
-			gval := vm.Stack(arg_stackptr + 1)
-			bval := vm.Stack(arg_stackptr + 2)
-			aval := vm.Stack(arg_stackptr + 3)
-			r := rval.AsInt()
-			g := gval.AsInt()
-			b := bval.AsInt()
-			a := aval.AsInt()
+			v4val := vm.Stack(arg_stackptr)
+			if v4val.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vector4")
+			}
+			v4 := v4val.Obj.(*core.Vec4Object)
+			rval := v4.X
+			gval := v4.Y
+			bval := v4.Z
+			aval := v4.W
+
 			rl.BeginTextureMode(o.Data.RenderTexture)
-			rl.ClearBackground(rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
+			rl.ClearBackground(rl.NewColor(uint8(rval), uint8(gval), uint8(bval), uint8(aval)))
 			rl.EndTextureMode()
 			return core.NIL_VALUE
 		},

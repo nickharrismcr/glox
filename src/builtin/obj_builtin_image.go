@@ -59,7 +59,7 @@ func (o *ImageObject) String() string {
 }
 
 func (o *ImageObject) GetType() core.ObjectType {
-	return core.OBJECT_IMAGE
+	return core.OBJECT_NATIVE
 }
 
 func (o *ImageObject) GetMethod(stringId int) *core.BuiltInObject {

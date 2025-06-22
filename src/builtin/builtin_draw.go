@@ -27,7 +27,7 @@ func DrawPNGBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 		return core.NIL_VALUE
 	}
 
-	if !plotData.IsFloatArrayObject() {
+	if !IsFloatArrayObject(plotData) {
 		vm.RunTimeError("Second argument to draw_png must be a float array")
 		return core.NIL_VALUE
 	}
@@ -102,7 +102,7 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.
 	scaleVal := vm.Stack(arg_stackptr + 6)
 
 	if !(hVal.IsInt() && wVal.IsInt() && maxIterVal.IsInt() && xoffsetVal.IsFloat() &&
-		yoffsetVal.IsFloat() && arrayVal.IsFloatArrayObject() && scaleVal.IsFloat()) {
+		yoffsetVal.IsFloat() && IsFloatArrayObject(arrayVal) && scaleVal.IsFloat()) {
 		vm.RunTimeError("Invalid arguments to lox_mandel_array")
 		return core.NIL_VALUE
 	}

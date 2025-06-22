@@ -265,7 +265,7 @@ func (vm *VM) invoke(name core.Value, argCount int) bool {
 	case core.OBJECT_MODULE:
 		module := receiver.AsModule()
 		return vm.invokeFromModule(module, name, argCount)
-	case core.OBJECT_FLOAT_ARRAY, core.OBJECT_STRING, core.OBJECT_LIST, core.OBJECT_DICT, core.OBJECT_GRAPHICS:
+	case core.OBJECT_NATIVE, core.OBJECT_LIST, core.OBJECT_DICT, core.OBJECT_STRING:
 		return vm.invokeFromBuiltin(receiver.Obj, name, argCount)
 	default:
 		vm.RunTimeError("Invalid use of '.' operator")
@@ -863,15 +863,6 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			nv := constants[idx]
 			stringId := nv.InternedId
 
-			bobj, ok := v.Obj.(core.HasConstants)
-			if ok {
-				val := bobj.GetConstant(stringId)
-				vm.pop() // pop the object
-				vm.stack[vm.stackTop] = val
-				vm.stackTop++
-				continue
-			}
-
 			switch v.Obj.GetType() {
 			case core.OBJECT_VEC2:
 				// special case for Vec2, which has x and y properties
@@ -941,6 +932,16 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					if !vm.bindMethod(ot.Class, stringId) {
 						goto End
 					}
+				}
+			case core.OBJECT_NATIVE:
+				// built-in objects can have constants, so check for that
+				bobj, ok := v.Obj.(core.HasConstants)
+				if ok {
+					val := bobj.GetConstant(stringId)
+					vm.pop() // pop the object
+					vm.stack[vm.stackTop] = val
+					vm.stackTop++
+					continue
 				}
 
 			case core.OBJECT_MODULE:

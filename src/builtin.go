@@ -232,10 +232,7 @@ func typeName(val core.Value) string {
 			val_type = "module"
 		case core.OBJECT_FILE:
 			val_type = "file"
-		case core.OBJECT_GRAPHICS:
-			val_type = "graphics"
-		case core.OBJECT_FLOAT_ARRAY:
-			val_type = "float_array"
+
 		}
 	case core.VAL_NIL:
 		val_type = "nil"

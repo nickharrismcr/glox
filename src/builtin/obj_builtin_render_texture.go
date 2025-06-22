@@ -57,7 +57,7 @@ func (o *RenderTextureObject) String() string {
 }
 
 func (o *RenderTextureObject) GetType() core.ObjectType {
-	return core.OBJECT_TEXTURE
+	return core.OBJECT_NATIVE
 }
 
 func (o *RenderTextureObject) GetMethod(stringId int) *core.BuiltInObject {

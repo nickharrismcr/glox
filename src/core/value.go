@@ -399,11 +399,6 @@ func (v Value) IsBoundMethodObject() bool {
 	return v.IsObj() && v.Obj.GetType() == OBJECT_BOUNDMETHOD
 }
 
-func (v Value) IsFloatArrayObject() bool {
-
-	return v.IsObj() && v.Obj.GetType() == OBJECT_FLOAT_ARRAY
-}
-
 func (v *Value) Serialise(buffer *bytes.Buffer) {
 
 	switch v.Type {

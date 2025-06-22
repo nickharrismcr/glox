@@ -120,7 +120,7 @@ func (o *TextureObject) String() string {
 }
 
 func (o *TextureObject) GetType() core.ObjectType {
-	return core.OBJECT_TEXTURE
+	return core.OBJECT_NATIVE
 }
 
 func (o *TextureObject) GetMethod(stringId int) *core.BuiltInObject {
