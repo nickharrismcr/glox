@@ -1,6 +1,14 @@
+func get_list(lst) {
+  rv=[]
+  foreach ( var i in lst ) {
+    rv.append(i)
+  }
+  return rv
+}
+
 class Iterable {
   init(lst) {
-    this.items = lst
+    this.items = get_list(lst)
     this.index = 0
   }
   __iter__() {

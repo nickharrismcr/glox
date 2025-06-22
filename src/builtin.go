@@ -130,13 +130,8 @@ func rangeBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 		return core.NIL_VALUE
 	}
 
-	var values []core.Value
-	for i := start; i < end; i += step {
-		values = append(values, core.MakeIntValue(i, false))
-	}
-
-	list := core.MakeListObject(values, false)
-	return core.MakeObjectValue(list, false)
+	iter := core.MakeIntIteratorObject(start, end, step)
+	return core.MakeObjectValue(iter, false)
 }
 
 func sleepBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
