@@ -617,6 +617,10 @@ func (p *Parser) handleIncrement() bool {
 		p.consume(TOKEN_PLUS_PLUS, "Expect '++' after variable name.")
 		p.consume(TOKEN_SEMICOLON, "Expect ';' after increment.")
 		arg, getOp, setOp := p.resolveVariable(name)
+		if setOp == core.OP_SET_LOCAL {
+			p.emitBytes(core.OP_INC_LOCAL, uint8(arg))
+			return true
+		}
 		p.emitBytes(getOp, uint8(arg))
 		p.emitByte(core.OP_ONE)
 		p.emitByte(core.OP_ADD)

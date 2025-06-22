@@ -71,6 +71,7 @@ const (
 	OP_IMPORT_FROM
 	OP_ONE
 	OP_DUP
+	OP_INC_LOCAL
 )
 
 type Chunk struct {

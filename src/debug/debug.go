@@ -80,6 +80,8 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		return simpleInstruction("OP_LESS", offset)
 	case core.OP_PRINT:
 		return simpleInstruction("OP_PRINT", offset)
+	case core.OP_INC_LOCAL:
+		return byteInstruction(c, "OP_INC_LOCAL", offset)
 	case core.OP_STR:
 		return simpleInstruction("OP_STR", offset)
 	case core.OP_POP:

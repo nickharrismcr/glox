@@ -497,6 +497,16 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsFloat() < v2.AsFloat(), false)
 			vm.stackTop++
 
+		case core.OP_INC_LOCAL:
+			// increment the local variable at operand index by 1
+			slot := int(vm.currCode[frame.Ip])
+			frame.Ip++
+			if vm.stack[frame.Slots+slot].Immutable() {
+				vm.RunTimeError("Cannot increment const local.")
+				goto End
+			}
+			vm.stack[frame.Slots+slot] = core.MakeFloatValue(vm.stack[frame.Slots+slot].AsFloat()+1, false)
+
 		case core.OP_PRINT:
 			// compiler ensures stack top will be a string object via core.OP_STR
 			v := vm.pop()
