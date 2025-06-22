@@ -1,0 +1,145 @@
+import random as rn
+import math  
+import colour as col 
+
+class Circle {
+    init(pos, radius, col, width, height) {
+        this.pos = pos
+        this.maxradius = radius
+        this.radius = 1 
+        this.dr=1.03 
+        this.col = col
+   
+        this.dir = 0.0
+        this.speed = 4 
+        this.counter = 0 
+        this.width = width
+        this.height = height
+        this.change = rn.integer(10,40)
+    } 
+    update() {
+        this.pos.x = this.pos.x + this.speed * cos(this.dir)
+        this.pos.y = this.pos.y + this.speed * sin(this.dir)
+        if (this.pos.x > this.width or this.pos.x < 0) {
+            this.dir = this.dir + math.PI
+        }
+        if (this.pos.y > this.height or this.pos.y < 0) {
+            this.dir = this.dir + math.PI
+        }
+        this.counter = this.counter + 1
+        if (this.counter > this.change ) {
+            this.counter = 0
+            this.change = rn.integer(10,40)
+            this.dir = this.dir + math.PI/4.0 * rn.choice([-1,1])
+        }
+     
+             
+        this.radius = this.radius * this.dr 
+        if (this.radius > this.maxradius or this.radius < 1) {
+            this.dr = 1/this.dr 
+        }
+         
+    }
+    draw(frame) {
+        
+        frame.texture.circle(this.pos, this.radius, this.col)
+        
+    }
+}
+
+class Frame {
+    init(width, height,circle) {
+        this.width = width
+        this.height = height
+        this.rotation = 0.0
+        this.scale = 1.0
+        this.pos= vec2(rn.integer(0,W-width), rn.integer(0,H-height))
+        this.texture = render_texture(width, height)
+        this.circle=circle 
+        this.counter=0
+        this.change = rn.integer(50,100)
+    }
+    update() {
+     
+        this.counter = this.counter + 1
+        if (this.counter > this.change) {
+            this.counter = 0
+            newx= rn.integer(0,1000-(this.width*this.scale))
+            this.pos= vec2(rn.integer(0,W-(this.width*this.scale)), rn.integer(0,H-this.height*this.scale))
+            this.rotation = this.rotation+45.0
+            this.scale = rn.float(0.25, 1.25)
+        }
+    }
+    clear(col) {
+        this.texture.clear(col)
+    }
+    draw(win) {
+        win.draw_render_texture_ex(this.texture, this.pos, this.rotation, this.scale)
+    }
+}
+
+ 
+
+ww=700
+wh=700
+ 
+frame_count=100
+
+win=window(1,1) 
+win.init() 
+win.toggle_fullscreen()
+W=win.get_screen_width()
+H=win.get_screen_height()
+win.begin()
+win.clear(col.BLACK)
+win.end()
+
+counter = 0 
+clear=vec4(0,0,0,0)
+frames=[] 
+ 
+foreach ( i in range(0,frame_count)) {
+    x = rn.integer(0,ww)
+    y = rn.integer(0,wh)
+    radius = rn.integer(2,5)
+    c = vec4(rn.integer(0,255), rn.integer(0,255), rn.integer(0,255),150)
+    frames.append(Frame(ww, wh, Circle(vec2(x,y),radius,c,ww,wh)))
+}
+
+
+while (!win.should_close()) {
+ 
+    win.begin_blend_mode(win.BLEND_ADD)
+
+    counter = counter + 1
+    if (counter >1000) {
+        counter = 0
+    }
+    if (counter == 0 ) {
+        i = rn.integer(0,frame_count-1)
+        x = rn.integer(0,ww)
+        y = rn.integer(0,wh)
+        radius = rn.integer(2,5)
+        c =   vec4(rn.integer(0,255), rn.integer(0,255), rn.integer(0,255),150)
+        frames[i].circle=Circle(vec2(x,y),radius,c,ww,wh)
+        frames[i].clear(clear)
+    }
+  
+
+    foreach ( i in range(0,frame_count)) {
+        frames[i].update()
+        frames[i].circle.update()
+        frames[i].circle.draw(frames[i])
+    }
+    
+    win.begin() 
+    win.clear(col.BLACK)
+    
+    foreach ( i in range(0,frame_count)) {
+        frames[i].draw(win)
+    }
+    win.end_blend_mode()
+    win.end()
+ 
+}
+win.close()

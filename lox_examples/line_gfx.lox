@@ -1,14 +1,14 @@
 
-import random
+import random as rn
 import colour
 from math import * 
 
 const SPEED=8 
 const TRAIL=100
-const LINES=10
+const LINES=100
 
 func random_vec2D (minX, maxX, minY, maxY) {
-    return vec2(random.integer(minX, maxX), random.integer(minY, maxY))
+    return vec2(rn.integer(minX, maxX), rn.integer(minY, maxY))
 }
 
 // A simple buffer that rotates its contents when full
@@ -80,7 +80,8 @@ class Line {
         foreach (var l in this.hist.data[1:]) {
             c = c + 1.0
             a = 255.0 * (c / (1.1*len(this.hist.data))) ; 
-            g.line(l.pos1, l.pos2, l.col)  
+           
+            g.line(l.pos1, l.pos2, vec4(l.col.r, l.col.g, l.col.b, a)) 
         }   
     }
 
@@ -91,7 +92,7 @@ class Line {
         return "Line(" + str(this.pos1) + ", " + str(this.pos2) + ", " + str(this.col) + ")"
     }
     copy() {
-        return Line(vec2(this.pos1.x, this.pos1.y), vec2(this.pos2.x, this.pos2.y), vec4(this.col.x, this.col.y, this.col.z, this.col.w)  , this.width, this.height)
+        return Line(vec2(this.pos1.x, this.pos1.y), vec2(this.pos2.x, this.pos2.y), vec4(this.col.r, this.col.g, this.col.b, this.col.a)  , this.width, this.height)
     }
 }
 
@@ -123,26 +124,26 @@ const width=1500
 const height=900
 var win = window(width,height)
 win.init()
- 
 
-lines=Lines(width, height); 
+lines=Lines(width, height);
 
 for (var i = 0; i < LINES; i = i + 1) {
     var pos = random_vec2D(0, width, 0, height)
     var pos2 = random_vec2D(0, width, 0, height)
     var col = colour.random_rgb(); 
+    col.a = rn.integer(0, 255)
     lines.add_line(pos,pos2,col) 
 }
 
 while (!win.should_close()) {
 
-    win.begin()
-    win.clear(vec4(10,10,10,255))
-  
+     win.clear(vec4(60,10,10, 255))
+
     lines.update()
-    win.begin_blend_mode(win.BLEND_ALPHA)
+    win.begin_blend_mode(win.BLEND_MULTIPLY)
     lines.draw(win)
     win.end_blend_mode()
+    
     win.end()
 }
 win.close()
