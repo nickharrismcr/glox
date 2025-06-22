@@ -1,0 +1,15 @@
+func test() {
+    a = 1
+    a++ 
+    print a 
+}
+
+test()
+b=2
+b++
+print b
+
+c=vec2(3,2) 
+c.x++ 
+print c.x 
+

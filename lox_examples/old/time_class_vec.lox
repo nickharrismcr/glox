@@ -1,0 +1,16 @@
+class Vec2 {
+    init(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+}
+
+print "class"
+v=Vec2(0,0) 
+
+foreach (i in range(10000000)){
+    v.x++
+    v.y++
+}
+print (v.x, v.y);
+

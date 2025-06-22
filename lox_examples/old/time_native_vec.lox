@@ -1,0 +1,9 @@
+print "native" 
+
+v2=vec2(0,0)
+
+foreach (i in range(10000000)){
+    v2.x++
+    v2.y++
+}   
+print (int(v2.x), int(v2.y));
