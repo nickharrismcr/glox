@@ -44,6 +44,33 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			return core.NIL_VALUE
 		},
 	})
+	o.RegisterMethod("toggle_fullscreen", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if !rl.IsWindowFullscreen() {
+				monitor := rl.GetCurrentMonitor()
+				width := rl.GetMonitorWidth(monitor)
+				height := rl.GetMonitorHeight(monitor)
+
+				// Set window size to monitor size
+				rl.SetWindowSize(width, height)
+			}
+			rl.ToggleFullscreen()
+			return core.NIL_VALUE
+		},
+	})
+	o.RegisterMethod("get_screen_width", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			width := rl.GetScreenWidth()
+			return core.MakeFloatValue(float64(width), true)
+		},
+	})
+	o.RegisterMethod("get_screen_height", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			height := rl.GetScreenHeight()
+			return core.MakeFloatValue(float64(height), true)
+		},
+	})
+
 	o.RegisterMethod("clear", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			v4val := vm.Stack(arg_stackptr)
@@ -172,12 +199,15 @@ func RegisterAllWindowMethods(o *WindowObject) {
 
 	o.RegisterMethod("circle", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-			xval := vm.Stack(arg_stackptr)
-			yval := vm.Stack(arg_stackptr + 1)
-			radVal := vm.Stack(arg_stackptr + 2)
-			colVal := vm.Stack(arg_stackptr + 3)
+			pval := vm.Stack(arg_stackptr)
+			if pval.Type != core.VAL_VEC2 {
+				vm.RunTimeError("Expected Vec2 for circle position")
+				return core.NIL_VALUE
+			}
+			radVal := vm.Stack(arg_stackptr + 1)
+			colVal := vm.Stack(arg_stackptr + 2)
 			if colVal.Type != core.VAL_VEC4 {
-				vm.RunTimeError("Expected Vec4 for rectangle color")
+				vm.RunTimeError("Expected Vec4 for circle color")
 				return core.NIL_VALUE
 			}
 			v4obj := colVal.Obj.(*core.Vec4Object)
@@ -186,11 +216,13 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			b := int32(v4obj.Z)
 			a := int32(v4obj.W)
 
-			x := int32(xval.AsInt())
-			y := int32(yval.AsInt())
+			pobj := pval.Obj.(*core.Vec2Object)
+			xval := pobj.X
+			yval := pobj.Y
+
 			rad := float32(radVal.AsInt())
 
-			rl.DrawCircleLines(x, y, rad, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
+			rl.DrawCircleLines(int32(xval), int32(yval), rad, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
 			return core.NIL_VALUE
 		},
 	})
@@ -272,6 +304,38 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			to := renderTextureVal.Obj.(*RenderTextureObject)
 			target := to.Data.RenderTexture.Texture
 			rl.DrawTextureRec(target, rl.Rectangle{X: 0, Y: 0, Width: float32(target.Width), Height: float32(-target.Height)}, rl.Vector2{X: float32(x), Y: float32(y)}, rl.White)
+
+			return core.NIL_VALUE
+		},
+	})
+	o.RegisterMethod("draw_render_texture_ex", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			renderTextureVal := vm.Stack(arg_stackptr)
+			v2val := vm.Stack(arg_stackptr + 1)
+			if v2val.Type != core.VAL_VEC2 {
+				vm.RunTimeError("Expected Vec2 for render texture position")
+				return core.NIL_VALUE
+			}
+			rotVal := vm.Stack(arg_stackptr + 2)
+			if rotVal.Type != core.VAL_FLOAT {
+				vm.RunTimeError("Expected Float for rotation")
+				return core.NIL_VALUE
+			}
+			scaleVal := vm.Stack(arg_stackptr + 3)
+			if scaleVal.Type != core.VAL_FLOAT {
+				vm.RunTimeError("Expected Float for scale")
+				return core.NIL_VALUE
+			}
+			v2obj := v2val.Obj.(*core.Vec2Object)
+			x := v2obj.X
+			y := v2obj.Y
+			rot := float32(rotVal.AsFloat())
+			scale := float32(scaleVal.AsFloat())
+
+			to := renderTextureVal.Obj.(*RenderTextureObject)
+			target := to.Data.RenderTexture.Texture
+
+			rl.DrawTextureEx(target, rl.Vector2{X: float32(x), Y: float32(y)}, rot, scale, rl.White)
 
 			return core.NIL_VALUE
 		},
