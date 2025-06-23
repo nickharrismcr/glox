@@ -60,6 +60,10 @@ func (o *RenderTextureObject) GetType() core.ObjectType {
 	return core.OBJECT_NATIVE
 }
 
+func (tex *RenderTextureObject) GetNativeType() core.NativeType {
+	return core.NATIVE_RENDER_TEXTURE
+}
+
 func (o *RenderTextureObject) GetMethod(stringId int) *core.BuiltInObject {
 	return o.Methods[stringId]
 }

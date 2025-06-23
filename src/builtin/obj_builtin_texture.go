@@ -115,6 +115,10 @@ func MakeTextureObject(image *rl.Image, frames int, startFrame int, endFrame int
 	return rv
 }
 
+func (tex *TextureObject) GetNativeType() core.NativeType {
+	return core.NATIVE_TEXTURE
+}
+
 func (o *TextureObject) String() string {
 	return fmt.Sprintf("<Texture %dx%d>", o.Data.Width, o.Data.Height)
 }

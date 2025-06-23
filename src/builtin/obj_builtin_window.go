@@ -60,6 +60,10 @@ func (o *WindowObject) GetType() core.ObjectType {
 	return core.OBJECT_NATIVE
 }
 
+func (w *WindowObject) GetNativeType() core.NativeType {
+	return core.NATIVE_WINDOW
+}
+
 func (o *WindowObject) GetMethod(stringId int) *core.BuiltInObject {
 	return o.Methods[stringId]
 }

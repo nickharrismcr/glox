@@ -3,6 +3,7 @@ package core
 import "time"
 
 type ObjectType int
+type NativeType int
 
 const (
 	OBJECT_STRING ObjectType = iota
@@ -21,6 +22,17 @@ const (
 	OBJECT_VEC2
 	OBJECT_VEC3
 	OBJECT_VEC4
+)
+
+const (
+	NATIVE_FLOAT_ARRAY NativeType = iota
+	NATIVE_VEC2
+	NATIVE_VEC3
+	NATIVE_VEC4
+	NATIVE_WINDOW
+	NATIVE_IMAGE
+	NATIVE_TEXTURE
+	NATIVE_RENDER_TEXTURE
 )
 
 type Object interface {
@@ -44,6 +56,9 @@ type HasMethods interface {
 }
 type HasConstants interface {
 	GetConstant(int) Value
+}
+type IsNative interface {
+	GetNativeType() NativeType
 }
 
 type VMContext interface {
