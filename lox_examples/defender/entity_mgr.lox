@@ -83,8 +83,8 @@ class EntityMgr {
         }
         this.bullets.update(worldwidth, height)
     }
-    fire_bullet(x, y, dx, dy) {
-        this.bullets.fire(x, y, dx, dy)
+    fire_bullet(p,v) {
+        this.bullets.fire(p,v)
     }
     draw(g,cam) {
         foreach (var e in this.entities) {

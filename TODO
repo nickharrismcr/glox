@@ -1,5 +1,7 @@
  
 
+compiler complains about a++ inside a class method 
+
 
 
 class methods - look into scoping

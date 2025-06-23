@@ -9,10 +9,10 @@ class BulletPool {
             this.bullets.append(bullet.Bullet())
         }
     }
-    fire(x, y, dx, dy) {
+    fire(p,v) {
         foreach (var b in this.bullets) {
             if (b.dead()) {
-                b.reset(x, y, dx, dy)
+                b.reset(p,v)
                 break
             }
         }

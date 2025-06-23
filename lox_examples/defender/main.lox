@@ -8,9 +8,10 @@ import radar
 import controller
 import camera
 import event 
+import colour
  
 func lander_search_event(e) {
-    print("Lander searching at ", e.sprite.x, " ", e.sprite.y)
+    print("Lander searching at ", e.sprite.pos.x, " ", e.sprite.pos.y)
 }
 
 
@@ -42,7 +43,7 @@ fgxpos=0
 while (!win.should_close()) {
 
     win.begin()
-    win.clear(10,10,10, 255)
+    win.clear(colour.BLACK)
 
     vel = int(cont.vel)
     cont.update(win)

@@ -11,7 +11,7 @@
       "mode": "debug",       // or "exec" if you're running a binary
       "program": "${workspaceFolder}/main.go",
       //"args": ["--debug","--globals","--force-compile", "--skip-builtins","tests/lox/catch_runtime.lox"],  // <== your CLI args here
-      "args": ["--debug","--globals","--force-compile","tests/lox/in.lox"],  // <== your CLI args here
+      "args": ["-d","nod.lox"],  // <== your CLI args here
       "env": {"LOX_PATH":"D:/go/glox"},
       "cwd": "${workspaceFolder}"
     }

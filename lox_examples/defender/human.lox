@@ -9,17 +9,17 @@ class Human {
         img = image("pngs/human.png") 
         this.type = "human"
         this.img = img
-        this.sprite = sprite.Sprite(x, y, img, 1,1,1 )
+        this.sprite = sprite.Sprite(vec2(x, y), img, 1,1,1 )
         this.update_func=walk
         this.dx=1
         this.exp=60
-        this.radar = colour.Colour(150,0,150,255)
+        this.radar = vec4(150,0,150,255)
         this.counter = 0 
         this.mgr = nil
         this.chosen = false 
     }
     position() {
-        return (this.sprite.x, this.sprite.y)
+        return (this.sprite.pos.x, this.sprite.pos.y)
     }
     update(width,height) {
         f=this.update_func 
@@ -28,13 +28,13 @@ class Human {
             this.counter = this.counter + 1
         }
         if (this.chosen){
-            this.radar = colour.Colour(255,255,255,255)
+            this.radar = vec4(255,255,255,255)
         }
     }
     draw(win,cam) {
-       var spos = cam.translate(this.sprite.x)
+       var spos = cam.translate(this.sprite.pos.x)
         if (spos != nil) {
-            win.draw_texture(this.sprite.get_texture(), spos, this.sprite.y)
+            win.draw_texture(this.sprite.get_texture(), vec2(spos, this.sprite.pos.y))
         }
     }
 }
@@ -42,10 +42,10 @@ class Human {
 
 func walk(e, width, height) {
     if (e.counter % 10 == 0) {
-        e.sprite.x = e.sprite.x + e.dx 
-        mh = e.mgr.mountains.get(e.sprite.x)
-        msh = e.mgr.height - mh 
-        e.sprite.y = msh  
+        e.sprite.pos.x = e.sprite.pos.x + e.dx
+        mh = e.mgr.mountains.get(e.sprite.pos.x)
+        msh = e.mgr.height - mh
+        e.sprite.pos.y = msh
     }
 
 } 

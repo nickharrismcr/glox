@@ -98,7 +98,6 @@ Lists :
 - test for `item in list`  -> true|false
 - `lst.remove(i)`
 - test for `item in list`  -> true|false 
-- `range(start,end,step)` -> list of ints 
 - `a,b,c = [1,2,3]` -> list unpacking 
 
 Tuples : 
@@ -130,7 +129,7 @@ Foreach :
 - `foreach ( i in iterable ) { block }`
 - iterable "next" method called until end reached
 - iterables can be native lists/strings or lox classes that implement `__iter__` (return an iterator that implements `__next__` and returns a value or nil for end) 
-
+- `range(start,end,step)` -> returns an int iterator  
 
 Class `toString()` magic method
 
