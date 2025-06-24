@@ -56,7 +56,8 @@ var NEXT_METHOD = core.MakeStringObjectValue("__next__", true)
 //------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------
 
-var globalModules = map[string]string{}
+var globalModuleSource = map[string]string{}
+var globalModules = map[string]*core.ModuleObject{}
 
 func NewVM(script string, defineBuiltIns bool) *VM {
 
@@ -96,6 +97,7 @@ func (vm *VM) SetArgs(args []string) {
 
 func (vm *VM) Interpret(source string, module string) (InterpretResult, string) {
 
+	core.LogFmt(core.TRACE, "VM %s starting execution\n", vm.script)
 	vm.source = source
 	function := compiler.Compile(vm.script, source, module)
 	if function == nil {
@@ -115,6 +117,10 @@ func (vm *VM) Interpret(source string, module string) (InterpretResult, string) 
 	vm.stackTop++
 	vm.call(closure, 0)
 	res, val := vm.run()
+	core.LogFmt(core.TRACE, "VM %s finished execution\n", vm.script)
+	if res == INTERPRET_RUNTIME_ERROR {
+		fmt.Printf("Runtime error in %s: %s\n", vm.script, vm.ErrorMsg)
+	}
 	return res, val.String()
 }
 
@@ -1200,6 +1206,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 			status := vm.importModule(module, alias)
 			if status != INTERPRET_OK {
+				core.LogFmt(core.ERROR, "Failed to import module '%s' as '%s'.\n", module, alias)
 				return status, core.NIL_VALUE
 			}
 
@@ -1221,12 +1228,13 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 			status := vm.importModule(module, module)
 			if status != INTERPRET_OK {
+				vm.RunTimeError("Failed to import module '%s'.", module)
 				return status, core.NIL_VALUE
 			}
 
 			if length == 0 {
 				if !vm.importFunctionFromModule(module, "__all__") {
-					vm.RunTimeError("Failed to import function '%s' from module '%s'.", "__all__", module)
+					vm.RunTimeError("Failed to import '%s' from module '%s'.", "__all__", module)
 					return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 				}
 			} else {
@@ -1440,6 +1448,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			}
 		}
 	}
+
 	//return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 }
 
@@ -1569,7 +1578,7 @@ func (vm *VM) sourceLine(script string, line int) string {
 	source := vm.source
 	if script != vm.script {
 		module := getModule(script)
-		source = globalModules[module]
+		source = globalModuleSource[module]
 	}
 	lines := strings.Split(source, "\n")
 	if line > 0 && line <= len(lines) {
@@ -1581,13 +1590,22 @@ func (vm *VM) sourceLine(script string, line int) string {
 
 func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 
+	core.LogFmt(core.DEBUG, "Importing module %s as %s\n", moduleName, alias)
 	searchPath := getPath(vm.Args(), moduleName) + ".lox"
 	bytes, err := os.ReadFile(searchPath)
 	if err != nil {
 		fmt.Printf("Could not find module %s.", searchPath)
 		os.Exit(1)
 	}
-	globalModules[moduleName] = string(bytes)
+	module, ok := globalModules[moduleName]
+	if ok {
+		// module already loaded, just add to the current environment
+		core.LogFmt(core.DEBUG, "Module %s already loaded, adding to current environment.\n", moduleName)
+		v := core.MakeObjectValue(module, false)
+		vm.frame().Closure.Function.Environment.SetVar(core.InternName(alias), v)
+		return INTERPRET_OK
+	}
+	globalModuleSource[moduleName] = string(bytes)
 	subvm := NewVM(searchPath, false)
 	subvm.builtIns = vm.builtIns
 	subvm.SetArgs(vm.Args())
@@ -1595,19 +1613,28 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 	// see if we can load lxc bytecode file for the module.
 	// if so run it
 	if loadedChunk, newEnv, ok := loadLxc(searchPath); ok {
+		core.LogFmt(core.DEBUG, "Loaded module %s from bytecode.\n", moduleName)
 		loadedChunk.Filename = moduleName
 		subvm.callLoadedChunk(moduleName, newEnv, loadedChunk)
+		core.LogFmt(core.DEBUG, "Completed run of module %s.\n", moduleName)
 	} else {
 		// if not, load the module source, compile it and run it
+		core.LogFmt(core.DEBUG, "Compiling module %s from source.\n", moduleName)
 		res, _ := subvm.Interpret(string(bytes), moduleName)
 		if res != INTERPRET_OK {
 			return res
 		}
+		core.LogFmt(core.DEBUG, "Completed compile/run of module %s.\n", moduleName)
 	}
+	core.LogFmt(core.DEBUG, "Created module object for %s.\n", moduleName)
 	subfn := subvm.frames[0].Closure.Function
 	mo := core.MakeModuleObject(moduleName, *subfn.Environment)
+
+	globalModules[moduleName] = mo
 	v := core.MakeObjectValue(mo, false)
+	debug.DumpValue("Dump:", v)
 	vm.frame().Closure.Function.Environment.SetVar(core.InternName(alias), v)
+	core.LogFmt(core.DEBUG, "ImportModule %s as %s return\n", moduleName, alias)
 	return INTERPRET_OK
 }
 
@@ -1638,10 +1665,12 @@ func (vm *VM) importFunctionFromModule(module string, name string) bool {
 			vm.RunTimeError("Function '%s' not found in module '%s'.", name, module)
 			return false
 		}
-		if fn.Type != core.VAL_OBJ || fn.Obj.GetType() != core.OBJECT_CLOSURE {
-			vm.RunTimeError("Function '%s' not found in module '%s'.", name, module)
+		t := fn.Obj.GetType()
+		if t != core.OBJECT_CLOSURE && t != core.OBJECT_CLASS {
+			vm.RunTimeError("'%s' not found in module '%s'.", name, module)
 			return false
 		}
+
 		vm.frame().Closure.Function.Environment.SetVar(nameId, fn)
 		return true
 	}

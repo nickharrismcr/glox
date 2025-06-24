@@ -15,6 +15,7 @@ func DumpValue(where string, val core.Value) {
 	core.LogFmt(core.TRACE, "Value at %s:\n", where)
 	seen := make(map[uintptr]bool)
 	dumpValue(val, seen, 0)
+	core.LogFmt(core.TRACE, "End %s\n", where)
 }
 
 func dumpObject(obj core.Object, seen map[uintptr]bool, indent int) {
@@ -37,7 +38,7 @@ func dumpObject(obj core.Object, seen map[uintptr]bool, indent int) {
 		core.LogFmt(core.TRACE, "%s<Function %s @%p>\n", indentPad(indent), fo.Name, fo)
 		if fo.Environment != nil {
 			core.LogFmt(core.TRACE, "%s  Env:\n", indentPad(indent))
-			dumpEnvironment(fo.Environment, seen, indent+2)
+			DumpEnvironment(fo.Environment, seen, indent+2)
 		}
 		for i, c := range o.Chunk.Constants {
 			core.LogFmt(core.TRACE, "%s  Const[%d]: ", indentPad(indent), i)
@@ -48,12 +49,18 @@ func dumpObject(obj core.Object, seen map[uintptr]bool, indent int) {
 		core.LogFmt(core.TRACE, "%s<Closure @%p>\n", indentPad(indent), o)
 		dumpObject(o.Function, seen, indent+1)
 
+	case *core.ModuleObject:
+		core.LogFmt(core.TRACE, "%s<Module %s @%p>\n", indentPad(indent), o.Name, o)
+		mo := obj.(*core.ModuleObject)
+		core.LogFmt(core.TRACE, "%s  Env:\n", indentPad(indent))
+		DumpEnvironment(&mo.Environment, seen, indent+2)
+
 	default:
 		core.LogFmt(core.TRACE, "%s<%T: %v>\n", indentPad(indent), o, o)
 	}
 }
 
-func dumpEnvironment(env *core.Environment, seen map[uintptr]bool, indent int) {
+func DumpEnvironment(env *core.Environment, seen map[uintptr]bool, indent int) {
 	if env == nil {
 		core.LogFmt(core.TRACE, "%s<nil environment>\n", indentPad(indent))
 		return

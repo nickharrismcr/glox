@@ -43,7 +43,7 @@ func loadLxc(scriptPath string) (*core.Chunk, *core.Environment, bool) {
 	if core.ForceModuleCompile {
 		return nil, nil, false
 	}
-	core.LogFmt(core.INFO, "Attempting to load lxc for %s", scriptPath)
+	core.LogFmt(core.INFO, "Attempting to load lxc for %s\n", scriptPath)
 
 	// Determine cache path
 	dir := filepath.Dir(scriptPath)
@@ -68,7 +68,7 @@ func loadLxc(scriptPath string) (*core.Chunk, *core.Environment, bool) {
 			//Debug("lxc not found.")
 			return nil, nil, false
 		}
-		core.LogFmt(core.INFO, "loading lxc. %s", base)
+		core.LogFmt(core.INFO, "loading lxc. %s\n", base)
 		env := core.NewEnvironment(base)
 		chunk := readChunk(reader, env)
 		return chunk, env, true
