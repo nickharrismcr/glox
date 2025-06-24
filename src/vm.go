@@ -44,7 +44,8 @@ type VM struct {
 	ModuleImport bool
 	builtIns     map[int]core.Value   // global built-in functions
 	foreachState *core.VMForeachState // state stack for foreach loops
-
+	// Debug hook: called with (vm, event, data) at opcode, call, return
+	DebugHook func(vm *VM, event string, data any)
 }
 
 var ITER_METHOD = core.MakeStringObjectValue("__iter__", true)
@@ -97,7 +98,7 @@ func (vm *VM) SetArgs(args []string) {
 
 func (vm *VM) Interpret(source string, module string) (InterpretResult, string) {
 
-	core.LogFmt(core.TRACE, "VM %s starting execution\n", vm.script)
+	core.LogFmt(core.INFO, "VM %s starting execution\n", vm.script)
 	vm.source = source
 	function := compiler.Compile(vm.script, source, module)
 	if function == nil {
@@ -117,7 +118,7 @@ func (vm *VM) Interpret(source string, module string) (InterpretResult, string) 
 	vm.stackTop++
 	vm.call(closure, 0)
 	res, val := vm.run()
-	core.LogFmt(core.TRACE, "VM %s finished execution\n", vm.script)
+	core.LogFmt(core.INFO, "VM %s finished execution\n", vm.script)
 
 	return res, val.String()
 }
@@ -383,6 +384,9 @@ func (vm *VM) defineMethod(stringID int, isStatic bool) {
 }
 
 func (vm *VM) call(closure *core.ClosureObject, argCount int) bool {
+	if vm.DebugHook != nil {
+		vm.DebugHook(vm, "call", closure)
+	}
 
 	if argCount != closure.Function.Arity {
 		vm.RunTimeError("Expected %d arguments but got %d.", closure.Function.Arity, argCount)
@@ -455,6 +459,9 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 		}
 
 		inst := vm.currCode[frame.Ip]
+		if vm.DebugHook != nil {
+			vm.DebugHook(vm, "opcode", inst)
+		}
 		if core.DebugTraceExecution && !core.DebugSuppress {
 			if core.DebugShowGlobals {
 				vm.showGlobals()
@@ -829,6 +836,9 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			result := vm.pop()
 			vm.closeUpvalues(frame.Slots)
 			vm.frameCount--
+			if vm.DebugHook != nil {
+				vm.DebugHook(vm, "return", result)
+			}
 			if vm.frameCount == 0 {
 				vm.pop() // drop main script function obj
 				runtime.GC()
