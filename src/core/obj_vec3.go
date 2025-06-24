@@ -26,6 +26,10 @@ func (v *Vec3Object) GetType() ObjectType {
 	return OBJECT_VEC3
 }
 
+func (v *Vec3Object) GetNativeType() NativeType {
+	return NATIVE_VEC3
+}
+
 func (s *Vec3Object) String() string {
 
 	return fmt.Sprintf("<Vec3 %f,%f,%f>", s.X, s.Y, s.Z)
@@ -43,4 +47,12 @@ func (s *Vec3Object) SetY(y float64) {
 }
 func (s *Vec3Object) SetZ(z float64) {
 	s.Z = z
+}
+
+func (s *Vec3Object) Add(other *Vec3Object) {
+
+	s.X += other.X
+	s.Y += other.Y
+	s.Z += other.Z
+
 }

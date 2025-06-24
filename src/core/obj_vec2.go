@@ -24,6 +24,10 @@ func (v *Vec2Object) GetType() ObjectType {
 	return OBJECT_VEC2
 }
 
+func (v *Vec2Object) GetNativeType() NativeType {
+	return NATIVE_VEC2
+}
+
 func (s *Vec2Object) String() string {
 
 	return fmt.Sprintf("<Vec2 %f,%f>", s.X, s.Y)
@@ -38,4 +42,11 @@ func (s *Vec2Object) SetX(x float64) {
 }
 func (s *Vec2Object) SetY(y float64) {
 	s.Y = y
+}
+
+// add in place
+func (s *Vec2Object) Add(other *Vec2Object) {
+
+	s.X += other.X
+	s.Y += other.Y
 }

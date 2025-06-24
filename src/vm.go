@@ -503,6 +503,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		case core.OP_INC_LOCAL:
 			// increment the local variable at operand index by 1
+			// TODO check if local is not a number
 			slot := int(vm.currCode[frame.Ip])
 			frame.Ip++
 			if vm.stack[frame.Slots+slot].Immutable() {
@@ -672,9 +673,40 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 				vm.RunTimeError("Addition type mismatch")
 				goto End
 
+			case core.VAL_VEC2:
+				if v1.Type != core.VAL_VEC2 {
+					vm.RunTimeError("Addition type mismatch")
+					goto End
+				}
+				v1.AsVec2().Add(v2.AsVec2())
+				vm.stack[vm.stackTop] = v1
+				vm.stackTop++
+				continue
+
+			case core.VAL_VEC3:
+				if v1.Type != core.VAL_VEC3 {
+					vm.RunTimeError("Addition type mismatch")
+					goto End
+				}
+				v1.AsVec3().Add(v2.AsVec3())
+				vm.stack[vm.stackTop] = v1
+				vm.stackTop++
+				continue
+
+			case core.VAL_VEC4:
+				if v1.Type != core.VAL_VEC4 {
+					vm.RunTimeError("Addition type mismatch")
+					goto End
+				}
+				v1.AsVec4().Add(v2.AsVec4())
+				vm.stack[vm.stackTop] = v1
+				vm.stackTop++
+				continue
+
 			case core.VAL_OBJ:
 				ov2 := v2.Obj
 				switch ov2.GetType() {
+
 				case core.OBJECT_STRING:
 					if v1.Type != core.VAL_OBJ {
 						vm.RunTimeError("Addition type mismatch")

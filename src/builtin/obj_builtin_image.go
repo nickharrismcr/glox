@@ -53,6 +53,9 @@ func MakeImageObject(filename string) *ImageObject {
 
 	return rv
 }
+func (img *ImageObject) GetNativeType() core.NativeType {
+	return core.NATIVE_IMAGE
+}
 
 func (o *ImageObject) String() string {
 	return fmt.Sprintf("<Image %dx%d>", o.Data.Width, o.Data.Height)
