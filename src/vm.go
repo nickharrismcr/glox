@@ -118,9 +118,7 @@ func (vm *VM) Interpret(source string, module string) (InterpretResult, string) 
 	vm.call(closure, 0)
 	res, val := vm.run()
 	core.LogFmt(core.TRACE, "VM %s finished execution\n", vm.script)
-	if res == INTERPRET_RUNTIME_ERROR {
-		fmt.Printf("Runtime error in %s: %s\n", vm.script, vm.ErrorMsg)
-	}
+
 	return res, val.String()
 }
 
@@ -703,7 +701,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					}
 				}
 			}
-			vm.RunTimeError("Operands must be numbers or strings")
+			vm.RunTimeError("Invalid operands for addition: %s and %s", v1.String(), v2.String())
 			goto End
 
 		case core.OP_SUBTRACT:
@@ -1559,7 +1557,7 @@ func (vm *VM) appendStackTrace() {
 		script = function.Chunk.Filename
 		where = function.Name.Get()
 	}
-	line := function.Chunk.Lines[frame.Ip]
+	line := function.Chunk.Lines[frame.Ip-1]
 
 	s := fmt.Sprintf("File '%s' , line %d, in %s ", script, line, where)
 	vm.stackTrace = append(vm.stackTrace, s)
