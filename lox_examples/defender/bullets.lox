@@ -4,9 +4,10 @@ import bullet
 
 class BulletPool {
     init(size) {
+        img = image("pngs/bullet.png")
         this.bullets = []
         for (var i = 0; i < size; i=i+1) {
-            this.bullets.append(bullet.Bullet())
+            this.bullets.append(bullet.Bullet(vec2(0,0), img, 1,1,1))
         }
     }
     fire(p,v) {

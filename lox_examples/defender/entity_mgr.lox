@@ -1,4 +1,4 @@
-import bullets   
+from bullets import BulletPool
 import lander 
 import human
 import random
@@ -13,7 +13,7 @@ class EntityMgr {
         this.mountains = nil 
         this.entities = []
         this.queue = []
-        this.bullets = bullets.BulletPool(100)
+        this.bullets = BulletPool(100)
         this.events = event.EventDispatcher()
     }  
     get_all() {
@@ -24,8 +24,9 @@ class EntityMgr {
         this.queue.append([entity,delay])
     }
     add_landers(num,delay) {
+        img = image("pngs/lander.png")
         foreach (var i in range(0, num)) {
-            e = lander.Lander(random.integer(0, this.worldwidth), random.integer(100, this.height/2))
+            e = lander.Lander(vec2(random.integer(0, this.worldwidth), random.integer(100, this.height/2)), img, 3, 1, 3)
             this.add_to_queue(e,delay)
         }
     }

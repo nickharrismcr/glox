@@ -8,8 +8,7 @@ class Sprite {
         this.texture = texture(img,frames,start_frame,end_frame)
     }
     move(newpos) {
-        this.pos.x = newpos.x
-        this.pos.y = newpos.y
+      this.pos=newpos 
     }
     animate(ticksperframe) {
         this.texture.animate(ticksperframe)

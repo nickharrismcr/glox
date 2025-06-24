@@ -49,8 +49,8 @@ class Radar {
 
             pos = entity.position()
              
-            ex = pos[0] 
-            ey = pos[1]
+            ex = pos.x
+            ey = pos.y
             screenx  = ex - cam.x - sw2 
             scx  = screenx * this.wxscale  
             rx = sw2 + scx 

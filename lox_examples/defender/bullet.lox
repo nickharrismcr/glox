@@ -1,16 +1,15 @@
-import sprite
+from sprite import Sprite
 import random
  
 
-class Bullet {
-    init( ) {
-        img = image("pngs/bullet.png")
-        this.sprite = sprite.Sprite(vec2(0,0), img, 2,1,2 )   // frames, start_frame, end_frame
-        this.sprite.animate(10)
+class Bullet < Sprite {
+    init(pos, img, frames, start_frame, end_frame) { 
+        super.init(pos, img, frames, start_frame, end_frame)
+        this.animate(10)
         this.ticks_to_live = 0 
     }
     position() {
-        return (this.sprite.x, this.sprite.y)
+        return (this.x, this.y)
     }
     dead() {
         return this.ticks_to_live <= 0
@@ -18,8 +17,7 @@ class Bullet {
     reset(p,v) {
 
         this.sprite.pos = p
-        this.dx = v.x
-        this.dy = v.y
+        this.dp = v
         this.ticks_to_live = 100
     }
 
@@ -27,10 +25,9 @@ class Bullet {
         if (this.dead()) {
             return;
         }
-        this.sprite.pos.x = this.sprite.pos.x + this.dx
-        this.sprite.pos.y = this.sprite.pos.y + this.dy
+        this.pos = this.pos + this.dp
         this.ticks_to_live = this.ticks_to_live - 1
-        if (this.sprite.pos.y < 100 or this.sprite.pos.y > height) {
+        if (this.pos.y < 100 or this.pos.y > height) {
             this.ticks_to_live = 0
         }   
     }
@@ -38,9 +35,9 @@ class Bullet {
         if (this.dead()) {
             return;
         }
-        var spos = cam.translate(this.sprite.pos.x)
+        var spos = cam.translate(this.pos.x)
         if (spos != nil) {
-            win.draw_texture(this.sprite.get_texture(), vec2(spos, this.sprite.pos.y))
+            win.draw_texture(this.sprite.get_texture(), vec2(spos, this.pos.y))
         }
     }
 }
