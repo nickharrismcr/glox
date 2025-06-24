@@ -18,144 +18,389 @@ but hey-ho. This is a learning exercise, the Go code is probably not very ideoma
   
 There are some optimisations such as string interning to allow integer hash keys for method lookup, singleton NIL_VALUE, inlined functions in the main run loop.  And I can always add more native functions :D 
 
-**Additions to vanilla Lox:**
+### Additions to vanilla Lox:
 
-Module imports
+#### Module Imports
 
-- e.g `import othermodule, othermodule2 as om2`
-- importing modules will cache the compiled bytecode in `__loxcache__/<module>.lxc`, subsequent imports will load from this cache unless the source is newer in which case the module will be recompiled. 
-
-EOL semicolons are optional 
-
-Implicit var declarations e.g `a=1`
-
-Immutable vars e.g  `const a = 1`
-
-Integer number type:
-
-- modulus operator %  
-
-Loop `break`/`continue`
-
-Incrementor `a++` `b.x++`
-
-Native funcs :  
-
-- `int(number)`    - conversion
-- `float(number)`   - conversion 
-- `str(value)`     - conversion 
-- `len(string|list)` -> int
-- `sin(float)`    -> float
-- `cos(float)`    -> float 
-- `args()` - returns list of command line arguments  
-- `type(var)` -> string - return type of variable e.g int,float,string,list,dict,class,instance,closure,file etc 
-- `draw_png(filename,float array)` - generate a png using passed float array ( values 0 (black) to 1 (white)) 
-- `encode_rgb(r,g,b) -> float `  - encode rgb int values (0-255) as a single float 
-- `decode_rgb(f)`  - decode an encoded rgb float into a tuple of ints (0-255)     
-
-Native objects :
-
-Fast 2D native float array 
-- `var a = float_array(100,100);`
-- `a.set(10,10,0.5);`
-- `var b=a.get(10,10);`  
-
-Fast native vector containers vec2, vec3, vec4 
-
-Raylib graphics window for drawing 
+##### Syntax
+```lox
+import modulename
+import modulename as alias
+import modulename1, modulename2 as alias2
 ```
-const width=1500
-const height=900
-var win = window(width,height)
-win.init()
- 
-while (!win.should_close()) {
+##### Example
+```lox
+import math
+import graphics as gfx
+import random, color as clr
+```
+- Modules are cached as bytecode after first import for fast loading.
+- Aliases allow you to refer to a module with a different name.
+- Compiled modules are stored in `__loxcache__/<module>.lxc` and reloaded unless the source is newer.
 
+---
+
+#### Variable Declarations
+
+##### Implicit Declaration
+```lox
+a = 1
+```
+No `var` required; assignment creates the variable.
+
+##### Immutable Variables
+```lox
+const PI = 3.14159
+```
+`const` creates a variable that cannot be reassigned.
+
+---
+
+#### Numeric Types
+
+##### Integer with Modulus
+```lox
+a = 10
+b = 3
+c = a % b   // c is 1
+```
+
+---
+
+#### Control Flow
+
+##### Break and Continue
+```lox
+for (var i = 0; i < 10; i = i + 1) {
+    if (i == 5) break
+    if (i % 2 == 0) continue
+    print i
+}
+```
+
+##### Foreach Loop
+```lox
+foreach (item in [1, 2, 3]) {
+    print item
+}
+```
+- Works with lists, strings, and any object implementing `__iter__` and `__next__`.
+- The iterable's `next` method is called until end is reached.
+- Iterables can be native lists/strings or Lox classes that implement `__iter__` (returning an iterator that implements `__next__` and returns a value or nil for end).
+
+##### Range
+```lox
+foreach (i in range(0, 10, 2)) {
+    print i
+}
+```
+- `range(start, end, step)` returns an efficient integer iterator.
+
+---
+
+#### Increment Operator
+
+##### Syntax
+```lox
+a++
+obj.x++
+```
+##### Example
+```lox
+a = 5
+a++
+print a // 6
+
+point = vec2(1, 2)
+point.x++
+print point.x // 2
+```
+
+---
+
+#### Native Functions
+
+##### Type Conversion
+```lox
+int("42")      // 42
+float("3.14")  // 3.14
+str(123)       // "123"
+```
+
+##### Length
+```lox
+len([1,2,3])   // 3
+len("hello")   // 5
+```
+
+##### Math
+```lox
+sin(3.14)
+cos(0)
+```
+
+##### Command-line Arguments
+```lox
+args() // returns list of command-line arguments
+```
+
+##### Type Inspection
+```lox
+type(123)      // "int"
+type([1,2,3])  // "list"
+```
+
+##### PNG Drawing
+```lox
+draw_png("out.png", float_array)
+```
+
+##### RGB Encoding/Decoding
+```lox
+f = encode_rgb(255, 128, 0)
+r, g, b = decode_rgb(f)
+```
+
+---
+
+#### Native Objects
+
+##### Fast 2D Float Array
+```lox
+a = float_array(100, 100)
+a.set(10, 10, 0.5)
+b = a.get(10, 10)
+```
+
+##### Native Vectors
+```lox
+v = vec2(1, 2)
+v3 = vec3(1, 2, 3)
+v4 = vec4(1, 2, 3, 4)
+```
+
+##### Raylib Graphics Window
+```lox
+const width = 1500
+const height = 900
+var win = window(width, height)
+win.init()
+
+while (!win.should_close()) {
     win.begin()
-    win.clear(10,10,10, 255) 
+    win.clear(10, 10, 10, 255)
     win.begin_blend_mode("BLEND_ADD")
-    win.circle_fill(100,100, 50, 255, 0, 0, 255 ) // Draw a red circle for testing
+    win.circle_fill(100, 100, 50, 255, 0, 0, 255)
     win.end_blend_mode()
     win.end()
 }
-win.close() 
+win.close()
 ```
-Raylib images and textures can be created and drawn as well as a range of primitives.
-Keyboard state can be read.
+- Supports drawing primitives, images, textures, and reading keyboard state.
 
-Built-in lox modules:
--  iterator tools, function tools, math, random, colour, string utils, PNG plotters, gfx particle system
+---
 
-Lists :
+#### Built-in Lox Modules
 
-- initialiser (`var a=[]; var a=[1,2,3];`)
-- `l.append(val)` -> append val to list in place  
-- indexing ( `b=a[int]` )
-- index assign ( `a[int] = b` )
-- slicing (`b=a[x:y]; b=a[:y]; b=a[x:]; b=a[:];` )
-- slice assignment ( e.g `a[2:5] = [1,2,3];` )
-- adding ( `list3=list1+list2;` )
-- test for `item in list`  -> true|false
-- `lst.remove(i)`
-- test for `item in list`  -> true|false 
-- `a,b,c = [1,2,3]` -> list unpacking 
+- Iterator tools, function tools, math, random, color, string utilities, PNG plotting, graphics particle system, and more.
 
-Tuples : 
+---
 
-- immutable lists
-- `a = (1,2,3);` 
-- allows same operations as list but no append or assignment allowed.
-- `a,b,c = (1,2,3)` : Tuple unpacking
+#### Lists
 
-Dictionaries:
+##### Initialization
+```lox
+a = []
+b = [1, 2, 3]
+```
 
--- initialiser ( `var a = {}; var a = { "b":"c","d":"e"};` )
-- get ( `a[key]` or `a.get(key,default)` ) 
-- set ( `a[key]=b`)
-- `dict.keys()`   get list of keys 
-- `a.remove(key)`
+##### Append
+```lox
+a.append(4)
+```
 
-Strings :
+##### Indexing and Assignment
+```lox
+b = a[0]
+a[1] = 42
+```
 
-- `s=s+"4"`  string addition
-- `s.replace(old,new)` -> string  - replace substring in string   
-- `s.join(list)` -> string - join each list item with s  e.g `join(["a","b","c"],"|");` -> "a|b|c"   
-- multiply by integer ( a la python, e.g  `"@" * 3`,  `3 * "@"` = `"@@@"` )
-- slices   ( `a = "abcd"; b=a[0], b=a[:2]`, etc )
-- test for presence of substring in string : `substring in string` -> true|false 
-- All VM strings are interned, runtime refers to integer string ID keys 
+##### Slicing
+```lox
+b = a[1:3]
+c = a[:2]
+d = a[2:]
+e = a[:]
+```
 
-Foreach : 
-- `foreach ( i in iterable ) { block }`
-- iterable "next" method called until end reached
-- iterables can be native lists/strings or lox classes that implement `__iter__` (return an iterator that implements `__next__` and returns a value or nil for end) 
-- `range(start,end,step)` -> returns an int iterator  
+##### Slice Assignment
+```lox
+a[2:5] = [7, 8, 9]
+```
 
-Class `toString()` magic method
+##### Concatenation
+```lox
+c = a + b
+```
 
-- if present and returns a string, will be used for print class / str(class)
+##### Membership Test
+```lox
+if 3 in a {
+    print "Found"
+}
+```
 
-Exceptions
+##### Remove
+```lox
+a.remove(2)
+```
 
-- built in Exception class, subclass custom exception classes from it
-- `try {block} except [exception type] as [instance var] {handler}` 
-- can nest try...excepts 
-- can specify multiple handlers for different exception types
-- `raise [exception instance]` statement 
-- runtime can raise catchable exceptions e.g RunTimeError, EOFError
+##### Unpacking
+```lox
+a, b, c = [1, 2, 3]
+```
 
-I/O
+---
 
-- native file open, close, readln, write 
-- readln throws EOFError on eof 
+#### Tuples
 
-**TODO:**
+##### Syntax
+```lox
+a = (1, 2, 3)
+```
+- Immutable, supports same operations as lists except append/assignment.
 
-- more runtime exception types
-- comprehensive raylib gfx bindings 
-- named function parameters with defaults  `func foo(bar,baz=1)` 
-- from module import [*|name[,name][...]] 
+##### Unpacking
+```lox
+x, y, z = (1, 2, 3)
+```
+
+---
+
+#### Dictionaries
+
+##### Initialization
+```lox
+a = {}
+b = {"b": "c", "d": "e"}
+```
+
+##### Get and Set
+```lox
+v = a[key]
+v = a.get(key, default)
+a[key] = b
+```
+
+##### Keys
+```lox
+keys = a.keys()
+```
+
+##### Remove
+```lox
+a.remove(key)
+```
+
+---
+
+#### Strings
+
+##### Concatenation
+```lox
+s = "hello" + "4"
+```
+
+##### Replace
+```lox
+s2 = s.replace("hello", "world")
+```
+
+##### Join
+```lox
+sep = "|"
+joined = sep.join(["a", "b", "c"]) // "a|b|c"
+```
+or
+```lox
+joined = join(["a", "b", "c"], "|") // "a|b|c"
+```
+
+##### Multiplication
+```lox
+s = "@" * 3    // "@@@"
+s = 3 * "@"    // "@@@"
+```
+
+##### Slicing
+```lox
+a = "abcd"
+b = a[0]      // "a"
+c = a[:2]     // "ab"
+```
+
+##### Substring Test
+```lox
+if "bc" in a {
+    print "found"
+}
+```
+
+- All VM strings are interned for fast lookup and runtime refers to integer string ID keys.
+
+---
+
  
 
-- etc.
- 
+
+---
+
+#### Classes
+
+##### toString Magic Method
+```lox
+class Point {
+    toString() {
+        return "Point"
+    }
+}
+p = Point()
+print p // prints "Point"
+```
+- If present and returns a string, will be used for print class / str(class).
+
+---
+
+#### Exceptions
+
+##### Syntax
+```lox
+try {
+    // code
+} except ExceptionType as e {
+    // handler
+} except AnotherType as e2 {
+    // another handler
+}
+```
+- Built-in Exception class, subclass custom exception classes from it.
+- Can nest try/except blocks.
+- Multiple handlers for different exception types.
+- `raise [exception instance]` statement.
+- Runtime can raise catchable exceptions e.g. RunTimeError, EOFError.
+
+---
+
+#### I/O
+
+##### File Operations
+```lox
+f = open("file.txt", "r")
+line = f.readln()
+f.write("hello\n")
+f.close()
+```
+- Native file open, close, readln, write.
+- `readln` throws EOFError on end of file.
+
+---
