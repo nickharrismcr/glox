@@ -11,6 +11,11 @@ func RegisterAllTextureMethods(o *TextureObject) {
 			return core.MakeIntValue(int(o.Data.Width), true)
 		},
 	})
+	o.RegisterMethod("frame_width", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			return core.MakeIntValue(int(o.Data.FrameWidth), true)
+		},
+	})
 	o.RegisterMethod("height", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			return core.MakeIntValue(int(o.Data.Height), true)
