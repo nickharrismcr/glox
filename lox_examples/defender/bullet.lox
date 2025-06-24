@@ -16,8 +16,8 @@ class Bullet < Sprite {
     }
     reset(p,v) {
 
-        this.sprite.pos = p
-        this.dp = v
+        this.pos = vec2(p.x, p.y)
+        this.dp = vec2(v.x, v.y)
         this.ticks_to_live = 100
     }
 
@@ -37,7 +37,7 @@ class Bullet < Sprite {
         }
         var spos = cam.translate(this.pos.x)
         if (spos != nil) {
-            win.draw_texture(this.sprite.get_texture(), vec2(spos, this.pos.y))
+            win.draw_texture(this.texture, vec2(spos, this.pos.y))
         }
     }
 }

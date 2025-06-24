@@ -7,7 +7,7 @@ class BulletPool {
         img = image("pngs/bullet.png")
         this.bullets = []
         for (var i = 0; i < size; i=i+1) {
-            this.bullets.append(bullet.Bullet(vec2(0,0), img, 1,1,1))
+            this.bullets.append(bullet.Bullet(vec2(0,0), img, 2,1,2))
         }
     }
     fire(p,v) {

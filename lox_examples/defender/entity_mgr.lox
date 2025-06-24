@@ -31,8 +31,9 @@ class EntityMgr {
         }
     }
     add_humans(num) {
+        img = image("pngs/human.png")
         foreach ( i in range ( 0,num )) {
-            e = human.Human(random.integer(0, this.worldwidth), this.height ) 
+            e = human.Human(vec2(random.integer(0, this.worldwidth), this.height ), img, 1, 1, 1)
             this.add_to_queue(e,0)
         }
     }
@@ -53,7 +54,6 @@ class EntityMgr {
     count_type(type) {
 
         func check(e) {
-            print e.type
             return e.type == type
         }
         lst=functools.filter(this.entities, check)

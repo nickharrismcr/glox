@@ -2,14 +2,14 @@ import sprite
 import random
 import math 
 import colour
+from sprite import Sprite
 
-class Human {
+class Human < Sprite {
 
-    init(x, y) {
-        img = image("pngs/human.png") 
+    init(pos,img, frames, start_frame, end_frame) {
+        super.init(pos, img, frames, start_frame, end_frame)
         this.type = "human"
         this.img = img
-        this.sprite = sprite.Sprite(vec2(x, y), img, 1,1,1 )
         this.update_func=walk
         this.dx=1
         this.exp=60
@@ -19,7 +19,7 @@ class Human {
         this.chosen = false 
     }
     position() {
-        return (this.sprite.pos.x, this.sprite.pos.y)
+        return (this.pos.x, this.pos.y)
     }
     update(width,height) {
         f=this.update_func 
@@ -32,9 +32,9 @@ class Human {
         }
     }
     draw(win,cam) {
-       var spos = cam.translate(this.sprite.pos.x)
+       var spos = cam.translate(this.pos.x)
         if (spos != nil) {
-            win.draw_texture(this.sprite.get_texture(), vec2(spos, this.sprite.pos.y))
+            win.draw_texture(this.texture, vec2(spos, this.pos.y))
         }
     }
 }
@@ -42,10 +42,10 @@ class Human {
 
 func walk(e, width, height) {
     if (e.counter % 10 == 0) {
-        e.sprite.pos.x = e.sprite.pos.x + e.dx
-        mh = e.mgr.mountains.get(e.sprite.pos.x)
+        e.pos.x = e.pos.x + e.dx
+        mh = e.mgr.mountains.get(e.pos.x)
         msh = e.mgr.height - mh
-        e.sprite.pos.y = msh
+        e.pos.y = msh
     }
 
 } 
