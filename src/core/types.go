@@ -30,3 +30,11 @@ type VMForeachState struct {
 	Stage       VMForeachStage
 	Prev        *VMForeachState
 }
+
+type DebugEvent int
+
+const (
+	DebugEventOpcode DebugEvent = iota
+	DebugEventCall
+	DebugEventReturn
+)

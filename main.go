@@ -6,6 +6,7 @@ import (
 	lox "glox/src"
 	"glox/src/compiler"
 	"glox/src/core"
+	dbg "glox/src/debug"
 	"os"
 	"runtime/debug"
 )
@@ -91,9 +92,13 @@ func runFile(opts *Options) {
 		compiler.PrintTokens(source)
 		os.Exit(0)
 	}
-	vm := lox.NewVM(path, !core.DebugSkipBuiltins)
-	vm.SetArgs(args)
 
+	defineBuiltins := !core.DebugSkipBuiltins
+	vm := lox.NewVM(path, defineBuiltins)
+	vm.SetArgs(args)
+	if core.DebugTraceExecution {
+		vm.DebugHook = dbg.TraceHook
+	}
 	status, result := vm.Interpret(source, "__main__")
 	if status == lox.INTERPRET_COMPILE_ERROR {
 		os.Exit(65)

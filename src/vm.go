@@ -44,8 +44,12 @@ type VM struct {
 	ModuleImport bool
 	builtIns     map[int]core.Value   // global built-in functions
 	foreachState *core.VMForeachState // state stack for foreach loops
+
 	// Debug hook: called with (vm, event, data) at opcode, call, return
-	DebugHook func(vm *VM, event string, data any)
+	// opcode events will have data as the opcode byte,
+	// call events will have data as the closure object being called,
+	// return events will have data as the return Value.
+	DebugHook func(vm interface{}, event core.DebugEvent, data any)
 }
 
 var ITER_METHOD = core.MakeStringObjectValue("__iter__", true)
@@ -80,6 +84,8 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 	return vm
 }
 
+//------------------------------------------------------------------------------------------
+
 func NewVMForeachState(prev *core.VMForeachState, localSlot int, iterSlot int, jumpToStart int, jumpToEnd int) *core.VMForeachState {
 
 	return &core.VMForeachState{
@@ -92,9 +98,13 @@ func NewVMForeachState(prev *core.VMForeachState, localSlot int, iterSlot int, j
 	}
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) SetArgs(args []string) {
 	vm.args = args
 }
+
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) Interpret(source string, module string) (InterpretResult, string) {
 
@@ -123,6 +133,8 @@ func (vm *VM) Interpret(source string, module string) (InterpretResult, string) 
 	return res, val.String()
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) Stack(index int) core.Value {
 
 	if index < 0 || index >= vm.stackTop {
@@ -131,33 +143,89 @@ func (vm *VM) Stack(index int) core.Value {
 	return vm.stack[index]
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) Args() []string {
 
 	return vm.args
 }
+
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) StartTime() time.Time {
 
 	return vm.starttime
 }
 
-func (subvm *VM) callLoadedChunk(name string, newEnv *core.Environment, chunk *core.Chunk) {
+//------------------------------------------------------------------------------------------
 
-	function := core.MakeFunctionObject(name, newEnv)
-	function.Chunk = chunk
-	function.Name = core.MakeStringObject(name)
-	closure := core.MakeClosureObject(function)
-	subvm.push(core.MakeObjectValue(closure, false))
-	subvm.call(closure, 0)
-	_, _ = subvm.run()
+func (vm *VM) RunTimeError(format string, args ...any) {
+
+	vm.ErrorMsg = fmt.Sprintf(format, args...)
 }
 
 //------------------------------------------------------------------------------------------
+
+func (vm *VM) Peek(dist int) core.Value {
+
+	return vm.stack[(vm.stackTop-1)-dist]
+}
+
 //------------------------------------------------------------------------------------------
+
+// Exported Frame method
+func (vm *VM) Frame() *core.CallFrame {
+	return vm.frame()
+}
+
 //------------------------------------------------------------------------------------------
+
+func (vm *VM) CurrCode() uint8 {
+	return vm.currCode[vm.frame().Ip]
+}
+
 //------------------------------------------------------------------------------------------
+
+// Exported ShowStack returns stack as string
+func (vm *VM) ShowStack() string {
+	var sb strings.Builder
+	for i := 1; i < vm.stackTop; i++ {
+		v := vm.stack[i]
+		s := v.String()
+		im := ""
+		if v.Immutable() {
+			im = "(c)"
+		}
+		if i > vm.frame().Slots {
+			sb.WriteString(fmt.Sprintf("%% %s%s %% ", s, im))
+		} else {
+			sb.WriteString(fmt.Sprintf("| %s%s | ", s, im))
+		}
+	}
+	return sb.String()
+}
+
 //------------------------------------------------------------------------------------------
+
+func (vm *VM) Script() string {
+	// returns the script name
+	return vm.script
+}
+
 //------------------------------------------------------------------------------------------
+
+func (vm *VM) ShowGlobals() string {
+	if vm.frame().Closure.Function.Environment == nil {
+		return "No globals (nil environment)"
+	}
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("globals: %s\n", vm.frame().Closure.Function.Environment.Name))
+	for k, v := range vm.frame().Closure.Function.Environment.Vars {
+		sb.WriteString(fmt.Sprintf("%s -> %s\n", core.NameFromID(k), v))
+	}
+	return sb.String()
+}
+
 //------------------------------------------------------------------------------------------
 
 func (vm *VM) frame() *core.CallFrame {
@@ -165,10 +233,14 @@ func (vm *VM) frame() *core.CallFrame {
 	return vm.frames[vm.frameCount-1]
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) getCode() []uint8 {
 
 	return vm.frame().Closure.Function.Chunk.Code
 }
+
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) resetStack() {
 
@@ -176,21 +248,22 @@ func (vm *VM) resetStack() {
 	vm.frameCount = 0
 }
 
-func (vm *VM) RunTimeError(format string, args ...any) {
-
-	vm.ErrorMsg = fmt.Sprintf(format, args...)
-}
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) defineBuiltIn(name string, function core.BuiltInFn) {
 	id := core.InternName(name)
 	vm.builtIns[id] = core.MakeObjectValue(core.MakeBuiltInObject(function), false)
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) push(v core.Value) {
 
 	vm.stack[vm.stackTop] = v
 	vm.stackTop++
 }
+
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) pop() core.Value {
 
@@ -201,244 +274,10 @@ func (vm *VM) pop() core.Value {
 	return vm.stack[vm.stackTop]
 }
 
-func (vm *VM) Peek(dist int) core.Value {
-
-	return vm.stack[(vm.stackTop-1)-dist]
-}
-
-/*func (vm *VM) set(dist int, val Value) {
-
-	vm.stack[(vm.stackTop-1)-dist] = val
-}*/
-
-func (vm *VM) callValue(callee core.Value, argCount int) bool {
-
-	if callee.Type == core.VAL_OBJ {
-		if callee.IsClosureObject() {
-			return vm.call(core.GetClosureObjectValue(callee), argCount)
-
-		} else if callee.IsBuiltInObject() {
-			nf := callee.AsBuiltIn()
-			res := nf.Function(argCount, vm.stackTop-argCount, vm)
-			if res.Type == core.VAL_NIL { // error occurred
-				return false
-			}
-			vm.stackTop -= argCount + 1
-			vm.stack[vm.stackTop] = res
-			vm.stackTop++
-			return true
-
-		} else if callee.IsClassObject() {
-			class := callee.AsClass()
-			vm.stack[vm.stackTop-argCount-1] = core.MakeObjectValue(core.MakeInstanceObject(class), false)
-			if initialiser, ok := class.Methods[core.INIT]; ok {
-				return vm.call(initialiser.AsClosure(), argCount)
-			} else if argCount != 0 {
-				vm.RunTimeError("Expected 0 arguments but got %d", argCount)
-				return false
-			}
-			return true
-
-		} else if callee.IsBoundMethodObject() {
-			bound := callee.AsBoundMethod()
-			vm.stack[vm.stackTop-argCount-1] = bound.Receiver
-			return vm.call(bound.Method, argCount)
-		}
-	}
-	vm.RunTimeError("Can only call functions and classes.")
-	return false
-}
-
-// optimised method call/module access
-func (vm *VM) invoke(name core.Value, argCount int) bool {
-	receiver := vm.Peek(argCount)
-	if receiver.Type != core.VAL_OBJ {
-		vm.RunTimeError("Invalid use of '.' operator")
-		return false
-	}
-	if receiver.Obj.IsBuiltIn() {
-		return vm.invokeFromBuiltin(receiver.Obj, name, argCount)
-	}
-
-	switch receiver.Obj.GetType() {
-	case core.OBJECT_INSTANCE:
-		instance := receiver.AsInstance()
-		return vm.invokeFromClass(instance.Class, name, argCount, false)
-	case core.OBJECT_CLASS:
-		class := receiver.AsClass()
-		return vm.invokeFromClass(class, name, argCount, true)
-	case core.OBJECT_MODULE:
-		module := receiver.AsModule()
-		return vm.invokeFromModule(module, name, argCount)
-	case core.OBJECT_NATIVE, core.OBJECT_LIST, core.OBJECT_DICT, core.OBJECT_STRING:
-		return vm.invokeFromBuiltin(receiver.Obj, name, argCount)
-	default:
-		vm.RunTimeError("Invalid use of '.' operator")
-		return false
-	}
-
-}
-
-func (vm *VM) invokeFromClass(class *core.ClassObject, name core.Value, argCount int, isStatic bool) bool {
-	i := name.InternedId
-	if isStatic {
-		method, ok := class.StaticMethods[i]
-		if !ok {
-			vm.RunTimeError("Undefined static method '%s'.", core.GetStringValue(name))
-			return false
-		}
-		return vm.call(method.AsClosure(), argCount)
-	}
-	method, ok := class.Methods[i]
-	if !ok {
-		vm.RunTimeError("Undefined method '%s'.", core.GetStringValue(name))
-		return false
-	}
-	return vm.call(method.AsClosure(), argCount)
-}
-
-func (vm *VM) invokeFromModule(module *core.ModuleObject, name core.Value, argCount int) bool {
-
-	fn, ok := module.Environment.GetVar(name.InternedId)
-	if !ok {
-		n := core.GetStringValue(name)
-		vm.RunTimeError("Undefined module property '%s'.", n)
-		return false
-	}
-	return vm.callValue(fn, argCount)
-}
-
-func (vm *VM) invokeFromBuiltin(obj core.Object, name core.Value, argCount int) bool {
-
-	n := core.GetStringValue(name)
-	bobj, ok := obj.(core.HasMethods)
-	if ok {
-		method := bobj.GetMethod(name.InternedId)
-		if method != nil {
-			builtin := method.Function
-			res := builtin(argCount, vm.stackTop-argCount, vm)
-			vm.stackTop -= argCount + 1
-			vm.stack[vm.stackTop] = res
-			vm.stackTop++
-			return true
-		}
-	}
-	vm.RunTimeError("Undefined builtin property '%s'.", n)
-	return false
-
-}
-
-func (vm *VM) bindMethod(class *core.ClassObject, stringId int) bool {
-	method, ok := class.Methods[stringId]
-	if !ok {
-		vm.RunTimeError("Undefined property '%s'", core.NameFromID(stringId))
-		return false
-	}
-	bound := core.MakeBoundMethodObject(vm.Peek(0), method.AsClosure())
-	vm.pop()
-	vm.stack[vm.stackTop] = core.MakeObjectValue(bound, false)
-	vm.stackTop++
-	return true
-}
-
-func (vm *VM) captureUpvalue(slot int) *core.UpvalueObject {
-
-	var prevUpvalue *core.UpvalueObject = nil
-
-	upvalue := vm.openUpValues
-	for upvalue != nil && upvalue.Slot > slot {
-		prevUpvalue = upvalue
-		upvalue = upvalue.Next
-	}
-	if upvalue != nil && upvalue.Slot == slot {
-		return upvalue
-	}
-	new := core.MakeUpvalueObject(&(vm.stack[slot]), slot)
-	new.Next = upvalue
-	if prevUpvalue == nil {
-		vm.openUpValues = new
-	} else {
-		prevUpvalue.Next = new
-	}
-	return new
-}
-
-func (vm *VM) closeUpvalues(last int) {
-	for vm.openUpValues != nil && vm.openUpValues.Slot >= last {
-		upvalue := vm.openUpValues
-		upvalue.Closed = vm.stack[upvalue.Slot]
-		upvalue.Location = &upvalue.Closed
-		vm.openUpValues = upvalue.Next
-	}
-}
-
-func (vm *VM) defineMethod(stringID int, isStatic bool) {
-	method := vm.Peek(0)
-	class := vm.Peek(1).AsClass()
-	if isStatic {
-		class.StaticMethods[stringID] = method
-	} else {
-		class.Methods[stringID] = method
-	}
-	vm.pop()
-}
-
-func (vm *VM) call(closure *core.ClosureObject, argCount int) bool {
-	if vm.DebugHook != nil {
-		vm.DebugHook(vm, "call", closure)
-	}
-
-	if argCount != closure.Function.Arity {
-		vm.RunTimeError("Expected %d arguments but got %d.", closure.Function.Arity, argCount)
-		return false
-	}
-	frame := &core.CallFrame{
-		Closure:  closure,
-		Ip:       0,
-		Slots:    vm.stackTop - argCount - 1,
-		Handlers: nil,
-		Depth:    vm.frameCount + 1,
-	}
-	vm.frames[vm.frameCount] = frame
-	vm.frameCount++
-	if vm.frameCount == FRAMES_MAX {
-		vm.RunTimeError("Stack overflow.")
-		return false
-	}
-
-	return true
-}
-
-func (vm *VM) readShort() uint16 {
-
-	vm.frame().Ip += 2
-	b1 := uint16(vm.currCode[vm.frame().Ip-2])
-	b2 := uint16(vm.currCode[vm.frame().Ip-1])
-	return uint16(b1<<8 | b2)
-}
-
-func (vm *VM) readByte() uint8 {
-
-	vm.frame().Ip += 1
-	return vm.currCode[vm.frame().Ip-1]
-}
-
-func (vm *VM) isFalsey(v core.Value) bool {
-
-	switch v.Type {
-	case core.VAL_FLOAT:
-		return v.Float == 0
-	case core.VAL_NIL:
-		return true
-	case core.VAL_BOOL:
-		return !v.Bool
-	}
-	return true
-}
+//------------------------------------------------------------------------------------------
 
 // main interpreter loop
 func (vm *VM) run() (InterpretResult, core.Value) {
-
 	counter := 0
 	vm.ErrorMsg = ""
 
@@ -460,14 +299,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		inst := vm.currCode[frame.Ip]
 		if vm.DebugHook != nil {
-			vm.DebugHook(vm, "opcode", inst)
-		}
-		if core.DebugTraceExecution && !core.DebugSuppress {
-			if core.DebugShowGlobals {
-				vm.showGlobals()
-			}
-			vm.showStack()
-			_ = debug.DisassembleInstruction(chunk, vm.script, function.Name.Get(), frame.Depth, inst, frame.Ip)
+			vm.DebugHook(vm, core.DebugEventOpcode, inst)
 		}
 
 		frame.Ip++
@@ -837,7 +669,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			vm.closeUpvalues(frame.Slots)
 			vm.frameCount--
 			if vm.DebugHook != nil {
-				vm.DebugHook(vm, "return", result)
+				vm.DebugHook(vm, core.DebugEventReturn, result)
 			}
 			if vm.frameCount == 0 {
 				vm.pop() // drop main script function obj
@@ -1492,6 +1324,259 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 	//return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 }
 
+//------------------------------------------------------------------------------------------
+
+func (vm *VM) callValue(callee core.Value, argCount int) bool {
+
+	if callee.Type == core.VAL_OBJ {
+		if callee.IsClosureObject() {
+			return vm.call(core.GetClosureObjectValue(callee), argCount)
+
+		} else if callee.IsBuiltInObject() {
+			nf := callee.AsBuiltIn()
+			res := nf.Function(argCount, vm.stackTop-argCount, vm)
+			if res.Type == core.VAL_NIL { // error occurred
+				return false
+			}
+			vm.stackTop -= argCount + 1
+			vm.stack[vm.stackTop] = res
+			vm.stackTop++
+			return true
+
+		} else if callee.IsClassObject() {
+			class := callee.AsClass()
+			vm.stack[vm.stackTop-argCount-1] = core.MakeObjectValue(core.MakeInstanceObject(class), false)
+			if initialiser, ok := class.Methods[core.INIT]; ok {
+				return vm.call(initialiser.AsClosure(), argCount)
+			} else if argCount != 0 {
+				vm.RunTimeError("Expected 0 arguments but got %d", argCount)
+				return false
+			}
+			return true
+
+		} else if callee.IsBoundMethodObject() {
+			bound := callee.AsBoundMethod()
+			vm.stack[vm.stackTop-argCount-1] = bound.Receiver
+			return vm.call(bound.Method, argCount)
+		}
+	}
+	vm.RunTimeError("Can only call functions and classes.")
+	return false
+}
+
+//------------------------------------------------------------------------------------------
+
+// optimised method call/module access
+func (vm *VM) invoke(name core.Value, argCount int) bool {
+	receiver := vm.Peek(argCount)
+	if receiver.Type != core.VAL_OBJ {
+		vm.RunTimeError("Invalid use of '.' operator")
+		return false
+	}
+	if receiver.Obj.IsBuiltIn() {
+		return vm.invokeFromBuiltin(receiver.Obj, name, argCount)
+	}
+
+	switch receiver.Obj.GetType() {
+	case core.OBJECT_INSTANCE:
+		instance := receiver.AsInstance()
+		return vm.invokeFromClass(instance.Class, name, argCount, false)
+	case core.OBJECT_CLASS:
+		class := receiver.AsClass()
+		return vm.invokeFromClass(class, name, argCount, true)
+	case core.OBJECT_MODULE:
+		module := receiver.AsModule()
+		return vm.invokeFromModule(module, name, argCount)
+	case core.OBJECT_NATIVE, core.OBJECT_LIST, core.OBJECT_DICT, core.OBJECT_STRING:
+		return vm.invokeFromBuiltin(receiver.Obj, name, argCount)
+	default:
+		vm.RunTimeError("Invalid use of '.' operator")
+		return false
+	}
+
+}
+
+//------------------------------------------------------------------------------------------
+
+func (vm *VM) invokeFromClass(class *core.ClassObject, name core.Value, argCount int, isStatic bool) bool {
+	i := name.InternedId
+	if isStatic {
+		method, ok := class.StaticMethods[i]
+		if !ok {
+			vm.RunTimeError("Undefined static method '%s'.", core.GetStringValue(name))
+			return false
+		}
+		return vm.call(method.AsClosure(), argCount)
+	}
+	method, ok := class.Methods[i]
+	if !ok {
+		vm.RunTimeError("Undefined method '%s'.", core.GetStringValue(name))
+		return false
+	}
+	return vm.call(method.AsClosure(), argCount)
+}
+
+//------------------------------------------------------------------------------------------
+
+func (vm *VM) invokeFromModule(module *core.ModuleObject, name core.Value, argCount int) bool {
+
+	fn, ok := module.Environment.GetVar(name.InternedId)
+	if !ok {
+		n := core.GetStringValue(name)
+		vm.RunTimeError("Undefined module property '%s'.", n)
+		return false
+	}
+	return vm.callValue(fn, argCount)
+}
+
+//------------------------------------------------------------------------------------------
+
+func (vm *VM) invokeFromBuiltin(obj core.Object, name core.Value, argCount int) bool {
+
+	n := core.GetStringValue(name)
+	bobj, ok := obj.(core.HasMethods)
+	if ok {
+		method := bobj.GetMethod(name.InternedId)
+		if method != nil {
+			builtin := method.Function
+			res := builtin(argCount, vm.stackTop-argCount, vm)
+			vm.stackTop -= argCount + 1
+			vm.stack[vm.stackTop] = res
+			vm.stackTop++
+			return true
+		}
+	}
+	vm.RunTimeError("Undefined builtin property '%s'.", n)
+	return false
+
+}
+
+//------------------------------------------------------------------------------------------
+
+func (vm *VM) bindMethod(class *core.ClassObject, stringId int) bool {
+	method, ok := class.Methods[stringId]
+	if !ok {
+		vm.RunTimeError("Undefined property '%s'", core.NameFromID(stringId))
+		return false
+	}
+	bound := core.MakeBoundMethodObject(vm.Peek(0), method.AsClosure())
+	vm.pop()
+	vm.stack[vm.stackTop] = core.MakeObjectValue(bound, false)
+	vm.stackTop++
+	return true
+}
+
+//------------------------------------------------------------------------------------------
+
+func (vm *VM) captureUpvalue(slot int) *core.UpvalueObject {
+
+	var prevUpvalue *core.UpvalueObject = nil
+
+	upvalue := vm.openUpValues
+	for upvalue != nil && upvalue.Slot > slot {
+		prevUpvalue = upvalue
+		upvalue = upvalue.Next
+	}
+	if upvalue != nil && upvalue.Slot == slot {
+		return upvalue
+	}
+	new := core.MakeUpvalueObject(&(vm.stack[slot]), slot)
+	new.Next = upvalue
+	if prevUpvalue == nil {
+		vm.openUpValues = new
+	} else {
+		prevUpvalue.Next = new
+	}
+	return new
+}
+
+//------------------------------------------------------------------------------------------
+
+func (vm *VM) closeUpvalues(last int) {
+	for vm.openUpValues != nil && vm.openUpValues.Slot >= last {
+		upvalue := vm.openUpValues
+		upvalue.Closed = vm.stack[upvalue.Slot]
+		upvalue.Location = &upvalue.Closed
+		vm.openUpValues = upvalue.Next
+	}
+}
+
+//------------------------------------------------------------------------------------------
+
+func (vm *VM) defineMethod(stringID int, isStatic bool) {
+	method := vm.Peek(0)
+	class := vm.Peek(1).AsClass()
+	if isStatic {
+		class.StaticMethods[stringID] = method
+	} else {
+		class.Methods[stringID] = method
+	}
+	vm.pop()
+}
+
+//------------------------------------------------------------------------------------------
+
+func (vm *VM) call(closure *core.ClosureObject, argCount int) bool {
+	if vm.DebugHook != nil {
+		vm.DebugHook(vm, core.DebugEventCall, closure)
+	}
+
+	if argCount != closure.Function.Arity {
+		vm.RunTimeError("Expected %d arguments but got %d.", closure.Function.Arity, argCount)
+		return false
+	}
+	frame := &core.CallFrame{
+		Closure:  closure,
+		Ip:       0,
+		Slots:    vm.stackTop - argCount - 1,
+		Handlers: nil,
+		Depth:    vm.frameCount + 1,
+	}
+	vm.frames[vm.frameCount] = frame
+	vm.frameCount++
+	if vm.frameCount == FRAMES_MAX {
+		vm.RunTimeError("Stack overflow.")
+		return false
+	}
+
+	return true
+}
+
+//------------------------------------------------------------------------------------------
+
+func (vm *VM) readShort() uint16 {
+
+	vm.frame().Ip += 2
+	b1 := uint16(vm.currCode[vm.frame().Ip-2])
+	b2 := uint16(vm.currCode[vm.frame().Ip-1])
+	return uint16(b1<<8 | b2)
+}
+
+//------------------------------------------------------------------------------------------
+
+func (vm *VM) readByte() uint8 {
+
+	vm.frame().Ip += 1
+	return vm.currCode[vm.frame().Ip-1]
+}
+
+//------------------------------------------------------------------------------------------
+
+func (vm *VM) isFalsey(v core.Value) bool {
+
+	switch v.Type {
+	case core.VAL_FLOAT:
+		return v.Float == 0
+	case core.VAL_NIL:
+		return true
+	case core.VAL_BOOL:
+		return !v.Bool
+	}
+	return true
+}
+
+//------------------------------------------------------------------------------------------
+
 // natively raise an exception given a name:
 // - get the class object for the name from globals
 // - make an instance of the class and set the message on it
@@ -1505,6 +1590,8 @@ func (vm *VM) RaiseExceptionByName(name string, msg string) bool {
 	instance.Fields[core.MSG] = core.MakeStringObjectValue(msg, false)
 	return vm.raiseException(core.MakeObjectValue(instance, false))
 }
+
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) raiseException(err core.Value) bool {
 
@@ -1562,6 +1649,8 @@ func (vm *VM) raiseException(err core.Value) bool {
 	}
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) nextHandler() bool {
 
 	code := vm.getCode()
@@ -1578,6 +1667,8 @@ func (vm *VM) nextHandler() bool {
 	return false
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) popFrame() bool {
 	if vm.frameCount == 1 {
 		return false
@@ -1586,6 +1677,8 @@ func (vm *VM) popFrame() bool {
 	vm.stackTop = vm.frames[vm.frameCount].Slots
 	return true
 }
+
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) appendStackTrace() {
 
@@ -1607,11 +1700,15 @@ func (vm *VM) appendStackTrace() {
 	vm.stackTrace = append(vm.stackTrace, codeline)
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) PrintStackTrace() {
 	for _, v := range vm.stackTrace {
 		fmt.Fprintf(os.Stderr, "%s\n", v)
 	}
 }
+
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) sourceLine(script string, line int) string {
 
@@ -1627,6 +1724,8 @@ func (vm *VM) sourceLine(script string, line int) string {
 	}
 	return ""
 }
+
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 
@@ -1672,11 +1771,26 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 
 	globalModules[moduleName] = mo
 	v := core.MakeObjectValue(mo, false)
-	debug.DumpValue("Dump:", v)
+	debug.TraceDumpValue("Dump:", v)
 	vm.frame().Closure.Function.Environment.SetVar(core.InternName(alias), v)
 	core.LogFmt(core.DEBUG, "ImportModule %s as %s return\n", moduleName, alias)
 	return INTERPRET_OK
 }
+
+//------------------------------------------------------------------------------------------
+
+func (subvm *VM) callLoadedChunk(name string, newEnv *core.Environment, chunk *core.Chunk) {
+
+	function := core.MakeFunctionObject(name, newEnv)
+	function.Chunk = chunk
+	function.Name = core.MakeStringObject(name)
+	closure := core.MakeClosureObject(function)
+	subvm.push(core.MakeObjectValue(closure, false))
+	subvm.call(closure, 0)
+	_, _ = subvm.run()
+}
+
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) importFunctionFromModule(module string, name string) bool {
 
@@ -1717,6 +1831,8 @@ func (vm *VM) importFunctionFromModule(module string, name string) bool {
 
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) createList(frame *core.CallFrame) {
 
 	itemCount := int(vm.currCode[frame.Ip])
@@ -1731,6 +1847,8 @@ func (vm *VM) createList(frame *core.CallFrame) {
 	vm.stackTop++
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) createTuple(frame *core.CallFrame) {
 
 	itemCount := int(vm.currCode[frame.Ip])
@@ -1744,6 +1862,8 @@ func (vm *VM) createTuple(frame *core.CallFrame) {
 	vm.stack[vm.stackTop] = core.MakeObjectValue(lo, true)
 	vm.stackTop++
 }
+
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) createDict(frame *core.CallFrame) {
 
@@ -1760,6 +1880,8 @@ func (vm *VM) createDict(frame *core.CallFrame) {
 	vm.stack[vm.stackTop] = core.MakeObjectValue(do, false)
 	vm.stackTop++
 }
+
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) index() bool {
 
@@ -1819,6 +1941,8 @@ func (vm *VM) index() bool {
 	return false
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) indexAssign() bool {
 
 	// collection, index, RHS on stack
@@ -1853,6 +1977,8 @@ func (vm *VM) indexAssign() bool {
 	vm.RunTimeError("Can only assign to collection.")
 	return false
 }
+
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) slice() bool {
 
@@ -1905,6 +2031,8 @@ func (vm *VM) slice() bool {
 	return false
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) sliceAssign() bool {
 
 	var from_idx, to_idx int
@@ -1952,6 +2080,8 @@ func (vm *VM) sliceAssign() bool {
 	return false
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) binarySubtract() bool {
 
 	v2 := vm.pop()
@@ -1986,6 +2116,8 @@ func (vm *VM) binarySubtract() bool {
 	vm.RunTimeError("Addition type mismatch")
 	return false
 }
+
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) binaryMultiply() bool {
 
@@ -2048,6 +2180,8 @@ func (vm *VM) binaryMultiply() bool {
 	return true
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) binaryDivide() bool {
 
 	v2 := vm.pop()
@@ -2099,6 +2233,8 @@ func (vm *VM) binaryDivide() bool {
 	return false
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) binaryModulus() bool {
 
 	v2 := vm.pop()
@@ -2114,6 +2250,8 @@ func (vm *VM) binaryModulus() bool {
 	return true
 }
 
+//------------------------------------------------------------------------------------------
+
 func (vm *VM) stringMultiply(s string, x int) core.Value {
 
 	rv := ""
@@ -2122,6 +2260,8 @@ func (vm *VM) stringMultiply(s string, x int) core.Value {
 	}
 	return core.MakeStringObjectValue(rv, false)
 }
+
+// ------------------------------------------------------------------------------------------
 func (vm *VM) pauseExecution() {
 
 	fmt.Println("⚠️  BREAKPOINT HIT")
@@ -2136,6 +2276,8 @@ func (vm *VM) pauseExecution() {
 	//fmt.Print("Press Enter to continue...")
 	//buf.ReadBytes('\n')
 }
+
+//------------------------------------------------------------------------------------------
 
 // return the path to the given module.
 // first, will look in lox/modules in the lox installation directory defined in LOX_PATH environment var.
@@ -2170,41 +2312,12 @@ func getPath(args []string, module string) string {
 	return module
 }
 
+//------------------------------------------------------------------------------------------
+
 func getModule(fullPath string) string {
 	base := filepath.Base(fullPath)      // "foo.lox"
 	ext := filepath.Ext(base)            // ".lox"
 	return strings.TrimSuffix(base, ext) // "foo"
 }
 
-func (vm *VM) showStack() {
-
-	core.LogFmt(core.TRACE, "                                                         ")
-	for i := 1; i < vm.stackTop; i++ {
-		v := vm.stack[i]
-		s := v.String()
-
-		im := ""
-		if v.Immutable() {
-			im = "(c)"
-		}
-		if i > vm.frame().Slots {
-			core.LogFmt(core.TRACE, "%% %s%s %%", s, im)
-		} else {
-			core.LogFmt(core.TRACE, "| %s%s |", s, im)
-		}
-	}
-	core.LogFmt(core.TRACE, "\n")
-}
-func (vm *VM) showGlobals() {
-	if vm.frame().Closure.Function.Environment == nil {
-		fmt.Println("No globals (nil environment)")
-		return
-	}
-	core.LogFmt(core.TRACE, "globals: %s \n", vm.frame().Closure.Function.Environment.Name)
-	for k, v := range vm.frame().Closure.Function.Environment.Vars {
-		core.LogFmt(core.TRACE, "%s -> %s  \n", core.NameFromID(k), v)
-	}
-	//for k, v := range vm.Environments.builtins {
-	//	core.LogFmt(core.TRACE,"%s -> %s  \n", k, v)
-	//}
-}
+//------------------------------------------------------------------------------------------

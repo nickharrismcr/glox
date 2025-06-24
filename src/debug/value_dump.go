@@ -6,12 +6,7 @@ import (
 	"strings"
 )
 
-func DumpObject(obj core.Object) {
-	seen := make(map[uintptr]bool)
-	dumpObject(obj, seen, 0)
-}
-
-func DumpValue(where string, val core.Value) {
+func TraceDumpValue(where string, val core.Value) {
 	core.LogFmt(core.TRACE, "Value at %s:\n", where)
 	seen := make(map[uintptr]bool)
 	dumpValue(val, seen, 0)
