@@ -218,13 +218,13 @@ class Circler {
     }
     draw(g) {
         c=this.circle.col
-        g.circle(this.circle.pos.x, this.circle.pos.y, this.circle.s,c)
+        g.circle(this.circle.pos, this.circle.s,c)
         c=1.0
         foreach (var l in this.hist.data[1:]) {
             c = c + 1.0
             a = 255.0 * (c / (2*len(this.hist.data))) ; 
             s = l.s * (c / len(this.hist.data))
-            g.circle(l.pos, s,l.col.r,colour.WHITE)  
+            g.circle(l.pos, s, vec4(100,100,100,100))  
         }   
     } 
     
