@@ -327,7 +327,7 @@ type VMInspector interface {
 
 func TraceOpcode(vm VMInspector) {
 	core.Log(core.TRACE, "-----------------------------------------------------")
-	core.LogFmt(core.TRACE, "Globals:\n%s\n", vm.ShowGlobals())
+	core.LogFmt(core.TRACE, "Globals:%s\n", vm.ShowGlobals())
 	core.LogFmt(core.TRACE, "Stack:\n%s\n", vm.ShowStack())
 	chunk := vm.Frame().Closure.Function.Chunk
 	function := vm.Frame().Closure.Function

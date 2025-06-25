@@ -68,6 +68,10 @@ type VMContext interface {
 	StartTime() time.Time
 	RaiseExceptionByName(string, string) bool
 	Peek(int) Value
+	Frame() *CallFrame
+	StackTop() int
+	ShowStack() string
+	ShowGlobals() string
 }
 
 type BuiltInFn func(argCount int, args_stackptr int, vm VMContext) Value

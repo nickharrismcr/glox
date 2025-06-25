@@ -180,6 +180,10 @@ func (vm *VM) Frame() *core.CallFrame {
 	return vm.frame()
 }
 
+func (vm *VM) StackTop() int {
+	return vm.stackTop
+}
+
 //------------------------------------------------------------------------------------------
 
 func (vm *VM) CurrCode() uint8 {
@@ -196,15 +200,26 @@ func (vm *VM) ShowStack() string {
 		s := v.String()
 		im := ""
 		if v.Immutable() {
-			im = "(c)"
+			im = "[const]"
 		}
-		if i > vm.frame().Slots {
-			sb.WriteString(fmt.Sprintf("%% %s%s %% ", s, im))
-		} else {
-			sb.WriteString(fmt.Sprintf("| %s%s | ", s, im))
+		localname := vm.LocalName(i-1, vm.frame().Ip)
+		if localname != "" {
+			localname = fmt.Sprintf(" (%s)", localname)
 		}
+		sb.WriteString(fmt.Sprintf("%s%s%s\n", s, im, localname))
+
 	}
 	return sb.String()
+}
+
+// ------------------------------------------------------------------------------------------
+func (vm *VM) LocalName(slot int, ip int) string {
+	for _, info := range vm.frame().Closure.Function.Chunk.LocalVars {
+		if info.Slot == slot && ip >= info.StartIp && (info.EndIp == -1 || ip < info.EndIp) {
+			return info.Name
+		}
+	}
+	return ""
 }
 
 //------------------------------------------------------------------------------------------
@@ -221,7 +236,7 @@ func (vm *VM) ShowGlobals() string {
 		return "No globals (nil environment)"
 	}
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("globals: %s\n", vm.frame().Closure.Function.Environment.Name))
+	sb.WriteString(fmt.Sprintf("%s\n", vm.frame().Closure.Function.Environment.Name))
 	for k, v := range vm.frame().Closure.Function.Environment.Vars {
 		sb.WriteString(fmt.Sprintf("%s -> %s\n", core.NameFromID(k), v))
 	}

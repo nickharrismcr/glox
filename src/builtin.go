@@ -14,7 +14,7 @@ import (
 func defineBuiltIn(vm *VM, module string, name string, fn core.BuiltInFn) {
 	// Add the built-in to the specified module namespace (environment)
 	// For now, assume 'sys' is the only module, so use vm.builtIns as before
-	if module == "sys" {
+	if module == "sys" || module == "inspect" {
 		addBuiltInModuleFunction(vm, module, name, fn)
 	} else {
 		vm.builtIns[core.InternName(name)] = core.MakeObjectValue(core.MakeBuiltInObject(fn), false)
@@ -25,6 +25,7 @@ func defineBuiltIn(vm *VM, module string, name string, fn core.BuiltInFn) {
 func DefineBuiltIns(vm *VM) {
 	// Only create the sys module, do not inject it into the global environment
 	makeBuiltInModule(vm, "sys")
+	makeBuiltInModule(vm, "inspect")
 
 	core.Log(core.INFO, "Defining built-in functions")
 	// native functions
@@ -58,6 +59,7 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "", "vec2", Vec2BuiltIn)
 	defineBuiltIn(vm, "", "vec3", Vec3BuiltIn)
 	defineBuiltIn(vm, "", "vec4", Vec4BuiltIn)
+	defineBuiltIn(vm, "inspect", "dump_frame", dumpFrameBuiltIn)
 
 	// lox built ins e.g Exception classes
 	loadBuiltInFromSource(vm, exceptionSource, "exception")
@@ -560,6 +562,24 @@ func writeBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 
 	fo.Write(str)
 	return core.MakeBooleanValue(true, false)
+}
+
+func dumpFrameBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+	frame := vm.Frame()
+
+	ip := frame.Ip
+	funcName := frame.Closure.Function.Name.Get()
+	if funcName == "" {
+		funcName = "<script>"
+	}
+	fmt.Println("=====================================================")
+	fmt.Printf("Frame: %s (ip=%d)\n", funcName, ip)
+	fmt.Printf("Stack: \n%s\n", vm.ShowStack())
+	fmt.Printf("Globals: %s\n", vm.ShowGlobals())
+	fmt.Println("=====================================================")
+
+	// Optionally print upvalues, source line, etc.
+	return core.NIL_VALUE
 }
 
 func openFile(path string, mode string) (*os.File, error) {

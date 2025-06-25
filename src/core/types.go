@@ -1,5 +1,13 @@
 package core
 
+type Chunk struct {
+	Code      []uint8
+	Constants []Value
+	Lines     []int
+	Filename  string         // for debugging purposes
+	LocalVars []LocalVarInfo // for debugging purposes
+}
+
 type CallFrame struct {
 	Closure  *ClosureObject
 	Ip       int
@@ -38,3 +46,10 @@ const (
 	DebugEventCall
 	DebugEventReturn
 )
+
+type LocalVarInfo struct {
+	Name    string
+	StartIp int
+	EndIp   int
+	Slot    int
+}

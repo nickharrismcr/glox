@@ -108,6 +108,14 @@ func NewCompiler(type_ FunctionType, scriptName string, parent *Compiler, enviro
 		rv.locals[0].name = Token{}
 	}
 	rv.localCount = 1
+
+	chunk := rv.function.Chunk
+	chunk.LocalVars = append(chunk.LocalVars, core.LocalVarInfo{
+		Name:    "",
+		StartIp: 0,
+		EndIp:   -1,
+		Slot:    0,
+	})
 	return rv
 }
 
@@ -1091,6 +1099,14 @@ func (p *Parser) endScope() {
 		} else {
 			p.emitByte(core.OP_POP)
 		}
+		// update the end IP of the local variable
+		for i := len(p.currentChunk().LocalVars) - 1; i >= 0; i-- {
+			lv := &p.currentChunk().LocalVars[i]
+			if lv.Slot == c.localCount-1 && lv.EndIp == -1 {
+				lv.EndIp = len(p.currentChunk().Code)
+				break
+			}
+		}
 		c.localCount--
 	}
 }
@@ -1405,6 +1421,16 @@ func (p *Parser) addLocal(name Token) {
 	p.currentCompiler.locals[p.currentCompiler.localCount] = local
 	p.currentCompiler.localCount++
 	// core.LogFmt(core.DEBUG, "Added local %d %s at depth %d\n", p.currentCompiler.localCount, local.lexeme, p.currentCompiler.scopeDepth)
+
+	// add local var info to current chunk for debugging
+	chunk := p.currentChunk()
+	chunk.LocalVars = append(chunk.LocalVars, core.LocalVarInfo{
+		Name:    name.Lexeme(),
+		StartIp: len(chunk.Code),
+		EndIp:   -1,
+		Slot:    p.currentCompiler.localCount - 1,
+	})
+
 }
 
 func (p *Parser) emitConstant(value core.Value) {

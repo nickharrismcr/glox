@@ -74,13 +74,6 @@ const (
 	OP_INC_LOCAL
 )
 
-type Chunk struct {
-	Code      []uint8
-	Constants []Value
-	Lines     []int
-	Filename  string // for debugging purposes
-}
-
 func NewChunk(filename string) *Chunk {
 
 	return &Chunk{
@@ -88,6 +81,7 @@ func NewChunk(filename string) *Chunk {
 		Constants: []Value{},
 		Lines:     []int{},
 		Filename:  filename,
+		LocalVars: []LocalVarInfo{},
 	}
 }
 
