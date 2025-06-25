@@ -363,14 +363,23 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 		case core.OP_INC_LOCAL:
 			// increment the local variable at operand index by 1
-			// TODO check if local is not a number
 			slot := int(vm.currCode[frame.Ip])
 			frame.Ip++
 			if vm.stack[frame.Slots+slot].Immutable() {
 				vm.RunTimeError("Cannot increment const local.")
 				goto End
 			}
-			vm.stack[frame.Slots+slot] = core.MakeFloatValue(vm.stack[frame.Slots+slot].AsFloat()+1, false)
+			v := vm.stack[frame.Slots+slot]
+			if v.IsInt() {
+				vm.stack[frame.Slots+slot] = core.MakeIntValue(vm.stack[frame.Slots+slot].AsInt()+1, false)
+				continue
+			}
+			if v.IsFloat() {
+				vm.stack[frame.Slots+slot] = core.MakeFloatValue(vm.stack[frame.Slots+slot].AsFloat()+1, false)
+				continue
+			}
+			vm.RunTimeError("Cannot increment non-number local variable.")
+			goto End
 
 		case core.OP_PRINT:
 			// compiler ensures stack top will be a string object via core.OP_STR
@@ -538,8 +547,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					vm.RunTimeError("Addition type mismatch")
 					goto End
 				}
-				v1.AsVec2().Add(v2.AsVec2())
-				vm.stack[vm.stackTop] = v1
+				v3 := v1.AsVec2().Add(v2.AsVec2())
+				vm.stack[vm.stackTop] = core.MakeVec2Value(v3.X, v3.Y, false)
 				vm.stackTop++
 				continue
 
@@ -548,8 +557,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					vm.RunTimeError("Addition type mismatch")
 					goto End
 				}
-				v1.AsVec3().Add(v2.AsVec3())
-				vm.stack[vm.stackTop] = v1
+				v3 := v1.AsVec3().Add(v2.AsVec3())
+				vm.stack[vm.stackTop] = core.MakeVec3Value(v3.X, v3.Y, v3.Z, false)
 				vm.stackTop++
 				continue
 
@@ -558,8 +567,8 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					vm.RunTimeError("Addition type mismatch")
 					goto End
 				}
-				v1.AsVec4().Add(v2.AsVec4())
-				vm.stack[vm.stackTop] = v1
+				v3 := v1.AsVec4().Add(v2.AsVec4())
+				vm.stack[vm.stackTop] = core.MakeVec4Value(v3.X, v3.Y, v3.Z, v3.W, false)
 				vm.stackTop++
 				continue
 
@@ -1399,6 +1408,13 @@ func (vm *VM) callValue(callee core.Value, argCount int) bool {
 // optimised method call/module access
 func (vm *VM) invoke(name core.Value, argCount int) bool {
 	receiver := vm.Peek(argCount)
+
+	if receiver.Type == core.VAL_VEC2 ||
+		receiver.Type == core.VAL_VEC3 ||
+		receiver.Type == core.VAL_VEC4 {
+		return vm.VectorMethodCall(receiver, name, argCount)
+	}
+
 	if receiver.Type != core.VAL_OBJ {
 		vm.RunTimeError("Invalid use of '.' operator")
 		return false
@@ -1408,6 +1424,7 @@ func (vm *VM) invoke(name core.Value, argCount int) bool {
 	}
 
 	switch receiver.Obj.GetType() {
+
 	case core.OBJECT_INSTANCE:
 		instance := receiver.AsInstance()
 		return vm.invokeFromClass(instance.Class, name, argCount, false)
@@ -1482,6 +1499,47 @@ func (vm *VM) invokeFromBuiltin(obj core.Object, name core.Value, argCount int) 
 }
 
 //------------------------------------------------------------------------------------------
+
+func (vm *VM) VectorMethodCall(receiver core.Value, name core.Value, argCount int) bool {
+	switch receiver.Type {
+	case core.VAL_VEC2:
+		if name.InternedId == core.ADD && argCount == 1 {
+			// special case for Vec2 addition
+			other := vm.Peek(0)
+			if other.Obj.GetType() == core.OBJECT_VEC2 {
+				v2 := other.AsVec2()
+				receiver.AsVec2().AddInPlace(v2)
+				vm.pop() // pop the other vector
+				return true
+			}
+		}
+	case core.VAL_VEC3:
+		if name.InternedId == core.ADD && argCount == 1 {
+			// special case for Vec3 addition
+			other := vm.Peek(0)
+			if other.Obj.GetType() == core.OBJECT_VEC3 {
+				v3 := other.AsVec3()
+				receiver.AsVec3().AddInPlace(v3)
+				vm.pop() // pop the other vector
+				return true
+			}
+		}
+	case core.VAL_VEC4:
+		if name.InternedId == core.ADD && argCount == 1 {
+			// special case for Vec4 addition
+			other := vm.Peek(0)
+			if other.Obj.GetType() == core.OBJECT_VEC4 {
+				v4 := other.AsVec4()
+				receiver.AsVec4().AddInPlace(v4)
+				vm.pop() // pop the other vector
+				return true
+			}
+		}
+	}
+
+	vm.RunTimeError("Invalid use of '.' operator")
+	return false
+}
 
 func (vm *VM) bindMethod(class *core.ClassObject, stringId int) bool {
 	method, ok := class.Methods[stringId]

@@ -44,8 +44,11 @@ func (s *Vec2Object) SetY(y float64) {
 	s.Y = y
 }
 
-// add in place
-func (s *Vec2Object) Add(other *Vec2Object) {
+func (s *Vec2Object) Add(other *Vec2Object) *Vec2Object {
+	return MakeVec2Object(s.X+other.X, s.Y+other.Y)
+}
+
+func (s *Vec2Object) AddInPlace(other *Vec2Object) {
 
 	s.X += other.X
 	s.Y += other.Y

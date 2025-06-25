@@ -49,7 +49,12 @@ func (s *Vec3Object) SetZ(z float64) {
 	s.Z = z
 }
 
-func (s *Vec3Object) Add(other *Vec3Object) {
+func (s *Vec3Object) Add(other *Vec3Object) *Vec3Object {
+
+	return MakeVec3Object(s.X+other.X, s.Y+other.Y, s.Z+other.Z)
+}
+
+func (s *Vec3Object) AddInPlace(other *Vec3Object) {
 
 	s.X += other.X
 	s.Y += other.Y

@@ -5,6 +5,7 @@ var (
 	idToName = make([]string, 0)
 )
 
+var ADD = InternName("add")
 var INIT = InternName("init")
 var NEXT = InternName("__next__")
 var ITER = InternName("__iter__")
