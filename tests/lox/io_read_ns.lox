@@ -1,15 +1,17 @@
-var fp = open("lox/io_read.lox","r")
+import sys
+
+var fp = sys.open("lox/io_read.lox","r")
 print "reading"
 var i=1
 try {
     while (true) {
-        var s = readln(fp)
+        var s = sys.readln(fp)
         print str(i)+" "+s
         i=i+1
     }
 } except EOFError as e {
     print "in EOFError handler"
 }
-close(fp)
+sys.close(fp)
 print "file closed"
-var s = readln(fp)
+var s = sys.readln(fp)

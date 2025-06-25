@@ -1,3 +1,5 @@
+import sys 
+
 func test(s) {
     print s;
 }
@@ -20,7 +22,7 @@ var a = [1,2,3];
 print type(a);
 var b = {"1":"2","3":"4"};
 print type(b);
-var fp = open("tmp","w");
+var fp = sys.open("tmp","w");
 print type(fp);
 
 

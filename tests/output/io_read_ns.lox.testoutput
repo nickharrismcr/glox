@@ -1,19 +1,22 @@
 reading
-1 var fp = open("lox/io_read.lox","r");
-2 print "reading";
-3 var i=1;
-4 try {
-5     while (true) {
-6         var s = readln(fp);
-7         print str(i)+" "+s;
-8         i=i+1;
-9     }
-10 } except EOFError as e {
-11     print "in EOFError handler";
-12 }
-13 close(fp);
-14 print "file closed";
-15 var s = readln(fp);
+1 import sys
+2 
+3 var fp = sys.open("lox/io_read.lox","r");
+4 print "reading";
+5 var i=1;
+6 try {
+7     while (true) {
+8         var s = sys.readln(fp);
+9         print str(i)+" "+s;
+10         i=i+1;
+11     }
+12 } except EOFError as e {
+13     print "in EOFError handler";
+14 }
+15 sys.close(fp);
+16 print "file closed";
+17 var s = sys.readln(fp);
+18 
 in EOFError handler
 file closed
 Uncaught exception: <class RunTimeError> : "readln attempted on closed file." 
