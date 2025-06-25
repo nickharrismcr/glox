@@ -11,44 +11,59 @@ import (
 	"time"
 )
 
-func (vm *VM) defineBuiltIns() {
+func defineBuiltIn(vm *VM, module string, name string, fn core.BuiltInFn) {
+	// Add the built-in to the specified module namespace (environment)
+	// For now, assume 'sys' is the only module, so use vm.builtIns as before
+	if module == "sys" {
+		addBuiltInModuleFunction(vm, module, name, fn)
+	} else {
+		vm.builtIns[core.InternName(name)] = core.MakeObjectValue(core.MakeBuiltInObject(fn), false)
+	}
+
+}
+
+func DefineBuiltIns(vm *VM) {
+	// Only create the sys module, do not inject it into the global environment
+	makeBuiltInModule(vm, "sys")
 
 	core.Log(core.INFO, "Defining built-in functions")
 	// native functions
-	vm.defineBuiltIn("args", argsBuiltIn)
-	vm.defineBuiltIn("clock", clockBuiltIn)
-	vm.defineBuiltIn("type", typeBuiltIn)
-	vm.defineBuiltIn("len", lenBuiltIn)
-	vm.defineBuiltIn("sin", sinBuiltIn)
-	vm.defineBuiltIn("cos", cosBuiltIn)
-	vm.defineBuiltIn("sqrt", sqrtBuiltIn)
-	vm.defineBuiltIn("append", appendBuiltIn)
-	vm.defineBuiltIn("float", floatBuiltIn)
-	vm.defineBuiltIn("int", intBuiltIn)
-	vm.defineBuiltIn("lox_mandel_array", builtin.MandelArrayBuiltIn)
-	vm.defineBuiltIn("replace", replaceBuiltIn)
-	vm.defineBuiltIn("open", openBuiltIn)
-	vm.defineBuiltIn("close", closeBuiltIn)
-	vm.defineBuiltIn("readln", readlnBuiltIn)
-	vm.defineBuiltIn("write", writeBuiltIn)
-	vm.defineBuiltIn("rand", randBuiltIn)
-	vm.defineBuiltIn("draw_png", builtin.DrawPNGBuiltIn)
-	vm.defineBuiltIn("float_array", builtin.FloatArrayBuiltin)
-	vm.defineBuiltIn("encode_rgb", encodeRGBABuiltIn)
-	vm.defineBuiltIn("decode_rgb", decodeRGBABuiltIn)
-	vm.defineBuiltIn("window", builtin.WindowBuiltIn)
-	vm.defineBuiltIn("texture", builtin.TextureBuiltIn)
-	vm.defineBuiltIn("render_texture", builtin.RenderTextureBuiltIn)
-	vm.defineBuiltIn("image", builtin.ImageBuiltIn)
-	vm.defineBuiltIn("sleep", sleepBuiltIn)
-	vm.defineBuiltIn("range", rangeBuiltIn)
-	vm.defineBuiltIn("vec2", Vec2BuiltIn)
-	vm.defineBuiltIn("vec3", Vec3BuiltIn)
-	vm.defineBuiltIn("vec4", Vec4BuiltIn)
+	defineBuiltIn(vm, "sys", "args", argsBuiltIn)
+	defineBuiltIn(vm, "sys", "clock", clockBuiltIn)
+	defineBuiltIn(vm, "", "type", typeBuiltIn)
+	defineBuiltIn(vm, "", "len", lenBuiltIn)
+	defineBuiltIn(vm, "", "sin", sinBuiltIn)
+	defineBuiltIn(vm, "", "cos", cosBuiltIn)
+	defineBuiltIn(vm, "", "sqrt", sqrtBuiltIn)
+	defineBuiltIn(vm, "", "append", appendBuiltIn)
+	defineBuiltIn(vm, "", "float", floatBuiltIn)
+	defineBuiltIn(vm, "", "int", intBuiltIn)
+	defineBuiltIn(vm, "", "lox_mandel_array", builtin.MandelArrayBuiltIn)
+	defineBuiltIn(vm, "", "replace", replaceBuiltIn)
+	defineBuiltIn(vm, "sys", "open", openBuiltIn)
+	defineBuiltIn(vm, "sys", "close", closeBuiltIn)
+	defineBuiltIn(vm, "sys", "readln", readlnBuiltIn)
+	defineBuiltIn(vm, "sys", "write", writeBuiltIn)
+	defineBuiltIn(vm, "", "rand", randBuiltIn)
+	defineBuiltIn(vm, "", "draw_png", builtin.DrawPNGBuiltIn)
+	defineBuiltIn(vm, "", "float_array", builtin.FloatArrayBuiltin)
+	defineBuiltIn(vm, "", "encode_rgb", encodeRGBABuiltIn)
+	defineBuiltIn(vm, "", "decode_rgb", decodeRGBABuiltIn)
+	defineBuiltIn(vm, "", "window", builtin.WindowBuiltIn)
+	defineBuiltIn(vm, "", "texture", builtin.TextureBuiltIn)
+	defineBuiltIn(vm, "", "render_texture", builtin.RenderTextureBuiltIn)
+	defineBuiltIn(vm, "", "image", builtin.ImageBuiltIn)
+	defineBuiltIn(vm, "", "sleep", sleepBuiltIn)
+	defineBuiltIn(vm, "", "range", rangeBuiltIn)
+	defineBuiltIn(vm, "", "vec2", Vec2BuiltIn)
+	defineBuiltIn(vm, "", "vec3", Vec3BuiltIn)
+	defineBuiltIn(vm, "", "vec4", Vec4BuiltIn)
 
 	// lox built ins e.g Exception classes
-	vm.loadBuiltInModule(exceptionSource, "exception")
+	loadBuiltInFromSource(vm, exceptionSource, "exception")
 
+	// Do NOT inject sys into the global environment here.
+	// It must be imported by client code to be available.
 }
 
 func Vec2BuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
@@ -560,7 +575,24 @@ func openFile(path string, mode string) (*os.File, error) {
 	}
 }
 
-func (vm *VM) loadBuiltInModule(source string, moduleName string) {
+func makeBuiltInModule(vm *VM, moduleName string) {
+
+	env := core.NewEnvironment(moduleName)
+	module := core.MakeModuleObject(moduleName, *env)
+	vm.builtInModules[core.InternName(moduleName)] = module
+	core.LogFmt(core.INFO, "Created built-in module %s", moduleName)
+
+}
+
+func addBuiltInModuleFunction(vm *VM, moduleName string, name string, fn core.BuiltInFn) {
+	// Add a function to a built-in module
+	module := vm.builtInModules[core.InternName(moduleName)]
+	fo := core.MakeBuiltInObject(fn)
+	module.Environment.Vars[core.InternName(name)] = core.MakeObjectValue(fo, false)
+}
+
+// load built-in functions from source code
+func loadBuiltInFromSource(vm *VM, source string, moduleName string) {
 	core.Log(core.INFO, "Loading built-in module ")
 	subvm := NewVM("", false)
 	//	DebugSuppress = true
@@ -568,6 +600,7 @@ func (vm *VM) loadBuiltInModule(source string, moduleName string) {
 	for k, v := range subvm.frames[0].Closure.Function.Environment.Vars {
 		vm.builtIns[k] = v
 	}
+
 	core.DebugSuppress = false
 }
 

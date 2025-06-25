@@ -70,6 +70,52 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 			return core.NIL_VALUE
 		},
 	})
+	o.RegisterMethod("line_ex", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			v1 := vm.Stack(arg_stackptr)
+			if v1.Type != core.VAL_VEC2 {
+				vm.RunTimeError("Expected Vec2 for line start position")
+				return core.NIL_VALUE
+			}
+			v2 := vm.Stack(arg_stackptr + 1)
+			if v2.Type != core.VAL_VEC2 {
+				vm.RunTimeError("Expected Vec2 for line end position")
+				return core.NIL_VALUE
+			}
+
+			thickVal := vm.Stack(arg_stackptr + 2)
+			if !thickVal.IsInt() {
+				vm.RunTimeError("Expected Int for line thickness")
+				return core.NIL_VALUE
+			}
+
+			colVal := vm.Stack(arg_stackptr + 3)
+			if colVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vec4 for line color")
+				return core.NIL_VALUE
+			}
+
+			vo1 := v1.AsVec2()
+			vo2 := v2.AsVec2()
+			vo1x := float32(vo1.X)
+			vo1y := float32(vo1.Y)
+			vo2x := float32(vo2.X)
+			vo2y := float32(vo2.Y)
+
+			v4obj := colVal.Obj.(*core.Vec4Object)
+			r := int32(v4obj.X)
+			g := int32(v4obj.Y)
+			b := int32(v4obj.Z)
+			a := int32(v4obj.W)
+			thickness := float32(thickVal.AsInt())
+			rlv1 := rl.Vector2{X: vo1x, Y: vo1y}
+			rlv2 := rl.Vector2{X: vo2x, Y: vo2y}
+			rl.BeginTextureMode(o.Data.RenderTexture)
+			rl.DrawLineEx(rlv1, rlv2, thickness, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
+			rl.EndTextureMode()
+			return core.NIL_VALUE
+		},
+	})
 	o.RegisterMethod("rectangle", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			xval := vm.Stack(arg_stackptr)

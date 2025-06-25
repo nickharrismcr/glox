@@ -28,22 +28,23 @@ const (
 )
 
 type VM struct {
-	script       string
-	source       string
-	stack        [STACK_MAX]core.Value
-	stackTop     int
-	frames       [FRAMES_MAX]*core.CallFrame
-	frameCount   int
-	currCode     []uint8 // current code being executed
-	starttime    time.Time
-	lastGC       time.Time
-	openUpValues *core.UpvalueObject // head of list
-	args         []string
-	ErrorMsg     string
-	stackTrace   []string
-	ModuleImport bool
-	builtIns     map[int]core.Value   // global built-in functions
-	foreachState *core.VMForeachState // state stack for foreach loops
+	script         string
+	source         string
+	stack          [STACK_MAX]core.Value
+	stackTop       int
+	frames         [FRAMES_MAX]*core.CallFrame
+	frameCount     int
+	currCode       []uint8 // current code being executed
+	starttime      time.Time
+	lastGC         time.Time
+	openUpValues   *core.UpvalueObject // head of list
+	args           []string
+	ErrorMsg       string
+	stackTrace     []string
+	ModuleImport   bool
+	builtIns       map[int]core.Value         // global built-in functions
+	builtInModules map[int]*core.ModuleObject // global built-in modules - need to be imported before use
+	foreachState   *core.VMForeachState       // state stack for foreach loops
 
 	// Debug hook: called with (vm, event, data) at opcode, call, return
 	// opcode events will have data as the opcode byte,
@@ -67,19 +68,20 @@ var globalModules = map[string]*core.ModuleObject{}
 func NewVM(script string, defineBuiltIns bool) *VM {
 
 	vm := &VM{
-		script:       script,
-		starttime:    time.Now(),
-		lastGC:       time.Now(),
-		openUpValues: nil,
-		args:         []string{},
-		ErrorMsg:     "",
-		stackTrace:   []string{},
-		builtIns:     make(map[int]core.Value),
-		foreachState: nil,
+		script:         script,
+		starttime:      time.Now(),
+		lastGC:         time.Now(),
+		openUpValues:   nil,
+		args:           []string{},
+		ErrorMsg:       "",
+		stackTrace:     []string{},
+		builtIns:       make(map[int]core.Value),
+		foreachState:   nil,
+		builtInModules: make(map[int]*core.ModuleObject),
 	}
 	vm.resetStack()
 	if defineBuiltIns && !core.DebugCompileOnly {
-		vm.defineBuiltIns()
+		DefineBuiltIns(vm)
 	}
 	return vm
 }
@@ -246,13 +248,6 @@ func (vm *VM) resetStack() {
 
 	vm.stackTop = 0
 	vm.frameCount = 0
-}
-
-//------------------------------------------------------------------------------------------
-
-func (vm *VM) defineBuiltIn(name string, function core.BuiltInFn) {
-	id := core.InternName(name)
-	vm.builtIns[id] = core.MakeObjectValue(core.MakeBuiltInObject(function), false)
 }
 
 //------------------------------------------------------------------------------------------
@@ -1075,6 +1070,15 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			frame.Ip++
 			alv := constants[idx]
 			alias := alv.AsString().Get()
+
+			sID := core.InternName(module)
+			// check if module is in builtins
+			moduleObj, ok := vm.builtInModules[sID]
+			if ok {
+				// copy built-in module to the current environment
+				vm.frame().Closure.Function.Environment.SetVar(sID, core.MakeObjectValue(moduleObj, false))
+				continue
+			}
 
 			status := vm.importModule(module, alias)
 			if status != INTERPRET_OK {
