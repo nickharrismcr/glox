@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 )
@@ -237,7 +238,17 @@ func (vm *VM) ShowGlobals() string {
 	}
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%s\n", vm.frame().Closure.Function.Environment.Name))
-	for k, v := range vm.frame().Closure.Function.Environment.Vars {
+	// Collect and sort the keys
+	keys := make([]int, 0, len(vm.frame().Closure.Function.Environment.Vars))
+	for k := range vm.frame().Closure.Function.Environment.Vars {
+		keys = append(keys, k)
+	}
+	// Sort keys by name for readability
+	sort.Slice(keys, func(i, j int) bool {
+		return core.NameFromID(keys[i]) < core.NameFromID(keys[j])
+	})
+	for _, k := range keys {
+		v := vm.frame().Closure.Function.Environment.Vars[k]
 		sb.WriteString(fmt.Sprintf("%s -> %s\n", core.NameFromID(k), v))
 	}
 	return sb.String()
