@@ -1957,12 +1957,12 @@ func (vm *VM) createDict(frame *core.CallFrame) {
 
 	itemCount := int(vm.currCode[frame.Ip])
 	frame.Ip++
-	dict := map[string]core.Value{}
+	dict := map[int]core.Value{}
 
 	for i := 0; i < itemCount; i++ {
 		value := vm.pop()
 		key := vm.pop()
-		dict[key.AsString().Get()] = value
+		dict[core.InternName(key.AsString().Get())] = value
 	}
 	do := core.MakeDictObject(dict)
 	vm.stack[vm.stackTop] = core.MakeObjectValue(do, false)

@@ -7,11 +7,11 @@ import (
 )
 
 type DictObject struct {
-	Items   map[string]Value
+	Items   map[int]Value
 	Methods map[int]*BuiltInObject
 }
 
-func MakeDictObject(items map[string]Value) *DictObject {
+func MakeDictObject(items map[int]Value) *DictObject {
 
 	rv := &DictObject{
 		Items: items,
@@ -29,7 +29,7 @@ func (DictObject) GetType() ObjectType {
 func (o *DictObject) String() string {
 	s := "Dict({ "
 	for k, v := range o.Items {
-		s = s + fmt.Sprintf("\"%s\":%s,", k, v.String())
+		s = s + fmt.Sprintf("\"%s\":%s,", NameFromID(k), v.String())
 	}
 	return s[:len(s)-1] + " })"
 }
@@ -95,7 +95,7 @@ func (d *DictObject) RegisterAllDictMethods() {
 				if error != nil {
 					return NIL_VALUE
 				}
-				delete(d.Items, key.AsString().Get())
+				delete(d.Items, InternName(key.AsString().Get()))
 				return rv
 			}
 
@@ -108,12 +108,12 @@ func (d *DictObject) RegisterAllDictMethods() {
 
 func (o *DictObject) Set(key string, value Value) {
 
-	o.Items[key] = value
+	o.Items[InternName(key)] = value
 }
 
 func (o *DictObject) Get(key string) (Value, error) {
 
-	rv, ok := o.Items[key]
+	rv, ok := o.Items[InternName(key)]
 	if !ok {
 		return NIL_VALUE, errors.New("key not found")
 	}
@@ -124,7 +124,7 @@ func (o *DictObject) Keys() Value {
 
 	Keys := []Value{}
 	for k := range o.Items {
-		key := strings.Replace(k, "\"", "", -1)
+		key := strings.Replace(NameFromID(k), "\"", "", -1)
 		so := MakeStringObject(key)
 		v := MakeObjectValue(so, false)
 		Keys = append(Keys, v)
