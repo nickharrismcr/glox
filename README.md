@@ -37,7 +37,8 @@ import random, color as clr
 - Modules are cached as bytecode after first import for fast loading.
 - Aliases allow you to refer to a module with a different name.
 - Compiled modules are stored in `__loxcache__/<module>.lxc` and reloaded unless the source is newer.
-
+- `sys` module for io etc.
+- `inspect` module for vm state dumps
 ---
 
 #### Variable Declarations
@@ -141,7 +142,7 @@ cos(0)
 
 ##### Command-line Arguments
 ```lox
-args() // returns list of command-line arguments
+sys.args() // returns list of command-line arguments
 ```
 
 ##### Type Inspection
@@ -172,11 +173,17 @@ a.set(10, 10, 0.5)
 b = a.get(10, 10)
 ```
 
-##### Native Vectors
+##### Fast Native Vectors
 ```lox
 v = vec2(1, 2)
 v3 = vec3(1, 2, 3)
 v4 = vec4(1, 2, 3, 4)
+```
+Addition 
+```lox
+v = v + vec2(3,4)
+v3 = v3 + vec3(1,2,3)
+v4 = v4 + vec4(3,4,5,6)
 ```
 
 ##### Raylib Graphics Window
@@ -395,12 +402,19 @@ try {
 
 ##### File Operations
 ```lox
-f = open("file.txt", "r")
-line = f.readln()
-f.write("hello\n")
-f.close()
+import sys
+f = sys.open("file.txt", "r")
+line = sys.readln(f)
+sys.write(f,"hello\n")
+sys.close(f)
 ```
 - Native file open, close, readln, write.
 - `readln` throws EOFError on end of file.
 
----
+#### VM inspection
+```
+import inspect
+
+inspect.dump_frame() 
+```
+- print current frame name, stack/locals, globals 
