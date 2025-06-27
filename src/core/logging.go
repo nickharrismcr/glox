@@ -13,3 +13,8 @@ func LogFmt(level LoggingLevelType, format string, args ...interface{}) {
 		fmt.Printf(format, args...)
 	}
 }
+func LogFmtLn(level LoggingLevelType, format string, args ...interface{}) {
+	if DebugTraceExecution && level >= LogLevel {
+		fmt.Printf(format+"\n", args...)
+	}
+}
