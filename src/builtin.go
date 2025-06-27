@@ -60,6 +60,7 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "", "vec3", Vec3BuiltIn)
 	defineBuiltIn(vm, "", "vec4", Vec4BuiltIn)
 	defineBuiltIn(vm, "inspect", "dump_frame", dumpFrameBuiltIn)
+	defineBuiltIn(vm, "", "atan2", atan2BuiltIn)
 
 	// lox built ins e.g Exception classes
 	loadBuiltInFromSource(vm, exceptionSource, "exception")
@@ -413,6 +414,25 @@ func sqrtBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	}
 	n := vnum.Float
 	return core.MakeFloatValue(math.Sqrt(n), false)
+}
+
+func atan2BuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+
+	if argCount != 2 {
+		vm.RunTimeError("Invalid argument count to atan2.")
+		return core.NIL_VALUE
+	}
+	vnum1 := vm.Stack(arg_stackptr)
+	vnum2 := vm.Stack(arg_stackptr + 1)
+
+	if vnum1.Type != core.VAL_FLOAT || vnum2.Type != core.VAL_FLOAT {
+
+		vm.RunTimeError("Invalid argument type to atan2.")
+		return core.NIL_VALUE
+	}
+	n1 := vnum1.Float
+	n2 := vnum2.Float
+	return core.MakeFloatValue(math.Atan2(n1, n2), false)
 }
 
 // append(obj,value)
