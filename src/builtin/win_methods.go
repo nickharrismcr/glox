@@ -12,6 +12,7 @@ func RegisterAllWindowMethods(o *WindowObject) {
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			rl.SetTraceLogLevel(rl.LogNone)
 			rl.InitWindow(o.Value.Width, o.Value.Height, "GLOX")
+			rl.SetTargetFPS(60)
 			return core.NIL_VALUE
 		},
 	})
@@ -314,6 +315,21 @@ func RegisterAllWindowMethods(o *WindowObject) {
 	o.RegisterMethod("close", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			rl.CloseWindow()
+			return core.NIL_VALUE
+		},
+	})
+	o.RegisterMethod("set_target_fps", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 1 {
+				vm.RunTimeError("set_target_fps expects 1 argument (fps)")
+				return core.NIL_VALUE
+			}
+			fpsVal := vm.Stack(arg_stackptr)
+			if !fpsVal.IsInt() {
+				vm.RunTimeError("set_target_fps argument must be an integer")
+				return core.NIL_VALUE
+			}
+			rl.SetTargetFPS(int32(fpsVal.Int))
 			return core.NIL_VALUE
 		},
 	})
