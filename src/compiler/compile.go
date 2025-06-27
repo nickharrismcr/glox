@@ -633,6 +633,7 @@ func (p *Parser) handleIncrement() bool {
 		p.emitByte(core.OP_ONE)
 		p.emitByte(core.OP_ADD)
 		p.emitBytes(setOp, uint8(arg))
+		p.emitByte(core.OP_POP)
 		return true
 
 	}
