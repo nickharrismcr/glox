@@ -16,7 +16,7 @@ func move(particle) {
 // return a particle initialisation closure 
 func init(col1,col2) {
 
-    var lifemax=random.integer(20,100);
+    var lifemax=random.integer(20,500);
     var speedmax=random.integer(1,10);
     var sizemax=random.integer(5,10);
 
@@ -74,9 +74,7 @@ var win = window(width,height);
 win.init();
  
 var emitters = particle_sys.Emitters();
-for (var i = 0; i < 15; i = i + 1) {
-    queue_random_emitter(width,height,i*20);
-}
+ 
 stars = make_stars();
  
 while (!win.should_close()) {
@@ -84,7 +82,7 @@ while (!win.should_close()) {
     win.begin();
     win.begin_blend_mode("BLEND_ADD");
     win.clear(colour.BLACK); // Clear the window with black
-    if (!emitters.update() and emitters.queue_length() < 20) {
+    if (!emitters.update() and emitters.queue_length() < 20 and random.integer(0,10) < 1) {
         queue_random_emitter(width,height,random.integer(50,500));
     }  
     foreach ( var e in emitters.get()) {
