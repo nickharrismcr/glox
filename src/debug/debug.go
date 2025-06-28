@@ -323,6 +323,8 @@ type VMInspector interface {
 	ShowStack() string
 	ShowGlobals() string
 	Frame() *core.CallFrame
+	FrameAt(depth int) *core.CallFrame
+	FrameCount() int
 	Script() string
 	CurrCode() uint8
 }

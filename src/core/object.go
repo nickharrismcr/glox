@@ -69,6 +69,8 @@ type VMContext interface {
 	RaiseExceptionByName(string, string) bool
 	Peek(int) Value
 	Frame() *CallFrame
+	FrameAt(depth int) *CallFrame
+	FrameCount() int
 	StackTop() int
 	ShowStack() string
 	GetGlobals() *Environment

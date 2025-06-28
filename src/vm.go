@@ -186,8 +186,23 @@ func (vm *VM) Peek(dist int) core.Value {
 
 // Exported Frame method
 func (vm *VM) Frame() *core.CallFrame {
-	return vm.frame()
+	return vm.frames[vm.frameCount-1]
 }
+
+func (vm *VM) FrameCount() int {
+	return vm.frameCount
+}
+
+//------------------------------------------------------------------------------------------
+
+func (vm *VM) FrameAt(index int) *core.CallFrame {
+	if index < 0 || index >= vm.frameCount {
+		return nil
+	}
+	return vm.frames[index]
+}
+
+//------------------------------------------------------------------------------------------
 
 func (vm *VM) StackTop() int {
 	return vm.stackTop
