@@ -5,18 +5,6 @@
 The aim of this project is to learn more deeply about programming in Go and the crafting of interpreters by way of implementing Bobs CLox interpreter in Go, adding Python-inspired extensions to Lox along the way.
 The extensions to the language include enhanced string operations, lists, dictionaries, exception handling, module imports with bytecode caching, string and list iteration, and I/O.  
 
-My implementation is slow compared to CLox. Fibonacci benchmark averages 1s, CLox is around 0.5.  Python3 averages around half that.
-
-The VM :
-- does a lot of function calls in place of C macros, not all of which get inlined
-- has a large switch/case inner loop which Go compiler doesn't optimise at all well ( no computed goto ) 
-- uses slow map for globals - function code runs much quicker 
-- uses interface{} for objects ( values are tagged union structs for speed but contain a pointer for objects ) 
-- GC is handled by the Go runtime. 
-
-but hey-ho. This is a learning exercise, the Go code is probably not very ideomatic. The fun is in figuring out how to get the interpreter to do new language stuff.
-  
-There are some optimisations such as string interning to allow integer hash keys for method lookup, singleton NIL_VALUE, inlined functions in the main run loop.  And I can always add more native functions :D 
 
 ### Additions to vanilla Lox:
 
@@ -427,3 +415,21 @@ inspect.dump_frame()
 `locals`     - dictionary of locals
 `globals`    - dictionary of globals 
 `prev_frame` - calling frame dict (or nil) 
+
+
+## Performance Notes:
+
+My implementation is slow compared to CLox. Fibonacci benchmark averages 1s, CLox is around 0.5.  Python3 averages around half that.
+
+The VM :
+- does a lot of function calls in place of C macros, not all of which get inlined
+- has a large switch/case inner loop which Go compiler doesn't optimise at all well ( no computed goto ) 
+- uses slow map for globals - function code runs much quicker 
+- uses interface{} for objects ( values are tagged union structs for speed but contain a pointer for objects ) 
+- GC is handled by the Go runtime. 
+
+but hey-ho. This is a learning exercise, the Go code is probably not very ideomatic. The fun is in figuring out how to get the interpreter to do new language stuff.
+  
+There are some optimisations such as string interning to allow integer hash keys for method lookup, singleton NIL_VALUE, inlined functions in the main run loop.  
+
+Instrumented runs on my I7 PC show between 6 and 14M bytecode instructions per second are being handled,  and the VM is capable of 60 FPS when updating and drawing hundreds of 3D primitives with lox-implemented physics. There's scope for implementing a physics system in native either with homegrown code or a lib.    
