@@ -71,7 +71,8 @@ type VMContext interface {
 	Frame() *CallFrame
 	StackTop() int
 	ShowStack() string
-	ShowGlobals() string
+	GetGlobals() *Environment
+	FileName() string
 }
 
 type BuiltInFn func(argCount int, args_stackptr int, vm VMContext) Value

@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strings"
 	"time"
 )
@@ -160,6 +159,15 @@ func (vm *VM) StartTime() time.Time {
 	return vm.starttime
 }
 
+func (vm *VM) FileName() string {
+
+	// returns the script name
+	if vm.script == "" {
+		return "<unknown>"
+	}
+	return filepath.Base(vm.script)
+}
+
 //------------------------------------------------------------------------------------------
 
 func (vm *VM) RunTimeError(format string, args ...any) {
@@ -195,6 +203,7 @@ func (vm *VM) CurrCode() uint8 {
 
 // Exported ShowStack returns stack as string
 func (vm *VM) ShowStack() string {
+
 	var sb strings.Builder
 	for i := 1; i < vm.stackTop; i++ {
 		v := vm.stack[i]
@@ -233,28 +242,12 @@ func (vm *VM) Script() string {
 	return vm.script
 }
 
-//------------------------------------------------------------------------------------------
-
-func (vm *VM) ShowGlobals() string {
+// ------------------------------------------------------------------------------------------
+func (vm *VM) GetGlobals() *core.Environment {
 	if vm.frame().Closure.Function.Environment == nil {
-		return "No globals (nil environment)"
+		return nil
 	}
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%s\n", vm.frame().Closure.Function.Environment.Name))
-	// Collect and sort the keys
-	keys := make([]int, 0, len(vm.frame().Closure.Function.Environment.Vars))
-	for k := range vm.frame().Closure.Function.Environment.Vars {
-		keys = append(keys, k)
-	}
-	// Sort keys by name for readability
-	sort.Slice(keys, func(i, j int) bool {
-		return core.NameFromID(keys[i]) < core.NameFromID(keys[j])
-	})
-	for _, k := range keys {
-		v := vm.frame().Closure.Function.Environment.Vars[k]
-		sb.WriteString(fmt.Sprintf("%s -> %s\n", core.NameFromID(k), v))
-	}
-	return sb.String()
+	return vm.frame().Closure.Function.Environment
 }
 
 //------------------------------------------------------------------------------------------
@@ -345,6 +338,17 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 			v2 := vm.pop()
 			v1 := vm.pop()
+
+			if v1.Type != v2.Type {
+				vm.RunTimeError("Operands must be of the same type")
+				goto End
+			}
+			if v1.IsStringObject() && v2.IsStringObject() {
+				vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsString().Get() > v2.AsString().Get(), false)
+				vm.stackTop++
+				continue
+			}
+
 			if !v1.IsNumber() || !v2.IsNumber() {
 				vm.RunTimeError("Operands must be numbers")
 				goto End
@@ -357,6 +361,17 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 			v2 := vm.pop()
 			v1 := vm.pop()
+
+			if v1.Type != v2.Type {
+				vm.RunTimeError("Operands must be of the same type")
+				goto End
+			}
+			if v1.IsStringObject() && v2.IsStringObject() {
+				vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsString().Get() < v2.AsString().Get(), false)
+				vm.stackTop++
+				continue
+			}
+
 			if !v1.IsNumber() || !v2.IsNumber() {
 				vm.RunTimeError("Operands must be numbers")
 				goto End

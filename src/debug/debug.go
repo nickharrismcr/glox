@@ -3,6 +3,8 @@ package debug
 import (
 	"fmt"
 	"glox/src/core"
+	"sort"
+	"strings"
 )
 
 func Disassemble(c *core.Chunk, name string) {
@@ -326,6 +328,9 @@ type VMInspector interface {
 }
 
 func TraceOpcode(vm VMInspector) {
+	if vm == nil || vm.Frame() == nil {
+		return
+	}
 	core.Log(core.TRACE, "-----------------------------------------------------")
 	if core.DebugShowGlobals {
 		core.LogFmt(core.TRACE, "Globals:\n%s\n", vm.ShowGlobals())
@@ -366,4 +371,26 @@ func TraceHook(vmContext interface{}, event core.DebugEvent, data any) {
 	case core.DebugEventReturn:
 		TraceReturn(vm, data)
 	}
+}
+
+func ShowGlobals(env *core.Environment) string {
+	if env == nil {
+		return "No globals (nil environment)"
+	}
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%s\n", env.Name))
+	// Collect and sort the keys
+	keys := make([]int, 0, len(env.Vars))
+	for k := range env.Vars {
+		keys = append(keys, k)
+	}
+	// Sort keys by name for readability
+	sort.Slice(keys, func(i, j int) bool {
+		return core.NameFromID(keys[i]) < core.NameFromID(keys[j])
+	})
+	for _, k := range keys {
+		v := env.Vars[k]
+		sb.WriteString(fmt.Sprintf("%s -> %s\n", core.NameFromID(k), v))
+	}
+	return sb.String()
 }

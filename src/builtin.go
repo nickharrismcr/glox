@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"glox/src/builtin"
 	"glox/src/core"
+	"glox/src/debug"
 	"glox/src/util"
 	"math"
 	"math/rand"
@@ -60,6 +61,7 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "", "vec3", Vec3BuiltIn)
 	defineBuiltIn(vm, "", "vec4", Vec4BuiltIn)
 	defineBuiltIn(vm, "inspect", "dump_frame", dumpFrameBuiltIn)
+	defineBuiltIn(vm, "inspect", "get_frame", getFrameBuiltIn)
 	defineBuiltIn(vm, "", "atan2", atan2BuiltIn)
 
 	// lox built ins e.g Exception classes
@@ -67,6 +69,29 @@ func DefineBuiltIns(vm *VM) {
 
 	// Do NOT inject sys into the global environment here.
 	// It must be imported by client code to be available.
+}
+
+func dumpFrameBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+	frame := vm.Frame()
+
+	ip := frame.Ip
+	funcName := frame.Closure.Function.Name.Get()
+	if funcName == "" {
+		funcName = "<script>"
+	}
+	fmt.Println("=====================================================")
+	fmt.Printf("Frame: %s (ip=%d)\n", funcName, ip)
+	fmt.Printf("Stack: \n%s\n", vm.ShowStack())
+	fmt.Printf("Globals: %s\n", debug.ShowGlobals(vm.GetGlobals()))
+	fmt.Println("=====================================================")
+
+	// Optionally print upvalues, source line, etc.
+	return core.NIL_VALUE
+}
+
+func getFrameBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+
+	return debug.FrameDictValue(vm)
 }
 
 func Vec2BuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
@@ -582,24 +607,6 @@ func writeBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 
 	fo.Write(str)
 	return core.MakeBooleanValue(true, false)
-}
-
-func dumpFrameBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-	frame := vm.Frame()
-
-	ip := frame.Ip
-	funcName := frame.Closure.Function.Name.Get()
-	if funcName == "" {
-		funcName = "<script>"
-	}
-	fmt.Println("=====================================================")
-	fmt.Printf("Frame: %s (ip=%d)\n", funcName, ip)
-	fmt.Printf("Stack: \n%s\n", vm.ShowStack())
-	fmt.Printf("Globals: %s\n", vm.ShowGlobals())
-	fmt.Println("=====================================================")
-
-	// Optionally print upvalues, source line, etc.
-	return core.NIL_VALUE
 }
 
 func openFile(path string, mode string) (*os.File, error) {

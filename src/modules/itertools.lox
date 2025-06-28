@@ -18,6 +18,12 @@ func reverse(s) {
     raise RunTimeError("Invalid argument to reverse().");
 }
 
+func stringsorter(a,b){
+    if (a < b) return -1
+    if (a > b) return 1
+    return 0
+}
+
 // bubble sort a list 
 // cmp is function that should return -1, 0 or 1 
 func sort(list, cmp) {

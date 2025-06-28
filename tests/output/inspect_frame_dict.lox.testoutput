@@ -1,0 +1,10 @@
+( "function" , ":" , "test" )
+( "file" , ":" , "inspect_frame_dict.lox" )
+( "line" , ":" , 20 )
+( "args" , ":" , [ <instance Test> ] )
+( "globals:" , 5 )
+( "d" , ":" , <module inspect> )
+( "local1" , ":" , 3 )
+( "local2" , ":" , 5 )
+( "local3" , ":" , 4 )
+nil

@@ -20,6 +20,10 @@ func MakeDictObject(items map[int]Value) *DictObject {
 	return rv
 }
 
+func MakeEmptyDictObject() *DictObject {
+	return MakeDictObject(make(map[int]Value))
+}
+
 func (DictObject) IsObject() {}
 
 func (DictObject) GetType() ObjectType {
