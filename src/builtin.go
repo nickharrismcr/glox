@@ -52,6 +52,7 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "", "encode_rgb", encodeRGBABuiltIn)
 	defineBuiltIn(vm, "", "decode_rgb", decodeRGBABuiltIn)
 	defineBuiltIn(vm, "", "window", builtin.WindowBuiltIn)
+	defineBuiltIn(vm, "", "camera", builtin.CameraBuiltIn)
 	defineBuiltIn(vm, "", "texture", builtin.TextureBuiltIn)
 	defineBuiltIn(vm, "", "render_texture", builtin.RenderTextureBuiltIn)
 	defineBuiltIn(vm, "", "image", builtin.ImageBuiltIn)

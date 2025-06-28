@@ -507,6 +507,201 @@ func RegisterAllWindowMethods(o *WindowObject) {
 		},
 	})
 
+	// 3D Mode methods
+	o.RegisterMethod("begin_3d", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 1 {
+				vm.RunTimeError("begin_3d expects 1 argument (camera)")
+				return core.NIL_VALUE
+			}
+			cameraVal := vm.Stack(arg_stackptr)
+			if cameraVal.Type != core.VAL_OBJ {
+				vm.RunTimeError("Expected camera object")
+				return core.NIL_VALUE
+			}
+
+			// Type assertion to check if it's a CameraObject
+			cameraObj, ok := cameraVal.Obj.(*CameraObject)
+			if !ok {
+				vm.RunTimeError("Expected camera object")
+				return core.NIL_VALUE
+			}
+
+			rl.BeginMode3D(cameraObj.Camera)
+			return core.NIL_VALUE
+		},
+	})
+
+	o.RegisterMethod("end_3d", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			rl.EndMode3D()
+			return core.NIL_VALUE
+		},
+	})
+
+	// 3D Drawing primitives
+	o.RegisterMethod("cube", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 3 {
+				vm.RunTimeError("cube expects 3 arguments: position(vec3), size(vec3), color(vec4)")
+				return core.NIL_VALUE
+			}
+
+			posVal := vm.Stack(arg_stackptr)
+			sizeVal := vm.Stack(arg_stackptr + 1)
+			colorVal := vm.Stack(arg_stackptr + 2)
+
+			if posVal.Type != core.VAL_VEC3 || sizeVal.Type != core.VAL_VEC3 || colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("cube arguments must be vec3, vec3, vec4")
+				return core.NIL_VALUE
+			}
+
+			posObj := posVal.Obj.(*core.Vec3Object)
+			sizeObj := sizeVal.Obj.(*core.Vec3Object)
+			colorObj := colorVal.Obj.(*core.Vec4Object)
+
+			position := rl.Vector3{X: float32(posObj.X), Y: float32(posObj.Y), Z: float32(posObj.Z)}
+			color := rl.NewColor(uint8(colorObj.X), uint8(colorObj.Y), uint8(colorObj.Z), uint8(colorObj.W))
+
+			rl.DrawCube(position, float32(sizeObj.X), float32(sizeObj.Y), float32(sizeObj.Z), color)
+			return core.NIL_VALUE
+		},
+	})
+
+	o.RegisterMethod("cube_wires", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 3 {
+				vm.RunTimeError("cube_wires expects 3 arguments: position(vec3), size(vec3), color(vec4)")
+				return core.NIL_VALUE
+			}
+
+			posVal := vm.Stack(arg_stackptr)
+			sizeVal := vm.Stack(arg_stackptr + 1)
+			colorVal := vm.Stack(arg_stackptr + 2)
+
+			if posVal.Type != core.VAL_VEC3 || sizeVal.Type != core.VAL_VEC3 || colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("cube_wires arguments must be vec3, vec3, vec4")
+				return core.NIL_VALUE
+			}
+
+			posObj := posVal.Obj.(*core.Vec3Object)
+			sizeObj := sizeVal.Obj.(*core.Vec3Object)
+			colorObj := colorVal.Obj.(*core.Vec4Object)
+
+			position := rl.Vector3{X: float32(posObj.X), Y: float32(posObj.Y), Z: float32(posObj.Z)}
+			color := rl.NewColor(uint8(colorObj.X), uint8(colorObj.Y), uint8(colorObj.Z), uint8(colorObj.W))
+
+			rl.DrawCubeWires(position, float32(sizeObj.X), float32(sizeObj.Y), float32(sizeObj.Z), color)
+			return core.NIL_VALUE
+		},
+	})
+
+	o.RegisterMethod("sphere", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 3 {
+				vm.RunTimeError("sphere expects 3 arguments: center(vec3), radius(number), color(vec4)")
+				return core.NIL_VALUE
+			}
+
+			centerVal := vm.Stack(arg_stackptr)
+			radiusVal := vm.Stack(arg_stackptr + 1)
+			colorVal := vm.Stack(arg_stackptr + 2)
+
+			if centerVal.Type != core.VAL_VEC3 || colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("sphere arguments must be vec3, number, vec4")
+				return core.NIL_VALUE
+			}
+
+			centerObj := centerVal.Obj.(*core.Vec3Object)
+			colorObj := colorVal.Obj.(*core.Vec4Object)
+
+			center := rl.Vector3{X: float32(centerObj.X), Y: float32(centerObj.Y), Z: float32(centerObj.Z)}
+			radius := float32(radiusVal.AsFloat())
+			color := rl.NewColor(uint8(colorObj.X), uint8(colorObj.Y), uint8(colorObj.Z), uint8(colorObj.W))
+
+			rl.DrawSphere(center, radius, color)
+			return core.NIL_VALUE
+		},
+	})
+
+	o.RegisterMethod("cylinder", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 5 {
+				vm.RunTimeError("cylinder expects 5 arguments: position(vec3), radius_top(number), radius_bottom(number), height(number), color(vec4)")
+				return core.NIL_VALUE
+			}
+
+			posVal := vm.Stack(arg_stackptr)
+			radiusTopVal := vm.Stack(arg_stackptr + 1)
+			radiusBottomVal := vm.Stack(arg_stackptr + 2)
+			heightVal := vm.Stack(arg_stackptr + 3)
+			colorVal := vm.Stack(arg_stackptr + 4)
+
+			if posVal.Type != core.VAL_VEC3 || colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("cylinder position and color must be vec3 and vec4")
+				return core.NIL_VALUE
+			}
+
+			posObj := posVal.Obj.(*core.Vec3Object)
+			colorObj := colorVal.Obj.(*core.Vec4Object)
+
+			position := rl.Vector3{X: float32(posObj.X), Y: float32(posObj.Y), Z: float32(posObj.Z)}
+			radiusTop := float32(radiusTopVal.AsFloat())
+			radiusBottom := float32(radiusBottomVal.AsFloat())
+			height := float32(heightVal.AsFloat())
+			color := rl.NewColor(uint8(colorObj.X), uint8(colorObj.Y), uint8(colorObj.Z), uint8(colorObj.W))
+
+			rl.DrawCylinder(position, radiusTop, radiusBottom, height, 16, color)
+			return core.NIL_VALUE
+		},
+	})
+
+	o.RegisterMethod("grid", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 2 {
+				vm.RunTimeError("grid expects 2 arguments: slices(int), spacing(float)")
+				return core.NIL_VALUE
+			}
+
+			slicesVal := vm.Stack(arg_stackptr)
+			spacingVal := vm.Stack(arg_stackptr + 1)
+
+			slices := int32(slicesVal.AsInt())
+			spacing := float32(spacingVal.AsFloat())
+
+			rl.DrawGrid(slices, spacing)
+			return core.NIL_VALUE
+		},
+	})
+
+	o.RegisterMethod("plane", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 3 {
+				vm.RunTimeError("plane expects 3 arguments: center(vec3), size(vec2), color(vec4)")
+				return core.NIL_VALUE
+			}
+
+			centerVal := vm.Stack(arg_stackptr)
+			sizeVal := vm.Stack(arg_stackptr + 1)
+			colorVal := vm.Stack(arg_stackptr + 2)
+
+			if centerVal.Type != core.VAL_VEC3 || sizeVal.Type != core.VAL_VEC2 || colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("plane arguments must be vec3, vec2, vec4")
+				return core.NIL_VALUE
+			}
+
+			centerObj := centerVal.Obj.(*core.Vec3Object)
+			sizeObj := sizeVal.Obj.(*core.Vec2Object)
+			colorObj := colorVal.Obj.(*core.Vec4Object)
+
+			center := rl.Vector3{X: float32(centerObj.X), Y: float32(centerObj.Y), Z: float32(centerObj.Z)}
+			size := rl.Vector2{X: float32(sizeObj.X), Y: float32(sizeObj.Y)}
+			color := rl.NewColor(uint8(colorObj.X), uint8(colorObj.Y), uint8(colorObj.Z), uint8(colorObj.W))
+
+			rl.DrawPlane(center, size, color)
+			return core.NIL_VALUE
+		},
+	})
 }
 
 func RegisterAllWindowConstants(o *WindowObject) {

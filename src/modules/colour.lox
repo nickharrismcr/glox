@@ -2,10 +2,9 @@
 import random;
 
 func scale_colour(colour, scalar) {
-    colour.x = int(colour.x * scalar);
-    colour.y = int(colour.y * scalar);
-    colour.z = int(colour.z * scalar);
-    colour.w = int(colour.w * scalar);
+    colour.r = int(colour.r * scalar);
+    colour.g = int(colour.g * scalar);
+    colour.b = int(colour.b * scalar);
     return colour;
 }   
  
@@ -25,6 +24,7 @@ const CYAN    = vec4(0, 255, 255, 255);
 const MAGENTA = vec4(255, 0, 255, 255);
 const BLACK   = vec4(0, 0, 0, 255);
 const WHITE   = vec4(255, 255, 255, 255);
+const ORANGE  = vec4(255, 165, 0, 255);
 
 
 func primary_colours() {

@@ -1,0 +1,239 @@
+import colour  as col
+import random
+import math
+ 
+SHAPES=200
+
+win = window(1,1)
+win.init()
+win.toggle_fullscreen()
+ 
+
+// Create a camera
+// position, target, up vector
+cam = camera(vec3(20, 10, 10), vec3(0, 0, 0), vec3(0, 1, 0))
+
+angle = 0.0
+frame_count = 0
+
+// Grid bounds
+const GRID_SIZE = 20.0
+const BOUNCE_DAMPING = 0.8
+
+// Moving object class
+class MovingObject {
+    init(pos, vel, size, color, shape_type) {
+        this.pos = pos
+        this.vel = vel
+        this.size = size
+        this.color = color
+        this.shape_type = shape_type  // "cube", "sphere", "cylinder"
+        this.radius = this.get_collision_radius()
+    }
+    
+    get_collision_radius() {
+        return this.size.x
+    }
+    
+    distance_to(other) {
+        dx = this.pos.x - other.pos.x
+        dy = this.pos.y - other.pos.y
+        dz = this.pos.z - other.pos.z
+        return sqrt(dx*dx + dy*dy + dz*dz)
+    }
+    
+    // Fast collision check - avoids sqrt when possible
+    distance_squared_to(other) {
+        dx = this.pos.x - other.pos.x
+        dy = this.pos.y - other.pos.y
+        dz = this.pos.z - other.pos.z
+        return dx*dx + dy*dy + dz*dz
+    }
+    
+    check_collision(other) {
+        radiusSum = this.radius + other.radius
+        return this.distance_squared_to(other) < (radiusSum * radiusSum)
+    }
+    
+    resolve_collision(other) {
+        dx = this.pos.x - other.pos.x
+        dy = this.pos.y - other.pos.y
+        dz = this.pos.z - other.pos.z
+        dist = sqrt(dx*dx + dy*dy + dz*dz)
+        
+        if (dist == 0) {
+            // Objects are at same position, push them apart randomly
+            dx = random.float(-1, 1)
+            dy = random.float(-1, 1)
+            dz = random.float(-1, 1)
+            dist = sqrt(dx*dx + dy*dy + dz*dz)
+        }
+        
+        // Normalize collision vector
+        nx = dx / dist
+        ny = dy / dist
+        nz = dz / dist
+        
+        // Separate overlapping objects
+        overlap = (this.radius + other.radius) - dist
+        separation = overlap / 2
+        
+        this.pos.x = this.pos.x + nx * separation
+        this.pos.y = this.pos.y + ny * separation
+        this.pos.z = this.pos.z + nz * separation
+        
+        other.pos.x = other.pos.x - nx * separation
+        other.pos.y = other.pos.y - ny * separation
+        other.pos.z = other.pos.z - nz * separation
+        
+        // Calculate relative velocity
+        rel_vel_x = this.vel.x - other.vel.x
+        rel_vel_y = this.vel.y - other.vel.y
+        rel_vel_z = this.vel.z - other.vel.z
+        
+        // Calculate relative velocity in collision normal direction
+        vel_along_normal = rel_vel_x * nx + rel_vel_y * ny + rel_vel_z * nz
+        
+        // Don't resolve if velocities are separating
+        if (vel_along_normal > 0) {
+            return
+        }
+        
+        // Calculate restitution (bounciness)
+        restitution = 0.7
+        impulse = -(1 + restitution) * vel_along_normal
+        
+        // Apply impulse to velocities (assuming equal mass)
+        impulse = impulse / 2
+        
+        this.vel.x = this.vel.x + impulse * nx
+        this.vel.y = this.vel.y + impulse * ny
+        this.vel.z = this.vel.z + impulse * nz
+        
+        other.vel.x = other.vel.x - impulse * nx
+        other.vel.y = other.vel.y - impulse * ny
+        other.vel.z = other.vel.z - impulse * nz
+    }
+    
+    update() {
+        // Update position
+        this.pos.x = this.pos.x + this.vel.x
+        this.pos.y = this.pos.y + this.vel.y
+        this.pos.z = this.pos.z + this.vel.z
+        
+        // Bounce off boundaries
+        if (this.pos.x > GRID_SIZE or this.pos.x < -GRID_SIZE) {
+            this.vel.x = -this.vel.x  
+            if (this.pos.x > GRID_SIZE) this.pos.x = GRID_SIZE
+            if (this.pos.x < -GRID_SIZE) this.pos.x = -GRID_SIZE
+        }
+        
+        if (this.pos.z > GRID_SIZE or this.pos.z < -GRID_SIZE) {
+            this.vel.z = -this.vel.z  
+            if (this.pos.z > GRID_SIZE) this.pos.z = GRID_SIZE
+            if (this.pos.z < -GRID_SIZE) this.pos.z = -GRID_SIZE
+        }
+        
+        // Keep objects above ground with bouncing
+        ground_level = 0.0  // Plane is at Y=0
+        if (this.pos.y - this.radius < ground_level) {
+            this.pos.y = ground_level + this.radius  // Bottom of sphere touches ground
+            this.vel.y = -this.vel.y * BOUNCE_DAMPING
+        }
+        
+        // Add gravity
+        this.vel.y = this.vel.y - 0.01
+ 
+    }
+    
+    draw(win) {
+        win.sphere(this.pos, this.size.x, this.color)
+    }
+}
+
+// Create moving objects
+objects = []
+
+
+// Add some spheres
+for (i = 0; i < SHAPES; i = i + 1) {
+    pos = vec3(random.float(-5, 5), random.float(3, 8), random.float(-5, 5))
+    vel = vec3(random.float(-0.15, 0.15), random.float(-0.05, 0.05), random.float(-0.15, 0.15))
+    s = random.float(0.3,0.6)
+    size = vec3(s, s, s)
+    objects.append(MovingObject(pos, vel, size, col.random_rgb(), "sphere"))
+}
+
+ 
+
+while (!win.should_close()) {
+    // Update camera
+    angle = angle + 0.01
+    x = cos(angle) * 30
+    z = sin(angle) * 30
+    cam.set_position(vec3(x, 10, z))
+    
+    frame_count = frame_count + 1
+    
+    // Update all moving objects
+    foreach (obj in objects) {
+        obj.update()
+    }
+    
+    // Only do collision detection every other frame for 300+ objects
+    if (frame_count % 2 == 0) {
+        // Spatial partitioning collision detection
+        collision_checks = 0
+        grid_size = 4.0  // Larger grid cells for fewer checks
+        
+        for (i = 0; i < objects.length(); i = i + 1) {
+            for (j = i + 1; j < objects.length(); j = j + 1) {
+                obj1 = objects[i]
+                obj2 = objects[j]
+                
+                // Quick distance pre-check - only check very close objects
+                dx = obj1.pos.x - obj2.pos.x
+                dy = obj1.pos.y - obj2.pos.y
+                dz = obj1.pos.z - obj2.pos.z
+                
+                // Skip if too far apart (much more aggressive culling)
+                if (dx*dx + dz*dz > 4) {  // Only check within 2 units horizontally
+                    continue
+                }
+                if (dy*dy > 9) {  // Only check within 3 units vertically
+                    continue
+                }
+                
+                collision_checks = collision_checks + 1
+                if (obj1.check_collision(obj2)) {
+                    obj1.resolve_collision(obj2)
+                }
+            }
+        }
+    }
+    
+    win.begin()
+    win.begin_blend_mode(win.BLEND_ALPHA)
+    win.clear(vec4(100,100,150,255))
+
+    // Begin 3D mode
+    win.begin_3d(cam)
+    
+    // Draw a flat square ground plane
+    win.plane(vec3(0, 0, 0), vec2(GRID_SIZE*2, GRID_SIZE*2), vec4(150, 150, 150, 255))
+    
+    // Draw boundary walls as wireframes
+    win.cube_wires(vec3(0, 5, 0), vec3(GRID_SIZE*2, 10, GRID_SIZE*2), vec4(100, 100, 100, 100))
+    
+    // Draw all moving objects
+    foreach (obj in objects) {
+        obj.draw(win)
+    }
+
+    // End 3D mode
+    win.end_3d()
+    
+    win.end()
+}
+
+win.close()

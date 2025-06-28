@@ -3,8 +3,6 @@ package debug
 import (
 	"fmt"
 	"glox/src/core"
-	"sort"
-	"strings"
 )
 
 func Disassemble(c *core.Chunk, name string) {
@@ -313,86 +311,4 @@ func importFromInstruction(c *core.Chunk, name string, offset int) int {
 		core.LogFmt(core.TRACE, "\n")
 	}
 	return offset + 3 + int(listLength)
-}
-
-// VMInspector defines the interface for debug access to the VM
-// Only the methods needed for debugging are exposed
-// Implemented by *VM in vm.go
-
-type VMInspector interface {
-	ShowStack() string
-	ShowGlobals() string
-	Frame() *core.CallFrame
-	FrameAt(depth int) *core.CallFrame
-	FrameCount() int
-	Script() string
-	CurrCode() uint8
-}
-
-func TraceOpcode(vm VMInspector) {
-	if vm == nil || vm.Frame() == nil {
-		return
-	}
-	core.Log(core.TRACE, "-----------------------------------------------------")
-	if core.DebugShowGlobals {
-		core.LogFmt(core.TRACE, "Globals:\n%s\n", vm.ShowGlobals())
-	}
-	core.LogFmt(core.TRACE, "Stack:\n%s\n", vm.ShowStack())
-	chunk := vm.Frame().Closure.Function.Chunk
-	function := vm.Frame().Closure.Function
-	name := function.Name.Get()
-	script := vm.Script()
-	code := vm.CurrCode()
-	depth := vm.Frame().Depth
-	offset := vm.Frame().Ip
-	_ = DisassembleInstruction(chunk, script, name, depth, code, offset)
-
-}
-
-func TraceCall(vm VMInspector, data any) {
-
-	closure := data.(*core.ClosureObject)
-	core.LogFmt(core.TRACE, "Call: %s\n", closure.Function.Name.Get())
-}
-
-func TraceReturn(vm VMInspector, data any) {
-
-	value := data.(core.Value)
-	core.LogFmt(core.TRACE, "Return: %s\n", value.String())
-
-}
-
-func TraceHook(vmContext interface{}, event core.DebugEvent, data any) {
-
-	vm, _ := vmContext.(VMInspector)
-	switch event {
-	case core.DebugEventOpcode:
-		TraceOpcode(vm)
-	case core.DebugEventCall:
-		TraceCall(vm, data)
-	case core.DebugEventReturn:
-		TraceReturn(vm, data)
-	}
-}
-
-func ShowGlobals(env *core.Environment) string {
-	if env == nil {
-		return "No globals (nil environment)"
-	}
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%s\n", env.Name))
-	// Collect and sort the keys
-	keys := make([]int, 0, len(env.Vars))
-	for k := range env.Vars {
-		keys = append(keys, k)
-	}
-	// Sort keys by name for readability
-	sort.Slice(keys, func(i, j int) bool {
-		return core.NameFromID(keys[i]) < core.NameFromID(keys[j])
-	})
-	for _, k := range keys {
-		v := env.Vars[k]
-		sb.WriteString(fmt.Sprintf("%s -> %s\n", core.NameFromID(k), v))
-	}
-	return sb.String()
 }

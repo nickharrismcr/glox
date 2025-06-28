@@ -33,6 +33,7 @@ const (
 	NATIVE_IMAGE
 	NATIVE_TEXTURE
 	NATIVE_RENDER_TEXTURE
+	NATIVE_CAMERA
 )
 
 type Object interface {

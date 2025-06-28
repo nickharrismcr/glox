@@ -35,7 +35,7 @@ type VM struct {
 	frames         [FRAMES_MAX]*core.CallFrame
 	frameCount     int
 	currCode       []uint8 // current code being executed
-	starttime      time.Time
+	Starttime      time.Time
 	lastGC         time.Time
 	openUpValues   *core.UpvalueObject // head of list
 	args           []string
@@ -69,7 +69,7 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 
 	vm := &VM{
 		script:         script,
-		starttime:      time.Now(),
+		Starttime:      time.Now(),
 		lastGC:         time.Now(),
 		openUpValues:   nil,
 		args:           []string{},
@@ -156,7 +156,7 @@ func (vm *VM) Args() []string {
 
 func (vm *VM) StartTime() time.Time {
 
-	return vm.starttime
+	return vm.Starttime
 }
 
 func (vm *VM) FileName() string {

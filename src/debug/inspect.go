@@ -1,7 +1,10 @@
 package debug
 
 import (
+	"fmt"
 	"glox/src/core"
+	"sort"
+	"strings"
 )
 
 func FrameDictValue(vm core.VMContext) core.Value {
@@ -70,4 +73,26 @@ func DictOfGlobals(vm core.VMContext) core.Value {
 		dict.Set(core.NameFromID(name), value)
 	}
 	return core.MakeObjectValue(dict, false)
+}
+
+func ShowGlobals(env *core.Environment) string {
+	if env == nil {
+		return "No globals (nil environment)"
+	}
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%s\n", env.Name))
+	// Collect and sort the keys
+	keys := make([]int, 0, len(env.Vars))
+	for k := range env.Vars {
+		keys = append(keys, k)
+	}
+	// Sort keys by name for readability
+	sort.Slice(keys, func(i, j int) bool {
+		return core.NameFromID(keys[i]) < core.NameFromID(keys[j])
+	})
+	for _, k := range keys {
+		v := env.Vars[k]
+		sb.WriteString(fmt.Sprintf("%s -> %s\n", core.NameFromID(k), v))
+	}
+	return sb.String()
 }

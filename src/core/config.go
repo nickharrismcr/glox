@@ -16,6 +16,7 @@ var DebugPrintCode = false
 var DebugShowGlobals = false
 var DebugSkipBuiltins = false
 var DebugCompileOnly = false
+var DebugInstrument = false
 var LogLevel = INFO
 
 var ForceModuleCompile = false

@@ -81,6 +81,15 @@ func (o *ListObject) RegisterAllListMethods() {
 			return NIL_VALUE
 		},
 	})
+	o.RegisterMethod("length", &BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+			if argCount != 0 {
+				vm.RunTimeError("length takes no arguments.")
+				return NIL_VALUE
+			}
+			return MakeIntValue(o.GetLength(), true)
+		},
+	})
 }
 
 func (o *ListObject) Get() []Value {

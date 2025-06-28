@@ -1,11 +1,2 @@
-
-a=vec2(1,1) 
-b=vec2(2,2)
-
-a=a+b
-print a
-
-c=vec3(1,3,4)
-d=vec3(2,4,5)
-c=c+d
-print c
+a=[1,2,3]
+print a.length()
