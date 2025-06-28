@@ -1,0 +1,6 @@
+( "function" , ":" , "test2" )
+( "file" , ":" , "inspect_prev_frame.lox" )
+( "line" , ":" , 10 )
+( "args" , ":" , [ <fn "test2"> , 3 , 5 , 4 ] )
+( "prev_frame" , "dict" )
+nil

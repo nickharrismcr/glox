@@ -418,3 +418,12 @@ import inspect
 inspect.dump_frame() 
 ```
 - print current frame name, stack/locals, globals 
+
+`d=inspect.get_frame()` returns frame data dictionary with keys:s
+`function`   - function name 
+`line`       - current line
+`file`       - current script 
+`args`       - list of arguments
+`locals`     - dictionary of locals
+`globals`    - dictionary of globals 
+`prev_frame` - calling frame (or nil) 
