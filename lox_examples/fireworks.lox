@@ -82,8 +82,8 @@ while (!win.should_close()) {
     win.begin();
     win.begin_blend_mode("BLEND_ADD");
     win.clear(colour.BLACK); // Clear the window with black
-    if (!emitters.update() and emitters.queue_length() < 20 and random.integer(0,10) < 1) {
-        queue_random_emitter(width,height,random.integer(50,500));
+    if (!emitters.update() and emitters.queue_length() < 2 ) {
+        queue_random_emitter(width,height,random.integer(10,50));
     }  
     foreach ( var e in emitters.get()) {
         foreach (var p in e.get_particles()) {
