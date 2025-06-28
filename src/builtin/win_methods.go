@@ -167,6 +167,48 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			return core.NIL_VALUE
 		},
 	})
+
+	o.RegisterMethod("triangle", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			p1 := vm.Stack(arg_stackptr)
+			p2 := vm.Stack(arg_stackptr + 1)
+			p3 := vm.Stack(arg_stackptr + 2)
+			colVal := vm.Stack(arg_stackptr + 3)
+
+			if p1.Type != core.VAL_VEC2 || p2.Type != core.VAL_VEC2 || p3.Type != core.VAL_VEC2 {
+				vm.RunTimeError("Expected Vec2 for triangle points")
+				return core.NIL_VALUE
+			}
+			if colVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vec4 for triangle color")
+				return core.NIL_VALUE
+			}
+
+			v4obj := colVal.Obj.(*core.Vec4Object)
+			r := int32(v4obj.X)
+			g := int32(v4obj.Y)
+			b := int32(v4obj.Z)
+			a := int32(v4obj.W)
+
+			p1o := p1.Obj.(*core.Vec2Object)
+			p2o := p2.Obj.(*core.Vec2Object)
+			p3o := p3.Obj.(*core.Vec2Object)
+
+			p1x := int32(p1o.X)
+			p1y := int32(p1o.Y)
+			p2x := int32(p2o.X)
+			p2y := int32(p2o.Y)
+			p3x := int32(p3o.X)
+			p3y := int32(p3o.Y)
+			rlv1 := rl.Vector2{X: float32(p1x), Y: float32(p1y)}
+			rlv2 := rl.Vector2{X: float32(p2x), Y: float32(p2y)}
+			rlv3 := rl.Vector2{X: float32(p3x), Y: float32(p3y)}
+
+			rl.DrawTriangle(rlv1, rlv2, rlv3, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
+			return core.NIL_VALUE
+		},
+	})
+
 	o.RegisterMethod("rectangle", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			xval := vm.Stack(arg_stackptr)
