@@ -203,7 +203,7 @@ while (!win.should_close()) {
 }
 win.close()
 ```
-- Supports drawing primitives, images, textures, and reading keyboard state.
+- Supports drawing 2d and 3d primitives, camera, images, textures, shaders, and reading keyboard state.
 
 ---
 
@@ -419,7 +419,7 @@ inspect.dump_frame()
 ```
 - print current frame name, stack/locals, globals 
 
-`d=inspect.get_frame()` returns frame data dictionary with keys:s
+`d=inspect.get_frame()` returns frame data dictionary with keys:
 `function`   - function name 
 `line`       - current line
 `file`       - current script 

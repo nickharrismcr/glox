@@ -1,0 +1,179 @@
+// Shader Loading from Memory Demo - Animated Spheres with Basic Lighting
+// Demonstrates loading shaders from code strings rather than files
+// Shows bouncing spheres with Phong lighting model (ambient + diffuse + specular)
+
+import colour as col
+import random
+import math
+
+BLOCKS=100
+
+win = window(1,1)
+win.init()
+win.toggle_fullscreen()
+
+cam = camera(vec3(20, 10, 10), vec3(0, 0, 0), vec3(0, 1, 0))
+
+// Define simple shader code with basic lighting
+vertex_code = "#version 330
+in vec3 vertexPosition;
+in vec2 vertexTexCoord;
+in vec4 vertexColor;
+in vec3 vertexNormal;
+uniform mat4 mvp;
+uniform mat4 matModel;
+uniform mat4 matNormal;
+out vec2 fragTexCoord;
+out vec4 fragColor;
+out vec3 fragPosition;
+out vec3 fragNormal;
+void main() {
+    fragTexCoord = vertexTexCoord;
+    fragColor = vertexColor;
+    fragPosition = vec3(matModel * vec4(vertexPosition, 1.0));
+    fragNormal = normalize(vec3(matNormal * vec4(vertexNormal, 0.0)));
+    gl_Position = mvp * vec4(vertexPosition, 1.0);
+}"
+
+fragment_code = "#version 330
+in vec2 fragTexCoord;
+in vec4 fragColor;
+in vec3 fragPosition;
+in vec3 fragNormal;
+uniform sampler2D texture0;
+uniform vec4 colDiffuse;
+uniform float brightness;
+uniform vec3 lightPos;
+uniform vec3 viewPos;
+out vec4 finalColor;
+void main() {
+    vec3 ambient = vec3(0.15, 0.15, 0.15);
+    
+    vec3 norm = normalize(fragNormal);
+    vec3 lightDir = normalize(lightPos - fragPosition);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * vec3(1.0, 1.0, 1.0);
+    
+    vec3 viewDir = normalize(viewPos - fragPosition);
+    vec3 reflectDir = reflect(-lightDir, norm);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    vec3 specular = spec * vec3(0.5, 0.5, 0.5);
+    
+    vec4 texelColor = texture(texture0, fragTexCoord);
+    vec3 lighting = ambient + diffuse + specular;
+    finalColor = vec4(lighting, 1.0) * texelColor * fragColor * colDiffuse * brightness;
+}"
+
+// Create shader and load from memory
+memory_shader = shader()
+memory_shader.load_from_memory(vertex_code, fragment_code)
+
+brightness_loc = -1
+light_pos_loc = -1
+view_pos_loc = -1
+
+if (memory_shader.is_valid()) {
+    brightness_loc = memory_shader.get_location("brightness")
+    light_pos_loc = memory_shader.get_location("lightPos")
+    view_pos_loc = memory_shader.get_location("viewPos")
+    print("Shader loaded from memory!")
+    print("Brightness location:", brightness_loc)
+    print("Light position location:", light_pos_loc)
+    print("View position location:", view_pos_loc)
+} else {
+    print("Failed to load shader from memory")
+}
+
+angle = 0.0
+frame_count = 0
+brightness = 1.0  // Fixed brightness value
+light_pos = vec3(5, 8, 5)  // Moved light closer to camera orbit and lower
+
+// Simple demo objects - lit spheres with Phong shading
+class BrightObject {
+    init(pos, vel, size, color) {
+        this.pos = pos
+        this.vel = vel
+        this.size = size
+        this.color = color
+    }
+    
+    update() {
+        this.pos.x = this.pos.x + this.vel.x
+        this.pos.y = this.pos.y + this.vel.y
+        this.pos.z = this.pos.z + this.vel.z
+        
+        if (this.pos.x > 10 or this.pos.x < -10) this.vel.x = -this.vel.x
+        if (this.pos.z > 10 or this.pos.z < -10) this.vel.z = -this.vel.z
+        if (this.pos.y > 10 or this.pos.y < 1) this.vel.y = -this.vel.y
+    }
+    
+    draw(win) {
+        if (memory_shader.is_valid()) {
+            win.begin_shader_mode(memory_shader)
+        }
+        win.sphere(this.pos, this.size, this.color)
+        if (memory_shader.is_valid()) {
+            win.end_shader_mode()
+        }
+    }
+}
+
+// Create objects
+objects = []
+for (i = 0; i < BLOCKS; i = i + 1) {
+    pos = vec3(random.float(-8, 8), random.float(2, 5), random.float(-8, 8))
+    vel = vec3(random.float(-0.1, 0.1), random.float(-0.05, 0.05), random.float(-0.1, 0.1))
+    size = random.float(0.3, 0.8)
+    color = col.random_rgb()
+    objects.append(BrightObject(pos, vel, size, color))
+}
+
+while (!win.should_close()) {
+    angle = angle + 0.01
+    x = cos(angle) * 30
+    z = sin(angle) * 30
+    cam.set_position(vec3(x, 8, z))
+    
+    frame_count = frame_count + 1
+    
+    // Update shader uniforms
+    if (memory_shader.is_valid()) {
+        if (brightness_loc >= 0) {
+            memory_shader.set_value_float(brightness_loc, brightness)
+        }
+        if (light_pos_loc >= 0) {
+            memory_shader.set_value_vec3(light_pos_loc, light_pos)
+        }
+        if (view_pos_loc >= 0) {
+            memory_shader.set_value_vec3(view_pos_loc, vec3(x, 8, z))
+        }
+    }
+    
+    // Update objects
+    foreach (obj in objects) {
+        obj.update()
+    }
+    
+    win.begin()
+    win.begin_blend_mode(win.BLEND_ALPHA)  // Commented out to disable alpha blending
+    win.clear(vec4(50, 30, 30, 255))
+    win.begin_3d(cam)
+    
+    // Draw light position indicator
+    win.sphere(light_pos, 0.1, vec4(255, 255, 0, 255))
+    
+    // Draw objects
+    foreach (obj in objects) {
+        obj.draw(win)
+    }
+    
+    win.end_3d()
+    win.end()
+}
+
+// Cleanup
+if (memory_shader.is_valid()) {
+    memory_shader.unload()
+}
+win.close()

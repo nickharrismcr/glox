@@ -539,6 +539,39 @@ func RegisterAllWindowMethods(o *WindowObject) {
 		},
 	})
 
+	// Shader mode methods
+	o.RegisterMethod("begin_shader_mode", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 1 {
+				vm.RunTimeError("begin_shader_mode expects 1 argument (shader)")
+				return core.NIL_VALUE
+			}
+
+			shaderVal := vm.Stack(arg_stackptr)
+			if shaderVal.Type != core.VAL_OBJ {
+				vm.RunTimeError("begin_shader_mode expects shader object")
+				return core.NIL_VALUE
+			}
+
+			// Type assertion to check if it's a ShaderObject
+			shaderObj, ok := shaderVal.Obj.(*ShaderObject)
+			if !ok {
+				vm.RunTimeError("Expected shader object")
+				return core.NIL_VALUE
+			}
+
+			rl.BeginShaderMode(shaderObj.Value)
+			return core.NIL_VALUE
+		},
+	})
+
+	o.RegisterMethod("end_shader_mode", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			rl.EndShaderMode()
+			return core.NIL_VALUE
+		},
+	})
+
 	// 3D Drawing primitives
 	o.RegisterMethod("cube", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {

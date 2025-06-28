@@ -1,0 +1,529 @@
+// ============================================================================
+// GLOX : ENHANCED 3D PHYSICS DEMO WITH REAL-TIME SHADER EFFECTS
+// ============================================================================
+// This comprehensive 3D physics demo showcases advanced real-time graphics
+// programming techniques including physics simulation, shader programming,
+// and performance optimization within the GLox environment.
+//
+// CORE SYSTEMS:
+// 1. PHYSICS SIMULATION
+//    - Newtonian mechanics with gravity, velocity, and acceleration
+//    - Elastic collision detection and response using sphere-sphere intersection
+//    - Boundary collision handling with energy damping
+//    - Explosion mechanics with radial force propagation
+//
+// 2. SHADER SYSTEM ARCHITECTURE
+//    - Multi-shader rendering pipeline with three effect types:
+//      * Normal: Basic flat-shaded colored spheres (no lighting model)
+//      * Rainbow: Time-based HSV color cycling using sine wave modulation
+//      * Pulse: Distance-based energy rings emanating from animated center
+//    - Real-time uniform parameter updates for shader animation
+//    - GPU resource management with proper loading/unloading
+//
+// 3. VISUAL EFFECTS
+//    - Pseudo-shadow system using elliptical ground projections
+//    - Explosion flash effects with floor illumination
+//    - Pre-explosion warning system (object expansion and color change)
+//    - Orbital camera movement for dynamic scene presentation
+//
+// 4. PERFORMANCE OPTIMIZATIONS
+//    - Spatial culling for collision detection (early exit conditions)
+//    - Reduced collision frequency (every 3rd frame) for improved framerate
+//    - Efficient squared-distance calculations avoiding expensive sqrt()
+//    - Object lifecycle management with automatic cleanup
+//
+// TECHNICAL DETAILS:
+// - Coordinate System: Right-handed 3D with Y-up convention
+// - Physics Integration: Euler method with fixed timestep
+// - Collision Response: Impulse-based with restitution coefficient
+// - Shader Pipeline: Custom GLSL vertex/fragment shader pairs with uniform parameters
+// - Rendering: Raylib's built-in sphere rendering with optional shader override
+// - Memory Management: Automatic object pooling and GPU resource cleanup
+//
+// CONTROLS:
+// - Simulation runs automatically with orbital camera movement
+// - Objects explode after random intervals (5-220 seconds)
+// - Explosions propagate force to nearby objects within blast radius
+// ============================================================================
+
+import colour  as col
+import random
+import math
+
+// Initialize graphics system
+win = window(1,1)
+win.init()
+win.toggle_fullscreen()
+
+// Create a 3D camera with orbital view
+// Position: (20, 10, 10), Target: origin, Up: Y-axis
+cam = camera(vec3(20, 10, 10), vec3(0, 0, 0), vec3(0, 1, 0))
+
+// ========== SHADER SYSTEM SETUP ==========
+// Load custom GLSL shaders for visual effects
+rainbow_shader = shader("lox_examples/shaders/rainbow.vs", "lox_examples/shaders/rainbow.fs")
+pulse_shader = shader("lox_examples/shaders/pulse.vs", "lox_examples/shaders/pulse.fs")
+
+// Shader uniform locations (retrieved from GPU)
+// These are handles to shader variables that we can update in real-time
+time_location = -1      // Rainbow shader time uniform (for color animation)
+pulse_time_loc = -1     // Pulse shader time uniform (for pulse animation)
+pulse_center_loc = -1   // Pulse shader center position uniform (vec3)
+
+// Validate rainbow shader and get uniform location
+if (rainbow_shader.is_valid()) {
+    time_location = rainbow_shader.get_location("time")
+    print("Rainbow shader loaded successfully! Time location:", time_location)
+} else {
+    print("Warning: Rainbow shader failed to load. Using default rendering.")
+}
+
+// Validate pulse shader and get uniform locations
+if (pulse_shader.is_valid()) {
+    pulse_time_loc = pulse_shader.get_location("time")
+    pulse_center_loc = pulse_shader.get_location("center")
+    print("Pulse shader loaded. Time location:", pulse_time_loc, "Center location:", pulse_center_loc)
+}
+
+// ========== SIMULATION VARIABLES ==========
+angle = 0.0                    // Camera orbital angle
+frame_count = 0                // Frame counter for timing
+floor_flash_timer = 0          // Explosion floor flash effect timer
+time_value = 0.0               // Time in seconds (for shader uniforms)
+pulse_center = vec3(0, 5, 0)   // Moving center point for pulse shader effect
+
+// ========== PHYSICS SIMULATION CONSTANTS ==========
+const GRID_SIZE = 20.0         // Half-size of simulation boundary (40x40x40 total space)
+const BOUNCE_DAMPING = 0.9     // Energy loss factor on boundary collisions (0.9 = 10% loss)
+const SHAPES=100               // Number of physics objects (reduced for shader performance)
+const FORCE=0.9                // Explosion force multiplier (affects blast radius impact)
+const DISTANCE = 40.0          // Camera orbital distance from center
+
+// ========== MOVING OBJECT CLASS ==========
+// Represents a physics object with collision, explosion, and shader rendering capabilities
+class MovingObject {
+    init(pos, vel, size, color, shape_type) {
+        this.pos = pos                                      // 3D position (vec3)
+        this.vel = vel                                      // 3D velocity (vec3)
+        this.size = size                                    // Size dimensions (vec3, but we use .x for radius)
+        this.color = color                                  // RGBA color (vec4)
+        this.shape_type = shape_type                        // Shape identifier (currently "sphere")
+        this.radius = this.get_collision_radius()          // Collision radius for physics
+        this.explosion_timer = random.float(500, 13200)    // Random countdown to explosion (5-220 seconds)
+        this.is_exploded = false                            // Explosion state flag
+        this.shader_type = int(random.float(0, 3))          // Shader assignment: 0=normal, 1=rainbow, 2=pulse
+    }
+    
+    // Calculate collision radius from size
+    get_collision_radius() {
+        return this.size.x
+    }
+    
+    // Fast distance calculation without square root (for performance)
+    distance_squared_to(other) {
+        dx = this.pos.x - other.pos.x
+        dy = this.pos.y - other.pos.y
+        dz = this.pos.z - other.pos.z
+        return dx*dx + dy*dy + dz*dz
+    }
+    
+    // Check if two objects are colliding using squared distance
+    check_collision(other) {
+        radiusSum = this.radius + other.radius
+        return this.distance_squared_to(other) < (radiusSum * radiusSum)
+    }
+    
+    // Resolve collision between two objects using elastic collision physics
+    resolve_collision(other) {
+        // Calculate collision direction vector
+        dx = this.pos.x - other.pos.x
+        dy = this.pos.y - other.pos.y
+        dz = this.pos.z - other.pos.z
+        dist = sqrt(dx*dx + dy*dy + dz*dz)
+        
+        // Handle edge case where objects are at exact same position
+        if (dist == 0) {
+            dx = random.float(-1, 1)
+            dy = random.float(-1, 1)
+            dz = random.float(-1, 1)
+            dist = sqrt(dx*dx + dy*dy + dz*dz)
+        }
+        
+        // Normalize collision direction vector
+        nx = dx / dist
+        ny = dy / dist
+        nz = dz / dist
+        
+        // Separate overlapping objects by moving them apart
+        overlap = (this.radius + other.radius) - dist
+        separation = overlap / 2
+        
+        this.pos.x = this.pos.x + nx * separation
+        this.pos.y = this.pos.y + ny * separation
+        this.pos.z = this.pos.z + nz * separation
+        
+        other.pos.x = other.pos.x - nx * separation
+        other.pos.y = other.pos.y - ny * separation
+        other.pos.z = other.pos.z - nz * separation
+        
+        // Calculate relative velocity between objects
+        rel_vel_x = this.vel.x - other.vel.x
+        rel_vel_y = this.vel.y - other.vel.y
+        rel_vel_z = this.vel.z - other.vel.z
+        
+        // Calculate velocity component along collision normal
+        vel_along_normal = rel_vel_x * nx + rel_vel_y * ny + rel_vel_z * nz
+        
+        // Don't resolve if velocities are separating (objects moving apart)
+        if (vel_along_normal > 0) {
+            return
+        }
+        
+        // Apply elastic collision with restitution (bounciness factor)
+        restitution = 0.7  // 70% energy retention on collision
+        impulse = -(1 + restitution) * vel_along_normal / 2  // Divide by 2 for equal mass assumption
+        
+        // Update velocities based on collision impulse
+        this.vel.x = this.vel.x + impulse * nx
+        this.vel.y = this.vel.y + impulse * ny
+        this.vel.z = this.vel.z + impulse * nz
+        
+        other.vel.x = other.vel.x - impulse * nx
+        other.vel.y = other.vel.y - impulse * ny
+        other.vel.z = other.vel.z - impulse * nz
+    }
+    
+    // Update object physics each frame
+    update() {
+        // Skip physics updates for exploded objects
+        if (this.is_exploded) {
+            return
+        }
+        
+        // Countdown to explosion (decrements each frame)
+        this.explosion_timer = this.explosion_timer - 1
+        
+        // Apply velocity to position (Euler integration)
+        this.pos.x = this.pos.x + this.vel.x
+        this.pos.y = this.pos.y + this.vel.y
+        this.pos.z = this.pos.z + this.vel.z
+        
+        // Boundary collision detection and response (X-axis)
+        if (this.pos.x > GRID_SIZE or this.pos.x < -GRID_SIZE) {
+            this.vel.x = -this.vel.x * BOUNCE_DAMPING  // Reverse and dampen velocity
+            // Clamp position to boundary to prevent object escape
+            if (this.pos.x > GRID_SIZE) this.pos.x = GRID_SIZE
+            if (this.pos.x < -GRID_SIZE) this.pos.x = -GRID_SIZE
+        }
+        
+        // Boundary collision detection and response (Z-axis)
+        if (this.pos.z > GRID_SIZE or this.pos.z < -GRID_SIZE) {
+            this.vel.z = -this.vel.z * BOUNCE_DAMPING
+            if (this.pos.z > GRID_SIZE) this.pos.z = GRID_SIZE
+            if (this.pos.z < -GRID_SIZE) this.pos.z = -GRID_SIZE
+        }
+        
+        // Ground collision detection and response (Y-axis)
+        ground_level = 0.0
+        if (this.pos.y - this.radius < ground_level) {
+            this.pos.y = ground_level + this.radius  // Place sphere bottom at ground level
+            this.vel.y = -this.vel.y * BOUNCE_DAMPING  // Bounce with energy loss
+        }
+        
+        // Apply gravity acceleration (constant downward force)
+        this.vel.y = this.vel.y - 0.01  // Gravity strength: -0.01 units/frame^2
+    }
+    
+    // Check if object should explode (timer reached zero)
+    should_explode() {
+        return this.explosion_timer <= 0 and !this.is_exploded
+    }
+    
+    // Mark object as exploded (removes from physics simulation)
+    explode() {
+        this.is_exploded = true
+    }
+    
+    // Apply explosion force from a blast at explosion_pos
+    apply_explosion_force(explosion_pos, explosion_force) {
+        // Skip force application for already exploded objects
+        if (this.is_exploded) {
+            return
+        }
+        
+        // Calculate direction and distance from explosion center
+        dx = this.pos.x - explosion_pos.x
+        dy = this.pos.y - explosion_pos.y
+        dz = this.pos.z - explosion_pos.z
+        dist = sqrt(dx*dx + dy*dy + dz*dz)
+        
+        // Define explosion radius and check if object is within range
+        explosion_radius = 8.0
+        if (dist > explosion_radius or dist < 0.1) {
+            return  // Too far away or too close (avoid division by zero)
+        }
+        
+        // Normalize direction vector (from explosion to object)
+        nx = dx / dist
+        ny = dy / dist
+        nz = dz / dist
+        
+        // Calculate force strength based on distance (inverse relationship)
+        force_strength = explosion_force * (1.0 - (dist / explosion_radius))
+        
+        // Apply force to object velocity (impulse-based physics)
+        this.vel.x = this.vel.x + nx * force_strength
+        this.vel.y = this.vel.y + ny * force_strength
+        this.vel.z = this.vel.z + nz * force_strength
+    }
+    
+    // Render object with appropriate shader effect
+    draw(win) {
+        // Don't render exploded objects
+        if (this.is_exploded) {
+            return
+        }
+
+        // Pre-explosion visual warning: flash white and expand size
+        if (this.explosion_timer > 0 and this.explosion_timer < 5) {
+            expanded_size = this.size.x * 3.0  // Triple size for dramatic effect
+            win.sphere(this.pos, expanded_size, col.WHITE)  // Flash white warning
+        } else {
+            // Normal rendering with shader effects based on object's shader_type
+            if (this.shader_type == 1 and rainbow_shader.is_valid()) {
+                // Rainbow shader: Time-based color cycling
+                win.begin_shader_mode(rainbow_shader)
+                win.sphere(this.pos, this.size.x, this.color)
+                win.end_shader_mode()
+            } else if (this.shader_type == 2 and pulse_shader.is_valid()) {
+                // Pulse shader: Energy pulse effects with distance-based rings
+                win.begin_shader_mode(pulse_shader)
+                win.sphere(this.pos, this.size.x, this.color)
+                win.end_shader_mode()
+            } else {
+                // Normal rendering: Basic flat-shaded sphere with object's base color
+                // (shader_type == 0 or shader loading failed - no lighting calculations)
+                win.sphere(this.pos, this.size.x, this.color)
+            }
+        }
+    }
+    
+    // Render fake shadow as ellipse projected on ground plane
+    draw_shadow(win) {
+        // Don't render shadows for exploded objects
+        if (this.is_exploded) {
+            return
+        }
+        
+        // Calculate shadow position (directly below object on ground)
+        shadow_pos = vec3(this.pos.x, 0.01, this.pos.z)  // Slightly above ground to avoid z-fighting
+        
+        // Shadow size decreases with height (perspective effect simulation)
+        height_factor = math.max(0.2, 1.0 - (this.pos.y / 7.0))  // Smaller shadow when higher up
+        shadow_radius_x = this.radius * height_factor  
+        shadow_radius_z = this.radius * height_factor  
+        
+        // Gray shadow color with fixed transparency
+        shadow_color = vec4(100, 100, 100, 255)
+        win.ellipse(shadow_pos, shadow_radius_x, shadow_radius_z, shadow_color)
+    }
+}
+
+// ========== OBJECT CREATION AND INITIALIZATION ==========
+// Create physics objects with random properties
+objects = []
+for (i = 0; i < SHAPES; i = i + 1) {
+    // Random spawn position (elevated above ground)
+    pos = vec3(random.float(-5, 5), random.float(10, 18), random.float(-5, 5))
+    // Random initial velocity (small values for realistic movement)
+    vel = vec3(random.float(-0.15, 0.15), random.float(-0.05, 0.05), random.float(-0.15, 0.15))
+    // Random size between 0.3 and 0.7 units
+    s = random.float(0.3,0.7)
+    size = vec3(s, s, s)  // Uniform sphere size
+    // Create object with random color and add to simulation
+    objects.append(MovingObject(pos, vel, size, col.random_rgb(), "sphere"))
+}
+
+// Count and display shader distribution for debugging
+shader_counts = [0, 0, 0]  // [normal, rainbow, pulse]
+foreach (obj in objects) {
+    shader_counts[obj.shader_type] = shader_counts[obj.shader_type] + 1
+}
+
+print("Created objects: Normal:", shader_counts[0], "Rainbow:", shader_counts[1], "Pulse:", shader_counts[2])
+
+// ========== MAIN SIMULATION LOOP ==========
+while (!win.should_close()) {
+    // ===== CAMERA CONTROL =====
+    // Smooth orbital camera movement around the scene center
+    angle = angle + 0.005  // Rotation speed (radians per frame)
+    x = cos(angle) * DISTANCE  // Calculate X position on circle
+    z = sin(angle) * DISTANCE  // Calculate Z position on circle
+    cam.set_position(vec3(x, 10, z))  // Update camera position (Y=10 for elevated view)
+    
+    // ===== TIMING AND ANIMATION =====
+    frame_count = frame_count + 1
+    time_value = frame_count * 0.016  // Convert frames to seconds (assuming 60 FPS)
+    
+    // Animate pulse shader center point in complex 3D Lissajous pattern
+    // This creates smooth, organic movement for the pulse effect origin
+    pulse_center.x = sin(time_value * 0.5) * 10.0    // Slow horizontal oscillation (period ~12.6s)
+    pulse_center.z = cos(time_value * 0.3) * 8.0     // Medium depth oscillation (period ~21s)  
+    pulse_center.y = 5.0 + sin(time_value * 0.7) * 3.0  // Fast vertical oscillation (period ~9s) around Y=5
+    
+    // ===== SHADER UNIFORM UPDATES =====
+    // Update rainbow shader time uniform for color animation
+    if (rainbow_shader.is_valid() and time_location >= 0) {
+        rainbow_shader.set_value_float(time_location, time_value)
+    }
+    
+    // Update pulse shader uniforms for pulse effect animation
+    if (pulse_shader.is_valid()) {
+        // Time uniform for pulse timing
+        if (pulse_time_loc >= 0) {
+            pulse_shader.set_value_float(pulse_time_loc, time_value)
+        }
+        // Center position uniform for distance-based effects
+        if (pulse_center_loc >= 0) {
+            pulse_shader.set_value_vec3(pulse_center_loc, pulse_center)
+        }
+    }
+    
+    // Update all moving objects
+    foreach (obj in objects) {
+        obj.update()
+    }
+    
+    // ===== EXPLOSION MECHANICS =====
+    // Check for objects whose explosion timers have expired
+    explosions = []
+    for (i = 0; i < objects.length(); i = i + 1) {
+        obj = objects[i]
+        if (obj.should_explode()) {
+            // Record explosion position for force propagation
+            explosions.append(vec3(obj.pos.x, obj.pos.y, obj.pos.z))
+            obj.explode()  // Mark object as exploded (removes from physics)
+        }
+    }
+    
+    // ===== VISUAL EFFECTS =====
+    // Trigger floor flash effect when any explosions occur
+    if (explosions.length() > 0) {
+        floor_flash_timer = 10  // Flash duration in frames
+    }
+    
+    // Countdown floor flash timer
+    if (floor_flash_timer > 0) {
+        floor_flash_timer = floor_flash_timer - 1
+    }
+    
+    // ===== FORCE PROPAGATION =====
+    // Apply explosion forces to all nearby objects
+    foreach (explosion_pos in explosions) {
+        foreach (obj in objects) {
+            obj.apply_explosion_force(explosion_pos, FORCE)
+        }
+    }
+    
+    // ===== OBJECT LIFECYCLE MANAGEMENT =====
+    // Remove exploded objects from simulation (cleanup phase)
+    new_objects = []
+    foreach (obj in objects) {
+        if (!obj.is_exploded) {
+            new_objects.append(obj)
+        }
+    }
+    objects = new_objects
+    
+    // ===== COLLISION DETECTION (PERFORMANCE OPTIMIZED) =====
+    // Run collision detection every 3rd frame to improve performance
+    // This reduces computational load while maintaining realistic physics
+    if (frame_count % 3 == 0) {
+        for (i = 0; i < objects.length(); i = i + 1) {
+            for (j = i + 1; j < objects.length(); j = j + 1) {
+                obj1 = objects[i]
+                obj2 = objects[j]
+                
+                // Pre-collision spatial culling (early exit optimizations)
+                dx = obj1.pos.x - obj2.pos.x
+                dy = obj1.pos.y - obj2.pos.y
+                dz = obj1.pos.z - obj2.pos.z
+                
+                // Skip objects too far apart horizontally (4 units squared = 2 unit radius)
+                if (dx*dx + dz*dz > 4) {
+                    continue
+                }
+                // Skip objects too far apart vertically (9 units squared = 3 unit radius)
+                if (dy*dy > 9) {
+                    continue
+                }
+                
+                // Perform detailed collision check and resolution
+                if (obj1.check_collision(obj2)) {
+                    obj1.resolve_collision(obj2)
+                }
+            }
+        }
+    }
+    
+    // ===== RENDERING PHASE =====
+    win.begin()
+    win.begin_blend_mode(win.BLEND_ALPHA)  // Enable alpha blending for transparency effects
+    win.clear(vec4(100,100,150,255))        // Clear to blue-gray background
+
+    // ===== 3D SCENE RENDERING =====
+    win.begin_3d(cam)  // Enter 3D coordinate system with camera transformation
+    
+    // ===== ENVIRONMENT RENDERING =====
+    // Draw floor plane with explosion flash effect
+    if (floor_flash_timer > 0) {
+        // Calculate flash intensity (1.0 = full flash, 0.0 = normal)
+        flash_intensity = floor_flash_timer / 10.0
+        flash_white = int(150 + (255 - 150) * flash_intensity)  // Lerp from gray to white
+        floor_color = vec4(flash_white, flash_white, flash_white, 255)
+        win.plane(vec3(0, 0, 0), vec2(GRID_SIZE*2, GRID_SIZE*2), floor_color)
+    } else {
+        // Normal gray floor when no explosions are occurring
+        win.plane(vec3(0, 0, 0), vec2(GRID_SIZE*2, GRID_SIZE*2), vec4(150, 150, 150, 255))
+    }
+    
+    // ===== SHADOW PASS =====
+    // Render all object shadows first (depth layering)
+    foreach (obj in objects) {
+        obj.draw_shadow(win)
+    }
+    
+    // ===== BOUNDARY VISUALIZATION =====
+    // Draw wireframe boundary cube to show simulation limits
+    win.cube_wires(vec3(0, 5, 0), vec3(GRID_SIZE*2, 10, GRID_SIZE*2), vec4(100, 100, 100, 100))
+    
+    // ===== SHADER EFFECT INDICATORS =====
+    // Draw yellow sphere to show current pulse shader center
+    //win.sphere(pulse_center, 0.3, vec4(255, 255, 0, 255))
+    
+    // ===== OBJECT RENDERING PASS =====
+    // Render all physics objects with their assigned shader effects
+    foreach (obj in objects) {
+        obj.draw(win)
+    }
+
+    // ===== EXIT 3D RENDERING =====
+    win.end_3d()  // Return to 2D coordinate system
+    
+    win.end()  // Present frame to screen
+}
+
+// ===== CLEANUP AND RESOURCE MANAGEMENT =====
+// Properly unload GPU shader resources to prevent memory leaks
+if (rainbow_shader.is_valid()) {
+    rainbow_shader.unload()
+    print("Rainbow shader unloaded successfully")
+}
+if (pulse_shader.is_valid()) {
+    pulse_shader.unload()
+    print("Pulse shader unloaded successfully")
+}
+
+// Close graphics window and terminate application
+win.close()
+print("3D Physics Demo with Shaders terminated")

@@ -34,6 +34,7 @@ const (
 	NATIVE_TEXTURE
 	NATIVE_RENDER_TEXTURE
 	NATIVE_CAMERA
+	NATIVE_SHADER
 )
 
 type Object interface {
