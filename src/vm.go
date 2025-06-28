@@ -339,10 +339,6 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			v2 := vm.pop()
 			v1 := vm.pop()
 
-			if v1.Type != v2.Type {
-				vm.RunTimeError("Operands must be of the same type")
-				goto End
-			}
 			if v1.IsStringObject() && v2.IsStringObject() {
 				vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsString().Get() > v2.AsString().Get(), false)
 				vm.stackTop++
@@ -362,10 +358,6 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 			v2 := vm.pop()
 			v1 := vm.pop()
 
-			if v1.Type != v2.Type {
-				vm.RunTimeError("Operands must be of the same type")
-				goto End
-			}
 			if v1.IsStringObject() && v2.IsStringObject() {
 				vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsString().Get() < v2.AsString().Get(), false)
 				vm.stackTop++
