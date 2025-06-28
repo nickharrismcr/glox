@@ -101,9 +101,32 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.
 	yoffsetVal := vm.Stack(arg_stackptr + 5)
 	scaleVal := vm.Stack(arg_stackptr + 6)
 
-	if !(hVal.IsInt() && wVal.IsInt() && maxIterVal.IsInt() && xoffsetVal.IsFloat() &&
-		yoffsetVal.IsFloat() && IsFloatArrayObject(arrayVal) && scaleVal.IsFloat()) {
-		vm.RunTimeError("Invalid arguments to lox_mandel_array")
+	if !IsFloatArrayObject(arrayVal) {
+		vm.RunTimeError("First argument to lox_mandel_array must be a float array")
+		return core.NIL_VALUE
+	}
+	if !hVal.IsInt() {
+		vm.RunTimeError("Second argument to lox_mandel_array (height) must be an integer")
+		return core.NIL_VALUE
+	}
+	if !wVal.IsInt() {
+		vm.RunTimeError("Third argument to lox_mandel_array (width) must be an integer")
+		return core.NIL_VALUE
+	}
+	if !maxIterVal.IsInt() {
+		vm.RunTimeError("Fourth argument to lox_mandel_array (max iterations) must be an integer")
+		return core.NIL_VALUE
+	}
+	if !xoffsetVal.IsFloat() {
+		vm.RunTimeError("Fifth argument to lox_mandel_array (x offset) must be a float")
+		return core.NIL_VALUE
+	}
+	if !yoffsetVal.IsFloat() {
+		vm.RunTimeError("Sixth argument to lox_mandel_array (y offset) must be a float")
+		return core.NIL_VALUE
+	}
+	if !scaleVal.IsFloat() {
+		vm.RunTimeError("Seventh argument to lox_mandel_array (scale) must be a float")
 		return core.NIL_VALUE
 	}
 
@@ -132,14 +155,19 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.
 func mandelbrotCalcRow(row, width, height, maxIteration int, scale, xOffset, yOffset float64, array *FloatArrayObject) {
 
 	const periodLength = 20
-	y0 := scale*(float64(row)-float64(height)/2)/float64(height) + yOffset
+
+	// Fix aspect ratio distortion by using consistent coordinate system
+	// Use the larger dimension as reference to maintain square aspect ratio
+	maxDim := max(width, height)
+
+	y0 := scale*(float64(row)-float64(height)/2)/float64(maxDim) + yOffset
 
 	for col := 0; col < width; col++ {
 
 		var xold float64 = -1.0
 		var yold float64 = -1.0
 		var period int = 0
-		x0 := scale*(float64(col)-float64(width)/2)/float64(width) + xOffset
+		x0 := scale*(float64(col)-float64(width)/2)/float64(maxDim) + xOffset
 
 		x, y := 0.0, 0.0
 		iteration := 0

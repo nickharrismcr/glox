@@ -8,19 +8,24 @@ import math;
  
  
 func calc(array,width,height,max_iteration,zoom,xoff,yoff) {
-    lox_mandel_array(array_rgb,width,height,max_iteration,float(xoff),float(yoff),float(zoom))
+    
+
+    lox_mandel_array(array,width,height,max_iteration,float(xoff),float(yoff),float(zoom))
 }
 
-var max_iteration = 1000;
-const width=600;
-const height=600;
-var win=window(width,height);
+var max_iteration = 100;
+ 
+var win=window(1,1);
+
 win.init();
+win.toggle_fullscreen();
+width=int(win.get_screen_width())
+height=int(win.get_screen_height())
 
 var scale=1;
 var xOffset= -0.7436438870371587;
 var yOffset= 0.13182590420531197;
-var array_rgb=float_array(width,height);
+var array_rgb=float_array(width,height)
  
 
 while (!win.should_close()) {
@@ -31,10 +36,8 @@ while (!win.should_close()) {
     win.clear(colour.BLACK);
     win.draw_array(array_rgb);
     win.end();
-    scale=scale*0.9;
-    if (scale < 0.001) {
-        max_iteration = max_iteration + 50;
-    }
+    scale=scale*0.8;
+    max_iteration = max_iteration + 20;
     win.text(10, 40, "Max Iteration: " + str(max_iteration), 255, 255, 255, 255);
 }
 win.close();
