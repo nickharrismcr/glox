@@ -426,4 +426,4 @@ inspect.dump_frame()
 `args`       - list of arguments
 `locals`     - dictionary of locals
 `globals`    - dictionary of globals 
-`prev_frame` - calling frame (or nil) 
+`prev_frame` - calling frame dict (or nil) 
