@@ -702,6 +702,37 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			return core.NIL_VALUE
 		},
 	})
+
+	o.RegisterMethod("ellipse", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 4 {
+				vm.RunTimeError("ellipse expects 4 arguments: center(vec3), radiusX(number), radiusZ(number), color(vec4)")
+				return core.NIL_VALUE
+			}
+
+			centerVal := vm.Stack(arg_stackptr)
+			radiusXVal := vm.Stack(arg_stackptr + 1)
+			radiusZVal := vm.Stack(arg_stackptr + 2)
+			colorVal := vm.Stack(arg_stackptr + 3)
+
+			if centerVal.Type != core.VAL_VEC3 || colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("ellipse arguments must be vec3, number, number, vec4")
+				return core.NIL_VALUE
+			}
+
+			centerObj := centerVal.Obj.(*core.Vec3Object)
+			colorObj := colorVal.Obj.(*core.Vec4Object)
+
+			center := rl.Vector3{X: float32(centerObj.X), Y: float32(centerObj.Y), Z: float32(centerObj.Z)}
+			radiusX := float32(radiusXVal.AsFloat())
+			radiusZ := float32(radiusZVal.AsFloat())
+			color := rl.NewColor(uint8(colorObj.X), uint8(colorObj.Y), uint8(colorObj.Z), uint8(colorObj.W))
+
+			// Draw ellipse as a flattened cylinder
+			rl.DrawCylinder(center, radiusX, radiusZ, 0.01, 16, color)
+			return core.NIL_VALUE
+		},
+	})
 }
 
 func RegisterAllWindowConstants(o *WindowObject) {
