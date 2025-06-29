@@ -1,7 +1,7 @@
  
 
-compiler complains about a++ inside a class method 
-
+compiler complains about a++ inside a class method and for statements 
+remove ++ operator altogether and add += -=
 
 
 class methods - look into scoping
