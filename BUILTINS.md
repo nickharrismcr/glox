@@ -1,4 +1,7 @@
-# GLox Builtin Functions and Objects Documentation
+# GLox Builtin10. [Vector Objects](#vector-objects)
+11. [File Operations](#file-operations)
+12. [System Modules](#system-modules)
+13. [Color Utilities Module](#color-utilities-module)nctions and Objects Documentation
 
  
 
@@ -15,6 +18,7 @@
 9. [Vector Objects](#vector-objects)
 10. [File Operations](#file-operations)
 11. [System Modules](#system-modules)
+12. [Color Utilities Module](#color-utilities-module)
 
 ---
 
@@ -50,10 +54,15 @@
 
 - **`replace(string, old, new)`** - Replaces occurrences of 'old' with 'new' in string
 
-### Graphics Functions
+### Color Functions
 
 - **`encode_rgb(r, g, b)`** - Encodes RGB values (0-255) into a single integer
 - **`decode_rgb(color)`** - Decodes an RGB integer into [r, g, b] components
+
+**Note:** For advanced color manipulation (fade, tint, brightness, HSV conversion, etc.), see the [Color Utilities Module](#color-utilities-module).
+
+### Graphics Functions
+
 - **`draw_png(filename, width, height, data)`** - Writes PNG image data to file
 
 ### Special Functions
@@ -100,7 +109,7 @@ win.init();
 - **`text(text, x, y, size, color_vec4)`** - Draw text
 
 #### Advanced Drawing
-- **`draw_array(float_array)`** - Draw a float array as grayscale image
+- **`draw_array(float_array)`** - Draw an RGB encoded float array as colour image
 - **`draw_texture(texture, x, y, color_vec4)`** - Draw a texture
 - **`draw_texture_rect(texture, x, y, src_x, src_y, src_w, src_h, color_vec4)`** - Draw part of a texture
 - **`draw_render_texture(render_texture, x, y, color_vec4)`** - Draw a render texture
@@ -318,6 +327,65 @@ The sys module provides system-level functionality (accessed via sys.function_na
 ### inspect Module
 
 The inspect module provides debugging and introspection capabilities (accessed via inspect.function_name).
+
+---
+
+## Color Utilities Module
+
+The `colour_utils` module provides native high-performance color manipulation functions (accessed via colour_utils.function_name).
+
+### Color Utility Functions
+
+- **`colour_utils.fade(r, g, b, alpha)`** - Apply alpha transparency to RGB values
+  - `r, g, b`: RGB color components (0-255)
+  - `alpha`: Alpha value (0.0 to 1.0)
+  - Returns: vec4 with alpha applied to RGB components
+
+- **`colour_utils.tint(r1, g1, b1, r2, g2, b2)`** - Tint a color with another color
+  - `r1, g1, b1`: Base RGB color components (0-255)
+  - `r2, g2, b2`: Tint RGB color components (0-255)
+  - Returns: vec4 with tinted color (multiplies RGB components)
+
+- **`colour_utils.brightness(r, g, b, factor)`** - Adjust brightness of RGB values
+  - `r, g, b`: RGB color components (0-255)
+  - `factor`: Brightness factor (1.0 = normal, >1.0 = brighter, <1.0 = darker)
+  - Returns: vec4 with adjusted brightness
+
+- **`colour_utils.lerp(r1, g1, b1, r2, g2, b2, amount)`** - Linear interpolation between two colors
+  - `r1, g1, b1`: First RGB color components (0-255)
+  - `r2, g2, b2`: Second RGB color components (0-255)
+  - `amount`: Interpolation amount (0.0 to 1.0)
+  - Returns: vec4 with interpolated color
+
+- **`colour_utils.hsv_to_rgb(h, s, v)`** - Convert HSV to RGB color
+  - `h`: Hue (0 to 360 degrees)
+  - `s`: Saturation (0.0 to 1.0)
+  - `v`: Value/Brightness (0.0 to 1.0)
+  - Returns: vec4 with RGB color converted from HSV
+
+- **`colour_utils.random()`** - Generate a random color
+  - Returns: vec4 with random RGB color values
+
+### Usage Example
+
+```lox
+import colour_utils;
+
+// Apply effects directly with RGB values - all functions return vec4s
+var faded_red = colour_utils.fade(255, 0, 0, 0.5);
+var purple = colour_utils.lerp(255, 0, 0, 0, 0, 255, 0.5);
+var bright_red = colour_utils.brightness(255, 0, 0, 1.5);
+var tinted = colour_utils.tint(255, 0, 0, 0, 255, 0);
+var random_color = colour_utils.random();
+
+// Convert HSV to RGB
+var orange = colour_utils.hsv_to_rgb(30, 1.0, 1.0);
+
+// Use directly with graphics functions (no need to decode)
+win.circle_fill(100, 100, 50, purple);
+win.rectangle(50, 50, 100, 100, faded_red);
+win.text("Colorful!", 10, 10, 20, orange);
+```
 
 ---
 

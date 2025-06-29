@@ -1860,6 +1860,7 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 	globalModuleSource[moduleName] = string(bytes)
 	subvm := NewVM(searchPath, false)
 	subvm.builtIns = vm.builtIns
+	subvm.builtInModules = vm.builtInModules
 	subvm.SetArgs(vm.Args())
 	subvm.ModuleImport = true
 	// see if we can load lxc bytecode file for the module.
