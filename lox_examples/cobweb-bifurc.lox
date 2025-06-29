@@ -4,6 +4,7 @@ import colour
 fun logistic(r, x) {
     return r * x * (1 - x);
 }
+grey=vec4(50, 50, 50,0)
 
 fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
     var win = window(1000, 1000);
@@ -41,10 +42,10 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
     var cobweb_buffer = render_texture(half_width, screen_height);       // Right half for cobweb/logistic
     
     // Initialize bifurcation buffer (clear to black)
-    bifurcation_buffer.clear(colour.BLACK);
+    bifurcation_buffer.clear(grey);
     
     // Initialize cobweb buffer with static elements
-    cobweb_buffer.clear(colour.BLACK);
+    cobweb_buffer.clear(grey);
     // Draw y = x line (goes from bottom-left to top-right of cobweb area)
     cobweb_buffer.line(0, half_height, half_width, 0, colour.WHITE);
 
@@ -65,7 +66,7 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
         if (win.key_pressed(win.KEY_R)) {
             // Restart animation
             rr = original_rr;
-            bifurcation_buffer.clear(colour.BLACK);
+            bifurcation_buffer.clear(grey);
             print("Animation restarted from r = " + str(rr));
         }
         
@@ -116,7 +117,7 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
         }
 
         // Update cobweb buffer with current logistic curve and cobweb
-        cobweb_buffer.clear(colour.BLACK);
+        cobweb_buffer.clear(grey);
         
         // Redraw y = x line (adjusted for new dimensions)
         cobweb_buffer.line(0, screen_height, half_width, 0, colour.WHITE);
@@ -150,7 +151,7 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
 
         // Composite the final frame
         win.begin();
-        win.clear(colour.BLACK);
+        win.clear(grey);
         
         // Draw persistent bifurcation diagram (left half)
         win.draw_render_texture(bifurcation_buffer, 0, 0, colour.WHITE);
