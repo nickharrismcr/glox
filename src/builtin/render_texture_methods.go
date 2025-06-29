@@ -39,17 +39,17 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 	})
 	o.RegisterMethod("line", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-			l1 := vm.Stack(arg_stackptr)
-			if l1.Type != core.VAL_VEC2 {
-				vm.RunTimeError("Expected Vec2 for line start position")
+			if argCount != 5 {
+				vm.RunTimeError("line expects 5 arguments: x1, y1, x2, y2, color")
 				return core.NIL_VALUE
 			}
-			l2 := vm.Stack(arg_stackptr + 1)
-			if l2.Type != core.VAL_VEC2 {
-				vm.RunTimeError("Expected Vec2 for line end position")
-				return core.NIL_VALUE
-			}
-			colVal := vm.Stack(arg_stackptr + 2)
+
+			x1Val := vm.Stack(arg_stackptr)
+			y1Val := vm.Stack(arg_stackptr + 1)
+			x2Val := vm.Stack(arg_stackptr + 2)
+			y2Val := vm.Stack(arg_stackptr + 3)
+			colVal := vm.Stack(arg_stackptr + 4)
+
 			if colVal.Type != core.VAL_VEC4 {
 				vm.RunTimeError("Expected Vec4 for line color")
 				return core.NIL_VALUE
@@ -60,10 +60,11 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 			b := int32(v4obj.Z)
 			a := int32(v4obj.W)
 
-			x1 := int32(l1.AsVec2().X)
-			y1 := int32(l1.AsVec2().Y)
-			x2 := int32(l2.AsVec2().X)
-			y2 := int32(l2.AsVec2().Y)
+			x1 := int32(x1Val.AsFloat())
+			y1 := int32(y1Val.AsFloat())
+			x2 := int32(x2Val.AsFloat())
+			y2 := int32(y2Val.AsFloat())
+
 			rl.BeginTextureMode(o.Data.RenderTexture)
 			rl.DrawLine(x1, y1, x2, y2, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
 			rl.EndTextureMode()
@@ -139,13 +140,16 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 	})
 	o.RegisterMethod("circle_fill", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-			pval := vm.Stack(arg_stackptr)
-			if pval.Type != core.VAL_VEC2 {
-				vm.RunTimeError("Expected Vec2 for circle position")
+			if argCount != 4 {
+				vm.RunTimeError("circle_fill expects 4 arguments: x, y, radius, color")
 				return core.NIL_VALUE
 			}
-			radVal := vm.Stack(arg_stackptr + 1)
-			colVal := vm.Stack(arg_stackptr + 2)
+
+			xVal := vm.Stack(arg_stackptr)
+			yVal := vm.Stack(arg_stackptr + 1)
+			radVal := vm.Stack(arg_stackptr + 2)
+			colVal := vm.Stack(arg_stackptr + 3)
+
 			if colVal.Type != core.VAL_VEC4 {
 				vm.RunTimeError("Expected Vec4 for circle color")
 				return core.NIL_VALUE
@@ -156,21 +160,27 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 			b := int32(v4obj.Z)
 			a := int32(v4obj.W)
 
-			pobj := pval.Obj.(*core.Vec2Object)
-			xval := pobj.X
-			yval := pobj.Y
+			x := int32(xVal.AsFloat())
+			y := int32(yVal.AsFloat())
+			rad := float32(radVal.AsFloat())
 
-			rad := float32(radVal.AsInt())
 			rl.BeginTextureMode(o.Data.RenderTexture)
-			rl.DrawCircle(int32(xval), int32(yval), rad, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
+			rl.DrawCircle(x, y, rad, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
 			rl.EndTextureMode()
 			return core.NIL_VALUE
 		},
 	})
 	o.RegisterMethod("pixel", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-			v2val := vm.Stack(arg_stackptr)
-			colVal := vm.Stack(arg_stackptr + 1)
+			if argCount != 3 {
+				vm.RunTimeError("pixel expects 3 arguments: x, y, color")
+				return core.NIL_VALUE
+			}
+
+			xVal := vm.Stack(arg_stackptr)
+			yVal := vm.Stack(arg_stackptr + 1)
+			colVal := vm.Stack(arg_stackptr + 2)
+
 			if colVal.Type != core.VAL_VEC4 {
 				vm.RunTimeError("Expected Vec4 for pixel color")
 				return core.NIL_VALUE
@@ -181,12 +191,11 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 			b := int32(v4obj.Z)
 			a := int32(v4obj.W)
 
-			v2o := v2val.Obj.(*core.Vec2Object)
-			xval := int32(v2o.X)
-			yval := int32(v2o.Y)
+			x := int32(xVal.AsFloat())
+			y := int32(yVal.AsFloat())
 
 			rl.BeginTextureMode(o.Data.RenderTexture)
-			rl.DrawPixel(xval, yval, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
+			rl.DrawPixel(x, y, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
 			rl.EndTextureMode()
 			return core.NIL_VALUE
 		},
@@ -194,13 +203,16 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 
 	o.RegisterMethod("circle", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-			pval := vm.Stack(arg_stackptr)
-			if pval.Type != core.VAL_VEC2 {
-				vm.RunTimeError("Expected Vec2 for circle position")
+			if argCount != 4 {
+				vm.RunTimeError("circle expects 4 arguments: x, y, radius, color")
 				return core.NIL_VALUE
 			}
-			radVal := vm.Stack(arg_stackptr + 1)
-			colVal := vm.Stack(arg_stackptr + 2)
+
+			xVal := vm.Stack(arg_stackptr)
+			yVal := vm.Stack(arg_stackptr + 1)
+			radVal := vm.Stack(arg_stackptr + 2)
+			colVal := vm.Stack(arg_stackptr + 3)
+
 			if colVal.Type != core.VAL_VEC4 {
 				vm.RunTimeError("Expected Vec4 for circle color")
 				return core.NIL_VALUE
@@ -211,14 +223,12 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 			b := int32(v4obj.Z)
 			a := int32(v4obj.W)
 
-			pobj := pval.Obj.(*core.Vec2Object)
-			xval := int32(pobj.X)
-			yval := int32(pobj.Y)
-
-			rad := float32(radVal.AsInt())
+			x := int32(xVal.AsFloat())
+			y := int32(yVal.AsFloat())
+			rad := float32(radVal.AsFloat())
 
 			rl.BeginTextureMode(o.Data.RenderTexture)
-			rl.DrawCircleLines(xval, yval, rad, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
+			rl.DrawCircleLines(x, y, rad, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
 			rl.EndTextureMode()
 			return core.NIL_VALUE
 		},

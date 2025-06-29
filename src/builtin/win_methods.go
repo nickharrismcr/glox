@@ -441,6 +441,11 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			yVal := vm.Stack(arg_stackptr + 2)
 			colVal := vm.Stack(arg_stackptr + 3)
 
+			if renderTextureVal.Type != core.VAL_OBJ {
+				vm.RunTimeError("Expected RenderTexture object")
+				return core.NIL_VALUE
+			}
+
 			if colVal.Type != core.VAL_VEC4 {
 				vm.RunTimeError("Expected Vec4 for render texture color")
 				return core.NIL_VALUE
@@ -472,6 +477,11 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			rotVal := vm.Stack(arg_stackptr + 3)
 			scaleVal := vm.Stack(arg_stackptr + 4)
 			colVal := vm.Stack(arg_stackptr + 5)
+
+			if renderTextureVal.Type != core.VAL_OBJ {
+				vm.RunTimeError("Expected RenderTexture object")
+				return core.NIL_VALUE
+			}
 
 			if colVal.Type != core.VAL_VEC4 {
 				vm.RunTimeError("Expected Vec4 for render texture color")

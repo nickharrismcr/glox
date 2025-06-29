@@ -8,77 +8,168 @@ fun logistic(r, x) {
 fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
     var win = window(1000, 1000);
     win.init();
+    win.toggle_fullscreen();
+    
+    // Use reasonable dimensions that should work
+    var screen_width = 1600;
+    var screen_height = 900;
+    var half_width = 800;  // screen_width / 2
+    var half_height = 450; // screen_height / 2
+    
+    print("Using dimensions: " + str(screen_width) + "x" + str(screen_height));
 
     var r_min = 2.5;
     var r_max = 4.0;
-    var r_steps = 1000;
-    var iters = 1500;
+    var iters = 3500;
     var keep = 50;
+    var r_step = 0.001;  // Smaller step = more iterations (was 0.003)
+    
+    // Interactive control state
+    var paused = false;
+    var original_rr = rr;  // Store initial r value for restart
+    var manual_step = 0.01;  // Step size for manual parameter adjustment
+    
+    print("Interactive Controls:");
+    print("  SPACE - Pause/Resume animation");
+    print("  R - Restart from beginning");
+    print("  LEFT/RIGHT - Step parameter backward/forward (when paused)");
+    print("  UP/DOWN - Increase/decrease manual step size");
+    print("  ESC - Exit");
 
-    // We'll accumulate bifurcation points as we go
-    var bif_points = [];
+    // Create render textures for persistent drawing - split screen in half
+    var bifurcation_buffer = render_texture(half_width, screen_height);  // Left half for bifurcation
+    var cobweb_buffer = render_texture(half_width, screen_height);       // Right half for cobweb/logistic
+    
+    // Initialize bifurcation buffer (clear to black)
+    bifurcation_buffer.clear(colour.BLACK);
+    
+    // Initialize cobweb buffer with static elements
+    cobweb_buffer.clear(colour.BLACK);
+    // Draw y = x line (goes from bottom-left to top-right of cobweb area)
+    cobweb_buffer.line(0, half_height, half_width, 0, colour.WHITE);
+
+    var col = vec4(0, 200, 255, 255);
 
     while (!win.should_close()) {
-       
-        // Compute bifurcation points for this rr
-        var x = 0.5;
-        for (var j = 0; j < iters - keep; j = j + 1) {
-            x = logistic(rr, x);
+        
+        // Handle keyboard input
+        if (win.key_pressed(win.KEY_SPACE)) {
+            paused = !paused;
+            if (paused) {
+                print("Animation paused. Use LEFT/RIGHT arrows to step parameter.");
+            } else {
+                print("Animation resumed.");
+            }
         }
-        for (var j = 0; j < keep; j = j + 1) {
-            x = logistic(rr, x);
-            bif_points.append([rr, x]);
+        
+        if (win.key_pressed(win.KEY_R)) {
+            // Restart animation
+            rr = original_rr;
+            bifurcation_buffer.clear(colour.BLACK);
+            print("Animation restarted from r = " + str(rr));
+        }
+        
+        if (win.key_pressed(win.KEY_ESCAPE)) {
+            break;
+        }
+        
+        // Manual parameter stepping (when paused)
+        if (paused) {
+            if (win.key_pressed(win.KEY_LEFT)) {
+                rr = rr - manual_step;
+                if (rr < r_min) rr = r_min;
+                print("r = " + str(rr));
+            }
+            if (win.key_pressed(win.KEY_RIGHT)) {
+                rr = rr + manual_step;
+                if (rr > r_max) rr = r_max;
+                print("r = " + str(rr));
+            }
+            if (win.key_pressed(win.KEY_UP)) {
+                manual_step = manual_step * 2.0;
+                if (manual_step > 0.1) manual_step = 0.1;
+                print("Manual step size: " + str(manual_step));
+            }
+            if (win.key_pressed(win.KEY_DOWN)) {
+                manual_step = manual_step / 2.0;
+                if (manual_step < 0.0001) manual_step = 0.0001;
+                print("Manual step size: " + str(manual_step));
+            }
+        }
+        
+        // Only compute and draw new bifurcation points if not paused and within range
+        if (!paused and rr < r_max) {
+            var x = 0.5;
+            for (var j = 0; j < iters - keep; j = j + 1) {
+                x = logistic(rr, x);
+            }
+            
+            // Draw new bifurcation points to the persistent buffer
+            for (var j = 0; j < keep; j = j + 1) {
+                x = logistic(rr, x);
+                // Map r in [r_min, r_max] to [0, half_width]
+                var px = half_width * (rr - r_min) / (r_max - r_min);
+                // Map x in [0,1] to [screen_height, 0]
+                var py = screen_height - screen_height * x;
+                bifurcation_buffer.pixel(px, py, col);
+            }
         }
 
-        win.begin();
- 
-        win.clear(colour.BLACK); // Clear the window with black
-        col=vec4(0,200,255,255);
-
-        // Draw bifurcation diagram (left half)
-        for (var i = 0; i < len(bif_points); i = i + 1) {
-            var r = bif_points[i][0];
-            var bx = bif_points[i][1];
-            // Map r in [r_min, r_max] to [0, 500]
-            var px = 500 * (r - r_min) / (r_max - r_min);
-            // Map x in [0,1] to [1000,0]
-            var py = 1000 - 1000 * bx;
-            win.pixel(px, py, col);
-        }
-
-        // Draw y = x line (right half)
-        win.line(500, 1000, 1000, 500, colour.WHITE);
-
-        // Draw logistic curve (right half)
+        // Update cobweb buffer with current logistic curve and cobweb
+        cobweb_buffer.clear(colour.BLACK);
+        
+        // Redraw y = x line (adjusted for new dimensions)
+        cobweb_buffer.line(0, screen_height, half_width, 0, colour.WHITE);
+        
+        // Draw current logistic curve (adjusted for new dimensions)
         var last_x = 0;
         var last_y = logistic(rr, 0);
         for (var i = 1; i <= 100; i = i + 1) {
             var t = i / 100.0;
             var y = logistic(rr, t);
-            win.line(500 + 500 * last_x, 1000 - 500 * last_y, 500 + 500 * t, 1000 - 500 * y, colour.WHITE);
+            cobweb_buffer.line(half_width * last_x, screen_height - screen_height * last_y, 
+                             half_width * t, screen_height - screen_height * y, colour.WHITE);
             last_x = t;
             last_y = y;
         }
 
-        // Draw cobweb (right half)
+        // Draw current cobweb (adjusted for new dimensions)
         x = x0;
         var prev_y = 0;
         for (var i = 0; i < steps; i = i + 1) {
             var y = logistic(rr, x);
             // Vertical line
-            win.line(500 + 500 * x, 1000 - 500 * prev_y, 500 + 500 * x, 1000 - 500 * y, colour.RED);
+            cobweb_buffer.line(half_width * x, screen_height - screen_height * prev_y, 
+                             half_width * x, screen_height - screen_height * y, colour.RED);
             // Horizontal line
-            win.line(500 + 500 * x, 1000 - 500 * y, 500 + 500 * y, 1000 - 500 * y, colour.RED);
+            cobweb_buffer.line(half_width * x, screen_height - screen_height * y, 
+                             half_width * y, screen_height - screen_height * y, colour.RED);
             prev_y = y;
             x = y;
         }
 
+        // Composite the final frame
+        win.begin();
+        win.clear(colour.BLACK);
+        
+        // Draw persistent bifurcation diagram (left half)
+        win.draw_render_texture(bifurcation_buffer, 0, 0, colour.WHITE);
+        
+        // Draw green vertical line at current parameter position
+        var current_r_pos = half_width * (rr - r_min) / (r_max - r_min);
+        win.line(current_r_pos, 0, current_r_pos, screen_height, colour.GREEN);
+        
+        // Draw current cobweb and logistic curve (right half)
+        win.draw_render_texture(cobweb_buffer, half_width, 0, colour.WHITE);
+        
         win.end();
-        if ( rr < r_max ) {
-            rr = rr + 0.003; // Increment rr for the next frame
+        
+        // Auto-advance parameter only if not paused
+        if (!paused and rr < r_max) {
+            rr = rr + r_step; // Use configurable step size
         }
     }
 }
 
 // Example usage:
-draw_cobweb_and_live_bifurcation(2.5, 0.2, 150);
+draw_cobweb_and_live_bifurcation(2.5, 0.2, 350);
