@@ -56,7 +56,7 @@ class Stars {
             s= star.get()
             pos=s[0]
             col=s[1]
-            win.circle_fill(pos, 2,col)
+            win.circle_fill(pos.x, pos.y, 2, col)
             
         }
     }

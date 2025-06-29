@@ -72,46 +72,39 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 	})
 	o.RegisterMethod("line_ex", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-			v1 := vm.Stack(arg_stackptr)
-			if v1.Type != core.VAL_VEC2 {
-				vm.RunTimeError("Expected Vec2 for line start position")
-				return core.NIL_VALUE
-			}
-			v2 := vm.Stack(arg_stackptr + 1)
-			if v2.Type != core.VAL_VEC2 {
-				vm.RunTimeError("Expected Vec2 for line end position")
+			if argCount != 6 {
+				vm.RunTimeError("line_ex expects 6 arguments: x1, y1, x2, y2, thickness, color")
 				return core.NIL_VALUE
 			}
 
-			thickVal := vm.Stack(arg_stackptr + 2)
-			if !thickVal.IsInt() {
-				vm.RunTimeError("Expected Int for line thickness")
-				return core.NIL_VALUE
-			}
+			x1Val := vm.Stack(arg_stackptr)
+			y1Val := vm.Stack(arg_stackptr + 1)
+			x2Val := vm.Stack(arg_stackptr + 2)
+			y2Val := vm.Stack(arg_stackptr + 3)
+			thickVal := vm.Stack(arg_stackptr + 4)
+			colVal := vm.Stack(arg_stackptr + 5)
 
-			colVal := vm.Stack(arg_stackptr + 3)
 			if colVal.Type != core.VAL_VEC4 {
 				vm.RunTimeError("Expected Vec4 for line color")
 				return core.NIL_VALUE
 			}
 
-			vo1 := v1.AsVec2()
-			vo2 := v2.AsVec2()
-			vo1x := float32(vo1.X)
-			vo1y := float32(vo1.Y)
-			vo2x := float32(vo2.X)
-			vo2y := float32(vo2.Y)
-
 			v4obj := colVal.Obj.(*core.Vec4Object)
-			r := int32(v4obj.X)
-			g := int32(v4obj.Y)
-			b := int32(v4obj.Z)
-			a := int32(v4obj.W)
-			thickness := float32(thickVal.AsInt())
-			rlv1 := rl.Vector2{X: vo1x, Y: vo1y}
-			rlv2 := rl.Vector2{X: vo2x, Y: vo2y}
+			r := uint8(v4obj.X)
+			g := uint8(v4obj.Y)
+			b := uint8(v4obj.Z)
+			a := uint8(v4obj.W)
+
+			x1 := float32(x1Val.AsFloat())
+			y1 := float32(y1Val.AsFloat())
+			x2 := float32(x2Val.AsFloat())
+			y2 := float32(y2Val.AsFloat())
+			thickness := float32(thickVal.AsFloat())
+
+			rlv1 := rl.Vector2{X: x1, Y: y1}
+			rlv2 := rl.Vector2{X: x2, Y: y2}
 			rl.BeginTextureMode(o.Data.RenderTexture)
-			rl.DrawLineEx(rlv1, rlv2, thickness, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
+			rl.DrawLineEx(rlv1, rlv2, thickness, rl.NewColor(r, g, b, a))
 			rl.EndTextureMode()
 			return core.NIL_VALUE
 		},

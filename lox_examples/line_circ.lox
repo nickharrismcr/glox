@@ -139,12 +139,12 @@ class Line {
         
     }
     draw(g) {
-        g.line(vec2(this.x1, this.y1), vec2(this.x2, this.y2), vec4(this.r, this.g, this.b, this.a))
+        g.line(this.x1, this.y1, this.x2, this.y2, vec4(this.r, this.g, this.b, this.a))
         c=1.0
         foreach (var l in this.hist.data[1:]) {
             c = c + 1.0
             a = 255.0 * (c / (1.1*len(this.hist.data))) ; 
-            g.line(vec2(l.x1, l.y1), vec2(l.x2, l.y2), vec4(l.r, l.g, l.b, a))
+            g.line(l.x1, l.y1, l.x2, l.y2, vec4(l.r, l.g, l.b, a))
         }   
     }
 
@@ -218,13 +218,13 @@ class Circler {
     }
     draw(g) {
         c=this.circle.col
-        g.circle(this.circle.pos, this.circle.s,c)
+        g.circle(this.circle.pos.x, this.circle.pos.y, this.circle.s,c)
         c=1.0
         foreach (var l in this.hist.data[1:]) {
             c = c + 1.0
             a = 255.0 * (c / (2*len(this.hist.data))) ; 
             s = l.s * (c / len(this.hist.data))
-            g.circle(l.pos, s, vec4(100,100,100,100))  
+            g.circle(l.pos.x, l.pos.y, s, vec4(100,100,100,100))  
         }   
     } 
     

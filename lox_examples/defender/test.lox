@@ -29,7 +29,7 @@ while (!win.should_close()) {
             print (x,y, pixw, pixh)
             subx=500 +expl *(x- (w/2)  )
             suby=500 +expl *(y- (h/2)  )
-            win.draw_texture_rect(txt, subx, suby, x, y, pixw, pixh)
+            win.draw_texture_rect(txt, x, y, subx, suby, pixw, pixh, vec4(255, 255, 255, 255))
         }
     }
     expl = expl + 1

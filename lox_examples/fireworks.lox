@@ -64,7 +64,7 @@ func update_stars(stars) {
             s[2] = random.integer(1, 255); // Randomly change alpha
         }
         pos,size,a = s
-        win.circle_fill(pos,size,vec4(255,255,255,a))
+        win.circle_fill(pos.x, pos.y, size, vec4(255,255,255,a))
     }
 }   
 
@@ -88,7 +88,7 @@ while (!win.should_close()) {
     foreach ( var e in emitters.get()) {
         foreach (var p in e.get_particles()) {
             
-            win.circle_fill(p.pos, p.size, p.col);
+            win.circle_fill(p.pos.x, p.pos.y, p.size, p.col);
         }
     }
     update_stars(stars);

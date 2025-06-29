@@ -38,7 +38,7 @@ while (!win.should_close()) {
     win.end();
     scale=scale*0.8;
     max_iteration = max_iteration + 20;
-    win.text(10, 40, "Max Iteration: " + str(max_iteration), 255, 255, 255, 255);
+    win.text("Max Iteration: " + str(max_iteration), 10, 40, 20, vec4(255, 255, 255, 255));
 }
 win.close();
 

@@ -195,7 +195,7 @@ func draw_exp(e,win,cam) {
                 
                 subx=spos +e.exp*(x-(w/2))
                 suby=e.pos.y+e.exp*(y-(h/2))
-                win.draw_texture_rect(txt, vec2(subx, suby), vec2(x, y), vec2(pixw, pixh))
+                win.draw_texture_rect(txt, x, y, subx, suby, pixw, pixh, vec4(255, 255, 255, 255))
             }
         }
     }
@@ -204,7 +204,7 @@ func draw_exp(e,win,cam) {
 func draw_(e,win,cam){
     var spos = cam.translate(e.pos.x)
     if (spos != nil) {
-        win.draw_texture(e.texture, vec2(spos, e.pos.y))
+        win.draw_texture(e.texture, spos, e.pos.y, vec4(255, 255, 255, 255))
     }
     
 }

@@ -34,7 +34,7 @@ class Human < Sprite {
     draw(win,cam) {
        var spos = cam.translate(this.pos.x)
         if (spos != nil) {
-            win.draw_texture(this.texture, vec2(spos, this.pos.y))
+            win.draw_texture(this.texture, spos, this.pos.y, vec4(255, 255, 255, 255))
         }
     }
 }

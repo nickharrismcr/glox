@@ -47,7 +47,7 @@ class Mountain {
         foreach ( var x in range(0,width)){
             if (x%5==0){
                 var h = this.get(x + cam.x)
-                win.circle_fill(vec2(x,height-h), 2, vec4(255,150,0,255))
+                win.circle_fill(x, height-h, 2, vec4(255,150,0,255))
             }
         }
     }

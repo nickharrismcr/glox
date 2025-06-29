@@ -70,7 +70,7 @@ class Line {
         }         
     }
     draw(frame) {
-        frame.texture.line_ex(this.pos,this.lastp,this.thickness,this.col)
+        frame.texture.line_ex(this.pos.x, this.pos.y, this.lastp.x, this.lastp.y, this.thickness, this.col)
     }
 }
 
@@ -101,7 +101,7 @@ class Tile {
         this.texture.clear(col)
     }
     draw(win) {
-        win.draw_render_texture_ex(this.texture, this.pos, this.rotation, this.scale)
+        win.draw_render_texture_ex(this.texture, this.pos.x, this.pos.y, this.rotation, this.scale, vec4(255, 255, 255, 255))
     }
 }
 

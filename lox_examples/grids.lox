@@ -118,7 +118,7 @@ class Grid {
             var ry0 = this.cy + x0 * sin(a) + y0 * cos(a);
             var rx1 = this.cx + x1 * cos(a) - y1 * sin(a);
             var ry1 = this.cy + x1 * sin(a) + y1 * cos(a);
-            win.line(vec2(rx0, ry0), vec2(rx1, ry1), this.col )
+            win.line(rx0, ry0, rx1, ry1, this.col)
 
             // Horizontal lines
             var x2 = -sz;
@@ -129,7 +129,7 @@ class Grid {
             var ry2 = this.cy + x2 * sin(a) + y2 * cos(a);
             var rx3 = this.cx + x3 * cos(a) - y3 * sin(a);
             var ry3 = this.cy + x3 * sin(a) + y3 * cos(a);
-            win.line(vec2(rx2, ry2), vec2(rx3, ry3), this.col)
+            win.line(rx2, ry2, rx3, ry3, this.col)
         }
     }
 }
