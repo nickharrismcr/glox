@@ -137,14 +137,34 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
         // Draw current cobweb (adjusted for new dimensions)
         x = x0;
         var prev_y = 0;
-        for (var i = 0; i < steps; i = i + 1) {
+        
+        // Calculate the proportion of steps to show as settling vs attractor
+        // Use a reasonable split: show last 20% of steps as orange (attractor)
+        var orange_steps = steps / 5;  // Last 20% of steps
+        var red_steps = steps - orange_steps;
+        
+        // First draw the settling period in dark red
+        for (var i = 0; i < red_steps; i = i + 1) {
             var y = logistic(rr, x);
-            // Vertical line
+            // Vertical line in dark red
             cobweb_buffer.line(half_width * x, screen_height - screen_height * prev_y, 
-                             half_width * x, screen_height - screen_height * y, colour.RED);
-            // Horizontal line
+                             half_width * x, screen_height - screen_height * y, vec4(100, 0, 0, 255));
+            // Horizontal line in dark red
             cobweb_buffer.line(half_width * x, screen_height - screen_height * y, 
-                             half_width * y, screen_height - screen_height * y, colour.RED);
+                             half_width * y, screen_height - screen_height * y, vec4(100, 0, 0, 255));
+            prev_y = y;
+            x = y;
+        }
+        
+        // Then draw the attractor behavior in orange
+        for (var i = 0; i < orange_steps; i = i + 1) {
+            var y = logistic(rr, x);
+            // Vertical line in orange
+            cobweb_buffer.line(half_width * x, screen_height - screen_height * prev_y, 
+                             half_width * x, screen_height - screen_height * y, vec4(255, 165, 0, 255));
+            // Horizontal line in orange
+            cobweb_buffer.line(half_width * x, screen_height - screen_height * y, 
+                             half_width * y, screen_height - screen_height * y, vec4(255, 165, 0, 255));
             prev_y = y;
             x = y;
         }
