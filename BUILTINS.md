@@ -1,6 +1,6 @@
 # GLox Builtin Functions and Objects Documentation
 
-This document provides comprehensive documentation for all builtin functions and objects available in the GLox programming language engine.
+ 
 
 ## Table of Contents
 
@@ -69,13 +69,13 @@ The window object provides the main interface for graphics rendering and input h
 ### Window Creation
 
 ```lox
-var win = window();
-win.init(width, height, "Window Title");
+var win = window(width, height);
+win.init();
 ```
 
 ### Window Management Methods
 
-- **`init(width, height, title)`** - Initialize the window with specified dimensions and title
+- **`init()`** - Initialize the window with dimensions specified during creation
 - **`begin()`** - Begin drawing frame
 - **`end()`** - End drawing frame and present to screen
 - **`close()`** - Close the window
@@ -96,7 +96,7 @@ win.init(width, height, "Window Title");
 - **`circle(x, y, radius, color_vec4)`** - Draw a circle outline
 - **`circle_fill(x, y, radius, color_vec4)`** - Draw a filled circle
 - **`triangle(x1, y1, x2, y2, x3, y3, color_vec4)`** - Draw a triangle
-- **`ellipse(x, y, radius_x, radius_y, color_vec4)`** - Draw an ellipse *(still uses Vec3 center - needs fixing)*
+- **`ellipse(center_x, center_y, center_z, radius_x, radius_z, color_vec4)`** - Draw a 3D ellipse
 - **`text(text, x, y, size, color_vec4)`** - Draw text
 
 #### Advanced Drawing
@@ -107,19 +107,29 @@ win.init(width, height, "Window Title");
 - **`draw_render_texture_ex(render_texture, x, y, rotation, scale, color_vec4)`** - Draw render texture with transformation
 
 ### Blend Modes
-- **`begin_blend_mode(mode)`** - Begin custom blend mode (0=ALPHA, 1=ADDITIVE, 2=MULTIPLIED, 3=ADD_COLORS, 4=SUBTRACT_COLORS)
+- **`begin_blend_mode(mode)`** - Begin custom blend mode (use win.BLEND_* constants)
 - **`end_blend_mode()`** - End custom blend mode
 
+#### Blend Mode Constants
+- **`win.BLEND_ALPHA`** - Alpha blending (default)
+- **`win.BLEND_ADD`** - Additive blending
+- **`win.BLEND_MULTIPLY`** - Multiplicative blending  
+- **`win.BLEND_SUBTRACT`** - Subtractive blending
+- **`win.BLEND_DEFAULT`** - Default blend mode (same as BLEND_ALPHA)
+
 ### Input Methods
-- **`key_down(key_code)`** - Check if key is currently pressed
-- **`key_pressed(key_code)`** - Check if key was just pressed this frame
+- **`key_down(key_code)`** - Check if key is currently pressed (use win.KEY_* constants)
+- **`key_pressed(key_code)`** - Check if key was just pressed this frame (use win.KEY_* constants)
+
+#### Key Constants
+Key constants are available as `win.KEY_*` (e.g., `win.KEY_SPACE`, `win.KEY_ESCAPE`, `win.KEY_A`, `win.KEY_ENTER`, etc.)
 
 ### 3D Rendering
 - **`begin_3d(camera)`** - Begin 3D mode with camera
 - **`end_3d()`** - End 3D mode
 - **`cube(x, y, z, width, height, length, color)`** - Draw a 3D cube
 - **`cube_wires(x, y, z, width, height, length, color)`** - Draw a 3D cube wireframe
-- **`sphere(x, y, z, radius, color)`** - Draw a 3D sphere
+- **`sphere(x, y, z, radius, color_vec4)`** - Draw a 3D sphere
 - **`cylinder(x, y, z, radius_top, radius_bottom, height, slices, color)`** - Draw a 3D cylinder
 - **`grid(slices, spacing)`** - Draw a 3D grid
 - **`plane(x, y, z, width, length, color)`** - Draw a 3D plane
@@ -137,15 +147,19 @@ Textures are used for storing and displaying 2D image data.
 ### Texture Creation
 
 ```lox
-var tex = texture();
+var img = image("filename.png");
+var tex = texture(img, frames, start_frame, end_frame);
 ```
+
+- **`image(filename)`** - Load an image from file
+- **`texture(image, frames, start_frame, end_frame)`** - Create a texture from an image with animation support
 
 ### Texture Methods
 
 - **`width()`** - Returns texture width in pixels
 - **`height()`** - Returns texture height in pixels
 - **`frame_width()`** - Returns frame width (for animated textures)
-- **`animate(frame_time)`** - Update animation frame based on time
+- **`animate(frame_time)`** - Set automatic frame animation ( ticks per frame )
 
 ---
 
@@ -156,22 +170,22 @@ RenderTextures allow rendering to an off-screen buffer that can be used as a tex
 ### RenderTexture Creation
 
 ```lox
-var rt = render_texture();
+var rt = render_texture(width, height);
 ```
 
 ### RenderTexture Methods
 
 - **`width()`** - Returns render texture width
 - **`height()`** - Returns render texture height
-- **`clear(color)`** - Clear the render texture with specified color
+- **`clear(color_vec4)`** - Clear the render texture with specified color
 
 #### Drawing Methods (same as window but to render texture)
-- **`line(x1, y1, x2, y2, color)`** - Draw line to render texture
-- **`line_ex(x1, y1, x2, y2, thickness, color)`** - Draw thick line to render texture
-- **`rectangle(x, y, width, height, color)`** - Draw rectangle to render texture
-- **`circle_fill(x, y, radius, color)`** - Draw filled circle to render texture
-- **`circle(x, y, radius, color)`** - Draw circle outline to render texture
-- **`pixel(x, y, color)`** - Draw pixel to render texture
+- **`line(x1, y1, x2, y2, color_vec4)`** - Draw line to render texture
+- **`line_ex(x1, y1, x2, y2, thickness, color_vec4)`** - Draw thick line to render texture
+- **`rectangle(x, y, width, height, color_vec4)`** - Draw rectangle to render texture
+- **`circle_fill(x, y, radius, color_vec4)`** - Draw filled circle to render texture
+- **`circle(x, y, radius, color_vec4)`** - Draw circle outline to render texture
+- **`pixel(x, y, color_vec4)`** - Draw pixel to render texture
 
 ---
 
@@ -182,7 +196,7 @@ Cameras define the viewpoint for 3D rendering.
 ### Camera Creation
 
 ```lox
-var cam = camera();
+var cam = camera(position_vec3, target_vec3, up_vec3);
 ```
 
 ### Camera Methods
@@ -224,7 +238,7 @@ Images represent raw pixel data that can be loaded and manipulated.
 ### Image Creation
 
 ```lox
-var img = image();
+var img = image("filename.png");
 ```
 
 ### Image Methods
@@ -312,8 +326,8 @@ The inspect module provides debugging and introspection capabilities (accessed v
 ### Basic Graphics Program
 
 ```lox
-var win = window();
-win.init(800, 600, "GLox Graphics");
+var win = window(800, 600);
+win.init();
 win.set_target_fps(60);
 
 while (!win.should_close()) {
@@ -335,22 +349,20 @@ win.close();
 ### 3D Rendering Example
 
 ```lox
-var win = window();
-var cam = camera();
+var win = window(800, 600);
+var cam = camera(vec3(5, 5, 5), vec3(0, 0, 0), vec3(0, 1, 0));
 
-win.init(800, 600, "3D Scene");
-cam.set_position(vec3(5, 5, 5));
-cam.set_target(vec3(0, 0, 0));
+win.init();
 cam.set_fovy(45);
 
 while (!win.should_close()) {
     cam.update();
     
     win.begin();
-    win.clear(encode_rgb(100, 150, 200));
+    win.clear(vec4(100, 150, 200, 255));
     
     win.begin_3d(cam);
-    win.cube(0, 0, 0, 2, 2, 2, encode_rgb(255, 0, 0));
+    win.cube(0, 0, 0, 2, 2, 2, vec4(255, 0, 0, 255));
     win.grid(10, 1);
     win.end_3d();
     
@@ -363,11 +375,11 @@ win.close();
 ### Mandelbrot Set Visualization
 
 ```lox
-var win = window();
 var width = 800;
 var height = 600;
+var win = window(width, height);
 
-win.init(width, height, "Mandelbrot Set");
+win.init();
 
 var mandel_data = lox_mandel_array(width, height, 1.0, -0.5, 0.0, 100);
 
@@ -380,57 +392,7 @@ while (!win.should_close()) {
 win.close();
 ```
 
----
+ 
+ 
 
-This documentation covers all the major builtin functions and objects available in GLox. The engine is designed for graphics programming, mathematical computation, and interactive applications with support for 2D/3D rendering, shaders, file I/O, and more.
-
----
-
-## API Improvements Implemented
-
-**Status: FIXED** ✅
-
-The window object methods have been updated to use consistent parameter patterns for better usability:
-
-### Fixed Methods:
-
-1. **Drawing Methods Now Use Individual x,y Parameters:**
-   - `line(x1, y1, x2, y2, color_vec4)` ✅ Fixed
-   - `line_ex(x1, y1, x2, y2, thickness, color_vec4)` ✅ Fixed  
-   - `circle(x, y, radius, color_vec4)` ✅ Fixed
-   - `circle_fill(x, y, radius, color_vec4)` ✅ Fixed
-   - `triangle(x1, y1, x2, y2, x3, y3, color_vec4)` ✅ Fixed
-   - `pixel(x, y, color_vec4)` ✅ Fixed
-
-2. **Texture Methods Now Use Individual x,y Parameters:**
-   - `draw_texture(texture, x, y, color_vec4)` ✅ Fixed
-   - `draw_render_texture(render_texture, x, y, color_vec4)` ✅ Fixed
-   - `draw_render_texture_ex(render_texture, x, y, rotation, scale, color_vec4)` ✅ Fixed
-   - `draw_texture_rect(texture, x, y, src_x, src_y, src_w, src_h, color_vec4)` ✅ Fixed
-
-3. **Text Method Now Supports Full Parameters:**
-   - `text(text, x, y, size, color_vec4)` ✅ Fixed
-
-4. **Consistent Color Handling:**
-   - All methods now use Vec4(r, g, b, a) for colors with 0-255 values ✅ Fixed
-
-### Benefits Achieved:
-
-1. **Consistency** - All methods follow the same pattern for coordinates ✅
-2. **Easier to use** - No need to create Vec2 objects for simple coordinates ✅
-3. **Better performance** - Fewer object allocations for simple drawing operations ✅
-4. **More intuitive** - Matches common graphics API patterns ✅
-5. **Updated examples** - All Lox example files have been updated to use the new API ✅
-
-### Updated Example Files:
-- `lox_examples/fireworks.lox` - Fixed circle_fill calls
-- `lox_examples/cobweb-bifurc.lox` - Fixed line and pixel calls  
-- `lox_examples/grids.lox` - Fixed line calls
-- `lox_examples/defender/radar.lox` - Fixed line and pixel calls
-- `lox_examples/defender/stars.lox` - Fixed circle_fill calls
-- `lox_examples/defender/mountains.lox` - Fixed circle_fill calls
-- `lox_examples/defender/lander.lox` - Fixed texture drawing calls
-- `lox_examples/defender/human.lox` - Fixed texture drawing calls
-- `lox_examples/defender/bullet.lox` - Fixed texture drawing calls
-- `lox_examples/defender/test.lox` - Fixed texture drawing calls
-- `lox_examples/mandel_gfx.lox` - Fixed text calls
+ 
