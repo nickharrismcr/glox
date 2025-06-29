@@ -224,7 +224,7 @@ while (!win.should_close()) {
         tiler.update()
         tiler.draw(win)
     }   
-    counter++ 
+    counter+=1
     if (counter > 120 ){
         counter = 0
         speedx=rn.choice((-4,4))

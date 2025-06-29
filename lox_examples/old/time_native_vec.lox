@@ -3,7 +3,7 @@ print "native"
 v2=vec2(0,0)
 
 foreach (i in range(10000000)){
-    v2.x++
-    v2.y++
+    v2.x+=1
+    v2.y+=1
 }   
 print (int(v2.x), int(v2.y));

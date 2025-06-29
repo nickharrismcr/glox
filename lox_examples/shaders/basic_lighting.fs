@@ -33,7 +33,7 @@ void main()
     vec3 ambient = vec3(0.1, 0.1, 0.1);
     
     // Calculate lighting for each light source
-    for (int i = 0; i < lightCount && i < 4; i++)
+    for (int i = 0; i < lightCount && i < 4; i+=1)
     {
         vec3 light = lightPos[i];
         vec3 lightDir = normalize(light - fragPosition);

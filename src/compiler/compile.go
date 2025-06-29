@@ -545,7 +545,7 @@ func (p *Parser) function(type_ FunctionType) {
 	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.")
 	if !p.check(TOKEN_RIGHT_PAREN) {
 		for {
-			p.currentCompiler.function.Arity++
+			p.currentCompiler.function.Arity += 1
 			if p.currentCompiler.function.Arity > 255 {
 				p.errorAtCurrent("Can't have more than 255 parameters")
 			}
@@ -564,7 +564,7 @@ func (p *Parser) function(type_ FunctionType) {
 	function := p.endCompiler()
 	p.emitBytes(core.OP_CLOSURE, p.MakeConstant(core.MakeObjectValue(function, false)))
 
-	for i := 0; i < function.UpvalueCount; i++ {
+	for i := 0; i < function.UpvalueCount; i += 1 {
 		uv := *(compiler.upvalues[i])
 		if uv.isLocal {
 			p.emitByte(1)
@@ -959,7 +959,7 @@ func (p *Parser) breakStatement() {
 	// drop local vars on stack
 	c := p.currentCompiler
 
-	for i := 0; i < c.localCount; i++ {
+	for i := 0; i < c.localCount; i += 1 {
 		if c.locals[i].depth >= c.scopeDepth-1 {
 			p.emitByte(core.OP_POP)
 		}
@@ -989,7 +989,7 @@ func (p *Parser) continueStatement() {
 
 	// drop local vars on stack
 	c := p.currentCompiler
-	for i := 0; i < c.localCount; i++ {
+	for i := 0; i < c.localCount; i += 1 {
 		if c.locals[i].depth >= c.scopeDepth-1 {
 			p.emitByte(core.OP_POP)
 		}
@@ -1219,7 +1219,7 @@ func (p *Parser) endCompiler() *core.FunctionObject {
 // Used for blocks, functions, and other constructs that create new scopes.
 func (p *Parser) beginScope() {
 
-	p.currentCompiler.scopeDepth++
+	p.currentCompiler.scopeDepth += 1
 }
 
 // endScope exits the current lexical scope and cleans up local variables.
@@ -1333,7 +1333,7 @@ func (p *Parser) addUpvalue(compiler *Compiler, index uint8, isLocal bool) int {
 	upvalueCount := compiler.function.UpvalueCount
 
 	// does upvalue already exist ?
-	for i := 0; i < upvalueCount; i++ {
+	for i := 0; i < upvalueCount; i += 1 {
 		upvalue := *(compiler.upvalues[i])
 		if upvalue.index == index && upvalue.isLocal == isLocal {
 			return i
@@ -1348,7 +1348,7 @@ func (p *Parser) addUpvalue(compiler *Compiler, index uint8, isLocal bool) int {
 		index:   index,
 	}
 	compiler.upvalues[upvalueCount] = uv
-	compiler.function.UpvalueCount++
+	compiler.function.UpvalueCount += 1
 
 	return upvalueCount
 
@@ -1442,7 +1442,7 @@ func (p *Parser) argumentList() uint8 {
 	if !p.check(TOKEN_RIGHT_PAREN) {
 		for {
 			p.expression()
-			argCount++
+			argCount += 1
 			if argCount == 255 {
 				p.error("Can't have more than 255 arguments. ")
 			}
@@ -1465,7 +1465,7 @@ func (p *Parser) parseList() uint8 {
 	if !p.check(TOKEN_RIGHT_BRACKET) {
 		for {
 			p.expression()
-			itemCount++
+			itemCount += 1
 			if itemCount == 255 {
 				p.error("Can't have more than 255 initialiser items. ")
 			}
@@ -1490,7 +1490,7 @@ func (p *Parser) parseDict() uint8 {
 			p.expression()
 			p.consume(TOKEN_COLON, "Expect ':' after key.")
 			p.expression()
-			itemCount++
+			itemCount += 1
 			if itemCount == 255 {
 				p.error("Can't have more than 255 initialiser keys. ")
 			}
@@ -1645,7 +1645,7 @@ func (p *Parser) addLocal(name Token) {
 		isCaptured: false,
 	}
 	p.currentCompiler.locals[p.currentCompiler.localCount] = local
-	p.currentCompiler.localCount++
+	p.currentCompiler.localCount += 1
 	// core.LogFmt(core.DEBUG, "Added local %d %s at depth %d\n", p.currentCompiler.localCount, local.lexeme, p.currentCompiler.scopeDepth)
 
 	// add local var info to current chunk for debugging
@@ -1905,7 +1905,7 @@ func grouping(p *Parser, canAssign bool) {
 		arity := 1
 		for {
 			p.expression()
-			arity++
+			arity += 1
 			if !p.match(TOKEN_COMMA) {
 				break
 			}
@@ -2036,6 +2036,10 @@ func dot(p *Parser, canAssign bool) {
 	p.consume(TOKEN_IDENTIFIER, "Expect property name after '.'.")
 	name := p.identifierConstant(p.previous)
 
+	if p.handlePropertyCompoundAssignment(canAssign, name) {
+		return
+	}
+
 	if canAssign && p.match(TOKEN_EQUAL) {
 		p.expression()
 		p.emitBytes(core.OP_SET_PROPERTY, name)
@@ -2047,6 +2051,39 @@ func dot(p *Parser, canAssign bool) {
 
 		p.emitBytes(core.OP_GET_PROPERTY, name)
 	}
+}
+
+// handlePropertyCompoundAssignment checks for compound assignment on properties.
+// e.g obj.prop += value
+func (p *Parser) handlePropertyCompoundAssignment(canAssign bool, name uint8) bool {
+
+	if canAssign && (p.check(TOKEN_PLUS_EQUAL) || p.check(TOKEN_MINUS_EQUAL)) {
+		// Handle compound assignment on properties: obj.prop += value
+		opType := p.current.Tokentype
+		p.advance() // consume += or -=
+
+		// Duplicate the object reference for getting the current value
+		p.emitByte(core.OP_DUP)
+
+		// Get current property value
+		p.emitBytes(core.OP_GET_PROPERTY, name)
+
+		// Parse right-hand side expression
+		p.expression()
+
+		// Perform the operation
+		switch opType {
+		case TOKEN_PLUS_EQUAL:
+			p.emitByte(core.OP_ADD)
+		case TOKEN_MINUS_EQUAL:
+			p.emitByte(core.OP_SUBTRACT)
+		}
+
+		// Set the property with the new value
+		p.emitBytes(core.OP_SET_PROPERTY, name)
+		return true
+	}
+	return false
 }
 
 // this handles 'this' keyword references in instance methods.

@@ -1,2 +1,14 @@
-a=[1,2,3]
-print a.length()
+ 
+ 
+class A {
+    init() {
+        this.x = 1
+    }   
+    increment() {
+        this.x += 1
+    }
+}
+
+a = A()
+a.increment()
+print(a.x) // Should print 2

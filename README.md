@@ -87,21 +87,21 @@ foreach (i in range(0, 10, 2)) {
 
 ---
 
-#### Increment Operator
+#### Compound assignment+add/subtract Operators
 
 ##### Syntax
 ```lox
-a++
-obj.x++
+a+=1
+obj.x+=2
 ```
 ##### Example
 ```lox
 a = 5
-a++
+a+=1
 print a // 6
 
 point = vec2(1, 2)
-point.x++
+point.x+=1
 print point.x // 2
 ```
 
