@@ -1,9 +1,4 @@
-# GLox Builtin10. [Vector Objects](#vector-objects)
-11. [File Operations](#file-operations)
-12. [System Modules](#system-modules)
-13. [Color Utilities Module](#color-utilities-module)nctions and Objects Documentation
-
- 
+# GLox Builtins 
 
 ## Table of Contents
 
@@ -293,30 +288,7 @@ Vectors support standard mathematical operations and are used extensively in 3D 
 
 ---
 
-## File Operations
 
-### File I/O Functions
-
-- **`open(filename, mode)`** - Open a file for reading/writing
-  - Modes: "r" (read), "w" (write), "a" (append)
-- **`close(file)`** - Close an open file
-- **`readln(file)`** - Read a line from file
-- **`write(file, text)`** - Write text to file
-
-### Example File Usage
-
-```lox
-var file = open("data.txt", "w");
-write(file, "Hello, World!\n");
-close(file);
-
-file = open("data.txt", "r");
-var line = readln(file);
-print line;
-close(file);
-```
-
----
 
 ## System Modules
 
@@ -324,9 +296,51 @@ close(file);
 
 The sys module provides system-level functionality (accessed via sys.function_name).
 
+## File Operations
+
+### File I/O Functions
+
+- **`sys.open(filename, mode)`** - Open a file for reading/writing
+  - Modes: "r" (read), "w" (write), "a" (append)
+- **`sys.close(file)`** - Close an open file
+- **`sys.readln(file)`** - Read a line from file
+- **`sys.write(file, text)`** - Write text to file
+
+### Example File Usage
+
+```lox
+var file = sys.open("data.txt", "w");
+sys.write(file, "Hello, World!\n");
+sys.close(file);
+
+file = sys.open("data.txt", "r");
+var line = sys.readln(file);
+print line;
+sys.close(file);
+```
+
+---
+
 ### inspect Module
 
 The inspect module provides debugging and introspection capabilities (accessed via inspect.function_name).
+
+```
+import inspect
+
+inspect.dump_frame() 
+```
+- print current frame name, stack/locals, globals 
+
+`d=inspect.get_frame()` returns frame data dictionary with keys:
+`function`   - function name 
+`line`       - current line
+`file`       - current script 
+`args`       - list of arguments
+`locals`     - dictionary of locals
+`globals`    - dictionary of globals 
+`prev_frame` - calling frame dict (or nil) 
+
 
 ---
 
