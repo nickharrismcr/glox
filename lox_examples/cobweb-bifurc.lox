@@ -1,4 +1,5 @@
 // Cobweb plot and live bifurcation diagram of the logistic map using a graphics API
+// can be paused and stepped through parameter space interactively
 import colour 
 
 fun logistic(r, x) {
