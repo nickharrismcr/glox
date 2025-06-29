@@ -205,7 +205,7 @@ class Circler {
     move(){
         pos=this.circle.pos
         this.hist.append(this.circle.copy()); 
-        pos=math.add2d(pos,this.dpos)
+        pos+=this.dpos
         if (pos.x < 0 or pos.x > this.width) {
             this.dpos.x = -this.dpos.x
         }

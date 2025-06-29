@@ -423,7 +423,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 			value := vm.Peek(0)
 			//DumpValue("Define global", value)
-			function.Environment.SetVar(constants[idx].InternedId, value)
+			function.Environment.SetVar(constants[idx].InternedId, core.Mutable(value)) // make sure variable is mutable
 			vm.pop()
 
 		case core.OP_DEFINE_GLOBAL_CONST:

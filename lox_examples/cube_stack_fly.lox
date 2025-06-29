@@ -1,0 +1,412 @@
+import math
+import random
+import colour_utils
+
+// Configuration constants - Start with clear boundaries
+const CITY_BOUNDARY = 80.0  // Outer boundary - camera must not exceed this
+const INNER_BOUNDARY = 70.0  // Inner boundary - camera should turn before reaching this (just smaller than outer)
+const STACK_SPACING = 16.0  // Regular spacing between stack centers
+const STACK_COUNT = 49      // 7x7 grid of stacks
+const MIN_STACK_HEIGHT = 3
+const MAX_STACK_HEIGHT = 24
+const CUBE_SIZE = 2.0
+const CAMERA_HEIGHT = 8.0
+const CAMERA_SPEED = 0.12   // Slightly slower for better control
+
+// Cardinal direction constants
+const EAST = 0.0       // 0 degrees
+const NORTH = 1.5708   // 90 degrees
+const WEST = 3.14159   // 180 degrees
+const SOUTH = -1.5708  // -90 degrees
+
+// Window dimensions
+const WIDTH = 1200
+const HEIGHT = 800
+
+// Cube class to represent individual cubes in the stack
+class Cube {
+    init(x, y, z, size) {
+        this.position = vec3(x, y, z)
+        this.size = size
+        this.rotation = vec3(0, 0, 0)
+        
+        // Generate face colors once during construction (only for visible faces)
+        this.frontColor = generateCubeColor(0, 6)
+        this.backColor = generateCubeColor(1, 6)
+        this.leftColor = generateCubeColor(2, 6)
+        this.rightColor = generateCubeColor(3, 6)
+        // Skip top and bottom colors since we don't draw those faces
+    }
+    
+    update(deltaTime) {
+        // Add slight rotation to each cube for visual interest
+        this.rotation.y = this.rotation.y + deltaTime * 0.3
+        this.rotation.x = this.rotation.x + deltaTime * 0.1
+    }
+    
+    draw(renderer) {
+        // Draw solid black cube base first
+        var black = vec4(0, 0, 0, 255)
+        renderer.cube(this.position, vec3(this.size, this.size, this.size), black)
+        
+        // Use the stored face colors instead of generating new ones
+        // Draw colored cube faces as overlays
+        // We'll draw 6 separate faces with different colors
+        var halfSize = this.size / 2
+        var faceOffset = 0.15  // Increased offset to reduce flickering at distance
+        
+        // Front face (positive Z)
+        var frontPos = vec3(this.position.x, this.position.y, this.position.z + halfSize + faceOffset)
+        renderer.cube(frontPos, vec3(this.size * 0.8, this.size * 0.8, 0.02), this.frontColor)
+        
+        // Back face (negative Z) 
+        var backPos = vec3(this.position.x, this.position.y, this.position.z - halfSize - faceOffset)
+        renderer.cube(backPos, vec3(this.size * 0.8, this.size * 0.8, 0.02), this.backColor)
+        
+        // Right face (positive X)
+        var rightPos = vec3(this.position.x + halfSize + faceOffset, this.position.y, this.position.z)
+        renderer.cube(rightPos, vec3(0.02, this.size * 0.8, this.size * 0.8), this.rightColor)
+        
+        // Left face (negative X)
+        var leftPos = vec3(this.position.x - halfSize - faceOffset, this.position.y, this.position.z)
+        renderer.cube(leftPos, vec3(0.02, this.size * 0.8, this.size * 0.8), this.leftColor)
+        
+        // Skip top and bottom faces to save draw calls - camera rarely sees them
+    }
+}
+
+// Color utility functions using builtin HSV conversion
+func generateCubeColor(index, total) {
+    var hue = random.integer(0, 360)  // Random hue from 0 to 360 degrees
+    var saturation = random.float(0.1, 1.0)  // Random saturation between 0.5 and 0.8
+    var value = random.float(0.1, 1.0)  // Random brightness from 0.4 to 1.0
+    
+    // Use builtin HSV to RGB conversion from colour_utils module
+    rv= colour_utils.hsv_to_rgb(hue, saturation, value)
+    
+    return rv
+}
+
+// Convert world position to grid coordinates for street navigation
+func worldToGrid(worldPos) {
+    return int((worldPos + (STACK_SPACING / 2)) / STACK_SPACING)
+}
+
+// Convert grid coordinates to world position (street center between stacks)
+func gridToWorld(gridPos) {
+    return gridPos * STACK_SPACING
+}
+
+// Check if camera is close enough to a grid intersection to turn
+func isAtIntersection(cam_x, cam_z) {
+    var gridX = worldToGrid(cam_x)
+    var gridZ = worldToGrid(cam_z)
+    var worldX = gridToWorld(gridX)
+    var worldZ = gridToWorld(gridZ)
+    
+    var distX = math.abs(cam_x - worldX)
+    var distZ = math.abs(cam_z - worldZ)
+    
+    // Within 8 units of intersection center - more lenient
+    return (distX < 8.0 and distZ < 8.0)
+}
+
+// Simple boundary check - use inner boundary for early turns
+func checkBoundaryViolation(cam_x, cam_z, cam_direction) {
+    var violation = false
+    var new_direction = cam_direction
+    
+    // Check if camera is approaching the inner boundary
+    if (cam_x > INNER_BOUNDARY) {
+        violation = true
+        new_direction = WEST  // Face west
+    }
+    if (cam_x < -INNER_BOUNDARY) {
+        violation = true
+        new_direction = EAST  // Face east
+    }
+    if (cam_z > INNER_BOUNDARY) {
+        violation = true
+        new_direction = SOUTH  // Face south
+    }
+    if (cam_z < -INNER_BOUNDARY) {
+        violation = true
+        new_direction = NORTH  // Face north
+    }
+    
+    return [violation, new_direction]
+}
+
+// Determine target direction - restrict to cardinal directions only
+func determineTurnDirection(boundary_result, cam_direction, turn_change_timer, turning, can_turn) {
+    var should_turn = false
+    var target_direction = 0.0
+    
+    var boundary_violation = boundary_result[0]
+    var boundary_direction = boundary_result[1]
+    
+    // Boundary violation has absolute priority
+    if (boundary_violation and !turning) {
+        should_turn = true
+        target_direction = boundary_direction
+    } else {
+        // Only turn at intersections for normal navigation
+        if (can_turn and !turning) {
+            if (turn_change_timer > random.integer(10, 40)) {  // Even more frequent turns - every 10-40 frames
+                // Random turn at intersection - only cardinal directions
+                should_turn = true
+                var turn_choice = random.integer(0, 4)
+                if (turn_choice == 0) {
+                    target_direction = EAST
+                } else {
+                    if (turn_choice == 1) {
+                        target_direction = NORTH
+                    } else {
+                        if (turn_choice == 2) {
+                            target_direction = WEST
+                        } else {
+                            target_direction = SOUTH
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    return [should_turn, target_direction]
+}
+
+// Execute smooth turning interpolation
+func executeTurn(turning, turn_progress, cam_direction, target_direction, turn_duration) {
+    var new_turning = turning
+    var new_progress = turn_progress 
+    var new_direction = cam_direction
+    
+    if (turning) {
+        new_progress = turn_progress + 1.0
+        var progress_ratio = new_progress / turn_duration
+        
+        if (progress_ratio >= 1.0) {
+            new_direction = target_direction
+            new_turning = false
+            new_progress = 0.0
+        } else {
+            var angle_diff = target_direction - cam_direction
+            if (angle_diff > 3.14159) {
+                angle_diff = angle_diff - 6.28318
+            } else {
+                if (angle_diff < -3.14159) {
+                    angle_diff = angle_diff + 6.28318
+                }
+            }
+            new_direction = cam_direction + (angle_diff * progress_ratio * progress_ratio * (3.0 - 2.0 * progress_ratio))
+        }
+    }
+    
+    return [new_turning, new_progress, new_direction]
+}
+
+// Main scene class
+class CubeStackScene {
+    init() {
+        this.cubes = []
+        this.stacks = []  // Array of stacks, each stack is an array of cubes
+        this.frame = 0
+        this.createCubeStack()
+    }
+    
+    createCubeStack() {
+        // Create stacks in a regular 7x7 grid with guaranteed avenues between them
+        var grid_size = 7  // 7x7 = 49 stacks max
+        
+        // Calculate grid positions with proper spacing to ensure avenues
+        // Grid goes from -3 to +3 (7 positions), centered at 0
+        for (var x = 0; x < grid_size; x = x + 1) {
+            for (var z = 0; z < grid_size; z = z + 1) {
+                var grid_x = x - 3  // Convert 0-6 to -3 to +3
+                var grid_z = z - 3  // Convert 0-6 to -3 to +3
+                
+                // Place stacks at regular grid positions to ensure avenues
+                var stackX = grid_x * STACK_SPACING  // This creates avenues at half-spacing intervals
+                var stackZ = grid_z * STACK_SPACING
+                
+                // Ensure stacks are well within the boundary
+                var within_x_boundary = math.abs(stackX) < CITY_BOUNDARY - STACK_SPACING
+                var within_z_boundary = math.abs(stackZ) < CITY_BOUNDARY - STACK_SPACING
+                
+                if (within_x_boundary and within_z_boundary) {
+                    
+                    // Random height for this stack
+                    var stackHeight = random.integer(MIN_STACK_HEIGHT, MAX_STACK_HEIGHT + 1)
+                    
+                    // Create a new stack array
+                    var stack = []
+                    var currentY = 0.0  // Track Y position for proper stacking
+                    
+                    // Create cubes for this stack with proper stacking
+                    for (var cubeIndex = 0; cubeIndex < stackHeight; cubeIndex = cubeIndex + 1) {
+                        // Add size variation - cubes can be 80% to 120% of base size
+                        var sizeVariation = random.float(0.8, 1.2)
+                        var cubeSize = CUBE_SIZE * sizeVariation
+                        
+                        // Keep stacks perfectly aligned - no position variation to ensure clear avenues
+                        var posX = stackX
+                        var posZ = stackZ
+                        
+                        // Position cube at current Y and update Y for next cube
+                        var cube = Cube(posX, currentY + (cubeSize / 2), posZ, cubeSize)
+                        currentY = currentY + cubeSize  // Stack next cube on top
+                        
+                        stack.append(cube)
+                        this.cubes.append(cube)
+                    }
+                    
+                    this.stacks.append(stack)
+                }
+            }
+        }
+        
+        print("Created " + str(this.stacks.length()) + " stacks in a " + str(grid_size) + "x" + str(grid_size) + " grid with clear avenues")
+    }
+    
+    update() {
+        this.frame = this.frame + 1
+        var deltaTime = 0.016  // Approximate 60fps
+        
+        // Update all cubes
+        foreach (var cube in this.cubes) {
+            cube.update(deltaTime)
+        }
+    }
+    
+    draw(renderer) {
+        // Draw ground plane that matches our city boundary
+        var ground_size = CITY_BOUNDARY * 2.5  // Slightly larger than the boundary
+        renderer.plane(vec3(0, -1, 0), vec2(ground_size, ground_size), vec4(20, 20, 20, 255))
+        
+        // Draw boundary visualization for both boundaries
+        var outer_boundary_color = vec4(60, 60, 60, 80)
+        var inner_boundary_color = vec4(100, 100, 0, 120)  // Yellow for inner boundary
+        
+        // Outer boundary
+        renderer.cube(vec3(CITY_BOUNDARY, 0.1, 0), vec3(0.5, 2, CITY_BOUNDARY * 2), outer_boundary_color)  // East edge
+        renderer.cube(vec3(-CITY_BOUNDARY, 0.1, 0), vec3(0.5, 2, CITY_BOUNDARY * 2), outer_boundary_color) // West edge
+        renderer.cube(vec3(0, 0.1, CITY_BOUNDARY), vec3(CITY_BOUNDARY * 2, 2, 0.5), outer_boundary_color)  // North edge
+        renderer.cube(vec3(0, 0.1, -CITY_BOUNDARY), vec3(CITY_BOUNDARY * 2, 2, 0.5), outer_boundary_color) // South edge
+        
+        // Inner boundary (where camera turns)
+        renderer.cube(vec3(INNER_BOUNDARY, 0.2, 0), vec3(0.3, 1.5, INNER_BOUNDARY * 2), inner_boundary_color)  // East edge
+        renderer.cube(vec3(-INNER_BOUNDARY, 0.2, 0), vec3(0.3, 1.5, INNER_BOUNDARY * 2), inner_boundary_color) // West edge
+        renderer.cube(vec3(0, 0.2, INNER_BOUNDARY), vec3(INNER_BOUNDARY * 2, 1.5, 0.3), inner_boundary_color)  // North edge
+        renderer.cube(vec3(0, 0.2, -INNER_BOUNDARY), vec3(INNER_BOUNDARY * 2, 1.5, 0.3), inner_boundary_color) // South edge
+        
+        // Draw all cubes
+        foreach (var cube in this.cubes) {
+            cube.draw(renderer)
+        }
+    }
+}
+
+// Initialize the application
+var win = window(WIDTH, HEIGHT)
+win.init()
+win.toggle_fullscreen()  // Start in fullscreen mode for immersive experience
+
+// Create the scene
+var scene = CubeStackScene()
+
+// Display clear, simple boundary information
+print("=== CITY BOUNDARIES ===")
+print("Outer boundary: ±" + str(CITY_BOUNDARY) + " world units")
+print("Inner boundary: ±" + str(INNER_BOUNDARY) + " world units (camera turns here)")
+print("Stack spacing: " + str(STACK_SPACING) + " units")
+print("Grid: 7x7 stacks in regular pattern")
+print("Camera restricted to cardinal directions only")
+
+// Calculate proper starting position between stacks
+// Stacks are at positions: -48, -32, -16, 0, 16, 32, 48 (for spacing of 16)
+// So avenues are at: -40, -24, -8, 8, 24, 40 (halfway between stacks)
+var avenue_position = STACK_SPACING / 2  // 8 units - halfway between center and first stack
+var cam_start_x = avenue_position   // Start in an avenue
+var cam_start_z = 0.0              // Start at center line
+
+print("Camera starts at: (" + str(cam_start_x) + ", " + str(cam_start_z) + ") - in avenue between stacks")
+
+// Camera position variables - start in an avenue between stacks
+var cam_x = cam_start_x   // Start in avenue
+var cam_z = cam_start_z   // Start at center
+var cam_direction = NORTH  // Start facing north
+var cam_speed = CAMERA_SPEED
+var turn_change_timer = 0
+var turning = false
+var target_direction = 0.0
+var turn_progress = 0.0
+var turn_duration = 120  // Faster turns for cardinal directions
+var debug_counter = 0  // For limiting debug output
+
+// Main render loop
+while (!win.should_close()) {
+    win.begin()
+    win.begin_blend_mode(win.BLEND_ALPHA)
+    win.clear(vec4(40, 10, 10, 255))  // Dark red background
+
+    // Update scene
+    scene.update()
+    
+    // Check if at intersection (can turn)
+    var can_turn = isAtIntersection(cam_x, cam_z)
+    
+    // Check boundary violation - absolute priority
+    var boundary_result = checkBoundaryViolation(cam_x, cam_z, cam_direction)
+    
+    // Debug output for boundary violations (limit to every 60 frames)
+    debug_counter = debug_counter + 1
+    if (debug_counter > 60 and boundary_result[0]) {
+        print("BOUNDARY VIOLATION: cam at (" + str(cam_x) + ", " + str(cam_z) + ") -> turning toward center")
+        debug_counter = 0
+    }
+    
+    // Update turn timer and determine if we should turn
+    turn_change_timer = turn_change_timer + 1
+    var turn_decision = determineTurnDirection(boundary_result, cam_direction, turn_change_timer, turning, can_turn)
+    
+    // Start turning if needed
+    if (turn_decision[0]) {
+        turning = true
+        turn_progress = 0.0
+        turn_change_timer = 0
+        target_direction = turn_decision[1]
+    }
+    
+    // Execute turning motion
+    var turn_result = executeTurn(turning, turn_progress, cam_direction, target_direction, turn_duration)
+    turning = turn_result[0]
+    turn_progress = turn_result[1]
+    cam_direction = turn_result[2]
+    
+    // Move camera forward in straight line according to current direction
+    cam_x = cam_x + cos(cam_direction) * cam_speed
+    cam_z = cam_z + sin(cam_direction) * cam_speed
+    
+    // Camera height with slight variation
+    var camY = CAMERA_HEIGHT + sin(cam_x * 0.1) * 1.0  // Gentle height variation
+    
+    // Calculate look-ahead position for camera target
+    var lookAheadDistance = 20.0
+    var lookX = cam_x + cos(cam_direction) * lookAheadDistance
+    var lookZ = cam_z + sin(cam_direction) * lookAheadDistance
+    var cam = camera(vec3(cam_x, camY, cam_z), vec3(lookX, CAMERA_HEIGHT, lookZ), vec3(0, 1, 0))
+    
+    // Begin 3D mode
+    win.begin_3d(cam)
+    
+    // Draw scene
+    scene.draw(win)
+    
+    win.end_3d()
+    
+    win.end_blend_mode()
+    win.end()
+}
+
+win.close()
