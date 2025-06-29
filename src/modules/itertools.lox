@@ -1,3 +1,19 @@
+//
+// @file itertools.lox
+// @brief Iterator and sequence utilities for GLOX
+// 
+// This module provides utilities for working with iterables including strings and lists.
+// Inspired by Python's itertools module, it offers functions for manipulating and
+// transforming sequences.
+// 
+// Functions:
+// - reverse(sequence) - Reverse a string or list
+// - sort(list, cmp) - Sort a list using a custom comparison function
+// 
+// @author GLOX Project
+// @date 2025
+//
+
 // takes a string or list and returns it reversed 
 func reverse(s) {
 
@@ -47,11 +63,4 @@ func sort(list, cmp) {
     return list;
 }
  
-func range(n) {
-    var arr = []
-    for (i=0; i<n; i=i+1 ) { 
-        arr.append(i)
-    }
-    return arr
-} 
-    
+ 

@@ -1,4 +1,25 @@
 
+//
+// @file sprite.lox
+// @brief Sprite management system for GLOX graphics
+// 
+// This module provides a Sprite class for managing 2D graphics sprites with
+// support for animation, positioning, and texture management. Useful for
+// 2D games and graphics applications.
+// 
+// Classes:
+// - Sprite - 2D sprite with position, texture, and animation support
+// 
+// Features:
+// - Load sprites from image files
+// - Multi-frame animation support
+// - Position management and movement
+// - Texture frame selection and animation timing
+// 
+// @author GLOX Project
+// @date 2025
+//
+
 class Sprite {
 
     init(pos, img, frames, start_frame, end_frame) { 

@@ -1,3 +1,19 @@
+//
+// @file functools.lox
+// @brief Functional programming utilities for GLOX
+// 
+// This module provides higher-order functions commonly used in functional programming,
+// including map, reduce, and filter operations for working with lists and collections.
+// 
+// Functions:
+// - map(list, function) - Apply function to each element in list
+// - reduce(list, function) - Reduce list to single value using accumulator function
+// - filter(list, function) - Filter list elements based on predicate function
+// 
+// @author GLOX Project
+// @date 2025
+//
+
 func map(list,function) {
     var rv = []; 
     foreach ( var a in list ){

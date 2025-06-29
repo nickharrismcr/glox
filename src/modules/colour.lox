@@ -1,3 +1,22 @@
+//
+// @file colour.lox
+// @brief Color utilities and constants for GLOX graphics programming
+// 
+// This module provides high-level color manipulation functions, predefined color constants,
+// and wrapper functions for native color utilities. It uses the native colour_utils module
+// for performance-critical operations while providing a convenient Lox interface.
+// 
+// Features:
+// - Predefined color constants (RED, GREEN, BLUE, etc.)
+// - Color manipulation functions (fade, tint, brightness, lerp)
+// - HSV to RGB conversion
+// - Random color generation
+// - Color scaling utilities
+// 
+// @author GLOX Project
+// @date 2025
+//
+
 import random;
 import colour_utils;
 

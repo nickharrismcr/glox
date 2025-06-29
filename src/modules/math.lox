@@ -1,4 +1,25 @@
 
+//
+// @file math.lox
+// @brief Extended mathematical utilities for GLOX
+// 
+// This module provides additional mathematical functions beyond the built-in math
+// functions, with a focus on 2D vector operations and geometric calculations.
+// 
+// Functions:
+// - rotate2d(vec2, angle) - Rotate a 2D vector by angle (radians)
+// - scale2d(vec2, scalar) - Scale a 2D vector by scalar
+// - floor(n) - Return the largest integer less than or equal to n
+// - max(a, b) - Return the maximum of two numbers
+// - min(a, b) - Return the minimum of two numbers
+// - abs(n) - Return the absolute value of n
+// 
+// Note: Some functions may be moved to native implementation for better performance.
+// 
+// @author GLOX Project
+// @date 2025
+//
+
 // TODO move all vector stuff into native  
 
 func rotate2d(v2, angle) {
@@ -8,9 +29,7 @@ func rotate2d(v2, angle) {
     yNew = v2.x * sinA + v2.y * cosA;
     return vec2(xNew, yNew)
 }
-func add2d(v1, v2) {
-    return vec2(v1.x + v2.x, v1.y + v2.y);
-}
+ 
 func scale2d(v2, scalar) {
     return vec2(v2.x * scalar, v2.y * scalar);
 }

@@ -1,3 +1,25 @@
+//
+// @file plot_rgb.lox
+// @brief RGB color plotting utilities for GLOX
+// 
+// This module provides a Plotter class for creating and manipulating RGB color
+// images using float arrays with encoded color values. Ideal for creating colorful
+// data visualizations, mathematical plots, and procedural graphics.
+// 
+// Classes:
+// - Plotter - 2D RGB plotting with encoded color float array backend
+// 
+// Features:
+// - Plot individual pixels with RGB colors
+// - Add colors to existing pixels (color accumulation)
+// - Clear plot with uniform color
+// - Save plots to PNG files
+// - Draw plots directly to screen using graphics.draw_array()
+// 
+// @author GLOX Project
+// @date 2025
+//
+
 // plot an rgb image using a 2D array of colours encoded as floats 
 // array can be written to a png file 
 // or passed to graphics.draw_array() to draw on the screen

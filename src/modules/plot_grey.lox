@@ -1,3 +1,24 @@
+//
+// @file plot_grey.lox
+// @brief Grayscale plotting utilities for GLOX
+// 
+// This module provides a Plotter class for creating and manipulating grayscale
+// images using float arrays. Useful for data visualization, mathematical plotting,
+// and generating grayscale graphics.
+// 
+// Classes:
+// - Plotter - 2D grayscale plotting with float array backend
+// 
+// Features:
+// - Plot individual pixels with grayscale values
+// - Add values to existing pixels (accumulation)
+// - Clear plot with uniform grayscale
+// - Save plots to PNG files
+// 
+// @author GLOX Project
+// @date 2025
+//
+
 class Plotter {
     init(filename,width,height){
         this.filename=filename;

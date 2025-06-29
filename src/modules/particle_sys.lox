@@ -1,4 +1,23 @@
 
+//
+// @file particle_sys.lox
+// @brief Particle system framework for GLOX graphics
+// 
+// This module provides a flexible particle system implementation for creating
+// visual effects like explosions, smoke, fire, rain, and other particle-based
+// animations in GLOX graphics applications.
+// 
+// Classes:
+// - Particle - Individual particle with position, velocity, and lifecycle
+// - Emitter - Manages a collection of particles, emitting new ones and updating existing ones
+// - Emitters - Manages multiple emitters, allowing for complex particle effects
+// 
+ 
+// 
+// @author GLOX Project
+// @date 2025
+//
+
 import random;
  
 import math; 
