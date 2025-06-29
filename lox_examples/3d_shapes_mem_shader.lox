@@ -3,6 +3,7 @@
 // Shows cylinders rotating in all 3 planes with Phong lighting model (ambient + diffuse + specular)
 
 import colour as col
+import colour_utils
 import random
 import math
 
@@ -130,30 +131,8 @@ light_speed_x = random.float(0.008, 0.025)
 light_speed_y = random.float(0.012, 0.035)
 light_speed_z = random.float(0.006, 0.02)
 
-// HSV to RGB conversion function
-fun hsv_to_rgb(h, s, v) {
-    c = v * s
-    // Use proper floating-point modulus: x - math.floor(x/y) * y
-    hue_normalized = h * 0.954929658551  // 0.954929658551 = 6/(2π)
-    x = c * (1 - math.abs(hue_normalized - math.floor(hue_normalized / 2) * 2 - 1))
-    m = v - c
-    
-    hue_sector = math.floor(hue_normalized)  // Which 60° sector we're in
-    
-    if (hue_sector == 0) {
-        return vec3((c + m) * 255, (x + m) * 255, m * 255)
-    } else if (hue_sector == 1) {
-        return vec3((x + m) * 255, (c + m) * 255, m * 255)
-    } else if (hue_sector == 2) {
-        return vec3(m * 255, (c + m) * 255, (x + m) * 255)
-    } else if (hue_sector == 3) {
-        return vec3(m * 255, (x + m) * 255, (c + m) * 255)
-    } else if (hue_sector == 4) {
-        return vec3((x + m) * 255, m * 255, (c + m) * 255)
-    } else {
-        return vec3((c + m) * 255, m * 255, (x + m) * 255)
-    }
-}
+// Use native HSV to RGB conversion for better performance
+// (Removed custom hsv_to_rgb function - using colour_utils.hsv_to_rgb instead)
 
 // Simple demo objects - lit rotating cylinders with orbital motion
 class BrightObject {
@@ -218,7 +197,7 @@ class BrightObject {
 objects = []
 for (i = 0; i < SHAPES; i = i + 1) {
     size = random.float(1, 2.0)
-    color = col.random_rgb()
+    color = colour_utils.random()  // Use native random color function
     objects.append(BrightObject(vec3(0, 0, 0), vec3(0, 0, 0), size, color))
 }
 
@@ -268,7 +247,7 @@ while (!win.should_close()) {
     hue = hue_time - math.floor(hue_time / 6.28) * 6.28  // Keep hue in 0-2π range for smooth cycling
     
     // Convert HSV to RGB for smooth hue transitions (S=0.6, V=0.3 for dark background)
-    bg_color = hsv_to_rgb(hue, 0.6, 0.3)
+    bg_color = colour_utils.hsv_to_rgb(hue * 57.2958, 0.6, 0.3)  // Convert radians to degrees for native function
     
     win.clear(vec4(bg_color.x, bg_color.y, bg_color.z, 255))
     win.begin_3d(cam)
