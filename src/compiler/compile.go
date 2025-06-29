@@ -496,7 +496,7 @@ func (p *Parser) importFromStatement() {
 // Uses Pratt parsing to handle operator precedence correctly.
 func (p *Parser) expression() {
 
-	p.parsePredence(PREC_ASSIGNMENT)
+	p.parsePrecedence(PREC_ASSIGNMENT)
 }
 
 // block parses and compiles a sequence of declarations/statements within braces.
@@ -713,53 +713,6 @@ func (p *Parser) isVariableDefined(name Token, lexeme string) bool {
 	return rv
 }
 
-// handleIncrement parses and compiles increment expressions (++) for variables and object properties.
-// Supports two forms:
-// 1. var++ - increments a variable (uses optimized OP_INC_LOCAL for local variables)
-// 2. obj.prop++ - increments an object property (loads, increments, stores, pops result)
-// Returns true if an increment expression was parsed, false otherwise.
-// This enables C-style increment syntax as a statement-level operation.
-func (p *Parser) handleIncrement() bool {
-
-	//(1) var++
-	//(2) obj.prop++
-
-	if p.check(TOKEN_IDENTIFIER) && p.checkNext(TOKEN_PLUS_PLUS) {
-
-		name := p.current
-		p.consume(TOKEN_IDENTIFIER, "Expect variable name.")
-		p.consume(TOKEN_PLUS_PLUS, "Expect '++' after variable name.")
-		p.consume(TOKEN_SEMICOLON, "Expect ';' after increment.")
-		arg, getOp, setOp := p.resolveVariable(name)
-		if setOp == core.OP_SET_LOCAL {
-			p.emitBytes(core.OP_INC_LOCAL, uint8(arg))
-			return true
-		}
-		p.emitBytes(getOp, uint8(arg))
-		p.emitByte(core.OP_ONE)
-		p.emitByte(core.OP_ADD)
-		p.emitBytes(setOp, uint8(arg))
-		p.emitByte(core.OP_POP)
-		return true
-
-	}
-	if p.check(TOKEN_IDENTIFIER) && p.checkNext(TOKEN_DOT) && p.checkAhead(TOKEN_IDENTIFIER, 1) && p.checkAhead(TOKEN_PLUS_PLUS, 2) {
-
-		p.expression()
-		name := p.identifierConstant(p.previous)
-		p.consume(TOKEN_PLUS_PLUS, "Expect '++' after variable name.")
-		p.consume(TOKEN_SEMICOLON, "Expect ';' after increment.")
-
-		p.emitByte(core.OP_ONE)
-		p.emitByte(core.OP_ADD)
-		p.emitBytes(core.OP_SET_PROPERTY, name)
-		p.emitByte(core.OP_POP)
-		return true
-	}
-
-	return false
-}
-
 // handleImplicitDeclaration checks for and handles implicit variable declarations.
 // In Lox, assignments like "a = 5" can create new variables if 'a' doesn't exist.
 // For local scope: creates a new local variable declaration
@@ -850,9 +803,6 @@ func (p *Parser) handleUnpackingAssignment() bool {
 // The expression result is popped from the stack since it's not used.
 func (p *Parser) expressionStatement() {
 
-	if p.handleIncrement() {
-		return
-	}
 	if p.handleUnpackingAssignment() {
 		return
 	}
@@ -1304,7 +1254,7 @@ func (p *Parser) endScope() {
 // Starts with a prefix expression, then processes infix operators based on precedence.
 // The precedence parameter controls how tightly the current expression binds.
 // Handles assignment validation and ensures proper left-to-right associativity.
-func (p *Parser) parsePredence(prec Precedence) {
+func (p *Parser) parsePrecedence(prec Precedence) {
 
 	p.advance()
 
@@ -1640,12 +1590,43 @@ func (p *Parser) namedVariable(name Token, canAssign bool) {
 
 	arg, getOp, setOp := p.resolveVariable(name)
 
+	if p.handleCompoundAssignment(canAssign, getOp, setOp, arg) {
+		return
+	}
 	if canAssign && p.match(TOKEN_EQUAL) {
 		p.expression()
 		p.emitBytes(setOp, uint8(arg))
 	} else {
 		p.emitBytes(getOp, uint8(arg))
 	}
+}
+
+func (p *Parser) handleCompoundAssignment(canAssign bool, getOp uint8, setOp uint8, arg int) bool {
+
+	if canAssign && (p.check(TOKEN_PLUS_EQUAL) || p.check(TOKEN_MINUS_EQUAL)) {
+		// Handle compound assignment
+		opType := p.current.Tokentype
+		p.advance() // consume += or -=
+
+		// Get current value
+		p.emitBytes(getOp, uint8(arg))
+
+		// Parse right-hand side
+		p.expression()
+
+		// Perform the operation
+		switch opType {
+		case TOKEN_PLUS_EQUAL:
+			p.emitByte(core.OP_ADD)
+		case TOKEN_MINUS_EQUAL:
+			p.emitByte(core.OP_SUBTRACT)
+		}
+
+		// Store the result back
+		p.emitBytes(setOp, uint8(arg))
+		return true
+	}
+	return false
 }
 
 // addLocal adds a new local variable to the current function's local variable array.
@@ -1883,7 +1864,7 @@ func binary(p *Parser, canAssign bool) {
 
 	opType := p.previous.Tokentype
 	rule := p.getRule(opType)
-	p.parsePredence(Precedence(rule.prec + 1))
+	p.parsePrecedence(Precedence(rule.prec + 1))
 
 	switch opType {
 	case TOKEN_PLUS:
@@ -1984,7 +1965,7 @@ func variable(p *Parser, canAssign bool) {
 func unary(p *Parser, canAssign bool) {
 
 	opType := p.previous.Tokentype
-	p.parsePredence(PREC_UNARY)
+	p.parsePrecedence(PREC_UNARY)
 
 	switch opType {
 	case TOKEN_MINUS:
@@ -2016,7 +1997,7 @@ func and_(p *Parser, canAssign bool) {
 
 	endJump := p.emitJump(core.OP_JUMP_IF_FALSE)
 	p.emitByte(core.OP_POP)
-	p.parsePredence(PREC_AND)
+	p.parsePrecedence(PREC_AND)
 	p.patchJump(endJump)
 }
 
@@ -2031,7 +2012,7 @@ func or_(p *Parser, canAssign bool) {
 	p.patchJump(elseJump)
 	p.emitByte(core.OP_POP)
 
-	p.parsePredence(PREC_OR)
+	p.parsePrecedence(PREC_OR)
 	p.patchJump(endJump)
 }
 
@@ -2049,7 +2030,7 @@ func call(p *Parser, canAssign bool) {
 // 1. obj.prop = value (property assignment with OP_SET_PROPERTY)
 // 2. obj.method(args) (method invocation with OP_INVOKE optimization)
 // 3. obj.prop (property access with OP_GET_PROPERTY)
-// Special handling for increment operations (obj.prop++) with duplication.
+
 func dot(p *Parser, canAssign bool) {
 
 	p.consume(TOKEN_IDENTIFIER, "Expect property name after '.'.")
@@ -2063,9 +2044,7 @@ func dot(p *Parser, canAssign bool) {
 		p.emitBytes(core.OP_INVOKE, name)
 		p.emitByte(argCount)
 	} else {
-		if p.check(TOKEN_PLUS_PLUS) {
-			p.emitByte(core.OP_DUP) // duplicate the object for propesrty ++
-		}
+
 		p.emitBytes(core.OP_GET_PROPERTY, name)
 	}
 }
