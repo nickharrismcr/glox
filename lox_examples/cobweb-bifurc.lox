@@ -29,6 +29,7 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
     var paused = false;
     var original_rr = rr;  // Store initial r value for restart
     var manual_step = 0.01;  // Step size for manual parameter adjustment
+    var last_rr = rr;  // Track last parameter value for manual stepping
     
     print("Interactive Controls:");
     print("  SPACE - Pause/Resume animation");
@@ -76,6 +77,7 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
         
         // Manual parameter stepping (when paused)
         if (paused) {
+            var old_rr = rr;
             if (win.key_pressed(win.KEY_LEFT)) {
                 rr = rr - manual_step;
                 if (rr < r_min) rr = r_min;
@@ -95,6 +97,38 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
                 manual_step = manual_step / 2.0;
                 if (manual_step < 0.0001) manual_step = 0.0001;
                 print("Manual step size: " + str(manual_step));
+            }
+            
+            // If parameter changed, fill in bifurcation points between old and new values
+            if (rr != old_rr) {
+                var start_r = old_rr;
+                var end_r = rr;
+                if (start_r > end_r) {
+                    var temp = start_r;
+                    start_r = end_r;
+                    end_r = temp;
+                }
+                
+                // Fill in points with small steps to avoid gaps
+                var fill_step = r_step;
+                var current_r = start_r;
+                while (current_r <= end_r) {
+                    if (current_r >= r_min and current_r <= r_max) {
+                        var x = 0.5;
+                        for (var j = 0; j < iters - keep; j = j + 1) {
+                            x = logistic(current_r, x);
+                        }
+                        
+                        // Draw bifurcation points for this r value
+                        for (var j = 0; j < keep; j = j + 1) {
+                            x = logistic(current_r, x);
+                            var px = half_width * (current_r - r_min) / (r_max - r_min);
+                            var py = screen_height - screen_height * x;
+                            bifurcation_buffer.pixel(px, py, col);
+                        }
+                    }
+                    current_r = current_r + fill_step;
+                }
             }
         }
         
