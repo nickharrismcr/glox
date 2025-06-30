@@ -1,0 +1,189 @@
+// Massive Batched Cubes Demo - Performance Stress Test
+// Demonstrates batch drawing with thousands of cubes that would be impossible with individual draw calls
+// This creates 10,000+ cubes that animate smoothly thanks to batching!
+
+import math
+import random
+import colour_utils
+import sys
+
+// Configuration for massive cube grid
+const GRID_SIZE = 100        // 100x100 = 10,000 cubes!
+const CUBE_SPACING = 2.0     // Space between cubes
+const CUBE_SIZE = 0.8        // Individual cube size
+const WAVE_HEIGHT = 4.0      // Height of wave animation
+const WAVE_SPEED = 2.0       // Speed of wave propagation
+const COLOR_SPEED = 1.5      // Speed of color animation
+
+// Window setup  
+const WIDTH = 1600
+const HEIGHT = 1000
+
+win = window(WIDTH, HEIGHT)
+win.init()
+
+// Create camera positioned to see the massive grid
+var grid_center = (GRID_SIZE - 1) * CUBE_SPACING / 2
+var cam_pos = vec3(grid_center + 50, 30, grid_center + 50)
+var cam_target = vec3(grid_center, 0, grid_center)
+var cam_up = vec3(0, 1, 0)
+cam = camera(cam_pos, cam_target, cam_up)
+
+// Create a batch for cubes
+var cube_batch = batch(win.BATCH_CUBE)
+
+// Massive cube data structure - optimized for thousands of cubes
+class MassiveCube {
+    init(x, z, gridX, gridZ) {
+        this.basePos = vec3(x, 0, z)
+        this.gridX = gridX
+        this.gridZ = gridZ
+        this.timeOffset = random.float(0, 6.28)  // Random phase offset for waves
+        this.colorOffset = random.float(0, 1.0)  // Random color offset
+          // Initial position and color
+        var hue = int((gridX + gridZ) * 10) % 360
+        var initialColor = colour_utils.hsv_to_rgb(hue, 0.8, 1.0)
+        
+        // Add to batch and store index
+        var sizeVec = vec3(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE)
+        this.batch_index = cube_batch.add(this.basePos, sizeVec, initialColor)
+    }    update(time) {
+        // Create wave effect based on distance from center
+        var centerX = GRID_SIZE / 2.0
+        var centerZ = GRID_SIZE / 2.0
+        var dx = float(this.gridX) - centerX
+        var dz = float(this.gridZ) - centerZ
+        var distFromCenter = sqrt(dx * dx + dz * dz)
+        
+        // Multiple wave equations for complex motion
+        var wave1 = sin(time * WAVE_SPEED + distFromCenter * 0.3 + this.timeOffset) * WAVE_HEIGHT
+        var wave2 = sin(time * WAVE_SPEED * 0.7 + this.gridX * 0.2) * WAVE_HEIGHT * 0.3
+        var wave3 = sin(time * WAVE_SPEED * 1.3 + this.gridZ * 0.2) * WAVE_HEIGHT * 0.3
+        
+        var animatedY = wave1 + wave2 + wave3
+        var newPos = vec3(this.basePos.x, animatedY, this.basePos.z)
+        
+        // Update position in batch
+        cube_batch.set_position(this.batch_index, newPos)
+        
+        // Animate colors in waves too
+        var colorTime = time * COLOR_SPEED + distFromCenter * 0.1 + this.colorOffset
+        var hue = int(colorTime * 50) % 360
+        var saturation = 0.6 + sin(colorTime) * 0.3  // Pulse saturation
+        var brightness = 0.7 + sin(colorTime * 0.8) * 0.3  // Pulse brightness
+        
+        var newColor = colour_utils.hsv_to_rgb(hue, saturation, brightness)
+        cube_batch.set_color(this.batch_index, newColor)
+    }
+}
+
+// Create MASSIVE grid of cubes - this would be impossible with individual draw calls!
+var cubes = []
+var cubeCount = 0
+
+print("Creating massive cube grid...")
+print("Grid size:", GRID_SIZE, "x", GRID_SIZE, "=", GRID_SIZE * GRID_SIZE, "cubes")
+
+var startTime = sys.clock()
+
+// Create the massive grid
+for (var x = 0; x < GRID_SIZE; x = x + 1) {
+    for (var z = 0; z < GRID_SIZE; z = z + 1) {
+        var worldX = x * CUBE_SPACING
+        var worldZ = z * CUBE_SPACING
+        
+        cubes.append(MassiveCube(worldX, worldZ, x, z))
+        cubeCount = cubeCount + 1
+        
+        // Show progress every 1000 cubes
+        if (cubeCount % 1000 == 0) {
+            print("Created", cubeCount, "cubes...")
+        }
+    }
+}
+
+var endTime = sys.clock()
+var creationTime = endTime - startTime
+
+print("✅ MASSIVE GRID COMPLETE!")
+print("📊 Total cubes:", cubeCount)
+print("📊 Batch entries:", cube_batch.count())
+print("⏱️  Creation time:", creationTime, "seconds")
+print("🚀 This would require", cubeCount, "individual draw calls without batching!")
+print("🎯 With batching: Only 1 draw call for ALL cubes!")
+print("")
+
+// Simple time tracking
+var last_time = 0
+
+// Performance tracking
+var frameCount = 0
+var fpsUpdateTime = 0
+var currentFPS = 0
+
+// Main loop
+print("🎮 Starting main loop with", cubeCount, "animated cubes...")
+while (!win.should_close()) {
+    var current_time = sys.clock()
+    var delta_time = current_time - last_time
+    last_time = current_time
+    
+    // Cap delta time to avoid big jumps
+    if (delta_time > 0.1) {
+        delta_time = 0.016
+    }
+    
+    // Update FPS counter
+    frameCount = frameCount + 1
+    fpsUpdateTime = fpsUpdateTime + delta_time
+    if (fpsUpdateTime >= 1.0) {
+        currentFPS = frameCount
+        frameCount = 0
+        fpsUpdateTime = 0
+    }
+    
+    // Update all cubes with current time (much more efficient than deltaTime for waves)
+    var updateStart = sys.clock()
+    for (var i = 0; i < len(cubes); i = i + 1) {
+        cubes[i].update(current_time)
+    }
+    var updateEnd = sys.clock()
+    var updateTime = updateEnd - updateStart
+    
+    // Render everything
+    var renderStart = sys.clock()
+    win.begin()
+    win.begin_blend_mode(win.BLEND_ALPHA)  // Enable alpha blending for smooth colors
+    win.clear(vec4(10, 15, 25, 255))  // Dark background to see wave colors
+    
+    win.begin_3d(cam)
+    
+    // Draw all cubes in ONE SINGLE BATCHED CALL!
+    cube_batch.draw()
+    
+    win.end_3d()
+    
+    // Performance info display
+    win.text("🚀 MASSIVE BATCHED CUBES DEMO", 10, 10, 24, vec4(255, 255, 100, 255))
+    win.text("📊 Total cubes: " + str(cubeCount), 10, 40, 18, vec4(255, 255, 255, 255))
+    win.text("🎯 Batch entries: " + str(cube_batch.count()), 10, 65, 18, vec4(255, 255, 255, 255))
+    win.text("⚡ FPS: " + str(currentFPS), 10, 90, 18, vec4(100, 255, 100, 255))
+    win.text("🔄 Update time: " + str(int(updateTime * 1000)) + " ms", 10, 115, 16, vec4(200, 200, 255, 255))
+    win.text("🎨 Draw calls: 1 (instead of " + str(cubeCount) + "!)", 10, 140, 16, vec4(255, 200, 100, 255))
+    win.text("", 10, 165, 16, vec4(255, 255, 255, 255))
+    win.text("💡 Without batching this would be impossible!", 10, 190, 16, vec4(255, 150, 150, 255))
+    win.text("🎮 ESC to exit", 10, 215, 16, vec4(200, 200, 200, 255))
+    win.end_blend_mode()
+    win.end()
+    var renderEnd = sys.clock()
+    var renderTime = renderEnd - renderStart
+    
+    // Exit on ESC
+    if (win.key_pressed(win.KEY_ESCAPE)) {
+        break
+    }
+}
+
+win.close()
+print("🎉 Demo complete!")
+print("📈 Peak performance achieved with", cubeCount, "cubes in real-time!")

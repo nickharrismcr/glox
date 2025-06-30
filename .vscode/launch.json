@@ -5,14 +5,16 @@
       "name": "Debug Go",
       "type": "go",
       "request": "launch",
-      "showLog":false,
+      "showLog": false,
       "stopOnEntry": false,
       "internalConsoleOptions": "openOnSessionStart",
-      "mode": "debug",       // or "exec" if you're running a binary
+      "mode": "debug",
       "program": "${workspaceFolder}/main.go",
-      //"args": ["--debug","--globals","--force-compile", "--skip-builtins","tests/lox/catch_runtime.lox"],  // <== your CLI args here
-      "args": ["-d","nod.lox"],  // <== your CLI args here
-      "env": {"LOX_PATH":"D:/go/glox"},
+      "args": ["-d", "nod.lox"],
+      "env": {
+        "LOX_PATH": "${workspaceFolder}",
+        "PATH": "${workspaceFolder}/bin:${env:PATH}"
+      },
       "cwd": "${workspaceFolder}"
     }
   ]

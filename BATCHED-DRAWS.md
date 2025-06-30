@@ -2,7 +2,9 @@
 
 ## Overview
 
-This document describes the design and implementation of a batched drawing system for the GLox interpreter. The system will dramatically improve rendering performance by reducing individual draw calls and leveraging OpenGL/Raylib's batching capabilities.
+This document describes the design and implementation of a batched drawing system for the GLox interpreter. The system follows the **established builtin object pattern** used throughout GLox (like `FloatArrayObject`, `WindowObject`, etc.) and will dramatically improve rendering performance by reducing individual draw calls and leveraging OpenGL/Raylib's batching capabilities.
+
+ 
 
 ## Current Performance Issues
 
@@ -21,152 +23,133 @@ Implement a batching system where the Go backend maintains lists of draw data th
 
 ### Go Backend Implementation
 
+Following the existing builtin object pattern (like `FloatArrayObject`, `WindowObject`, etc.):
+
 ```go
 // Core batch entry structure
 type BatchEntry struct {
-    Position vec3  // World position
-    Size     vec3  // Dimensions (width, height, depth)
-    Color    vec4  // RGBA color (0-255 range)
-    Rotation vec3  // Rotation angles (optional, for future)
+    Position core.Vec3Object  // World position (reuse existing Vec3)
+    Size     core.Vec3Object  // Dimensions (width, height, depth)
+    Color    core.Vec4Object  // RGBA color (0-255 range)
+    Rotation core.Vec3Object  // Rotation angles (optional, for future)
 }
 
-// Batch container for specific primitive types
+// Internal batch data container
 type DrawBatch struct {
     BatchType string        // "cube", "sphere", "plane", etc.
     Entries   []BatchEntry  // Array of draw data
     Capacity  int          // Pre-allocated capacity for performance
 }
 
-// Global batch registry
-var globalBatches = make(map[string]*DrawBatch)
+// Main batch object following the standard pattern
+type BatchObject struct {
+    core.BuiltInObject
+    Value   *DrawBatch
+    Methods map[int]*core.BuiltInObject
+}
 ```
 
 ### Batch Management Functions
 
 ```go
-// Create or retrieve existing batch
-func createBatch(batchType string) *DrawBatch {
-    if batch, exists := globalBatches[batchType]; exists {
-        return batch
+// Create batch object (follows standard constructor pattern)
+func BatchBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+    if argCount != 1 {
+        vm.RunTimeError("batch() expects 1 argument")
+        return core.NIL_VALUE
     }
     
-    batch := &DrawBatch{
-        BatchType: batchType,
-        Entries:   make([]BatchEntry, 0, 1000), // Pre-allocate capacity
-        Capacity:  1000,
+    batchTypeVal := vm.Stack(arg_stackptr)
+    if !batchTypeVal.IsStringObject() {
+        vm.RunTimeError("batch() argument must be a string")
+        return core.NIL_VALUE
     }
-    globalBatches[batchType] = batch
-    return batch
+    
+    batchType := batchTypeVal.Obj.(*core.StringObject).Value
+    batchObj := MakeBatchObject(batchType)
+    RegisterAllBatchMethods(batchObj)
+    return core.MakeObjectValue(batchObj, true)
 }
 
-// Add entry to batch, returns index for later access
-func (batch *DrawBatch) Add(pos vec3, size vec3, color vec4) int {
+// Constructor following standard pattern
+func MakeBatchObject(batchType string) *BatchObject {
+    return &BatchObject{
+        BuiltInObject: core.BuiltInObject{},
+        Value: &DrawBatch{
+            BatchType: batchType,
+            Entries:   make([]BatchEntry, 0, 1000), // Pre-allocate capacity
+            Capacity:  1000,
+        },
+    }
+}
+
+// Standard object interface implementations
+func (o *BatchObject) String() string {
+    return fmt.Sprintf("<Batch %s [%d entries]>", o.Value.BatchType, len(o.Value.Entries))
+}
+
+func (o *BatchObject) GetType() core.ObjectType {
+    return core.OBJECT_NATIVE
+}
+
+func (o *BatchObject) GetNativeType() core.NativeType {
+    return core.NATIVE_BATCH  // New type to be added
+}
+
+func (o *BatchObject) GetMethod(stringId int) *core.BuiltInObject {
+    return o.Methods[stringId]
+}
+
+func (o *BatchObject) RegisterMethod(name string, method *core.BuiltInObject) {
+    if o.Methods == nil {
+        o.Methods = make(map[int]*core.BuiltInObject)
+    }
+    o.Methods[core.InternName(name)] = method
+}
+
+func (o *BatchObject) IsBuiltIn() bool {
+    return true
+}
+
+// Core batch operations (internal methods)
+func (batch *DrawBatch) Add(pos *core.Vec3Object, size *core.Vec3Object, color *core.Vec4Object) int {
     entry := BatchEntry{
-        Position: pos,
-        Size:     size,
-        Color:    color,
+        Position: *pos,
+        Size:     *size,
+        Color:    *color,
+        Rotation: *core.MakeVec3Object(0, 0, 0), // Default no rotation
     }
     batch.Entries = append(batch.Entries, entry)
     return len(batch.Entries) - 1
 }
 
-// Modify existing entry by index
-func (batch *DrawBatch) SetPosition(index int, pos vec3) {
-    if index >= 0 && index < len(batch.Entries) {
-        batch.Entries[index].Position = pos
-    }
-}
-
-func (batch *DrawBatch) SetColor(index int, color vec4) {
-    if index >= 0 && index < len(batch.Entries) {
-        batch.Entries[index].Color = color
-    }
-}
-
-// Generic set method using field names (recommended approach)
-func (batch *DrawBatch) Set(index int, field string, value interface{}) error {
+func (batch *DrawBatch) SetPosition(index int, pos *core.Vec3Object) error {
     if index < 0 || index >= len(batch.Entries) {
         return fmt.Errorf("index out of range: %d", index)
     }
-    
-    entry := &batch.Entries[index]
-    
-    switch field {
-    case "position":
-        if pos, ok := value.(vec3); ok {
-            entry.Position = pos
-        } else {
-            return fmt.Errorf("invalid type for position")
-        }
-    case "size":
-        if size, ok := value.(vec3); ok {
-            entry.Size = size
-        } else {
-            return fmt.Errorf("invalid type for size")
-        }
-    case "color":
-        if color, ok := value.(vec4); ok {
-            entry.Color = color
-        } else {
-            return fmt.Errorf("invalid type for color")
-        }
-    default:
-        return fmt.Errorf("unknown field: %s", field)
-    }
-    
+    batch.Entries[index].Position = *pos
     return nil
 }
 
-// Get method for retrieving current values
-func (batch *DrawBatch) Get(index int, field string) (interface{}, error) {
+func (batch *DrawBatch) SetColor(index int, color *core.Vec4Object) error {
     if index < 0 || index >= len(batch.Entries) {
-        return nil, fmt.Errorf("index out of range: %d", index)
+        return fmt.Errorf("index out of range: %d", index)
     }
-    
-    entry := &batch.Entries[index]
-    
-    switch field {
-    case "position":
-        return entry.Position, nil
-    case "size":
-        return entry.Size, nil
-    case "color":
-        return entry.Color, nil
-    default:
-        return nil, fmt.Errorf("unknown field: %s", field)
+    batch.Entries[index].Color = *color
+    return nil
+}
+
+func (batch *DrawBatch) SetSize(index int, size *core.Vec3Object) error {
+    if index < 0 || index >= len(batch.Entries) {
+        return fmt.Errorf("index out of range: %d", index)
     }
+    batch.Entries[index].Size = *size
+    return nil
 }
 
 // Clear all entries for next frame
 func (batch *DrawBatch) Clear() {
     batch.Entries = batch.Entries[:0] // Keep capacity, reset length
-}
-
-// Perform batched draw using Raylib
-func (batch *DrawBatch) Draw() {
-    if len(batch.Entries) == 0 {
-        return
-    }
-    
-    rl.Begin3dMode(getCurrentCamera()) // If not already in 3D mode
-    
-    switch batch.BatchType {
-    case "cube":
-        for _, entry := range batch.Entries {
-            rl.DrawCube(
-                rl.Vector3{X: entry.Position.X, Y: entry.Position.Y, Z: entry.Position.Z},
-                entry.Size.X, entry.Size.Y, entry.Size.Z,
-                rl.Color{R: uint8(entry.Color.X), G: uint8(entry.Color.Y), 
-                        B: uint8(entry.Color.Z), A: uint8(entry.Color.W)},
-            )
-        }
-    case "sphere":
-        // Similar implementation for spheres
-    case "plane":
-        // Similar implementation for planes
-    }
-    
-    // Note: rl.End3dMode() called by main render loop
 }
 ```
 
@@ -174,9 +157,11 @@ func (batch *DrawBatch) Draw() {
 
 ### Basic Usage
 
+The batch objects are created directly and follow the standard builtin object pattern:
+
 ```lox
-// Create or get a batch for cubes
-var cube_batch = win.create_batch("cube")
+// Create a batch for cubes
+var cube_batch = batch("cube")
 
 // Add primitives (returns index for later modification)
 var base_cube_idx = cube_batch.add(vec3(0, 0, 0), vec3(2, 2, 2), vec4(0, 0, 0, 255))
@@ -193,55 +178,31 @@ cube_batch.draw()
 cube_batch.clear()
 ```
 
-### Position Update Strategy
+### Batch Object Methods (in batch_methods.go)
 
-The optimal approach for handling position updates uses **index + field name** for maximum flexibility:
-
-```lox
-// Add entry, get index for later updates
-var cube_idx = cube_batch.add(vec3(0, 0, 0), vec3(2, 2, 2), vec4(255, 0, 0, 255))
-
-// Update specific fields by index + field name
-cube_batch.set(cube_idx, "position", vec3(1, 1, 1))
-cube_batch.set(cube_idx, "color", vec4(0, 255, 0, 255))
-cube_batch.set(cube_idx, "size", vec3(3, 3, 3))
-
-// Get current values
-var pos = cube_batch.get(cube_idx, "position")
-var color = cube_batch.get(cube_idx, "color")
-```
-
-**Alternative: Typed Methods** (more verbose but type-safe)
-```lox
-cube_batch.set_position(cube_idx, vec3(1, 1, 1))
-cube_batch.set_color(cube_idx, vec4(0, 255, 0, 255))
-cube_batch.set_size(cube_idx, vec3(3, 3, 3))
-```
-
-**Recommendation**: Use index + field name approach for flexibility and ease of extension.
-
-### Advanced API Methods
+Following the existing pattern like `farray_methods.go`:
 
 ```lox
+// Core batch operations
+cube_batch.add(position, size, color)          // Returns index
+cube_batch.set_position(index, vec3)           // Update position by index
+cube_batch.set_color(index, vec4)              // Update color by index
+cube_batch.set_size(index, vec3)               // Update size by index
+cube_batch.get_position(index)                 // Get position by index
+cube_batch.get_color(index)                    // Get color by index
+cube_batch.get_size(index)                     // Get size by index
+
 // Batch information
-var count = cube_batch.count()        // Number of entries
-var capacity = cube_batch.capacity()  // Current capacity
+cube_batch.count()                             // Number of entries
+cube_batch.capacity()                          // Current capacity
 
 // Batch management
-cube_batch.reserve(5000)              // Pre-allocate space
-cube_batch.clear()                    // Remove all entries
-cube_batch.remove(index)              // Remove specific entry
+cube_batch.clear()                             // Remove all entries
+cube_batch.reserve(size)                       // Pre-allocate space
+cube_batch.is_valid_index(index)               // Check if index exists
 
-// Validation
-var valid = cube_batch.is_valid_index(cube_idx)  // Check if index exists
-
-// Bulk operations
-cube_batch.set_all_colors(vec4(255, 0, 0, 255))  // Set same color for all
-cube_batch.translate_all(vec3(0, 1, 0))           // Move all entries
-
-// Efficient relative updates for moving objects
-cube_batch.translate(cube_idx, vec3(0.1, 0, 0))  // Relative movement
-cube_batch.scale(cube_idx, 1.2)                  // Scale single entry
+// Draw operation
+cube_batch.draw()                              // Render all entries in batch
 ```
 
 ## Integration with Current Code
@@ -333,7 +294,7 @@ class Cube {
 // In CubeStackScene.draw() - single batched draw call
 draw(renderer) {
     // Create batch for this frame
-    var cube_batch = renderer.create_batch("cube")
+    var cube_batch = batch("cube")
     
     // Add all cubes to batch (no drawing yet)
     foreach (var cube in this.cubes) {
@@ -355,10 +316,9 @@ class CubeStackScene {
         this.batch_initialized = false
     }
     
-    draw(renderer) {
-        // Initialize batch once
+    draw(renderer) {        // Initialize batch once
         if (!this.batch_initialized) {
-            this.cube_batch = renderer.create_batch("cube")
+            this.cube_batch = batch("cube")
             foreach (var cube in this.cubes) {
                 cube.addToBatch(this.cube_batch)
             }
@@ -396,15 +356,19 @@ Current performance with ~1,000 cubes:
 ## Implementation Phases
 
 ### Phase 1: Basic Cube Batching
-- Implement core BatchEntry and DrawBatch structures
-- Add basic Lox API: `create_batch()`, `add()`, `draw()`, `clear()`
+- Add `NATIVE_BATCH` type to `src/core/object.go`
+- Implement `src/builtin/obj_builtin_batch.go` with core BatchObject
+- Implement `src/builtin/batch_methods.go` with Lox method bindings
+- Register `BatchBuiltIn` constructor in `src/builtin/builtin.go`
+- Add basic methods: `add()`, `set_position()`, `set_color()`, `draw()`, `clear()`
 - Convert cube city example to use batching
 - Performance testing and validation
 
 ### Phase 2: Extended API
-- Add indexed access: `set_position()`, `set_color()`, etc.
-- Implement batch management: `reserve()`, `remove()`, `count()`
-- Add bulk operations for common use cases
+- Add indexed access methods: `get_position()`, `get_color()`, `set_size()`
+- Implement batch management: `reserve()`, `count()`, `capacity()`, `is_valid_index()`
+- Add utility methods for common operations
+- Error handling and bounds checking
 
 ### Phase 3: Multiple Primitive Types
 - Extend to spheres, planes, lines, etc.
@@ -450,9 +414,164 @@ Current performance with ~1,000 cubes:
 ## Files to Modify
 
 ### Go Backend Files
-- `src/builtin/builtin_draw.go` - Core batching implementation
-- `src/builtin/obj_builtin_window.go` - Window batch management methods
-- `src/core/object.go` - Batch object type definitions
+
+#### New Files to Create
+- `src/builtin/obj_builtin_batch.go` - Core `BatchObject` implementation
+- `src/builtin/batch_methods.go` - Lox method bindings for batch operations
+
+#### Files to Modify
+- `src/core/object.go` - Add `NATIVE_BATCH` type constant
+- `src/builtin/builtin.go` - Register `BatchBuiltIn` constructor function
+- `src/builtin/builtin_draw.go` - Add batch rendering implementation
+
+#### Implementation Structure
+
+**obj_builtin_batch.go** (following `obj_builtin_farray.go` pattern):
+```go
+package builtin
+
+import (
+    "fmt"
+    "glox/src/core"
+    rl "github.com/gen2brain/raylib-go/raylib"
+)
+
+// Constructor function (follows standard pattern)
+func BatchBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+    if argCount != 1 {
+        vm.RunTimeError("batch() expects 1 argument")
+        return core.NIL_VALUE
+    }
+    
+    batchTypeVal := vm.Stack(arg_stackptr)
+    if !batchTypeVal.IsStringObject() {
+        vm.RunTimeError("batch() argument must be a string")
+        return core.NIL_VALUE
+    }
+    
+    batchType := batchTypeVal.Obj.(*core.StringObject).Value
+    batchObj := MakeBatchObject(batchType)
+    RegisterAllBatchMethods(batchObj)
+    return core.MakeObjectValue(batchObj, true)
+}
+
+// Internal data structures
+type BatchEntry struct {
+    Position core.Vec3Object
+    Size     core.Vec3Object
+    Color    core.Vec4Object
+    Rotation core.Vec3Object
+}
+
+type DrawBatch struct {
+    BatchType string
+    Entries   []BatchEntry
+    Capacity  int
+}
+
+// Main object (follows standard pattern)
+type BatchObject struct {
+    core.BuiltInObject
+    Value   *DrawBatch
+    Methods map[int]*core.BuiltInObject
+}
+
+// Standard interface implementations
+func MakeBatchObject(batchType string) *BatchObject { /* ... */ }
+func (o *BatchObject) String() string { /* ... */ }
+func (o *BatchObject) GetType() core.ObjectType { return core.OBJECT_NATIVE }
+func (o *BatchObject) GetNativeType() core.NativeType { return core.NATIVE_BATCH }
+func (o *BatchObject) GetMethod(stringId int) *core.BuiltInObject { /* ... */ }
+func (o *BatchObject) RegisterMethod(name string, method *core.BuiltInObject) { /* ... */ }
+func (o *BatchObject) IsBuiltIn() bool { return true }
+
+// Utility functions
+func IsBatchObject(v core.Value) bool { /* ... */ }
+func AsBatch(v core.Value) *BatchObject { /* ... */ }
+```
+
+**batch_methods.go** (following `farray_methods.go` pattern):
+```go
+package builtin
+
+import "glox/src/core"
+
+func RegisterAllBatchMethods(o *BatchObject) {
+    o.RegisterMethod("add", &core.BuiltInObject{
+        Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+            // Add entry to batch, return index
+        },
+    })
+    
+    o.RegisterMethod("set_position", &core.BuiltInObject{
+        Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+            // Update position by index
+        },
+    })
+    
+    o.RegisterMethod("set_color", &core.BuiltInObject{
+        Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+            // Update color by index
+        },
+    })
+    
+    o.RegisterMethod("draw", &core.BuiltInObject{
+        Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+            // Render all entries in batch
+        },
+    })
+    
+    o.RegisterMethod("clear", &core.BuiltInObject{
+        Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+            // Clear all entries
+        },
+    })
+    
+    o.RegisterMethod("count", &core.BuiltInObject{
+        Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+            // Return number of entries
+        },
+    })
+    
+    // ... additional methods
+}
+```
+
+### Core Type System Update
+
+**src/core/object.go** - Add new native type:
+```go
+const (
+    NATIVE_FLOAT_ARRAY NativeType = iota
+    NATIVE_VEC2
+    NATIVE_VEC3
+    NATIVE_VEC4
+    NATIVE_WINDOW
+    NATIVE_IMAGE
+    NATIVE_TEXTURE
+    NATIVE_RENDER_TEXTURE
+    NATIVE_CAMERA
+    NATIVE_SHADER
+    NATIVE_BATCH  // <- Add this new type
+)
+```
+
+### Integration Pattern
+
+The batch system follows the **standard GLox builtin pattern**:
+
+1. **Constructor Function** (`BatchBuiltIn`) - Creates new batch objects
+2. **Object Structure** (`BatchObject`) - Wraps internal data with methods map
+3. **Method Registration** (`RegisterAllBatchMethods`) - Binds Lox methods
+4. **Standard Interfaces** - Implements `Object`, `NativeObject` interfaces
+5. **Type Safety** - Uses existing `Vec3Object`, `Vec4Object` types internally
+
+This approach ensures:
+- **Consistency** with existing builtin objects
+- **Type Safety** using established Vec3/Vec4 objects  
+- **Memory Management** following existing patterns
+- **Easy Extension** can add new batch types and methods
+- **Clean Integration** works seamlessly with existing renderer
 
 ### Documentation
 - `BUILTINS.md` - Document new batch API methods
@@ -469,3 +588,79 @@ Current performance with ~1,000 cubes:
 - **API Usability**: Clean, intuitive Lox API
 - **Backwards Compatibility**: No breaking changes to existing code
 - **Memory Efficiency**: Minimal memory overhead for batching
+
+### Rendering Implementation
+
+The `draw()` method in `batch_methods.go` performs the actual batched rendering:
+
+```go
+o.RegisterMethod("draw", &core.BuiltInObject{
+    Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+        if len(o.Value.Entries) == 0 {
+            return core.NIL_VALUE
+        }
+        
+        // Batch render based on type
+        switch o.Value.BatchType {
+        case "cube":
+            for _, entry := range o.Value.Entries {
+                pos := rl.Vector3{
+                    X: float32(entry.Position.X), 
+                    Y: float32(entry.Position.Y), 
+                    Z: float32(entry.Position.Z),
+                }
+                size := rl.Vector3{
+                    X: float32(entry.Size.X), 
+                    Y: float32(entry.Size.Y), 
+                    Z: float32(entry.Size.Z),
+                }
+                color := rl.Color{
+                    R: uint8(entry.Color.X), 
+                    G: uint8(entry.Color.Y), 
+                    B: uint8(entry.Color.Z), 
+                    A: uint8(entry.Color.W),
+                }
+                
+                rl.DrawCube(pos, size.X, size.Y, size.Z, color)
+            }
+        case "sphere":
+            // Similar implementation for spheres
+            for _, entry := range o.Value.Entries {
+                // Draw sphere with entry data
+            }
+        case "plane":
+            // Similar implementation for planes
+            for _, entry := range o.Value.Entries {
+                // Draw plane with entry data
+            }
+        default:
+            vm.RunTimeError(fmt.Sprintf("Unknown batch type: %s", o.Value.BatchType))
+        }
+        
+        return core.NIL_VALUE
+    },
+})
+```
+
+**Key Benefits of This Approach:**
+
+1. **Single Loop**: All primitives of the same type rendered in one tight loop
+2. **Minimal State Changes**: Raylib can optimize consecutive similar draw calls
+3. **Memory Locality**: Entry data stored contiguously for better cache performance
+4. **Type-Specific Optimization**: Each primitive type can have specialized rendering
+5. **GPU Batching**: Raylib's internal batching systems can optimize further
+
+**Integration with 3D Mode:**
+
+The batch draw calls work within existing 3D rendering context:
+
+```lox
+win.begin_3d(camera)
+// Multiple batch.draw() calls here - all batched efficiently
+cube_batch.draw()
+sphere_batch.draw() 
+plane_batch.draw()
+win.end_3d()
+```
+
+This maintains compatibility with existing rendering while dramatically improving performance.

@@ -35,6 +35,7 @@ const (
 	NATIVE_RENDER_TEXTURE
 	NATIVE_CAMERA
 	NATIVE_SHADER
+	NATIVE_BATCH
 )
 
 type Object interface {

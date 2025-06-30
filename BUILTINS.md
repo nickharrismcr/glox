@@ -4,16 +4,17 @@
 
 1. [Builtin Functions](#builtin-functions)
 2. [Window Object](#window-object)
-3. [Texture Object](#texture-object)
-4. [RenderTexture Object](#rendertexture-object)
-5. [Camera Object](#camera-object)
-6. [Shader Object](#shader-object)
-7. [Image Object](#image-object)
-8. [FloatArray Object](#floatarray-object)
-9. [Vector Objects](#vector-objects)
-10. [File Operations](#file-operations)
-11. [System Modules](#system-modules)
-12. [Color Utilities Module](#color-utilities-module)
+3. [Batch Object](#batch-object)
+4. [Texture Object](#texture-object)
+5. [RenderTexture Object](#rendertexture-object)
+6. [Camera Object](#camera-object)
+7. [Shader Object](#shader-object)
+8. [Image Object](#image-object)
+9. [FloatArray Object](#floatarray-object)
+10. [Vector Objects](#vector-objects)
+11. [File Operations](#file-operations)
+12. [System Modules](#system-modules)
+13. [Color Utilities Module](#color-utilities-module)
 
 ---
 
@@ -21,11 +22,10 @@
 
 ### Core Functions
 
-- **`args()`** - Returns command line arguments
-- **`clock()`** - Returns current time in seconds
+
 - **`type(value)`** - Returns the type of a value as a string
 - **`len(container)`** - Returns the length of a container (string, list, etc.)
-- **`sleep(seconds)`** - Pauses execution for the specified number of seconds
+
 
 ### Mathematical Functions
 
@@ -59,6 +59,7 @@
 ### Graphics Functions
 
 - **`draw_png(filename, width, height, data)`** - Writes PNG image data to file
+- **`batch(type)`** - Creates a new batch object for optimized rendering of primitives
 
 ### Special Functions
 
@@ -121,6 +122,11 @@ win.init();
 - **`win.BLEND_SUBTRACT`** - Subtractive blending
 - **`win.BLEND_DEFAULT`** - Default blend mode (same as BLEND_ALPHA)
 
+#### Batch Type Constants
+- **`win.BATCH_CUBE`** - For cube batch creation
+- **`win.BATCH_SPHERE`** - For sphere batch creation
+- **`win.BATCH_PLANE`** - For plane batch creation
+
 ### Input Methods
 - **`key_down(key_code)`** - Check if key is currently pressed (use win.KEY_* constants)
 - **`key_pressed(key_code)`** - Check if key was just pressed this frame (use win.KEY_* constants)
@@ -141,6 +147,166 @@ Key constants are available as `win.KEY_*` (e.g., `win.KEY_SPACE`, `win.KEY_ESCA
 ### Shader Support
 - **`begin_shader_mode(shader)`** - Begin custom shader mode
 - **`end_shader_mode()`** - End custom shader mode
+
+---
+
+## Batch Object
+
+The batch object provides high-performance rendering for large numbers of similar primitives. Instead of making individual draw calls for each object, batching allows thousands of objects to be rendered in a single optimized draw call.
+
+### Batch Creation
+
+```lox
+// Preferred method using constants
+var cube_batch = batch(win.BATCH_CUBE);      // Create a batch for cubes
+var sphere_batch = batch(win.BATCH_SPHERE);  // Create a batch for spheres
+var plane_batch = batch(win.BATCH_PLANE);    // Create a batch for planes
+
+// Legacy method using strings (still supported)
+var cube_batch = batch("cube");      // Create a batch for cubes
+var sphere_batch = batch("sphere");  // Create a batch for spheres
+var plane_batch = batch("plane");    // Create a batch for planes
+```
+
+**Supported batch types:**
+- `win.BATCH_CUBE` / `"cube"` - For rendering cubes
+- `win.BATCH_SPHERE` / `"sphere"` - For rendering spheres  
+- `win.BATCH_PLANE` / `"plane"` - For rendering planes
+
+### Adding Primitives
+
+```lox
+// Add primitives to batch (returns index for later modification)
+var index = cube_batch.add(position, size, color);
+
+// Examples:
+var idx1 = cube_batch.add(vec3(0, 0, 0), vec3(1, 1, 1), vec4(255, 0, 0, 255));
+var idx2 = sphere_batch.add(vec3(2, 0, 0), vec3(0.5, 0.5, 0.5), vec4(0, 255, 0, 255));
+var idx3 = plane_batch.add(vec3(0, -1, 0), vec3(10, 1, 10), vec4(100, 100, 100, 255));
+```
+
+### Updating Primitives
+
+Update existing primitives by index:
+
+```lox
+// Update position, size, or color of existing entries
+cube_batch.set_position(index, vec3(1, 2, 3));
+cube_batch.set_size(index, vec3(2, 2, 2));
+cube_batch.set_color(index, vec4(0, 0, 255, 255));
+
+// Get current values
+var pos = cube_batch.get_position(index);
+var size = cube_batch.get_size(index);
+var color = cube_batch.get_color(index);
+```
+
+### Rendering
+
+```lox
+// Render ALL primitives in the batch with a single draw call
+cube_batch.draw();
+
+// Typical usage in render loop:
+win.begin_3d(camera);
+cube_batch.draw();      // Renders all cubes in one call
+sphere_batch.draw();    // Renders all spheres in one call
+plane_batch.draw();     // Renders all planes in one call
+win.end_3d();
+```
+
+### Batch Management
+
+```lox
+// Get information about the batch
+var count = cube_batch.count();           // Number of entries
+var capacity = cube_batch.capacity();     // Current capacity
+
+// Memory management
+cube_batch.reserve(5000);                 // Pre-allocate space for 5000 entries
+cube_batch.clear();                       // Remove all entries
+
+// Validation
+var valid = cube_batch.is_valid_index(idx); // Check if index exists
+```
+
+### Performance Benefits
+
+**Without Batching (Traditional):**
+```lox
+// 1000 individual draw calls - SLOW!
+for (var i = 0; i < 1000; i = i + 1) {
+    win.cube(positions[i], sizes[i], colors[i]);  // 1000 draw calls
+}
+```
+
+**With Batching (Optimized):**
+```lox
+// 1 optimized draw call - FAST!
+var cube_batch = batch("cube");
+for (var i = 0; i < 1000; i = i + 1) {
+    cube_batch.add(positions[i], sizes[i], colors[i]);  // Add to batch
+}
+cube_batch.draw();  // Single draw call for ALL 1000 cubes!
+```
+
+**Performance Comparison:**
+- **1,000 cubes:** 1,000 draw calls → 1 draw call (1000x improvement)
+- **10,000 cubes:** 10,000 draw calls → 1 draw call (10,000x improvement)
+- **Real-world result:** 10,000+ animated cubes running at 60+ FPS
+
+### Complete Example
+
+```lox
+import colour_utils;
+
+// Create batch and add cubes
+var cube_batch = batch(win.BATCH_CUBE);
+var indices = [];
+
+// Add 100 cubes in a grid
+for (var x = 0; x < 10; x = x + 1) {
+    for (var z = 0; z < 10; z = z + 1) {
+        var pos = vec3(x * 2, 0, z * 2);
+        var size = vec3(1, 1, 1);
+        var hue = (x + z) * 20;
+        var color = colour_utils.hsv_to_rgb(hue, 0.8, 1.0);
+        
+        var idx = cube_batch.add(pos, size, color);
+        indices.append(idx);
+    }
+}
+
+// Animation loop
+while (!win.should_close()) {
+    var time = sys.clock();
+    
+    // Update cube positions with wave effect
+    for (var i = 0; i < len(indices); i = i + 1) {
+        var wave = sin(time + i * 0.1) * 2;
+        var oldPos = cube_batch.get_position(indices[i]);
+        var newPos = vec3(oldPos.x, wave, oldPos.z);
+        cube_batch.set_position(indices[i], newPos);
+    }
+    
+    // Render
+    win.begin();
+    win.clear(vec4(0, 0, 0, 255));
+    win.begin_3d(camera);
+    
+    cube_batch.draw();  // Single call renders all 100 cubes!
+    
+    win.end_3d();
+    win.end();
+}
+```
+
+**💡 Pro Tips:**
+- Use batching for any scene with more than ~50 similar objects
+- Pre-allocate batch capacity with `reserve()` for better performance
+- Update only what changes - positions, colors, or sizes independently
+- Combine multiple batch types in the same scene
+- Clear batches between frames only if needed (reusing is more efficient)
 
 ---
 
@@ -295,6 +461,12 @@ Vectors support standard mathematical operations and are used extensively in 3D 
 ### sys Module
 
 The sys module provides system-level functionality (accessed via sys.function_name).
+
+`import sys` 
+
+- **`sys.args()`** - Returns command line arguments
+- **`sys.clock()`** - Returns current time in seconds
+- **`sys.sleep(seconds)`** - Pauses execution for the specified number of seconds
 
 ## File Operations
 

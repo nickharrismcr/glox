@@ -1,0 +1,81 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build GLox",
+            "type": "shell",
+            "command": "go build",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": "$go"
+        },
+        {
+            "label": "Setup Environment",
+            "type": "shell",
+            "command": "source ./setenv",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
+        },
+        {
+            "label": "Build and Setup",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Build GLox",
+                "Setup Environment"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
+        },
+        {
+            "label": "Run Batch Demo",
+            "type": "shell",
+            "command": "source ./setenv && ./glox ./lox_examples/batched_cubes_demo.lox",
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "dependsOn": "Build and Setup"
+        },
+        {
+            "label": "Test Batch Constants",
+            "type": "shell", 
+            "command": "source ./setenv && echo 'var cube_batch = batch(win.BATCH_CUBE); print \"Cube batch:\"; print cube_batch; print \"Success!\"' | ./glox",
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared", 
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "dependsOn": "Build and Setup"
+        }
+    ]
+}

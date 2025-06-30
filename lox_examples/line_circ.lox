@@ -260,6 +260,7 @@ const width=1500
 const height=900
 var win = window(width,height)
 win.init()
+win.toggle_fullscreen()
  
 
 lines=Lines(width, height); 

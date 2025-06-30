@@ -50,6 +50,7 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "", "rand", randBuiltIn)
 	defineBuiltIn(vm, "", "draw_png", builtin.DrawPNGBuiltIn)
 	defineBuiltIn(vm, "", "float_array", builtin.FloatArrayBuiltin)
+	defineBuiltIn(vm, "", "batch", builtin.BatchBuiltIn)
 	defineBuiltIn(vm, "", "encode_rgb", encodeRGBABuiltIn)
 	defineBuiltIn(vm, "", "decode_rgb", decodeRGBABuiltIn)
 	defineBuiltIn(vm, "", "window", builtin.WindowBuiltIn)
