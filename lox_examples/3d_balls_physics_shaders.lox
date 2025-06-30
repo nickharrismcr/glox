@@ -29,7 +29,7 @@
 // 4. PERFORMANCE OPTIMIZATIONS
 //    - Spatial culling for collision detection (early exit conditions)
 //    - Reduced collision frequency (every 3rd frame) for improved framerate
-//    - Efficient squared-distance calculations avoiding expensive sqrt()
+//    - Efficient squared-distance calculations avoiding expensive math.math.math.sqrt()
 //    - Object lifecycle management with automatic cleanup
 //
 // TECHNICAL DETAILS:
@@ -139,14 +139,14 @@ class MovingObject {
         dx = this.pos.x - other.pos.x
         dy = this.pos.y - other.pos.y
         dz = this.pos.z - other.pos.z
-        dist = sqrt(dx*dx + dy*dy + dz*dz)
+        dist = math.sqrt(dx*dx + dy*dy + dz*dz)
         
         // Handle edge case where objects are at exact same position
         if (dist == 0) {
             dx = random.float(-1, 1)
             dy = random.float(-1, 1)
             dz = random.float(-1, 1)
-            dist = sqrt(dx*dx + dy*dy + dz*dz)
+            dist = math.sqrt(dx*dx + dy*dy + dz*dz)
         }
         
         // Normalize collision direction vector
@@ -255,7 +255,7 @@ class MovingObject {
         dx = this.pos.x - explosion_pos.x
         dy = this.pos.y - explosion_pos.y
         dz = this.pos.z - explosion_pos.z
-        dist = sqrt(dx*dx + dy*dy + dz*dz)
+        dist = math.sqrt(dx*dx + dy*dy + dz*dz)
         
         // Define explosion radius and check if object is within range
         explosion_radius = 8.0
@@ -357,8 +357,8 @@ while (!win.should_close()) {
     // ===== CAMERA CONTROL =====
     // Smooth orbital camera movement around the scene center
     angle = angle + 0.005  // Rotation speed (radians per frame)
-    x = cos(angle) * DISTANCE  // Calculate X position on circle
-    z = sin(angle) * DISTANCE  // Calculate Z position on circle
+    x = math.cos(angle) * DISTANCE  // Calculate X position on circle
+    z = math.sin(angle) * DISTANCE  // Calculate Z position on circle
     cam.set_position(vec3(x, 10, z))  // Update camera position (Y=10 for elevated view)
     
     // ===== TIMING AND ANIMATION =====
@@ -367,9 +367,9 @@ while (!win.should_close()) {
     
     // Animate pulse shader center point in complex 3D Lissajous pattern
     // This creates smooth, organic movement for the pulse effect origin
-    pulse_center.x = sin(time_value * 0.5) * 10.0    // Slow horizontal oscillation (period ~12.6s)
-    pulse_center.z = cos(time_value * 0.3) * 8.0     // Medium depth oscillation (period ~21s)  
-    pulse_center.y = 5.0 + sin(time_value * 0.7) * 3.0  // Fast vertical oscillation (period ~9s) around Y=5
+    pulse_center.x = math.sin(time_value * 0.5) * 10.0    // Slow horizontal oscillation (period ~12.6s)
+    pulse_center.z = math.cos(time_value * 0.3) * 8.0     // Medium depth oscillation (period ~21s)  
+    pulse_center.y = 5.0 + math.sin(time_value * 0.7) * 3.0  // Fast vertical oscillation (period ~9s) around Y=5
     
     // ===== SHADER UNIFORM UPDATES =====
     // Update rainbow shader time uniform for color animation

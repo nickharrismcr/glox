@@ -33,7 +33,7 @@ out vec3 fragNormal;
 void main() {
     // Apply manual rotation around X and Y axes
     // First rotate around X-axis
-    float cosX = cos(rotation.x);
+    float cosX = sin(rotation.x);
     float sinX = sin(rotation.x);
     vec3 rotatedX = vec3(vertexPosition.x, vertexPosition.y * cosX - vertexPosition.z * sinX, vertexPosition.y * sinX + vertexPosition.z * cosX);
     
@@ -41,7 +41,7 @@ void main() {
     vec3 normalRotatedX = vec3(vertexNormal.x, vertexNormal.y * cosX - vertexNormal.z * sinX, vertexNormal.y * sinX + vertexNormal.z * cosX);
     
     // Then rotate around Y-axis
-    float cosY = cos(rotation.y);
+    float cosY = sin(rotation.y);
     float sinY = sin(rotation.y);
     vec3 rotatedPos = vec3(rotatedX.x * cosY - rotatedX.z * sinY, rotatedX.y, rotatedX.x * sinY + rotatedX.z * cosY);
     
@@ -153,7 +153,7 @@ class BrightObject {
         this.orbit_height = 10.0  // Fixed Y position for all cylinders
         
         // Calculate initial position
-        this.pos = vec3(cos(this.orbit_angle) * this.orbit_radius, this.orbit_height, sin(this.orbit_angle) * this.orbit_radius)
+        this.pos = vec3(math.cos(this.orbit_angle) * this.orbit_radius, this.orbit_height, math.sin(this.orbit_angle) * this.orbit_radius)
     }
     
     update() {
@@ -161,8 +161,8 @@ class BrightObject {
         this.orbit_angle = this.orbit_angle + this.orbit_speed
         
         // Calculate new position based on orbit - all at same Y height
-        this.pos.x = cos(this.orbit_angle) * this.orbit_radius
-        this.pos.z = sin(this.orbit_angle) * this.orbit_radius
+        this.pos.x = math.cos(this.orbit_angle) * this.orbit_radius
+        this.pos.z = math.sin(this.orbit_angle) * this.orbit_radius
         this.pos.y = this.orbit_height
         
         // Update rotations
@@ -203,10 +203,10 @@ for (i = 0; i < SHAPES; i = i + 1) {
 
 while (!win.should_close()) {
     angle = angle + 0.01
-    x = cos(angle) * 30
-    z = sin(angle) * 30
+    x = math.cos(angle) * 30
+    z = math.sin(angle) * 30
     // Add slow vertical movement - oscillate between y=5 and y=15
-    y = 10 + 50 * sin(angle * 0.3)
+    y = 10 + 50 * math.sin(angle * 0.3)
     cam.set_position(vec3(x, y, z))
     // Keep camera pointed at center of action
     cam.set_target(vec3(0, 10, 0))
@@ -219,7 +219,7 @@ while (!win.should_close()) {
     light_angle_z = light_angle_z + light_speed_z
     
     // Create complex 3D light movement pattern
-    light_pos = vec3(15 * cos(light_angle_x) + 8 * sin(light_angle_y * 0.7),12 + 6 * sin(light_angle_z) + 4 * cos(light_angle_x * 1.3),15 * sin(light_angle_x) + 8 * cos(light_angle_z * 0.9))
+    light_pos = vec3(15 * math.cos(light_angle_x) + 8 * math.sin(light_angle_y * 0.7),12 + 6 * math.sin(light_angle_z) + 4 * math.cos(light_angle_x * 1.3),15 * math.sin(light_angle_x) + 8 * math.cos(light_angle_z * 0.9))
     
     // Update shader uniforms
     if (memory_shader.is_valid()) {

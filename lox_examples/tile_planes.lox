@@ -39,8 +39,8 @@ class Line {
     } 
     update() {
         this.lastp = vec2(this.pos.x, this.pos.y)
-        this.pos.x = this.pos.x + this.speed * cos(this.dir)
-        this.pos.y = this.pos.y + this.speed * sin(this.dir)
+        this.pos.x = this.pos.x + this.speed * math.cos(this.dir)
+        this.pos.y = this.pos.y + this.speed * math.sin(this.dir)
         // Clamp to inner square
         if (this.pos.x > this.width - this.margin) {
             this.pos.x = this.width - this.margin
@@ -112,7 +112,7 @@ class Tiler {
         this.scale = scale
         this.speed = speed
         this.scroll_angle = atan2(speed.y, speed.x)
-        this.scroll_speed = sqrt(speed.x * speed.x + speed.y * speed.y)
+        this.scroll_speed = math.sqrt(speed.x * speed.x + speed.y * speed.y)
         this.target_angle = this.scroll_angle
     }
     add(tile) {
@@ -122,7 +122,7 @@ class Tiler {
         this.tiles_h = ceil(H / (this.tile.height * this.scale)) + 2
     }
     set_speed(vec2speed) {
-        this.scroll_speed = sqrt(vec2speed.x * vec2speed.x + vec2speed.y * vec2speed.y)
+        this.scroll_speed = math.sqrt(vec2speed.x * vec2speed.x + vec2speed.y * vec2speed.y)
         this.target_angle = atan2(vec2speed.y, vec2speed.x)
     }
     update() {
@@ -133,8 +133,8 @@ class Tiler {
         if (delta < -math.PI) delta = delta + 2 * math.PI
         this.scroll_angle = this.scroll_angle + 0.05 * delta // 0.05 controls smoothness
         // Update speed vector
-        this.speed.x = this.scroll_speed * cos(this.scroll_angle)
-        this.speed.y = this.scroll_speed * sin(this.scroll_angle)
+        this.speed.x = this.scroll_speed * math.cos(this.scroll_angle)
+        this.speed.y = this.scroll_speed * math.sin(this.scroll_angle)
         this.tile.update()
         this.offset.x = this.offset.x + this.speed.x
         this.offset.y = this.offset.y + this.speed.y

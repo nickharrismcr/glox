@@ -23,8 +23,8 @@
 // TODO move all vector stuff into native  
 
 func rotate2d(v2, angle) {
-    cosA = cos(angle);
-    sinA = sin(angle);
+    cosA = _cos(angle);
+    sinA = _sin(angle);
     xNew = v2.x * cosA - v2.y * sinA;
     yNew = v2.x * sinA + v2.y * cosA;
     return vec2(xNew, yNew)
@@ -65,4 +65,18 @@ func abs(n) {
   return n;
 } 
 
+func sin(angle) {
+    // Use native sine function for better performance
+    return _sin(angle);
+} 
+
+func cos(angle) {
+    // Use native cosine function for better performance
+    return _cos(angle);
+} 
+
+func sqrt(n){
+    // Use native square root function for better performance
+    return _sqrt(n);
+}
 var PI = 3.141592653589793238462643383279;

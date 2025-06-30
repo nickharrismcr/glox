@@ -16,7 +16,7 @@ class Siner {
         if (this.c > 100000) {
             this.c = 0
         } 
-        this.x = sin(this.c / 100.0) * (this.max - this.min) / 2 + (this.max + this.min) / 2
+        this.x = math.sin(this.c / 100.0) * (this.max - this.min) / 2 + (this.max + this.min) / 2
     }
     get() {
         return this.x
@@ -98,7 +98,7 @@ class Grid {
         if (this.c > 100000) {
             this.c = 0
         }
-        this.angle = sin(this.c/200.0*this.speed)
+        this.angle = math.sin(this.c/200.0*this.speed)
         this.cx = x
         this.cy = y
         this.size = size
@@ -115,10 +115,10 @@ class Grid {
             var x1 = i * sp;
             var y1 = sz;
             // Rotate and translate
-            var rx0 = this.cx + x0 * cos(a) - y0 * sin(a);
-            var ry0 = this.cy + x0 * sin(a) + y0 * cos(a);
-            var rx1 = this.cx + x1 * cos(a) - y1 * sin(a);
-            var ry1 = this.cy + x1 * sin(a) + y1 * cos(a);
+            var rx0 = this.cx + x0 * math.cos(a) - y0 * math.sin(a);
+            var ry0 = this.cy + x0 * math.sin(a) + y0 * math.cos(a);
+            var rx1 = this.cx + x1 * math.cos(a) - y1 * math.sin(a);
+            var ry1 = this.cy + x1 * math.sin(a) + y1 * math.cos(a);
             win.line(rx0, ry0, rx1, ry1, this.col)
 
             // Horizontal lines
@@ -126,10 +126,10 @@ class Grid {
             var y2 = i * sp;
             var x3 = sz;
             var y3 = i * sp;
-            var rx2 = this.cx + x2 * cos(a) - y2 * sin(a);
-            var ry2 = this.cy + x2 * sin(a) + y2 * cos(a);
-            var rx3 = this.cx + x3 * cos(a) - y3 * sin(a);
-            var ry3 = this.cy + x3 * sin(a) + y3 * cos(a);
+            var rx2 = this.cx + x2 * math.cos(a) - y2 * math.sin(a);
+            var ry2 = this.cy + x2 * math.sin(a) + y2 * math.cos(a);
+            var rx3 = this.cx + x3 * math.cos(a) - y3 * math.sin(a);
+            var ry3 = this.cy + x3 * math.sin(a) + y3 * math.cos(a);
             win.line(rx2, ry2, rx3, ry3, this.col)
         }
     }

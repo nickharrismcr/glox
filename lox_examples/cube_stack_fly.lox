@@ -385,16 +385,16 @@ while (!win.should_close()) {
     cam_direction = turn_result[2]
     
     // Move camera forward in straight line according to current direction
-    cam_x = cam_x + cos(cam_direction) * cam_speed
-    cam_z = cam_z + sin(cam_direction) * cam_speed
+    cam_x = cam_x + math.cos(cam_direction) * cam_speed
+    cam_z = cam_z + math.sin(cam_direction) * cam_speed
     
     // Camera height with slight variation
-    var camY = CAMERA_HEIGHT + sin(cam_x * 0.1) * 1.0  // Gentle height variation
+    var camY = CAMERA_HEIGHT + math.sin(cam_x * 0.1) * 1.0  // Gentle height variation
     
     // Calculate look-ahead position for camera target
     var lookAheadDistance = 20.0
-    var lookX = cam_x + cos(cam_direction) * lookAheadDistance
-    var lookZ = cam_z + sin(cam_direction) * lookAheadDistance
+    var lookX = cam_x + math.cos(cam_direction) * lookAheadDistance
+    var lookZ = cam_z + math.sin(cam_direction) * lookAheadDistance
     var cam = camera(vec3(cam_x, camY, cam_z), vec3(lookX, CAMERA_HEIGHT, lookZ), vec3(0, 1, 0))
     
     // Begin 3D mode
