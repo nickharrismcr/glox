@@ -5,11 +5,11 @@ import math
 import random
 import colour_utils
 
-const FULLSCREEN = false 
+const FULLSCREEN = true 
 
 // Configuration constants
-const CITY_SIZE = 50         // 50x50 grid (odd positions for stacks, even for streets)
-const STACK_SPACING = 6.0    // Reduced from 16.0 for denser city
+const CITY_SIZE = 51     // 50x50 grid (odd positions for stacks, even for streets)
+const STACK_SPACING = 5.0    // Reduced from 16.0 for denser city
 const MIN_STACK_HEIGHT = 3
 const MAX_STACK_HEIGHT = 20
 const BASE_CUBE_SIZE = 2.0
@@ -61,7 +61,7 @@ class Cube {
     
     add_to_batch(batch) {
         // Use custom face size if available, otherwise use default cube size
-        var dimensions = this.faceSize
+        dimensions = this.faceSize
         if (dimensions == nil) {
             dimensions = vec3(this.size, this.size, this.size)
         }
@@ -79,51 +79,51 @@ class CompositeCube {    init(position, size) {
         this.size = size  // Use provided size instead of generating random
         
         // Create main black cube
-        var blackColor = vec4(0, 0, 0, 255)
-        var mainCube = Cube(position.x, position.y, position.z, this.size, blackColor)
+        blackColor = vec4(0, 0, 0, 255)
+        mainCube = Cube(position.x, position.y, position.z, this.size, blackColor)
         this.cubes.append(mainCube)
           // Create colored face overlays matching original design
-        var halfSize = this.size / 2
-        var faceOffset = 0.25  // Increased from 0.15 to reduce z-fighting
-        var faceSize = this.size * 0.8  // 80% of cube size like original
-        var faceThickness = 0.05  // Increased from 0.02 for better visibility
+        halfSize = this.size / 2
+        faceOffset = 0.25  // Increased from 0.15 to reduce z-fighting
+        faceSize = this.size * 0.8  // 80% of cube size like original
+        faceThickness = 0.05  // Increased from 0.02 for better visibility
         
         // Front face (positive Z)
-        var frontPos = vec3(position.x, position.y, position.z + halfSize + faceOffset)
-        var frontColor = this.generateFaceColor()
-        var frontCube = Cube(frontPos.x, frontPos.y, frontPos.z, faceThickness, frontColor)
+        frontPos = vec3(position.x, position.y, position.z + halfSize + faceOffset)
+        frontColor = this.generateFaceColor()
+        frontCube = Cube(frontPos.x, frontPos.y, frontPos.z, faceThickness, frontColor)
         frontCube.faceSize = vec3(faceSize, faceSize, faceThickness)  // Store custom size
         this.cubes.append(frontCube)
         
         // Back face (negative Z)
-        var backPos = vec3(position.x, position.y, position.z - halfSize - faceOffset)
-        var backColor = this.generateFaceColor()
-        var backCube = Cube(backPos.x, backPos.y, backPos.z, faceThickness, backColor)
+        backPos = vec3(position.x, position.y, position.z - halfSize - faceOffset)
+        backColor = this.generateFaceColor()
+        backCube = Cube(backPos.x, backPos.y, backPos.z, faceThickness, backColor)
         backCube.faceSize = vec3(faceSize, faceSize, faceThickness)
         this.cubes.append(backCube)
         
         // Right face (positive X)
-        var rightPos = vec3(position.x + halfSize + faceOffset, position.y, position.z)
-        var rightColor = this.generateFaceColor()
-        var rightCube = Cube(rightPos.x, rightPos.y, rightPos.z, faceThickness, rightColor)
+        rightPos = vec3(position.x + halfSize + faceOffset, position.y, position.z)
+        rightColor = this.generateFaceColor()
+        rightCube = Cube(rightPos.x, rightPos.y, rightPos.z, faceThickness, rightColor)
         rightCube.faceSize = vec3(faceThickness, faceSize, faceSize)
         this.cubes.append(rightCube)
         
         // Left face (negative X)
-        var leftPos = vec3(position.x - halfSize - faceOffset, position.y, position.z)
-        var leftColor = this.generateFaceColor()
-        var leftCube = Cube(leftPos.x, leftPos.y, leftPos.z, faceThickness, leftColor)
+        leftPos = vec3(position.x - halfSize - faceOffset, position.y, position.z)
+        leftColor = this.generateFaceColor()
+        leftCube = Cube(leftPos.x, leftPos.y, leftPos.z, faceThickness, leftColor)
         leftCube.faceSize = vec3(faceThickness, faceSize, faceSize)
         this.cubes.append(leftCube)
     }
       generateFaceColor() {
         // Create more muted, varied colors by reducing saturation and adjusting brightness
-        var hue = random.integer(0, 360)
-        var saturation = random.float(0.3, 0.7)  // Reduced from 0.6-0.9 for less primary colors
-        var brightness = random.float(0.5, 0.85) // Reduced from 0.7-1.0 for more muted tones
+        hue = random.integer(0, 360)
+        saturation = random.float(0.1, 1.0)  // Reduced from 0.6-0.9 for less primary colors
+        brightness = random.float(0.1, 0.85) // Reduced from 0.7-1.0 for more muted tones
         
         // Add some bias towards certain hue ranges for more pleasing color schemes
-        var bias = random.integer(0, 3)
+        bias = random.integer(0, 3)
         if (bias == 0) {
             // Blues and teals
             hue = random.integer(180, 240)
@@ -146,7 +146,7 @@ class CompositeCube {    init(position, size) {
     
     add_to_batch(batch) {
         // Add all cubes in this composite to the batch
-        foreach (var cube in this.cubes) {
+        foreach (cube in this.cubes) {
             cube.add_to_batch(batch)
         }
     }
@@ -160,16 +160,16 @@ class Stack {
         this.height = height
         this.compositeCubes = []
           // Convert grid position to world coordinates
-        var halfSize = int(CITY_SIZE / 2)
-        var worldX = (gridX - halfSize) * STACK_SPACING
-        var worldZ = (gridZ - halfSize) * STACK_SPACING
+        halfSize = int(CITY_SIZE / 2)
+        worldX = (gridX - halfSize) * STACK_SPACING
+        worldZ = (gridZ - halfSize) * STACK_SPACING
         
-        var currentY = 0.0        // Create stack of composite cubes
-        for (var i = 0; i < height; i = i + 1) {
-            var cubeSize = BASE_CUBE_SIZE + random.float(-0.2, 0.4)  // Variation per level
-            var position = vec3(worldX, currentY + cubeSize/2, worldZ)  // Center cube at currentY + half size
+        currentY = 0.0        // Create stack of composite cubes
+        for (i = 0; i < height; i = i + 1) {
+            cubeSize = BASE_CUBE_SIZE + random.float(-0.2, 0.4)  // Variation per level
+            position = vec3(worldX, currentY + cubeSize/2, worldZ)  // Center cube at currentY + half size
             
-            var compositeCube = CompositeCube(position, cubeSize)  // Pass the size
+            compositeCube = CompositeCube(position, cubeSize)  // Pass the size
             this.compositeCubes.append(compositeCube)
             
             currentY = currentY + cubeSize  // Use actual cube size to eliminate gaps
@@ -178,7 +178,7 @@ class Stack {
     
     add_to_batch(batch) {
         // Add all composite cubes to the batch
-        foreach (var compositeCube in this.compositeCubes) {
+        foreach (compositeCube in this.compositeCubes) {
             compositeCube.add_to_batch(batch)
         }
     }
@@ -190,27 +190,28 @@ class Grid {
         this.size = size
         this.stacks = []
           // Create stacks only at odd grid positions (leaving even positions as streets)
-        for (var x = 1; x < size; x = x + 2) {  // Odd positions only
-            for (var z = 1; z < size; z = z + 2) {  // Odd positions only
-                var stackHeight = random.integer(MIN_STACK_HEIGHT, MAX_STACK_HEIGHT + 1)
-                var stack = Stack(x, z, stackHeight)
+        for (x = 1; x < size; x = x + 2) {  // Odd positions only
+            for (z = 1; z < size; z = z + 2) {  // Odd positions only
+               
+                stackHeight = random.integer(MIN_STACK_HEIGHT, MAX_STACK_HEIGHT + 1)
+                stack = Stack(x, z, stackHeight)
                 this.stacks.append(stack)
             }
-        }        var stackCount = len(this.stacks)
+        }        stackCount = len(this.stacks)
     }
     
     add_to_batch(batch) {
         // Add all stacks to the batch
-        foreach (var stack in this.stacks) {
+        foreach (stack in this.stacks) {
             stack.add_to_batch(batch)
         }
     }
       // Check if a grid position is valid for camera movement (even positions = streets)
     isValidStreetPosition(gridX, gridZ) {
-        var validX = (gridX >= 0 and gridX < this.size)
-        var validZ = (gridZ >= 0 and gridZ < this.size)
-        var evenX = (gridX % 2 == 0)
-        var evenZ = (gridZ % 2 == 0)
+        validX = (gridX >= 0 and gridX < this.size)
+        validZ = (gridZ >= 0 and gridZ < this.size)
+        evenX = (gridX % 2 == 0)
+        evenZ = (gridZ % 2 == 0)
         return (validX and validZ and evenX and evenZ)
     }
       // Check if position is at grid boundary (will hit boundary in next move)
@@ -238,7 +239,7 @@ class Controller {
         this.direction = NORTH
         this.speed = 0.0
         this.frameCount = 0
-
+        this.counter = 0 
         // Rotation handling
         this.currentAngle = this.directionToAngle(this.direction)
         this.targetAngle = this.currentAngle
@@ -255,7 +256,7 @@ class Controller {
         }
 
         // Convert to world coordinates
-        var halfSize = int(grid.size / 2)
+        halfSize = int(grid.size / 2)
         this.worldX = (this.gridX - halfSize) * STACK_SPACING
         this.worldZ = (this.gridZ - halfSize) * STACK_SPACING
         
@@ -270,7 +271,8 @@ class Controller {
     }
 
     update() {
-        this.frameCount = this.frameCount + 1
+        this.frameCount += 1
+        this.counter += 1
         
         if (this.state == STATE_STARTING) {
             this.updateStarting()
@@ -291,7 +293,7 @@ class Controller {
 
     updateStarting() {
         // Ramp up speed over ACCELERATION_FRAMES
-        var progress = this.frameCount / float(ACCELERATION_FRAMES)
+        progress = this.frameCount / float(ACCELERATION_FRAMES)
         if (progress >= 1.0) {
             this.speed = MAX_CAMERA_SPEED
             this.state = STATE_MOVING
@@ -303,8 +305,8 @@ class Controller {
     }    
     updateMoving() {
         // Check if we're at a NEW intersection
-        var atIntersection = (this.gridX % 2 == 0 and this.gridZ % 2 == 0)
-        var newIntersection = atIntersection and (this.gridX != this.lastIntersectionX or this.gridZ != this.lastIntersectionZ)
+        atIntersection = (this.gridX % 2 == 0 and this.gridZ % 2 == 0)
+        newIntersection = atIntersection and (this.gridX != this.lastIntersectionX or this.gridZ != this.lastIntersectionZ)
         
         if (newIntersection) {
              
@@ -313,15 +315,15 @@ class Controller {
             this.lastIntersectionZ = this.gridZ
             
             // Check if we should turn  
-            var shouldTurn = (random.integer(1, 10) == 1) or this.passed >= 10 
-            var atBoundary = this.isAtBoundary()
+            shouldTurn = (random.integer(1, 10) == 1) or this.passed >= 10 
+            atBoundary = this.isAtBoundary()
           
             
             if (shouldTurn or atBoundary) {
                
                 // Set target to next intersection in current direction
                 this.setStoppingTarget()
-                this.chooseNewDirection()
+                this.chooseNewDirection(atBoundary)
                 this.state = STATE_STOPPING
                 this.frameCount = 0
                 this.hasTarget = true
@@ -332,8 +334,8 @@ class Controller {
     
     setStoppingTarget() {
         // Find the next intersection in our current direction
-        var nextGridX = this.gridX
-        var nextGridZ = this.gridZ
+        nextGridX = this.gridX
+        nextGridZ = this.gridZ
         
         if (this.direction == NORTH) {
             nextGridZ = nextGridZ + 2
@@ -349,23 +351,23 @@ class Controller {
         }
         
         // Convert to world coordinates
-        var halfSize = int(this.grid.size / 2)
+        halfSize = int(this.grid.size / 2)
         this.targetWorldX = (nextGridX - halfSize) * STACK_SPACING
         this.targetWorldZ = (nextGridZ - halfSize) * STACK_SPACING
     }    
     updateStopping() {
         if (this.hasTarget) {
             // Calculate distance to target
-            var distanceToTarget = math.sqrt((this.targetWorldX - this.worldX) * (this.targetWorldX - this.worldX) + 
+            distanceToTarget = math.sqrt((this.targetWorldX - this.worldX) * (this.targetWorldX - this.worldX) + 
                                            (this.targetWorldZ - this.worldZ) * (this.targetWorldZ - this.worldZ))
             
             // Calculate required deceleration to stop at target
             // Using physics: v² = 2as, solve for a: a = v²/(2s)
-            var requiredDecel = (this.speed * this.speed) / (2.0 * math.max(distanceToTarget, 0.1))
-            var maxDecel = MAX_CAMERA_SPEED / float(DECELERATION_FRAMES)  // Maximum allowed deceleration
+            requiredDecel = (this.speed * this.speed) / (2.0 * math.max(distanceToTarget, 0.1))
+            maxDecel = MAX_CAMERA_SPEED / float(DECELERATION_FRAMES)  // Maximum allowed deceleration
             
             // Use the higher of required or maximum deceleration to ensure we stop in time
-            var deceleration = math.max(requiredDecel, maxDecel)
+            deceleration = math.max(requiredDecel, maxDecel)
             
             // Apply deceleration
             this.speed = math.max(0.0, this.speed - deceleration)
@@ -382,7 +384,7 @@ class Controller {
                 this.worldZ = this.targetWorldZ
                 
                 // Update grid position
-                var halfSize = int(this.grid.size / 2)
+                halfSize = int(this.grid.size / 2)
                 this.gridX = int((this.worldX / STACK_SPACING) + halfSize + 0.5)
                 this.gridZ = int((this.worldZ / STACK_SPACING) + halfSize + 0.5)
                 
@@ -396,13 +398,13 @@ class Controller {
             }
         } else {
             // Fallback: time-based deceleration if no target
-            var progress = this.frameCount / float(DECELERATION_FRAMES)
+            progress = this.frameCount / float(DECELERATION_FRAMES)
             if (progress >= 1.0) {
                 this.speed = 0.0
                 this.state = STATE_ROTATING
                 this.frameCount = 0
             } else {
-                var remaining = 1.0 - progress
+                remaining = 1.0 - progress
                 this.speed = MAX_CAMERA_SPEED * remaining * remaining
             }
         }
@@ -410,7 +412,7 @@ class Controller {
 
     updateRotating() {
         // Rotate smoothly over ROTATION_FRAMES
-        var progress = this.frameCount / float(ROTATION_FRAMES)
+        progress = this.frameCount / float(ROTATION_FRAMES)
         if (progress >= 1.0) {
             this.currentAngle = this.targetAngle
             this.direction = this.newDirection
@@ -418,10 +420,10 @@ class Controller {
             this.frameCount = 0
         } else {
             // Smooth interpolation
-            var t = progress * progress * (3.0 - 2.0 * progress)  // Smoothstep
+            t = progress * progress * (3.0 - 2.0 * progress)  // Smoothstep
             
             // Handle angle wrapping
-            var angleDiff = this.targetAngle - this.currentAngle
+            angleDiff = this.targetAngle - this.currentAngle
              
             if (angleDiff > math.PI) {
                 angleDiff = angleDiff - 2.0 * math.PI
@@ -437,14 +439,15 @@ class Controller {
     moveCamera() {
         if (this.speed > 0) {
             // Move forward in current direction
-            var moveX = math.sin(this.currentAngle) * this.speed
-            var moveZ = math.cos(this.currentAngle) * this.speed
+            moveX = math.sin(this.currentAngle) * this.speed
+            moveZ = math.cos(this.currentAngle) * this.speed
             
             this.worldX = this.worldX + moveX
             this.worldZ = this.worldZ + moveZ
+             
             
             // Update grid position
-            var halfSize = int(this.grid.size / 2)
+            halfSize = int(this.grid.size / 2)
             this.gridX = int((this.worldX / STACK_SPACING) + halfSize + 0.5)
             this.gridZ = int((this.worldZ / STACK_SPACING) + halfSize + 0.5)
             
@@ -461,43 +464,50 @@ class Controller {
     isAtBoundary() {
          
 
-        if (  this.gridZ >= this.grid.size -1 ) {
+        if (  this.gridZ >= this.grid.size -2 ) {
             return true
         }
-        if (  this.gridZ <= 1) {
+        if (  this.gridZ <= 2) {
             return true
         }
-        if ( this.gridX >= this.grid.size -1  ) {
+        if ( this.gridX >= this.grid.size -2  ) {
             return true
         }
-        if (  this.gridX <= 1 ) {
+        if (  this.gridX <= 2 ) {
             return true
         }
         return false
     }
 
-    chooseNewDirection() {
+    chooseNewDirection(atBoundary) {
         // Pick left or right from current direction
-        var directions = [NORTH, EAST, SOUTH, WEST]
-        var currentIndex = 0
+        directions = [NORTH, EAST, SOUTH, WEST]
+        currentIndex = 0
         
         // Find current direction index
-        for (var i = 0; i < 4; i = i + 1) {
+        for (i = 0; i < 4; i = i + 1) {
             if (directions[i] == this.direction) {
                 currentIndex = i
                 break
             }
         }
-        
-        // Choose left or right (50/50 chance)
-        var turnLeft = random.integer(0, 2) == 0
-        var newIndex = currentIndex
-        
-        if (turnLeft) {
-            newIndex = (currentIndex + 3) % 4  // Turn left (counterclockwise)
+        newIndex = currentIndex
+        if (atBoundary) {
+            // If at boundary, always turn left
+            newIndex = (currentIndex + 2) % 4  // Turn 180 degrees (counterclockwise)
         } else {
-            newIndex = (currentIndex + 1) % 4  // Turn right (clockwise)
+            // Choose left or right (50/50 chance)
+            turnLeft = random.integer(0, 2) == 0
+            newIndex = currentIndex
+            
+            if (turnLeft) {
+                newIndex = (currentIndex + 3) % 4  // Turn left (counterclockwise)
+            } else {
+                newIndex = (currentIndex + 1) % 4  // Turn right (clockwise)
+            }
         }
+        
+     
         
         this.newDirection = directions[newIndex]
         this.targetAngle = this.directionToAngle(this.newDirection)
@@ -509,20 +519,20 @@ class Controller {
 
     getCamera() {
         // Simple camera pointing in current direction
-        var camY = CAMERA_HEIGHT + math.sin(this.worldX * 0.05) * 1.0
+        camY = 2* CAMERA_HEIGHT + math.sin(this.counter * 0.01) * 10.0
         
-        var lookDistance = 25.0
-        var lookX = this.worldX + math.sin(this.currentAngle) * lookDistance
-        var lookZ = this.worldZ + math.cos(this.currentAngle) * lookDistance
+        lookDistance = 25.0
+        lookX = this.worldX + math.sin(this.currentAngle) * lookDistance
+        lookZ = this.worldZ + math.cos(this.currentAngle) * lookDistance
           
-        var camPos = vec3(this.worldX, camY, this.worldZ)
-        var lookPos = vec3(lookX, CAMERA_HEIGHT, lookZ)
-        var upVec = vec3(0, 1, 0)
+        camPos = vec3(this.worldX, camY, this.worldZ)
+        lookPos = vec3(lookX, camY , lookZ)
+        upVec = vec3(0, 1, 0)
         return camera(camPos, lookPos, upVec)
     }
 }
 // Initialize application
-var win = window(WIDTH, HEIGHT)
+win = window(WIDTH, HEIGHT)
 win.init()
 win.set_target_fps(60)
 if (FULLSCREEN) {
@@ -530,17 +540,17 @@ if (FULLSCREEN) {
 }  
  
 // Create batch for all cubes
-var cubeBatch = batch(win.BATCH_CUBE)
+cubeBatch = batch(win.BATCH_CUBE)
 
 // Create grid and populate with stacks
-var grid = Grid(CITY_SIZE)
+grid = Grid(CITY_SIZE)
 grid.add_to_batch(cubeBatch)
 
 // Create controller
-var controller = Controller(grid)
+controller = Controller(grid)
 
 // Main render loop
-var frameCounter = 0
+frameCounter = 0
 while (!win.should_close()) {
     frameCounter = frameCounter + 1
     
@@ -552,13 +562,13 @@ while (!win.should_close()) {
     controller.update()
     
     // Get camera from controller
-    var cam = controller.getCamera()
+    cam = controller.getCamera()
     
     // Begin 3D rendering
     win.begin_3d(cam)
     
     // Draw ground plane
-    var groundSize = CITY_SIZE * STACK_SPACING * 1.2
+    groundSize = CITY_SIZE * STACK_SPACING * 1.2
     win.plane(vec3(0, -1, 0), vec2(groundSize, groundSize), vec4(15, 15, 15, 255))
     
     // Draw all cubes in one batched call
