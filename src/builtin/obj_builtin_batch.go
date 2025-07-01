@@ -3,9 +3,14 @@ package builtin
 import (
 	"fmt"
 	"glox/src/core"
+	"math"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
+
+// Frame counters for limiting debug output frequency
+var distanceCullFrameCounter = 0
+var frustumCullFrameCounter = 0
 
 // Constructor function (follows standard pattern)
 func BatchBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
@@ -251,5 +256,210 @@ func (batch *DrawBatch) Draw() {
 			}
 			rl.DrawPlane(entry.Position, size, entry.Color)
 		}
+	}
+}
+
+// Simple distance-based culling for better performance
+func (batch *DrawBatch) DrawWithCulling(cameraPos rl.Vector3, maxDistance float32) {
+	if len(batch.Entries) == 0 {
+		return
+	}
+
+	totalObjects := len(batch.Entries)
+	maxDistanceSq := maxDistance * maxDistance
+	rendered := 0
+
+	// Batch render based on type with distance culling
+	switch batch.BatchType {
+	case BATCH_CUBE:
+		for _, entry := range batch.Entries {
+			// Calculate distance squared (avoid expensive sqrt)
+			dx := entry.Position.X - cameraPos.X
+			dy := entry.Position.Y - cameraPos.Y
+			dz := entry.Position.Z - cameraPos.Z
+			distanceSq := dx*dx + dy*dy + dz*dz
+
+			if distanceSq <= maxDistanceSq {
+				rl.DrawCube(entry.Position, entry.Size.X, entry.Size.Y, entry.Size.Z, entry.Color)
+				rendered++
+			}
+		}
+	case BATCH_SPHERE:
+		for _, entry := range batch.Entries {
+			dx := entry.Position.X - cameraPos.X
+			dy := entry.Position.Y - cameraPos.Y
+			dz := entry.Position.Z - cameraPos.Z
+			distanceSq := dx*dx + dy*dy + dz*dz
+
+			if distanceSq <= maxDistanceSq {
+				rl.DrawSphere(entry.Position, entry.Size.X, entry.Color)
+				rendered++
+			}
+		}
+	case BATCH_PLANE:
+		for _, entry := range batch.Entries {
+			dx := entry.Position.X - cameraPos.X
+			dy := entry.Position.Y - cameraPos.Y
+			dz := entry.Position.Z - cameraPos.Z
+			distanceSq := dx*dx + dy*dy + dz*dz
+
+			if distanceSq <= maxDistanceSq {
+				size := rl.Vector2{
+					X: entry.Size.X,
+					Y: entry.Size.Z,
+				}
+				rl.DrawPlane(entry.Position, size, entry.Color)
+				rendered++
+			}
+		}
+	}
+
+	// Log distance culling statistics (every 60 frames to avoid spam)
+	distanceCullFrameCounter++
+	if distanceCullFrameCounter%60 == 0 {
+		cullPercentage := float32(totalObjects-rendered) / float32(totalObjects) * 100.0
+		fmt.Printf("[DISTANCE CULLING] Total: %d, Rendered: %d (%.1f%% saved)\n",
+			totalObjects, rendered, cullPercentage)
+	}
+}
+
+// Improved culling with camera direction (eliminates objects behind camera)
+func (batch *DrawBatch) DrawWithDirectionalCulling(cameraPos rl.Vector3, cameraForward rl.Vector3, maxDistance float32, fovAngleDegrees float32) {
+	if len(batch.Entries) == 0 {
+		return
+	}
+
+	totalObjects := len(batch.Entries)
+	maxDistanceSq := maxDistance * maxDistance
+	// Convert FOV to radians and get cosine for dot product comparison
+	// Add some padding to the FOV to prevent edge flickering
+	paddedFOV := fovAngleDegrees + 10.0 // Add 10 degrees padding
+	fovRadians := paddedFOV * 3.14159 / 180.0
+
+	rendered := 0
+	culledByDistance := 0
+	culledByFOV := 0
+
+	// Batch render based on type with directional culling
+	switch batch.BatchType {
+	case BATCH_CUBE:
+		for _, entry := range batch.Entries {
+			// Calculate distance squared
+			dx := entry.Position.X - cameraPos.X
+			dy := entry.Position.Y - cameraPos.Y
+			dz := entry.Position.Z - cameraPos.Z
+			distanceSq := dx*dx + dy*dy + dz*dz
+
+			// Early distance check
+			if distanceSq > maxDistanceSq {
+				culledByDistance++
+				continue
+			}
+
+			// Calculate distance and direction to object
+			distance := float32(math.Sqrt(float64(distanceSq)))
+			if distance > 0.001 { // Avoid division by zero
+				objDirX := dx / distance
+				objDirY := dy / distance
+				objDirZ := dz / distance
+
+				// Dot product with camera forward vector
+				dotProduct := objDirX*cameraForward.X + objDirY*cameraForward.Y + objDirZ*cameraForward.Z
+
+				// Account for object size - larger objects should be visible from wider angles
+				objectRadius := (entry.Size.X + entry.Size.Y + entry.Size.Z) / 3.0      // Average size as radius
+				sizeAngleOffset := float32(math.Atan(float64(objectRadius / distance))) // Angular size
+				adjustedMinDot := float32(math.Cos(float64(fovRadians/2.0 + sizeAngleOffset)))
+
+				// Check if object is within FOV cone (use the more permissive threshold)
+				if dotProduct >= adjustedMinDot {
+					rl.DrawCube(entry.Position, entry.Size.X, entry.Size.Y, entry.Size.Z, entry.Color)
+					rendered++
+				} else {
+					culledByFOV++
+				}
+			}
+		}
+	case BATCH_SPHERE:
+		for _, entry := range batch.Entries {
+			dx := entry.Position.X - cameraPos.X
+			dy := entry.Position.Y - cameraPos.Y
+			dz := entry.Position.Z - cameraPos.Z
+			distanceSq := dx*dx + dy*dy + dz*dz
+
+			if distanceSq > maxDistanceSq {
+				culledByDistance++
+				continue
+			}
+
+			distance := float32(math.Sqrt(float64(distanceSq)))
+			if distance > 0.001 {
+				objDirX := dx / distance
+				objDirY := dy / distance
+				objDirZ := dz / distance
+
+				dotProduct := objDirX*cameraForward.X + objDirY*cameraForward.Y + objDirZ*cameraForward.Z
+
+				// Account for sphere radius
+				objectRadius := entry.Size.X // Sphere radius
+				sizeAngleOffset := float32(math.Atan(float64(objectRadius / distance)))
+				adjustedMinDot := float32(math.Cos(float64(fovRadians/2.0 + sizeAngleOffset)))
+
+				if dotProduct >= adjustedMinDot {
+					rl.DrawSphere(entry.Position, entry.Size.X, entry.Color)
+					rendered++
+				} else {
+					culledByFOV++
+				}
+			}
+		}
+	case BATCH_PLANE:
+		for _, entry := range batch.Entries {
+			dx := entry.Position.X - cameraPos.X
+			dy := entry.Position.Y - cameraPos.Y
+			dz := entry.Position.Z - cameraPos.Z
+			distanceSq := dx*dx + dy*dy + dz*dz
+
+			if distanceSq > maxDistanceSq {
+				culledByDistance++
+				continue
+			}
+
+			distance := float32(math.Sqrt(float64(distanceSq)))
+			if distance > 0.001 {
+				objDirX := dx / distance
+				objDirY := dy / distance
+				objDirZ := dz / distance
+
+				dotProduct := objDirX*cameraForward.X + objDirY*cameraForward.Y + objDirZ*cameraForward.Z
+
+				// Account for plane size (use max of X and Z dimensions)
+				objectRadius := entry.Size.X
+				if entry.Size.Z > objectRadius {
+					objectRadius = entry.Size.Z
+				}
+				sizeAngleOffset := float32(math.Atan(float64(objectRadius / distance)))
+				adjustedMinDot := float32(math.Cos(float64(fovRadians/2.0 + sizeAngleOffset)))
+
+				if dotProduct >= adjustedMinDot {
+					size := rl.Vector2{
+						X: entry.Size.X,
+						Y: entry.Size.Z,
+					}
+					rl.DrawPlane(entry.Position, size, entry.Color)
+					rendered++
+				} else {
+					culledByFOV++
+				}
+			}
+		}
+	}
+
+	// Log culling statistics (every 60 frames to avoid spam)
+	frustumCullFrameCounter++
+	if frustumCullFrameCounter%60 == 0 {
+		cullPercentage := float32(culledByDistance+culledByFOV) / float32(totalObjects) * 100.0
+		fmt.Printf("[FRUSTUM CULLING] Total: %d, Rendered: %d, Distance-culled: %d, FOV-culled: %d (%.1f%% saved)\n",
+			totalObjects, rendered, culledByDistance, culledByFOV, cullPercentage)
 	}
 }

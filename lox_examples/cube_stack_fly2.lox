@@ -8,15 +8,15 @@ import colour_utils
 const FULLSCREEN = true 
 
 // Configuration constants
-const CITY_SIZE = 51     // 50x50 grid (odd positions for stacks, even for streets)
-const STACK_SPACING = 5.0    // Reduced from 16.0 for denser city
+const CITY_SIZE = 35     // Reduced from 45 for better performance
+const STACK_SPACING = 5.0    
 const MIN_STACK_HEIGHT = 3
 const MAX_STACK_HEIGHT = 20
-const BASE_CUBE_SIZE = 2.0
+const BASE_CUBE_SIZE = 2.50
 const CAMERA_HEIGHT = 8.0
 const MAX_CAMERA_SPEED = 0.1 // Slower for smoother movement
 const CAMERA_ACCELERATION = MAX_CAMERA_SPEED / 30.0  // Much gentler acceleration
-const ROTATION_SPEED = 0.02  // Much slower rotation for smoothness
+const ROTATION_SPEED = 0.01  // Much slower rotation for smoothness
 
 // Direction constants
 const NORTH = 0
@@ -102,7 +102,7 @@ class CompositeCube {    init(position, size) {
         halfSize = this.size / 2
         faceOffset = 0.25  // Increased from 0.15 to reduce z-fighting
         faceSize = this.size * 0.8  // 80% of cube size like original
-        faceThickness = 0.15  // Increased thickness for better visibility
+        faceThickness = 0.35  // Increased thickness for better visibility
         
         // Front face (positive Z)
         frontPos = vec3(position.x, position.y, position.z + halfSize + faceOffset)
@@ -385,7 +385,7 @@ class Controller {
         }
         
         if (math.abs(angleDiff) > 0.001) {
-            this.currentAngle += angleDiff * 0.05  // Smooth angular interpolation
+            this.currentAngle += angleDiff * 0.01  // Even slower angular interpolation to minimize tearing
         } else {
             this.currentAngle = this.targetAngle
             // Update direction when turn completes (for strafe and diagonal styles)
@@ -414,8 +414,8 @@ class Controller {
     }
 
     getCamera() {
-        // Simple camera pointing in current direction
-        camY = 2* CAMERA_HEIGHT + math.sin(this.frameCount * 0.01) * 10.0
+        // Simple camera pointing in current direction with gentler vertical movement
+        camY = 2* CAMERA_HEIGHT + math.sin(this.frameCount * 0.005) * 3.0  // Slower, smaller oscillation
         
         lookDistance = 25.0
         lookX = this.worldPos.x + math.sin(this.currentAngle) * lookDistance
@@ -430,7 +430,7 @@ class Controller {
 // Initialize application
 win = window(WIDTH, HEIGHT)
 win.init()
-win.set_target_fps(60)
+win.set_target_fps(30)   
 if (FULLSCREEN) {
     win.toggle_fullscreen()
 }  
@@ -468,8 +468,17 @@ while (!win.should_close()) {
     groundSize = CITY_SIZE * STACK_SPACING * 1.2
     win.plane(vec3(0, -1, 0), vec2(groundSize, groundSize), vec4(15, 15, 15, 255))
     
-    // Draw all cubes in one batched call
-    cubeBatch.draw()
+    // Draw all cubes with frustum culling for optimal performance
+    // Extract camera position and forward direction from controller
+    cameraPos = vec3(controller.worldPos.x, 2 * CAMERA_HEIGHT, controller.worldPos.z)
+    
+    // Calculate camera forward direction from current angle
+    cameraForward = vec3(math.sin(controller.currentAngle), 0, math.cos(controller.currentAngle))
+    
+    cullDistance = 80.0  // Only render cubes within 80 units of camera
+    fovDegrees = 75.0    // Field of view in degrees (wider than typical 60 for better visibility)
+    
+    cubeBatch.draw_frustum_culled(cameraPos, cameraForward, cullDistance, fovDegrees)
    
     
     win.end_3d()
