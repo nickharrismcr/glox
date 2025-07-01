@@ -24,7 +24,7 @@ func init(col1,col2) {
         particle.dpos = vec2(1,1); // Initial velocity
         var angle = random.float(0, 2 * math.PI); // Random angle 
         particle.dpos = rotate2d(particle.dpos, angle); // Rotate the initial velocity
-        particle.dpos = scale2d(particle.dpos, random.float(0.1, speedmax)); // Scale the velocity
+        particle.dpos = scale2(particle.dpos, random.float(0.1, speedmax)); // Scale the velocity
  
         particle.life = random.integer(1, lifemax); // Random life  
         particle.size = random.float(1, sizemax); 

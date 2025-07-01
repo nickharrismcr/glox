@@ -1,3 +1,25 @@
- d={1:2}
+// Test integer keys
+d={1:2, 3:4}
+print "Integer keys:"
+print d[1]
+print d[3]
 
- print d[1]
+// Test string keys  
+a={"a":1,"b":2}
+print "String keys:"
+print a["a"]
+print a["b"]   
+
+// Test get method with string keys
+print "Get method tests:"
+print a.get("a","default")     // should return 1
+print a.get("b",999)           // should return 2  
+print a.get("missing","found") // should return "found"
+
+// Test mixed assignment
+a["c"] = 3
+print a["c"]
+
+// Test integer key assignment  
+d[5] = 6
+print d[5]

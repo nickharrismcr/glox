@@ -8,15 +8,16 @@ import colour_utils
 const FULLSCREEN = true 
 
 // Configuration constants
-const CITY_SIZE = 35     // Reduced from 45 for better performance
-const STACK_SPACING = 5.0    
+const CITY_SIZE = 45     // Reduced from 45 for better performance
+const STACK_SPACING = 7.0    
 const MIN_STACK_HEIGHT = 3
 const MAX_STACK_HEIGHT = 20
 const BASE_CUBE_SIZE = 2.50
 const CAMERA_HEIGHT = 8.0
-const MAX_CAMERA_SPEED = 0.1 // Slower for smoother movement
+const MAX_CAMERA_SPEED = 0.4  
 const CAMERA_ACCELERATION = MAX_CAMERA_SPEED / 30.0  // Much gentler acceleration
 const ROTATION_SPEED = 0.01  // Much slower rotation for smoothness
+const DRAW_DISTANCE = 500.0
 
 // Direction constants
 const NORTH = 0
@@ -89,7 +90,8 @@ class Cube {
 }
 
 // CompositeCube class - a building block with colored window faces
-class CompositeCube {    init(position, size) {
+class CompositeCube {    
+    init(position, size) {
         this.position = position
         this.cubes = []
         this.size = size  // Use provided size instead of generating random
@@ -100,8 +102,8 @@ class CompositeCube {    init(position, size) {
         this.cubes.append(mainCube)
           // Create colored face overlays matching original design
         halfSize = this.size / 2
-        faceOffset = 0.25  // Increased from 0.15 to reduce z-fighting
-        faceSize = this.size * 0.8  // 80% of cube size like original
+        faceOffset = 0.2 // Increased from 0.15 to reduce z-fighting
+        faceSize = this.size * random.float(0.2,0.7)  // 80% of cube size like original
         faceThickness = 0.35  // Increased thickness for better visibility
         
         // Front face (positive Z)
@@ -132,11 +134,11 @@ class CompositeCube {    init(position, size) {
         leftCube.faceSize = vec3(faceThickness, faceSize, faceSize)
         this.cubes.append(leftCube)
     }
-      generateFaceColor() {
+    generateFaceColor() {
         // Create more muted, varied colors by reducing saturation and adjusting brightness
         hue = random.integer(0, 360)
         saturation = random.float(0.1, 1.0)  // Reduced from 0.6-0.9 for less primary colors
-        brightness = random.float(0.1, 0.85) // Reduced from 0.7-1.0 for more muted tones
+        brightness = random.float(0.1, 0.7) // Reduced from 0.7-1.0 for more muted tones
         
         // Add some bias towards certain hue ranges for more pleasing color schemes
         bias = random.integer(0, 3)
@@ -265,6 +267,7 @@ class Controller {
         // Camera angle management
         this.currentAngle = this.directionToAngle(this.direction)
         this.targetAngle = this.currentAngle
+        this.angleDelta = 0.0  // Start with no rotation delta
         this.newDirection = this.direction
         this.turnNext = false 
         
@@ -328,6 +331,9 @@ class Controller {
                 this.targetGridPos = this.gridPos + MOVEMENTS[ this.direction ] + MOVEMENTS[ this.newDirection ]
             }
             
+            // Reset angle delta for smooth gradual rotation
+            this.angleDelta = 0.0
+            
             // Clamp target position to valid street boundaries
             this.targetGridPos = vec3(math.max(2, math.min(this.grid.size - 3, this.targetGridPos.x)), 0, math.max(2, math.min(this.grid.size - 3, this.targetGridPos.z)))
             
@@ -374,7 +380,7 @@ class Controller {
             this.speed = this.targetSpeed
         }
 
-        // Smooth angle interpolation towards target
+        // Smooth angle interpolation with gradual acceleration
         angleDiff = this.targetAngle - this.currentAngle
         
         // Handle angle wrapping (shortest path)
@@ -385,9 +391,12 @@ class Controller {
         }
         
         if (math.abs(angleDiff) > 0.001) {
-            this.currentAngle += angleDiff * 0.01  // Even slower angular interpolation to minimize tearing
+            // Gradually increase the rotation delta from 0 to smooth the start
+            this.angleDelta = math.min(this.angleDelta + 0.002, 0.05)  // Accelerate up to max speed
+            this.currentAngle += angleDiff * this.angleDelta
         } else {
             this.currentAngle = this.targetAngle
+            this.angleDelta = 0.0  // Reset delta when rotation completes
             // Update direction when turn completes (for strafe and diagonal styles)
             this.direction = this.newDirection
         }
@@ -427,13 +436,26 @@ class Controller {
         return camera(camPos, lookPos, upVec)
     }
 }
-// Initialize application
+
+// MAIN PROGRAM
+
+// Initialize application first
 win = window(WIDTH, HEIGHT)
 win.init()
 win.set_target_fps(30)   
 if (FULLSCREEN) {
     win.toggle_fullscreen()
 }  
+
+// Load shader after window initialization (OpenGL context must exist)
+rainbow_shader = shader("lox_examples/shaders/rainbow.vs", "lox_examples/shaders/rainbow.fs")
+time_location = -1      // Rainbow shader time uniform (for color animation)
+ 
+if (rainbow_shader.is_valid()) {
+    time_location = rainbow_shader.get_location("time")
+} else {
+    print("Warning: Rainbow shader failed to load. Using default rendering.")
+}
  
 // Create batch for all cubes
 cubeBatch = batch(win.BATCH_CUBE)
@@ -449,21 +471,21 @@ controller = Controller(grid)
 frameCounter = 0
 while (!win.should_close()) {
     frameCounter = frameCounter + 1
-    
+    rainbow_shader.set_value_float(time_location, float(frameCounter) * 0.01)  // Update shader time uniform
     win.begin()
     win.begin_blend_mode(win.BLEND_ALPHA)
-    win.clear(vec4(40, 10, 10, 255))  // Dark red background like original
+    win.clear(vec4(10, 10, 50, 255))  // Dark red background like original
+    
     
     // Update controller
     controller.update()
-    
     
     // Get camera from controller
     cam = controller.getCamera()
     
     // Begin 3D rendering
     win.begin_3d(cam)
-    
+    win.begin_shader_mode(rainbow_shader)
     // Draw ground plane
     groundSize = CITY_SIZE * STACK_SPACING * 1.2
     win.plane(vec3(0, -1, 0), vec2(groundSize, groundSize), vec4(15, 15, 15, 255))
@@ -475,18 +497,19 @@ while (!win.should_close()) {
     // Calculate camera forward direction from current angle
     cameraForward = vec3(math.sin(controller.currentAngle), 0, math.cos(controller.currentAngle))
     
-    cullDistance = 80.0  // Only render cubes within 80 units of camera
+     
     fovDegrees = 75.0    // Field of view in degrees (wider than typical 60 for better visibility)
     
-    cubeBatch.draw_frustum_culled(cameraPos, cameraForward, cullDistance, fovDegrees)
+    cubeBatch.draw_frustum_culled(cameraPos, cameraForward, DRAW_DISTANCE, fovDegrees)
    
     
     win.end_3d()
+    win.end_shader_mode()
 
     // draw grid pos x and y text 
-    gridPosText = "Grid Position: (" + str(int(controller.gridPos.x)) + ", " + str(int(controller.gridPos.z)) + ")"
+    gridPosText = "Target Grid Position: (" + str(int(controller.targetGridPos.x)) + ", " + str(int(controller.targetGridPos.z)) + ")"
     win.text(gridPosText, 10, 40, 18, vec4(255, 255, 255, 255))
-    distanceText = "Distance to Target: " + str(controller.distanceToTarget)
+    distanceText = "Distance to Target: " + str(int(controller.distanceToTarget))
     win.text(distanceText, 10, 65, 18, vec4(255, 255, 255, 255))
     win.end()
 }

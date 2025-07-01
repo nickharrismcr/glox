@@ -1,0 +1,16 @@
+// Test multiline function call syntax
+fun test_function(a, b, c) {
+    print "a: " + str(a);
+    print "b: " + str(b); 
+    print "c: " + str(c);
+}
+
+// This should work (single line)
+test_function(1, 2, 3);
+
+// This should fail (multiline)
+test_function(
+    1,
+    2,
+    3
+);

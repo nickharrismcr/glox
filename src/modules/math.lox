@@ -10,6 +10,7 @@
 // - rotate2d(vec2, angle) - Rotate a 2D vector by angle (radians)
 // - scale2d(vec2, scalar) - Scale a 2D vector by scalar
 // - floor(n) - Return the largest integer less than or equal to n
+// - round(n) - Round a number to the nearest integer
 // - max(a, b) - Return the maximum of two numbers
 // - min(a, b) - Return the minimum of two numbers
 // - abs(n) - Return the absolute value of n
@@ -56,6 +57,14 @@ func floor(n) {
   }
   return int(n);
 } 
+
+func round(n) {
+  if (n >= 0) {
+    return floor(n + 0.5);
+  } else {
+    return floor(n + 0.5);  // Use same logic for both positive and negative
+  }
+}
 
 func max(a, b) {
   if (a > b) {
