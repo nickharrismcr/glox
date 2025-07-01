@@ -1991,7 +1991,15 @@ func (vm *VM) createDict(frame *core.CallFrame) {
 	for i := 0; i < itemCount; i++ {
 		value := vm.pop()
 		key := vm.pop()
-		dict[core.InternName(key.String())] = value
+
+		var keyStr string
+		if key.IsStringObject() {
+			keyStr = key.AsString().Get()
+		} else {
+			keyStr = key.String()
+		}
+
+		dict[core.InternName(keyStr)] = value
 	}
 	do := core.MakeDictObject(dict)
 	vm.stack[vm.stackTop] = core.MakeObjectValue(do, false)
@@ -2041,7 +2049,13 @@ func (vm *VM) index() bool {
 
 		case core.OBJECT_DICT:
 
-			key := iv.String()
+			var key string
+			if iv.IsStringObject() {
+				key = iv.AsString().Get()
+			} else {
+				key = iv.String()
+			}
+
 			t := sv.AsDict()
 			so, err := t.Get(key)
 			if err != nil {
@@ -2087,7 +2101,15 @@ func (vm *VM) indexAssign() bool {
 			}
 		case core.OBJECT_DICT:
 			t := collection.AsDict()
-			t.Set(index.String(), rhs)
+
+			var key string
+			if index.IsStringObject() {
+				key = index.AsString().Get()
+			} else {
+				key = index.String()
+			}
+
+			t.Set(key, rhs)
 			return true
 		}
 	}

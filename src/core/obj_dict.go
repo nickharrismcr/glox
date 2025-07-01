@@ -63,16 +63,14 @@ func (d *DictObject) RegisterAllDictMethods() {
 			def := vm.Stack(arg_stackptr + 1)
 
 			if key.IsStringObject() {
-				if def.IsStringObject() {
-					rv, error := d.Get(key.AsString().Get())
-					if error != nil {
-						return def
-					}
-					return rv
+				rv, error := d.Get(key.AsString().Get())
+				if error != nil {
+					return def
 				}
+				return rv
 			}
 
-			vm.RunTimeError("Argument to get must be key, default")
+			vm.RunTimeError("Key argument to get must be a string")
 			return NIL_VALUE
 		},
 	})

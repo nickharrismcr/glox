@@ -1,3 +1,17 @@
 Testing colour_utils with RGB parameters - functions return vec4s:
 \nTesting fade:
-Uncaught exception: <class RunTimeError> : "fade expects 2 arguments (color, alpha)" 
+Faded red (255,0,0,0.5): vec4(127, 0, 0, 255)
+Type: 
+\nTesting brightness:
+Bright red (255,0,0,1.5): vec4(255, 0, 0, 255)
+Dim red (255,0,0,0.5): vec4(127, 0, 0, 255)
+\nTesting lerp:
+Red to blue 50% (255,0,0 -> 0,0,255): vec4(127, 0, 127, 255)
+\nTesting tint:
+Red tinted with green (255,0,0 + 0,255,0): vec4(0, 0, 0, 255)
+\nTesting HSV to RGB:
+HSV Red (0,1,1): vec4(255, 0, 0, 255)
+HSV Green (120,1,1): vec4(0, 255, 0, 255)
+HSV Blue (240,1,1): vec4(0, 0, 255, 255)
+\nAll colour_utils tests completed! All functions return vec4 objects.
+nil

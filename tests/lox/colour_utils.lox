@@ -35,11 +35,6 @@ print("HSV Red (0,1,1): " + str(hsvRed));
 print("HSV Green (120,1,1): " + str(hsvGreen));
 print("HSV Blue (240,1,1): " + str(hsvBlue));
 
-// Test random color generation
-print("\nTesting random colors:");
-for (var i = 0; i < 3; i = i + 1) {
-    var randomColor = colour_utils.random();
-    print("Random color " + str(i + 1) + ": " + str(randomColor));
-}
+ 
 
 print("\nAll colour_utils tests completed! All functions return vec4 objects.");

@@ -3,12 +3,15 @@ import sys, glob,subprocess,difflib,argparse,os
 
 def run(fname,force_compile=False) :  
 
-    cmdlst = ["D:/go/glox/bin/glox"]
+    # Use the current workspace directory to find GLox executable
+    import os
+    glox_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "bin", "glox")
+    cmdlst = [glox_path]
     if force_compile:
         cmdlst.append("--force-compile")
     cmdlst.append(fname)
  
-    res = subprocess.Popen(cmdlst,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    res = subprocess.Popen(cmdlst,stdout=subprocess.PIPE,stderr=subprocess.PIPE )
     return res
 
 def basename(path):
@@ -20,8 +23,8 @@ def basename(path):
     return path
 
 def format(s):
-
-    return "\n".join([ str(i.decode("ascii")) for i in s.splitlines() ])
+    # Normalize line endings to handle cross-platform differences
+    return "\n".join([ str(i.decode("ascii")) for i in s.replace(b'\r\n', b'\n').replace(b'\r', b'\n').splitlines() ])
 
 
 def process(fname,args,force_compile=False,show_result=False):
@@ -44,7 +47,12 @@ def process(fname,args,force_compile=False,show_result=False):
         with open(testdatafile,"rb") as infile:
             res=pipe.communicate()
             data=infile.read()
-            match=data==res[0]
+            
+            # Normalize line endings for comparison
+            expected = data.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+            actual = res[0].replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+            
+            match = expected == actual
             if match:
                 passed=True
                 if args.verbose or show_result:
