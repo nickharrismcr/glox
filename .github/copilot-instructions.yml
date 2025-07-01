@@ -1,0 +1,15 @@
+name: GLox Project Instructions
+description: Instructions for AI assistants working on the GLox interpreter project
+
+instructions:
+  - Always read TERMINAL_INSTRUCTIONS.md before running terminal commands
+  - Use ./run.sh scripts instead of direct executable calls
+  - Follow grid-based movement system for cube_stack_fly2.lox
+  - Controller position in grid coordinates, camera in world coordinates
+  - Use goal-oriented decision making at intersections
+  - Test changes with ./run.sh lox_examples/cube_stack_fly2.lox
+
+context_files:
+  - TERMINAL_INSTRUCTIONS.md
+  - .copilot-instructions.md
+  - cube_stack_fly2.lox
