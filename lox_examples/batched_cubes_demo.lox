@@ -9,9 +9,9 @@ import sys
 
 // Configuration for massive cube grid
 const GRID_SIZE = 100        // 100x100 = 10,000 cubes!
-const CUBE_SPACING = 2.0     // Space between cubes
-const CUBE_SIZE = 0.8        // Individual cube size
-const WAVE_HEIGHT = 4.0      // Height of wave animation
+const CUBE_SPACING = 3.0     // Space between cubes
+const CUBE_SIZE = 0.3       // Individual cube size
+const WAVE_HEIGHT = 2.0      // Height of wave animation
 const WAVE_SPEED = 2.0       // Speed of wave propagation
 const COLOR_SPEED = 1.5      // Speed of color animation
 
