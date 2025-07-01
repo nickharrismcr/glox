@@ -550,7 +550,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					vm.stackTop++
 					continue
 				}
-				vm.RunTimeError("Addition type mismatch")
+				vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
 				goto End
 
 			case core.VAL_FLOAT:
@@ -564,12 +564,12 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					vm.stackTop++
 					continue
 				}
-				vm.RunTimeError("Addition type mismatch")
+				vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
 				goto End
 
 			case core.VAL_VEC2:
 				if v1.Type != core.VAL_VEC2 {
-					vm.RunTimeError("Addition type mismatch")
+					vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
 					goto End
 				}
 				v3 := v1.AsVec2().Add(v2.AsVec2())
@@ -579,7 +579,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 			case core.VAL_VEC3:
 				if v1.Type != core.VAL_VEC3 {
-					vm.RunTimeError("Addition type mismatch")
+					vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
 					goto End
 				}
 				v3 := v1.AsVec3().Add(v2.AsVec3())
@@ -589,7 +589,7 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 			case core.VAL_VEC4:
 				if v1.Type != core.VAL_VEC4 {
-					vm.RunTimeError("Addition type mismatch")
+					vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
 					goto End
 				}
 				v3 := v1.AsVec4().Add(v2.AsVec4())
@@ -603,19 +603,20 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 				case core.OBJECT_STRING:
 					if v1.Type != core.VAL_OBJ {
-						vm.RunTimeError("Addition type mismatch")
+						vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
 						goto End
 					}
 					ov1 := v1.Obj
 					if ov1.GetType() == core.OBJECT_STRING {
 						vm.stack[vm.stackTop] = core.MakeStringObjectValue(v1.AsString().Get()+v2.AsString().Get(), false)
 						vm.stackTop++
-
 						continue
 					}
+					vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
+					goto End
 				case core.OBJECT_LIST:
 					if v1.Type != core.VAL_OBJ {
-						vm.RunTimeError("Addition type mismatch")
+						vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
 						goto End
 					}
 					ov1 := v1.Obj
@@ -625,9 +626,11 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 						vm.stackTop++
 						continue
 					}
+					vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
+					goto End
 				}
 			}
-			vm.RunTimeError("Invalid operands for addition: %s and %s", v1.String(), v2.String())
+			vm.RunTimeError("Invalid operands for addition: %s + %s", v1.String(), v2.String())
 			goto End
 
 		case core.OP_SUBTRACT:
@@ -1988,7 +1991,7 @@ func (vm *VM) createDict(frame *core.CallFrame) {
 	for i := 0; i < itemCount; i++ {
 		value := vm.pop()
 		key := vm.pop()
-		dict[core.InternName(key.AsString().Get())] = value
+		dict[core.InternName(key.String())] = value
 	}
 	do := core.MakeDictObject(dict)
 	vm.stack[vm.stackTop] = core.MakeObjectValue(do, false)
@@ -2038,7 +2041,7 @@ func (vm *VM) index() bool {
 
 		case core.OBJECT_DICT:
 
-			key := iv.AsString().Get()
+			key := iv.String()
 			t := sv.AsDict()
 			so, err := t.Get(key)
 			if err != nil {
@@ -2084,7 +2087,7 @@ func (vm *VM) indexAssign() bool {
 			}
 		case core.OBJECT_DICT:
 			t := collection.AsDict()
-			t.Set(index.AsString().Get(), rhs)
+			t.Set(index.String(), rhs)
 			return true
 		}
 	}
@@ -2225,9 +2228,42 @@ func (vm *VM) binarySubtract() bool {
 			vm.stackTop++
 			return true
 		}
+
+	case core.VAL_VEC2:
+		if v1.Type != core.VAL_VEC2 {
+			vm.RunTimeError("Subtraction type mismatch: %s - %s", v1.String(), v2.String())
+			return false
+		}
+		vec1 := v1.AsVec2()
+		vec2 := v2.AsVec2()
+		vm.stack[vm.stackTop] = core.MakeVec2Value(vec1.X-vec2.X, vec1.Y-vec2.Y, false)
+		vm.stackTop++
+		return true
+
+	case core.VAL_VEC3:
+		if v1.Type != core.VAL_VEC3 {
+			vm.RunTimeError("Subtraction type mismatch: %s - %s", v1.String(), v2.String())
+			return false
+		}
+		vec1 := v1.AsVec3()
+		vec2 := v2.AsVec3()
+		vm.stack[vm.stackTop] = core.MakeVec3Value(vec1.X-vec2.X, vec1.Y-vec2.Y, vec1.Z-vec2.Z, false)
+		vm.stackTop++
+		return true
+
+	case core.VAL_VEC4:
+		if v1.Type != core.VAL_VEC4 {
+			vm.RunTimeError("Subtraction type mismatch: %s - %s", v1.String(), v2.String())
+			return false
+		}
+		vec1 := v1.AsVec4()
+		vec2 := v2.AsVec4()
+		vm.stack[vm.stackTop] = core.MakeVec4Value(vec1.X-vec2.X, vec1.Y-vec2.Y, vec1.Z-vec2.Z, vec1.W-vec2.W, false)
+		vm.stackTop++
+		return true
 	}
 
-	vm.RunTimeError("Addition type mismatch")
+	vm.RunTimeError("Subtraction type mismatch: %s - %s", v1.String(), v2.String())
 	return false
 }
 
