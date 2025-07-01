@@ -15,26 +15,12 @@ func BatchBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 	}
 
 	batchTypeVal := vm.Stack(arg_stackptr)
-	var batchType string
+	var batchType BatchPrimitive
 
-	if batchTypeVal.IsStringObject() {
-		// Accept string literals (legacy support)
-		batchType = batchTypeVal.AsString().Get()
-	} else if batchTypeVal.IsInt() {
-		// Accept integer constants (new preferred method)
-		switch batchTypeVal.AsInt() {
-		case 0:
-			batchType = "cube"
-		case 1:
-			batchType = "sphere"
-		case 2:
-			batchType = "plane"
-		default:
-			vm.RunTimeError("Invalid batch type constant")
-			return core.NIL_VALUE
-		}
+	if batchTypeVal.IsInt() {
+		batchType = BatchPrimitive(batchTypeVal.AsInt())
 	} else {
-		vm.RunTimeError("batch() argument must be a string or batch type constant")
+		vm.RunTimeError("batch() argument must be a batch type constant")
 		return core.NIL_VALUE
 	}
 
@@ -43,16 +29,24 @@ func BatchBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 	return core.MakeObjectValue(batchObj, true)
 }
 
+type BatchPrimitive int
+
+const (
+	BATCH_CUBE BatchPrimitive = iota
+	BATCH_SPHERE
+	BATCH_PLANE
+)
+
 // Internal data structures
 type BatchEntry struct {
-	Position core.Vec3Object
-	Size     core.Vec3Object
-	Color    core.Vec4Object
-	Rotation core.Vec3Object
+	Position rl.Vector3
+	Size     rl.Vector3
+	Color    rl.Color
+	Rotation rl.Vector3
 }
 
 type DrawBatch struct {
-	BatchType string
+	BatchType BatchPrimitive
 	Entries   []BatchEntry
 	Capacity  int
 }
@@ -65,7 +59,7 @@ type BatchObject struct {
 }
 
 // Constructor
-func MakeBatchObject(batchType string) *BatchObject {
+func MakeBatchObject(batchType BatchPrimitive) *BatchObject {
 	return &BatchObject{
 		BuiltInObject: core.BuiltInObject{},
 		Value: &DrawBatch{
@@ -78,7 +72,18 @@ func MakeBatchObject(batchType string) *BatchObject {
 
 // Standard interface implementations
 func (o *BatchObject) String() string {
-	return fmt.Sprintf("<Batch %s [%d entries]>", o.Value.BatchType, len(o.Value.Entries))
+	var typeName string
+	switch o.Value.BatchType {
+	case BATCH_CUBE:
+		typeName = "CUBE"
+	case BATCH_SPHERE:
+		typeName = "SPHERE"
+	case BATCH_PLANE:
+		typeName = "PLANE"
+	default:
+		typeName = "UNKNOWN"
+	}
+	return fmt.Sprintf("<Batch %s [%d entries]>", typeName, len(o.Value.Entries))
 }
 
 func (o *BatchObject) GetType() core.ObjectType {
@@ -117,10 +122,23 @@ func AsBatch(v core.Value) *BatchObject {
 // Core batch operations (internal methods)
 func (batch *DrawBatch) Add(pos *core.Vec3Object, size *core.Vec3Object, color *core.Vec4Object) int {
 	entry := BatchEntry{
-		Position: *pos,
-		Size:     *size,
-		Color:    *color,
-		Rotation: *core.MakeVec3Object(0, 0, 0), // Default no rotation
+		Position: rl.Vector3{
+			X: float32(pos.X),
+			Y: float32(pos.Y),
+			Z: float32(pos.Z),
+		},
+		Size: rl.Vector3{
+			X: float32(size.X),
+			Y: float32(size.Y),
+			Z: float32(size.Z),
+		},
+		Color: rl.Color{
+			R: uint8(color.X),
+			G: uint8(color.Y),
+			B: uint8(color.Z),
+			A: uint8(color.W),
+		},
+		Rotation: rl.Vector3{X: 0, Y: 0, Z: 0}, // Default no rotation
 	}
 	batch.Entries = append(batch.Entries, entry)
 	return len(batch.Entries) - 1
@@ -130,7 +148,11 @@ func (batch *DrawBatch) SetPosition(index int, pos *core.Vec3Object) error {
 	if index < 0 || index >= len(batch.Entries) {
 		return fmt.Errorf("index out of range: %d", index)
 	}
-	batch.Entries[index].Position = *pos
+	batch.Entries[index].Position = rl.Vector3{
+		X: float32(pos.X),
+		Y: float32(pos.Y),
+		Z: float32(pos.Z),
+	}
 	return nil
 }
 
@@ -138,7 +160,12 @@ func (batch *DrawBatch) SetColor(index int, color *core.Vec4Object) error {
 	if index < 0 || index >= len(batch.Entries) {
 		return fmt.Errorf("index out of range: %d", index)
 	}
-	batch.Entries[index].Color = *color
+	batch.Entries[index].Color = rl.Color{
+		R: uint8(color.X),
+		G: uint8(color.Y),
+		B: uint8(color.Z),
+		A: uint8(color.W),
+	}
 	return nil
 }
 
@@ -146,7 +173,11 @@ func (batch *DrawBatch) SetSize(index int, size *core.Vec3Object) error {
 	if index < 0 || index >= len(batch.Entries) {
 		return fmt.Errorf("index out of range: %d", index)
 	}
-	batch.Entries[index].Size = *size
+	batch.Entries[index].Size = rl.Vector3{
+		X: float32(size.X),
+		Y: float32(size.Y),
+		Z: float32(size.Z),
+	}
 	return nil
 }
 
@@ -154,21 +185,24 @@ func (batch *DrawBatch) GetPosition(index int) (*core.Vec3Object, error) {
 	if index < 0 || index >= len(batch.Entries) {
 		return nil, fmt.Errorf("index out of range: %d", index)
 	}
-	return &batch.Entries[index].Position, nil
+	pos := &batch.Entries[index].Position
+	return core.MakeVec3Object(float64(pos.X), float64(pos.Y), float64(pos.Z)), nil
 }
 
 func (batch *DrawBatch) GetColor(index int) (*core.Vec4Object, error) {
 	if index < 0 || index >= len(batch.Entries) {
 		return nil, fmt.Errorf("index out of range: %d", index)
 	}
-	return &batch.Entries[index].Color, nil
+	color := &batch.Entries[index].Color
+	return core.MakeVec4Object(float64(color.R), float64(color.G), float64(color.B), float64(color.A)), nil
 }
 
 func (batch *DrawBatch) GetSize(index int) (*core.Vec3Object, error) {
 	if index < 0 || index >= len(batch.Entries) {
 		return nil, fmt.Errorf("index out of range: %d", index)
 	}
-	return &batch.Entries[index].Size, nil
+	size := &batch.Entries[index].Size
+	return core.MakeVec3Object(float64(size.X), float64(size.Y), float64(size.Z)), nil
 }
 
 func (batch *DrawBatch) IsValidIndex(index int) bool {
@@ -200,58 +234,22 @@ func (batch *DrawBatch) Draw() {
 
 	// Batch render based on type
 	switch batch.BatchType {
-	case "cube":
+	case BATCH_CUBE:
 		for _, entry := range batch.Entries {
-			pos := rl.Vector3{
-				X: float32(entry.Position.X),
-				Y: float32(entry.Position.Y),
-				Z: float32(entry.Position.Z),
-			}
-			color := rl.Color{
-				R: uint8(entry.Color.X),
-				G: uint8(entry.Color.Y),
-				B: uint8(entry.Color.Z),
-				A: uint8(entry.Color.W),
-			}
-
-			rl.DrawCube(pos, float32(entry.Size.X), float32(entry.Size.Y), float32(entry.Size.Z), color)
+			rl.DrawCube(entry.Position, entry.Size.X, entry.Size.Y, entry.Size.Z, entry.Color)
 		}
-	case "sphere":
+	case BATCH_SPHERE:
 		for _, entry := range batch.Entries {
-			pos := rl.Vector3{
-				X: float32(entry.Position.X),
-				Y: float32(entry.Position.Y),
-				Z: float32(entry.Position.Z),
-			}
-			color := rl.Color{
-				R: uint8(entry.Color.X),
-				G: uint8(entry.Color.Y),
-				B: uint8(entry.Color.Z),
-				A: uint8(entry.Color.W),
-			}
-
 			// Use X component of size as radius
-			rl.DrawSphere(pos, float32(entry.Size.X), color)
+			rl.DrawSphere(entry.Position, entry.Size.X, entry.Color)
 		}
-	case "plane":
+	case BATCH_PLANE:
 		for _, entry := range batch.Entries {
-			pos := rl.Vector3{
-				X: float32(entry.Position.X),
-				Y: float32(entry.Position.Y),
-				Z: float32(entry.Position.Z),
-			}
 			size := rl.Vector2{
-				X: float32(entry.Size.X),
-				Y: float32(entry.Size.Z), // Use X and Z for plane dimensions
+				X: entry.Size.X,
+				Y: entry.Size.Z, // Use X and Z for plane dimensions
 			}
-			color := rl.Color{
-				R: uint8(entry.Color.X),
-				G: uint8(entry.Color.Y),
-				B: uint8(entry.Color.Z),
-				A: uint8(entry.Color.W),
-			}
-
-			rl.DrawPlane(pos, size, color)
+			rl.DrawPlane(entry.Position, size, entry.Color)
 		}
 	}
 }
