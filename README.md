@@ -2,6 +2,8 @@
 
 **Bob Nystroms CLox bytecode interpreter implemented in Go**
 
+> **Note for AI/Copilot**: Read `.copilot-instructions.md` and `TERMINAL_INSTRUCTIONS.md` before assisting with this project.
+
 The aim of this project is to learn more deeply about programming in Go and the crafting of interpreters by way of implementing Bobs CLox interpreter in Go, adding Python-inspired extensions to Lox along the way.
 The extensions to the language include enhanced string operations, lists, dictionaries, exception handling, module imports with bytecode caching, string and list iteration, Raylib bindings for graphics, and I/O.  
 
@@ -453,4 +455,4 @@ but hey-ho. This is a learning exercise, the Go code is probably not very ideoma
   
 There are some optimisations such as string interning to allow integer hash keys for method lookup, singleton NIL_VALUE, inlined functions in the main run loop.  
 
-Instrumented runs on my I7 PC show between 6 and 14M bytecode instructions per second are being handled,  and the VM is capable of 60 FPS when updating and drawing hundreds of 3D primitives with lox-implemented physics. There's scope for implementing a physics system in native either with homegrown code or a lib.    
+Instrumented runs on my I7 PC show between 6 and 14M bytecode instructions per second are being handled,  and the VM is capable of 60 FPS when updating and drawing hundreds of 3D primitives with lox-implemented physics. There's scope for implementing a physics system in native either with homegrown code or a lib.

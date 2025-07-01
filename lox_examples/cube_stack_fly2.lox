@@ -14,16 +14,15 @@ const MIN_STACK_HEIGHT = 3
 const MAX_STACK_HEIGHT = 20
 const BASE_CUBE_SIZE = 2.0
 const CAMERA_HEIGHT = 8.0
-const MAX_CAMERA_SPEED = 1  // Faster speed for simplified movement
-const ACCELERATION_FRAMES = 15
-const DECELERATION_FRAMES = 15
-const ROTATION_FRAMES = 15
+const MAX_CAMERA_SPEED = 0.1 // Slower for smoother movement
+const CAMERA_ACCELERATION = MAX_CAMERA_SPEED / 30.0  // Much gentler acceleration
+const ROTATION_SPEED = 0.02  // Much slower rotation for smoothness
 
 // Direction constants
-const NORTH = "0"
-const EAST = "1"
-const SOUTH = "2"
-const WEST = "3"
+const NORTH = 0
+const EAST = 1
+const SOUTH = 2
+const WEST = 3
 
 // Controller states
 const STATE_STARTING = 0
@@ -36,10 +35,17 @@ const WIDTH = 1000
 const HEIGHT = 700
 
 DIRECTIONS = {
-    NORTH: 1.5707963,  // PI/2
-    EAST: 0.0,         // 0
-    SOUTH: -1.5707963, // -PI/2
-    WEST: 3.1415927    // PI
+    NORTH: 0.0,        // 0 - move forward in Z direction
+    EAST: 1.5707963,   // PI/2 - move right in X direction  
+    SOUTH: 3.1415927,  // PI - move backward in Z direction
+    WEST: -1.5707963   // -PI/2 - move left in X direction
+}
+
+MOVEMENTS = {
+    NORTH: vec3(0, 0, 1),  // Move north (positive Z)
+    EAST: vec3(1, 0, 0),   // Move east (positive X)
+    SOUTH: vec3(0, 0, -1), // Move south (negative Z)
+    WEST: vec3(-1, 0, 0)   // Move west (negative X)
 }
 
 DIRECTION_NAMES= {
@@ -47,6 +53,16 @@ DIRECTION_NAMES= {
     EAST: "EAST",           
     SOUTH: "SOUTH",
     WEST: "WEST"
+}
+
+
+func even(value) {
+    value = int(value)
+    // Ensure value is even
+    if (value % 2 == 1) {
+        return value - 1
+    }
+    return value
 }
 
 // Cube class - represents a single colored cube
@@ -86,7 +102,7 @@ class CompositeCube {    init(position, size) {
         halfSize = this.size / 2
         faceOffset = 0.25  // Increased from 0.15 to reduce z-fighting
         faceSize = this.size * 0.8  // 80% of cube size like original
-        faceThickness = 0.05  // Increased from 0.02 for better visibility
+        faceThickness = 0.15  // Increased thickness for better visibility
         
         // Front face (positive Z)
         frontPos = vec3(position.x, position.y, position.z + halfSize + faceOffset)
@@ -197,7 +213,8 @@ class Grid {
                 stack = Stack(x, z, stackHeight)
                 this.stacks.append(stack)
             }
-        }        stackCount = len(this.stacks)
+        }        
+        stackCount = len(this.stacks)
     }
     
     add_to_batch(batch) {
@@ -215,16 +232,13 @@ class Grid {
         return (validX and validZ and evenX and evenZ)
     }
       // Check if position is at grid boundary (will hit boundary in next move)
-    isAtBoundary(gridX, gridZ, direction) {        if (direction == NORTH and gridZ >= this.size - 2) {  // Will hit boundary in next move
+    isAtBoundary(gridX, gridZ) {
+        // Return true if the grid position is on the boundary (first or last row/col)
+        print ("isAtBoundary?",gridX,gridZ, this.size)
+        if (gridX <= 2 or gridX >= this.size - 2) {
             return true
         }
-        if (direction == SOUTH and gridZ <= 2) {  // Will hit boundary in next move
-            return true
-        }
-        if (direction == EAST and gridX >= this.size - 2) {  // Will hit boundary in next move
-            return true
-        }
-        if (direction == WEST and gridX <= 2) {  // Will hit boundary in next move
+        if (gridZ <= 2 or gridZ >= this.size - 2) {
             return true
         }
         return false
@@ -235,283 +249,165 @@ class Grid {
 class Controller {
     init(grid) {
         this.grid = grid
-        this.state = STATE_STARTING
+       
         this.direction = NORTH
-        this.speed = 0.0
         this.frameCount = 0
         this.counter = 0 
-        // Rotation handling
+        
+        // Grid-based position and targeting
+        this.gridPos = vec3(even(grid.size / 2), 0, even(grid.size / 2))  // Current grid position
+        this.targetGridPos = this.gridPos  // Target grid position to move to
+        
+        // World coordinate positions (interpolated from grid positions)
+        this.worldPos = this.gridToWorld(this.gridPos)
+        this.targetWorldPos = this.worldPos
+        
+        // Camera angle management
         this.currentAngle = this.directionToAngle(this.direction)
         this.targetAngle = this.currentAngle
-        this.newDirection = this.direction  // The new direction we're turning towards
-
-        // Start at center of grid (even position = street)
-        this.gridX = int(grid.size / 2)
-        this.gridZ = int(grid.size / 2)
-        if (this.gridX % 2 == 1) {
-            this.gridX = this.gridX - 1  // Ensure even (street)
-        }
-        if (this.gridZ % 2 == 1) {
-            this.gridZ = this.gridZ - 1  // Ensure even (street)       
-        }
-
-        // Convert to world coordinates
-        halfSize = int(grid.size / 2)
-        this.worldX = (this.gridX - halfSize) * STACK_SPACING
-        this.worldZ = (this.gridZ - halfSize) * STACK_SPACING
+        this.newDirection = this.direction
+        this.turnNext = false 
         
-        // Target position for stopping at intersections
-        this.targetWorldX = this.worldX
-        this.targetWorldZ = this.worldZ
-        this.hasTarget = false  // Whether we have a specific stopping target
+        this.speed = 0 
+        this.targetSpeed = MAX_CAMERA_SPEED
         
-        // Track last intersection to avoid immediate re-triggering
-        this.lastIntersectionX = this.gridX
-        this.lastIntersectionZ = this.gridZ
+        // Initialize first target
+        this.nextTarget()
+    }
+    
+    gridToWorld(gridPos) {
+        // Convert grid coordinates to world coordinates
+        halfSize = int(this.grid.size / 2)
+        wx = (gridPos.x - halfSize) * STACK_SPACING
+        wz = (gridPos.z - halfSize) * STACK_SPACING
+        return vec3(wx, 0, wz)
+    }
+
+    distance_to_edge(gridPos, direction) {
+        // Calculate distance to edge of grid in current direction
+        // Streets are at even positions from 2 to (grid.size - 3)
+        
+        if (direction == NORTH) {
+            return (this.grid.size - 3) - gridPos.z
+        } else if (direction == SOUTH) {
+            return gridPos.z - 2
+        } else if (direction == EAST) {
+            return (this.grid.size - 3) - gridPos.x
+        } else if (direction == WEST) {
+            return gridPos.x - 2
+        }
+        return 0
+    }
+    
+    nextTarget() {
+        // Plan the next single grid step in current direction
+        distance_to_edge = this.distance_to_edge(this.gridPos, this.direction)
+      
+        
+        if ( this.turnNext or distance_to_edge < 4 ){
+            this.newDirection = ((this.direction + random.choice([1, -1])) % 4)
+            if (this.newDirection < 0) {
+                this.newDirection += 4
+            }
+            this.turnNext = false  
+            
+            // Randomly choose movement style for more dynamic camera behavior
+            moveStyle = random.integer(0, 3)  // 0, 1, or 2
+            if (moveStyle == 0) {
+                // Style 1: Update direction immediately - camera moves toward where it's looking
+                this.direction = this.newDirection
+                this.targetAngle = this.directionToAngle(this.newDirection)
+                this.targetGridPos = this.gridPos + MOVEMENTS[ this.newDirection ]
+            } else if (moveStyle == 1) {
+                // Style 2: Keep old direction - camera strafes while turning (cinematic)
+                this.targetAngle = this.directionToAngle(this.newDirection)
+                this.targetGridPos = this.gridPos + MOVEMENTS[ this.direction ]
+            } else {
+                // Style 3: Diagonal movement - blend of both directions
+                this.targetAngle = this.directionToAngle(this.newDirection)
+                this.targetGridPos = this.gridPos + MOVEMENTS[ this.direction ] + MOVEMENTS[ this.newDirection ]
+            }
+            
+            // Clamp target position to valid street boundaries
+            this.targetGridPos = vec3(math.max(2, math.min(this.grid.size - 3, this.targetGridPos.x)), 0, math.max(2, math.min(this.grid.size - 3, this.targetGridPos.z)))
+            
+        } else {
+            steps=math.min(distance_to_edge - 2, random.integer(1, 8))
+            this.targetGridPos = this.gridPos + math.scale3(MOVEMENTS[ this.direction ], steps)
+            
+            // Clamp target position to valid street boundaries
+            this.targetGridPos = vec3(math.max(2, math.min(this.grid.size - 3, this.targetGridPos.x)), 0, math.max(2, math.min(this.grid.size - 3, this.targetGridPos.z)))
+           
+            this.turnNext = true 
+        }
+        this.targetWorldPos = this.gridToWorld(this.targetGridPos)
     }
 
     update() {
         this.frameCount += 1
         this.counter += 1
+       
         
-        if (this.state == STATE_STARTING) {
-            this.updateStarting()
+        // Check if we're close to target and need a new one
+        distanceToTarget = math.length3(this.targetWorldPos - this.worldPos)
+        if (distanceToTarget < 2.0) {  // Start planning next target early
+            this.gridPos = this.targetGridPos  // Update grid position
+            this.nextTarget()
+            this.counter = 0 
         }
-        if (this.state == STATE_MOVING) {
-            this.updateMoving()
-        }
-        if (this.state == STATE_STOPPING) {
-            this.updateStopping()
-        }
-        if (this.state == STATE_ROTATING) {
-            this.updateRotating()        
-        }
+        this.distanceToTarget = distanceToTarget
+        // Always keep moving towards target
+        this.targetSpeed = MAX_CAMERA_SPEED
         
-        // Move the camera
-        this.moveCamera()
-    }
-
-    updateStarting() {
-        // Ramp up speed over ACCELERATION_FRAMES
-        progress = this.frameCount / float(ACCELERATION_FRAMES)
-        if (progress >= 1.0) {
-            this.speed = MAX_CAMERA_SPEED
-            this.state = STATE_MOVING
-            this.frameCount = 0
-        } else {
-            this.speed = MAX_CAMERA_SPEED * progress * progress  // Smooth acceleration
-        }
-        this.passed = 0 
-    }    
-    updateMoving() {
-        // Check if we're at a NEW intersection
-        atIntersection = (this.gridX % 2 == 0 and this.gridZ % 2 == 0)
-        newIntersection = atIntersection and (this.gridX != this.lastIntersectionX or this.gridZ != this.lastIntersectionZ)
-        
-        if (newIntersection) {
-             
-            this.passed += 1
-            this.lastIntersectionX = this.gridX
-            this.lastIntersectionZ = this.gridZ
-            
-            // Check if we should turn  
-            shouldTurn = (random.integer(1, 10) == 1) or this.passed >= 10 
-            atBoundary = this.isAtBoundary()
-          
-            
-            if (shouldTurn or atBoundary) {
-               
-                // Set target to next intersection in current direction
-                this.setStoppingTarget()
-                this.chooseNewDirection(atBoundary)
-                this.state = STATE_STOPPING
-                this.frameCount = 0
-                this.hasTarget = true
-                this.passed = 0 
-            }
-        }
+        // Update camera position and angle
+        this.updateCameraPosition()
     }
     
-    setStoppingTarget() {
-        // Find the next intersection in our current direction
-        nextGridX = this.gridX
-        nextGridZ = this.gridZ
-        
-        if (this.direction == NORTH) {
-            nextGridZ = nextGridZ + 2
-        }
-        if (this.direction == SOUTH) {
-            nextGridZ = nextGridZ - 2
-        }
-        if (this.direction == EAST) {
-            nextGridX = nextGridX + 2
-        }
-        if (this.direction == WEST) {
-            nextGridX = nextGridX - 2
-        }
-        
-        // Convert to world coordinates
-        halfSize = int(this.grid.size / 2)
-        this.targetWorldX = (nextGridX - halfSize) * STACK_SPACING
-        this.targetWorldZ = (nextGridZ - halfSize) * STACK_SPACING
-    }    
-    updateStopping() {
-        if (this.hasTarget) {
-            // Calculate distance to target
-            distanceToTarget = math.sqrt((this.targetWorldX - this.worldX) * (this.targetWorldX - this.worldX) + 
-                                           (this.targetWorldZ - this.worldZ) * (this.targetWorldZ - this.worldZ))
-            
-            // Calculate required deceleration to stop at target
-            // Using physics: v² = 2as, solve for a: a = v²/(2s)
-            requiredDecel = (this.speed * this.speed) / (2.0 * math.max(distanceToTarget, 0.1))
-            maxDecel = MAX_CAMERA_SPEED / float(DECELERATION_FRAMES)  // Maximum allowed deceleration
-            
-            // Use the higher of required or maximum deceleration to ensure we stop in time
-            deceleration = math.max(requiredDecel, maxDecel)
-            
-            // Apply deceleration
-            this.speed = math.max(0.0, this.speed - deceleration)
-            
-            // Check if we've reached the target or stopped
-            if (distanceToTarget < 0.5 or this.speed <= 0.01) {
-                this.speed = 0.0
-                this.state = STATE_ROTATING
-                this.frameCount = 0
-                this.hasTarget = false
-                
-                // Snap to target position
-                this.worldX = this.targetWorldX
-                this.worldZ = this.targetWorldZ
-                
-                // Update grid position
-                halfSize = int(this.grid.size / 2)
-                this.gridX = int((this.worldX / STACK_SPACING) + halfSize + 0.5)
-                this.gridZ = int((this.worldZ / STACK_SPACING) + halfSize + 0.5)
-                
-                // Ensure even coordinates (street centers)
-                if (this.gridX % 2 == 1) {
-                    this.gridX = this.gridX - 1
-                }
-                if (this.gridZ % 2 == 1) {
-                    this.gridZ = this.gridZ - 1
-                }
-            }
-        } else {
-            // Fallback: time-based deceleration if no target
-            progress = this.frameCount / float(DECELERATION_FRAMES)
-            if (progress >= 1.0) {
-                this.speed = 0.0
-                this.state = STATE_ROTATING
-                this.frameCount = 0
-            } else {
-                remaining = 1.0 - progress
-                this.speed = MAX_CAMERA_SPEED * remaining * remaining
-            }
-        }
-    }
+ 
 
-    updateRotating() {
-        // Rotate smoothly over ROTATION_FRAMES
-        progress = this.frameCount / float(ROTATION_FRAMES)
-        if (progress >= 1.0) {
+    updateCameraPosition() {
+        // Smooth speed interpolation
+        speedDiff = this.targetSpeed - this.speed
+        if (math.abs(speedDiff) > 0.001) {
+            this.speed += speedDiff * 0.1  // Smooth speed interpolation
+        } else {
+            this.speed = this.targetSpeed
+        }
+
+        // Smooth angle interpolation towards target
+        angleDiff = this.targetAngle - this.currentAngle
+        
+        // Handle angle wrapping (shortest path)
+        if (angleDiff > 3.14159) {
+            angleDiff = angleDiff - 6.28318
+        } else if (angleDiff < -3.14159) {
+            angleDiff = angleDiff + 6.28318
+        }
+        
+        if (math.abs(angleDiff) > 0.001) {
+            this.currentAngle += angleDiff * 0.05  // Smooth angular interpolation
+        } else {
             this.currentAngle = this.targetAngle
+            // Update direction when turn completes (for strafe and diagonal styles)
             this.direction = this.newDirection
-            this.state = STATE_STARTING
-            this.frameCount = 0
+        }
+        
+        // Smooth movement towards target world position
+        this.diff = this.targetWorldPos - this.worldPos
+        ln = math.length3(this.diff)
+ 
+        if (ln > 0.01) {
+            // Smooth movement with constant speed
+            normalizedDir = math.scale3(this.diff, 1.0 / ln)
+            moveVec = math.scale3(normalizedDir, this.speed)
+            this.worldPos += moveVec
         } else {
-            // Smooth interpolation
-            t = progress * progress * (3.0 - 2.0 * progress)  // Smoothstep
-            
-            // Handle angle wrapping
-            angleDiff = this.targetAngle - this.currentAngle
-             
-            if (angleDiff > math.PI) {
-                angleDiff = angleDiff - 2.0 * math.PI
-            }
-            if (angleDiff < -math.PI) {
-                angleDiff = angleDiff + 2.0 * math.PI
-            }
-            
-            this.currentAngle = this.currentAngle + angleDiff * t
+            // Very close to target, ease in smoothly
+            this.worldPos += math.scale3(this.diff, 0.01)
         }
     }
 
-    moveCamera() {
-        if (this.speed > 0) {
-            // Move forward in current direction
-            moveX = math.sin(this.currentAngle) * this.speed
-            moveZ = math.cos(this.currentAngle) * this.speed
-            
-            this.worldX = this.worldX + moveX
-            this.worldZ = this.worldZ + moveZ
-             
-            
-            // Update grid position
-            halfSize = int(this.grid.size / 2)
-            this.gridX = int((this.worldX / STACK_SPACING) + halfSize + 0.5)
-            this.gridZ = int((this.worldZ / STACK_SPACING) + halfSize + 0.5)
-            
-            // Snap to street centers (even coordinates)
-            if (this.gridX % 2 == 1) {
-                this.gridX = this.gridX - 1
-            }
-            if (this.gridZ % 2 == 1) {
-                this.gridZ = this.gridZ - 1
-            }
-        }
-    }
-
-    isAtBoundary() {
-         
-
-        if (  this.gridZ >= this.grid.size -2 ) {
-            return true
-        }
-        if (  this.gridZ <= 2) {
-            return true
-        }
-        if ( this.gridX >= this.grid.size -2  ) {
-            return true
-        }
-        if (  this.gridX <= 2 ) {
-            return true
-        }
-        return false
-    }
-
-    chooseNewDirection(atBoundary) {
-        // Pick left or right from current direction
-        directions = [NORTH, EAST, SOUTH, WEST]
-        currentIndex = 0
-        
-        // Find current direction index
-        for (i = 0; i < 4; i = i + 1) {
-            if (directions[i] == this.direction) {
-                currentIndex = i
-                break
-            }
-        }
-        newIndex = currentIndex
-        if (atBoundary) {
-            // If at boundary, always turn left
-            newIndex = (currentIndex + 2) % 4  // Turn 180 degrees (counterclockwise)
-        } else {
-            // Choose left or right (50/50 chance)
-            turnLeft = random.integer(0, 2) == 0
-            newIndex = currentIndex
-            
-            if (turnLeft) {
-                newIndex = (currentIndex + 3) % 4  // Turn left (counterclockwise)
-            } else {
-                newIndex = (currentIndex + 1) % 4  // Turn right (clockwise)
-            }
-        }
-        
-     
-        
-        this.newDirection = directions[newIndex]
-        this.targetAngle = this.directionToAngle(this.newDirection)
-    }
+ 
 
     directionToAngle(direction) {
         return DIRECTIONS[direction]
@@ -519,14 +415,14 @@ class Controller {
 
     getCamera() {
         // Simple camera pointing in current direction
-        camY = 2* CAMERA_HEIGHT + math.sin(this.counter * 0.01) * 10.0
+        camY = 2* CAMERA_HEIGHT + math.sin(this.frameCount * 0.01) * 10.0
         
         lookDistance = 25.0
-        lookX = this.worldX + math.sin(this.currentAngle) * lookDistance
-        lookZ = this.worldZ + math.cos(this.currentAngle) * lookDistance
-          
-        camPos = vec3(this.worldX, camY, this.worldZ)
-        lookPos = vec3(lookX, camY , lookZ)
+        lookX = this.worldPos.x + math.sin(this.currentAngle) * lookDistance
+        lookZ = this.worldPos.z + math.cos(this.currentAngle) * lookDistance
+
+        camPos = vec3(this.worldPos.x, camY, this.worldPos.z)
+        lookPos = vec3(lookX, camY, lookZ)
         upVec = vec3(0, 1, 0)
         return camera(camPos, lookPos, upVec)
     }
@@ -561,6 +457,7 @@ while (!win.should_close()) {
     // Update controller
     controller.update()
     
+    
     // Get camera from controller
     cam = controller.getCamera()
     
@@ -576,6 +473,12 @@ while (!win.should_close()) {
    
     
     win.end_3d()
+
+    // draw grid pos x and y text 
+    gridPosText = "Grid Position: (" + str(int(controller.gridPos.x)) + ", " + str(int(controller.gridPos.z)) + ")"
+    win.text(gridPosText, 10, 40, 18, vec4(255, 255, 255, 255))
+    distanceText = "Distance to Target: " + str(controller.distanceToTarget)
+    win.text(distanceText, 10, 65, 18, vec4(255, 255, 255, 255))
     win.end()
 }
 

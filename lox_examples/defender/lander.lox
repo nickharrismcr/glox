@@ -56,7 +56,7 @@ class Lander < Sprite {
         if (random.integer(0,200) ==1   ) {
             v=vec2(1.0,1.0) 
             v=math.rotate2d(v,random.float(0,math.PI*2))
-            v=math.scale2d(v,random.float(3.0,10.0))
+            v=math.scale2(v,random.float(3.0,10.0))
             this.mgr.fire_bullet(this.pos,v)
         }
     }

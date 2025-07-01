@@ -11,5 +11,13 @@
         "path": "C:\\Program Files\\Git\\bin\\bash.exe",
         "args": ["--login"]
     },
-    "go.toolsManagement.autoUpdate": true
+    "go.toolsManagement.autoUpdate": true,
+    "github.copilot.chat.welcomeMessage": "Remember to always use ./run.sh for GLox scripts and follow TERMINAL_INSTRUCTIONS.md",
+    "github.copilot.chat.experimental.codeGeneration.instructions": [
+        "Always read TERMINAL_INSTRUCTIONS.md before running any terminal commands",
+        "Use ./run.sh <script> to run GLox scripts, never use PowerShell commands",
+        "NEVER use multiline statements in Lox code - each statement must be on a single line",
+        "Follow the grid-based movement system: controller position in grid coordinates, camera position in world coordinates",
+        "For cube_stack_fly2.lox: use goal-oriented decision making at intersections"
+    ]
 }

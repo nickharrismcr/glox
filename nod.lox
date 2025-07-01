@@ -1,14 +1,3 @@
- 
- 
-class A {
-    init() {
-        this.x = 1
-    }   
-    increment() {
-        this.x += 1
-    }
-}
+ d={1:2}
 
-a = A()
-a.increment()
-print(a.x) // Should print 2
+ print d[1]
