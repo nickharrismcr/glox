@@ -34,7 +34,10 @@ func scale2d(v2, scalar) {
     return vec2(v2.x * scalar, v2.y * scalar);
 }
 
- 
+func length(v2) {
+    // Calculate the length of a 2D vector
+    return _sqrt(v2.x * v2.x + v2.y * v2.y);
+}
 
 
 func floor(n) {
