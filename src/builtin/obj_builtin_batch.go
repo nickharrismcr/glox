@@ -8,10 +8,6 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-// Frame counters for limiting debug output frequency
-var distanceCullFrameCounter = 0
-var frustumCullFrameCounter = 0
-
 // Constructor function (follows standard pattern)
 func BatchBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	if argCount != 1 {
@@ -265,9 +261,7 @@ func (batch *DrawBatch) DrawWithCulling(cameraPos rl.Vector3, maxDistance float3
 		return
 	}
 
-	totalObjects := len(batch.Entries)
 	maxDistanceSq := maxDistance * maxDistance
-	rendered := 0
 
 	// Batch render based on type with distance culling
 	switch batch.BatchType {
@@ -281,7 +275,6 @@ func (batch *DrawBatch) DrawWithCulling(cameraPos rl.Vector3, maxDistance float3
 
 			if distanceSq <= maxDistanceSq {
 				rl.DrawCube(entry.Position, entry.Size.X, entry.Size.Y, entry.Size.Z, entry.Color)
-				rendered++
 			}
 		}
 	case BATCH_SPHERE:
@@ -293,7 +286,6 @@ func (batch *DrawBatch) DrawWithCulling(cameraPos rl.Vector3, maxDistance float3
 
 			if distanceSq <= maxDistanceSq {
 				rl.DrawSphere(entry.Position, entry.Size.X, entry.Color)
-				rendered++
 			}
 		}
 	case BATCH_PLANE:
@@ -309,17 +301,8 @@ func (batch *DrawBatch) DrawWithCulling(cameraPos rl.Vector3, maxDistance float3
 					Y: entry.Size.Z,
 				}
 				rl.DrawPlane(entry.Position, size, entry.Color)
-				rendered++
 			}
 		}
-	}
-
-	// Log distance culling statistics (every 60 frames to avoid spam)
-	distanceCullFrameCounter++
-	if distanceCullFrameCounter%60 == 0 {
-		cullPercentage := float32(totalObjects-rendered) / float32(totalObjects) * 100.0
-		fmt.Printf("[DISTANCE CULLING] Total: %d, Rendered: %d (%.1f%% saved)\n",
-			totalObjects, rendered, cullPercentage)
 	}
 }
 
@@ -329,16 +312,11 @@ func (batch *DrawBatch) DrawWithDirectionalCulling(cameraPos rl.Vector3, cameraF
 		return
 	}
 
-	totalObjects := len(batch.Entries)
 	maxDistanceSq := maxDistance * maxDistance
 	// Convert FOV to radians and get cosine for dot product comparison
 	// Add some padding to the FOV to prevent edge flickering
 	paddedFOV := fovAngleDegrees + 10.0 // Add 10 degrees padding
 	fovRadians := paddedFOV * 3.14159 / 180.0
-
-	rendered := 0
-	culledByDistance := 0
-	culledByFOV := 0
 
 	// Batch render based on type with directional culling
 	switch batch.BatchType {
@@ -352,7 +330,6 @@ func (batch *DrawBatch) DrawWithDirectionalCulling(cameraPos rl.Vector3, cameraF
 
 			// Early distance check
 			if distanceSq > maxDistanceSq {
-				culledByDistance++
 				continue
 			}
 
@@ -374,9 +351,6 @@ func (batch *DrawBatch) DrawWithDirectionalCulling(cameraPos rl.Vector3, cameraF
 				// Check if object is within FOV cone (use the more permissive threshold)
 				if dotProduct >= adjustedMinDot {
 					rl.DrawCube(entry.Position, entry.Size.X, entry.Size.Y, entry.Size.Z, entry.Color)
-					rendered++
-				} else {
-					culledByFOV++
 				}
 			}
 		}
@@ -388,7 +362,6 @@ func (batch *DrawBatch) DrawWithDirectionalCulling(cameraPos rl.Vector3, cameraF
 			distanceSq := dx*dx + dy*dy + dz*dz
 
 			if distanceSq > maxDistanceSq {
-				culledByDistance++
 				continue
 			}
 
@@ -407,9 +380,6 @@ func (batch *DrawBatch) DrawWithDirectionalCulling(cameraPos rl.Vector3, cameraF
 
 				if dotProduct >= adjustedMinDot {
 					rl.DrawSphere(entry.Position, entry.Size.X, entry.Color)
-					rendered++
-				} else {
-					culledByFOV++
 				}
 			}
 		}
@@ -421,7 +391,6 @@ func (batch *DrawBatch) DrawWithDirectionalCulling(cameraPos rl.Vector3, cameraF
 			distanceSq := dx*dx + dy*dy + dz*dz
 
 			if distanceSq > maxDistanceSq {
-				culledByDistance++
 				continue
 			}
 
@@ -447,19 +416,8 @@ func (batch *DrawBatch) DrawWithDirectionalCulling(cameraPos rl.Vector3, cameraF
 						Y: entry.Size.Z,
 					}
 					rl.DrawPlane(entry.Position, size, entry.Color)
-					rendered++
-				} else {
-					culledByFOV++
 				}
 			}
 		}
-	}
-
-	// Log culling statistics (every 60 frames to avoid spam)
-	frustumCullFrameCounter++
-	if frustumCullFrameCounter%60 == 0 {
-		cullPercentage := float32(culledByDistance+culledByFOV) / float32(totalObjects) * 100.0
-		fmt.Printf("[FRUSTUM CULLING] Total: %d, Rendered: %d, Distance-culled: %d, FOV-culled: %d (%.1f%% saved)\n",
-			totalObjects, rendered, culledByDistance, culledByFOV, cullPercentage)
 	}
 }
