@@ -556,6 +556,7 @@ func (p *Parser) function(type_ FunctionType) {
 			}
 		}
 	}
+	p.match(TOKEN_EOL)
 	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after function parameters.")
 	p.match(TOKEN_EOL) // allow EOL after parameters
 	p.consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.")
@@ -1451,6 +1452,7 @@ func (p *Parser) argumentList() uint8 {
 			}
 		}
 	}
+	p.match(TOKEN_EOL) // allow EOL after arguments
 	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments")
 	return argCount
 }
@@ -1474,6 +1476,7 @@ func (p *Parser) parseList() uint8 {
 			}
 		}
 	}
+	p.match(TOKEN_EOL) // allow EOL after list items
 	p.consume(TOKEN_RIGHT_BRACKET, "Expect ']' after list items.")
 	return itemCount
 }
