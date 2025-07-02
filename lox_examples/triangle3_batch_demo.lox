@@ -1,0 +1,141 @@
+// Triangle3 Batch Demo - demonstrates batched triangles with 3 arbitrary points
+// Creates a large undulating terrain mesh using thousands of small triangles
+import colour
+import math
+
+var win = window(1200, 800);
+win.init();
+win.set_target_fps(60);
+
+var camera = camera(vec3(0, 15, 20), vec3(0, 0, 0), vec3(0, 1, 0));
+
+// Create a batch for storing triangles with three arbitrary points
+var batch = batch(win.BATCH_TRIANGLE3);
+
+// Terrain configuration
+const TERRAIN_SIZE = 100;    // Grid size (80x80 = 6400 triangles * 2 = 12800 triangles!)
+const TERRAIN_SCALE = 2.0;  // Distance between vertices
+const WAVE_HEIGHT = 4.0;    // Maximum height of waves
+const WAVE_FREQUENCY = 0.15; // Frequency of terrain waves
+
+func heightToColor(height) {
+    // Convert height to a color gradient
+    var normalizedHeight = (height + WAVE_HEIGHT) / (2.0 * WAVE_HEIGHT); // 0 to 1
+    
+    // Clamp to valid range to prevent unexpected colors
+    if (normalizedHeight < 0) normalizedHeight = 0;
+    if (normalizedHeight > 1) normalizedHeight = 1;
+    
+    if (normalizedHeight < 0.33) {
+        // Deep blue for low areas (valleys)
+        var blueIntensity = 150 + normalizedHeight * 105;
+        return vec4(0, 50, blueIntensity, 255);
+    } else if (normalizedHeight < 0.66) {
+        // Green for middle areas (hills)
+        var greenIntensity = 100 + normalizedHeight * 155;
+        return vec4(50, greenIntensity, 50, 255);
+    } else {
+        //  white for high areas (peaks)
+        var brightness = 150 + normalizedHeight * 105;
+        return vec4(brightness, brightness, brightness, 255); // More yellow, less white
+    }
+}
+
+print("Generating terrain with " + str(TERRAIN_SIZE * TERRAIN_SIZE * 2) + " triangles...");
+
+// Generate a grid of triangles forming an undulating terrain
+for (var x = 0; x < TERRAIN_SIZE - 1; x += 1) {
+    for (var z = 0; z < TERRAIN_SIZE - 1; z += 1) {
+        // Calculate world positions
+        var x1 = (x - TERRAIN_SIZE / 2) * TERRAIN_SCALE;
+        var x2 = (x + 1 - TERRAIN_SIZE / 2) * TERRAIN_SCALE;
+        var z1 = (z - TERRAIN_SIZE / 2) * TERRAIN_SCALE;
+        var z2 = (z + 1 - TERRAIN_SIZE / 2) * TERRAIN_SCALE;
+        
+        // Calculate heights using sine waves for undulation
+        var y1 = math.sin(x1 * WAVE_FREQUENCY) * math.cos(z1 * WAVE_FREQUENCY) * WAVE_HEIGHT;
+        var y2 = math.sin(x2 * WAVE_FREQUENCY) * math.cos(z1 * WAVE_FREQUENCY) * WAVE_HEIGHT;
+        var y3 = math.sin(x1 * WAVE_FREQUENCY) * math.cos(z2 * WAVE_FREQUENCY) * WAVE_HEIGHT;
+        var y4 = math.sin(x2 * WAVE_FREQUENCY) * math.cos(z2 * WAVE_FREQUENCY) * WAVE_HEIGHT;
+        
+        // Create four vertices for this quad
+        var v1 = vec3(x1, y1, z1);  // Top-left
+        var v2 = vec3(x2, y2, z1);  // Top-right
+        var v3 = vec3(x1, y3, z2);  // Bottom-left
+        var v4 = vec3(x2, y4, z2);  // Bottom-right
+        
+        // Calculate colors based on height (blue low, green middle, white high)
+        var avgHeight1 = (y1 + y2 + y3) / 3.0;
+        var avgHeight2 = (y2 + y3 + y4) / 3.0;
+        
+        var color1 = heightToColor(avgHeight1);
+        var color2 = heightToColor(avgHeight2);
+        
+        // Create two triangles for each quad with correct winding order
+        // For proper front-face visibility, vertices should be in counter-clockwise order when viewed from above
+        
+        // Triangle 1: v1, v3, v2 (counter-clockwise from above)
+        batch.add_triangle3(v1, v3, v2, color1);
+        
+        // Triangle 2: v2, v3, v4 (counter-clockwise from above)
+        batch.add_triangle3(v2, v3, v4, color2);
+    }
+    
+    // Progress indicator for large terrain generation
+    if (x % 10 == 0) {
+        print("Progress: " + str((x * 100) / TERRAIN_SIZE) + "%");
+    }
+}
+
+print("Generated " + str(batch.count()) + " triangles!");
+print("Batch capacity: " + str(batch.capacity()));
+
+// Animation variables
+var time = 0.0;
+var cameraAngle = 0.0;
+var frameCount = 0;
+
+while (!win.should_close()) {
+    time += 0.016; // ~60 FPS
+    cameraAngle += 0.3; // Slower rotation for better viewing
+    frameCount += 1;
+    
+    // Animate camera in a circle high above the terrain
+    var radius = 35.0; // Closer to terrain for better visibility
+    var height = 15.0 + math.sin(time * 0.3) * 5.0; // Lower height, gentler oscillation
+    var camX = radius * math.cos(math.radians(cameraAngle));
+    var camZ = radius * math.sin(math.radians(cameraAngle));
+    
+    camera.set_position(vec3(camX, height, camZ));
+    camera.set_target(vec3(0, 0, 0)); // Always look at center of terrain
+    
+    win.begin();
+    win.clear(vec4(20, 30, 50, 255)); // Dark blue sky
+    
+    // Ensure we're using normal alpha blending, not additive
+    win.begin_blend_mode(win.BLEND_ALPHA);
+    
+    win.begin_3d(camera);
+    
+    // Draw the massive triangle terrain with better culling settings
+    var camPos = vec3(camX, height, camZ);
+    
+    // Use consistent distance culling - no frustum culling to avoid flickering
+    batch.draw_culled(camPos, 320.0); // Increased draw distance to cover full terrain
+    
+    win.end_3d();
+    
+    // End the blend mode
+    win.end_blend_mode();
+    
+    // Performance and info display
+    win.text("Triangle3 Batch Terrain Demo", 160, 10, 24, vec4(255, 255, 255, 255));
+    win.text("Triangles: " + str(batch.count()), 10, 45, 18, vec4(255, 255, 255, 255));
+    win.text("Terrain Size: " + str(TERRAIN_SIZE) + "x" + str(TERRAIN_SIZE), 10, 70, 16, vec4(180, 180, 180, 255));
+    win.text("Camera Height: " + str(math.round(height * 10) / 10), 10, 95, 16, vec4(180, 180, 180, 255));
+         
+   
+    win.end();
+}
+
+win.close();
