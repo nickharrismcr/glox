@@ -37,6 +37,7 @@ const (
 	BATCH_SPHERE
 	BATCH_PLANE
 	BATCH_TRIANGLE
+	BATCH_TRIANGLE3
 )
 
 // Internal data structures
@@ -47,10 +48,19 @@ type BatchEntry struct {
 	Rotation rl.Vector3
 }
 
+// For triangles defined by three 3D points
+type TriangleBatchEntry struct {
+	Point1 rl.Vector3
+	Point2 rl.Vector3
+	Point3 rl.Vector3
+	Color  rl.Color
+}
+
 type DrawBatch struct {
-	BatchType BatchPrimitive
-	Entries   []BatchEntry
-	Capacity  int
+	BatchType      BatchPrimitive
+	Entries        []BatchEntry
+	TrianglePoints []TriangleBatchEntry // For BATCH_TRIANGLE3 type
+	Capacity       int
 }
 
 // Main object (follows standard pattern)
@@ -65,9 +75,10 @@ func MakeBatchObject(batchType BatchPrimitive) *BatchObject {
 	return &BatchObject{
 		BuiltInObject: core.BuiltInObject{},
 		Value: &DrawBatch{
-			BatchType: batchType,
-			Entries:   make([]BatchEntry, 0, 1000), // Pre-allocate capacity
-			Capacity:  1000,
+			BatchType:      batchType,
+			Entries:        make([]BatchEntry, 0, 1000), // Pre-allocate capacity
+			TrianglePoints: make([]TriangleBatchEntry, 0, 1000),
+			Capacity:       1000,
 		},
 	}
 }
@@ -75,17 +86,29 @@ func MakeBatchObject(batchType BatchPrimitive) *BatchObject {
 // Standard interface implementations
 func (o *BatchObject) String() string {
 	var typeName string
+	var entryCount int
+
 	switch o.Value.BatchType {
 	case BATCH_CUBE:
 		typeName = "CUBE"
+		entryCount = len(o.Value.Entries)
 	case BATCH_SPHERE:
 		typeName = "SPHERE"
+		entryCount = len(o.Value.Entries)
 	case BATCH_PLANE:
 		typeName = "PLANE"
+		entryCount = len(o.Value.Entries)
+	case BATCH_TRIANGLE:
+		typeName = "TRIANGLE"
+		entryCount = len(o.Value.Entries)
+	case BATCH_TRIANGLE3:
+		typeName = "TRIANGLE3"
+		entryCount = len(o.Value.TrianglePoints)
 	default:
 		typeName = "UNKNOWN"
+		entryCount = len(o.Value.Entries)
 	}
-	return fmt.Sprintf("<Batch %s [%d entries]>", typeName, len(o.Value.Entries))
+	return fmt.Sprintf("<Batch %s [%d entries]>", typeName, entryCount)
 }
 
 func (o *BatchObject) GetType() core.ObjectType {
@@ -144,6 +167,35 @@ func (batch *DrawBatch) Add(pos *core.Vec3Object, size *core.Vec3Object, color *
 	}
 	batch.Entries = append(batch.Entries, entry)
 	return len(batch.Entries) - 1
+}
+
+// Add triangle with three specific 3D points
+func (batch *DrawBatch) AddTriangle3(p1 *core.Vec3Object, p2 *core.Vec3Object, p3 *core.Vec3Object, color *core.Vec4Object) int {
+	entry := TriangleBatchEntry{
+		Point1: rl.Vector3{
+			X: float32(p1.X),
+			Y: float32(p1.Y),
+			Z: float32(p1.Z),
+		},
+		Point2: rl.Vector3{
+			X: float32(p2.X),
+			Y: float32(p2.Y),
+			Z: float32(p2.Z),
+		},
+		Point3: rl.Vector3{
+			X: float32(p3.X),
+			Y: float32(p3.Y),
+			Z: float32(p3.Z),
+		},
+		Color: rl.Color{
+			R: uint8(color.X),
+			G: uint8(color.Y),
+			B: uint8(color.Z),
+			A: uint8(color.W),
+		},
+	}
+	batch.TrianglePoints = append(batch.TrianglePoints, entry)
+	return len(batch.TrianglePoints) - 1
 }
 
 func (batch *DrawBatch) SetPosition(index int, pos *core.Vec3Object) error {
@@ -212,7 +264,8 @@ func (batch *DrawBatch) IsValidIndex(index int) bool {
 }
 
 func (batch *DrawBatch) Clear() {
-	batch.Entries = batch.Entries[:0] // Keep capacity, reset length
+	batch.Entries = batch.Entries[:0]               // Keep capacity, reset length
+	batch.TrianglePoints = batch.TrianglePoints[:0] // Clear triangle points too
 }
 
 func (batch *DrawBatch) Reserve(capacity int) {
@@ -225,11 +278,22 @@ func (batch *DrawBatch) Reserve(capacity int) {
 }
 
 func (batch *DrawBatch) Count() int {
+	if batch.BatchType == BATCH_TRIANGLE3 {
+		return len(batch.TrianglePoints)
+	}
 	return len(batch.Entries)
 }
 
 // Render all entries in the batch
 func (batch *DrawBatch) Draw() {
+	if batch.BatchType == BATCH_TRIANGLE3 {
+		// Draw 3-point triangles
+		for _, entry := range batch.TrianglePoints {
+			rl.DrawTriangle3D(entry.Point1, entry.Point2, entry.Point3, entry.Color)
+		}
+		return
+	}
+
 	if len(batch.Entries) == 0 {
 		return
 	}
@@ -258,11 +322,31 @@ func (batch *DrawBatch) Draw() {
 
 // Simple distance-based culling for better performance
 func (batch *DrawBatch) DrawWithCulling(cameraPos rl.Vector3, maxDistance float32) {
-	if len(batch.Entries) == 0 {
+	maxDistanceSq := maxDistance * maxDistance
+
+	if batch.BatchType == BATCH_TRIANGLE3 {
+		// Draw 3-point triangles with distance culling
+		for _, entry := range batch.TrianglePoints {
+			// Calculate center point of triangle for distance check
+			centerX := (entry.Point1.X + entry.Point2.X + entry.Point3.X) / 3.0
+			centerY := (entry.Point1.Y + entry.Point2.Y + entry.Point3.Y) / 3.0
+			centerZ := (entry.Point1.Z + entry.Point2.Z + entry.Point3.Z) / 3.0
+
+			dx := centerX - cameraPos.X
+			dy := centerY - cameraPos.Y
+			dz := centerZ - cameraPos.Z
+			distanceSq := dx*dx + dy*dy + dz*dz
+
+			if distanceSq <= maxDistanceSq {
+				rl.DrawTriangle3D(entry.Point1, entry.Point2, entry.Point3, entry.Color)
+			}
+		}
 		return
 	}
 
-	maxDistanceSq := maxDistance * maxDistance
+	if len(batch.Entries) == 0 {
+		return
+	}
 
 	// Batch render based on type with distance culling
 	switch batch.BatchType {
@@ -309,15 +393,77 @@ func (batch *DrawBatch) DrawWithCulling(cameraPos rl.Vector3, maxDistance float3
 
 // Improved culling with camera direction (eliminates objects behind camera)
 func (batch *DrawBatch) DrawWithDirectionalCulling(cameraPos rl.Vector3, cameraForward rl.Vector3, maxDistance float32, fovAngleDegrees float32) {
-	if len(batch.Entries) == 0 {
-		return
-	}
-
 	maxDistanceSq := maxDistance * maxDistance
 	// Convert FOV to radians and get cosine for dot product comparison
 	// Add some padding to the FOV to prevent edge flickering
 	paddedFOV := fovAngleDegrees + 10.0 // Add 10 degrees padding
 	fovRadians := paddedFOV * 3.14159 / 180.0
+
+	if batch.BatchType == BATCH_TRIANGLE3 {
+		// Draw 3-point triangles with directional culling
+		for _, entry := range batch.TrianglePoints {
+			// Calculate center point of triangle for culling calculations
+			centerX := (entry.Point1.X + entry.Point2.X + entry.Point3.X) / 3.0
+			centerY := (entry.Point1.Y + entry.Point2.Y + entry.Point3.Y) / 3.0
+			centerZ := (entry.Point1.Z + entry.Point2.Z + entry.Point3.Z) / 3.0
+
+			// Calculate distance squared
+			dx := centerX - cameraPos.X
+			dy := centerY - cameraPos.Y
+			dz := centerZ - cameraPos.Z
+			distanceSq := dx*dx + dy*dy + dz*dz
+
+			// Early distance check
+			if distanceSq > maxDistanceSq {
+				continue
+			}
+
+			// Calculate distance and direction to triangle center
+			distance := float32(math.Sqrt(float64(distanceSq)))
+			if distance > 0.001 { // Avoid division by zero
+				objDirX := dx / distance
+				objDirY := dy / distance
+				objDirZ := dz / distance
+
+				// Dot product with camera forward vector
+				dotProduct := objDirX*cameraForward.X + objDirY*cameraForward.Y + objDirZ*cameraForward.Z
+
+				// Estimate triangle size for visibility calculations
+				// Calculate the maximum distance between triangle points
+				d12 := float32(math.Sqrt(float64((entry.Point2.X-entry.Point1.X)*(entry.Point2.X-entry.Point1.X) +
+					(entry.Point2.Y-entry.Point1.Y)*(entry.Point2.Y-entry.Point1.Y) +
+					(entry.Point2.Z-entry.Point1.Z)*(entry.Point2.Z-entry.Point1.Z))))
+				d13 := float32(math.Sqrt(float64((entry.Point3.X-entry.Point1.X)*(entry.Point3.X-entry.Point1.X) +
+					(entry.Point3.Y-entry.Point1.Y)*(entry.Point3.Y-entry.Point1.Y) +
+					(entry.Point3.Z-entry.Point1.Z)*(entry.Point3.Z-entry.Point1.Z))))
+				d23 := float32(math.Sqrt(float64((entry.Point3.X-entry.Point2.X)*(entry.Point3.X-entry.Point2.X) +
+					(entry.Point3.Y-entry.Point2.Y)*(entry.Point3.Y-entry.Point2.Y) +
+					(entry.Point3.Z-entry.Point2.Z)*(entry.Point3.Z-entry.Point2.Z))))
+
+				maxEdge := d12
+				if d13 > maxEdge {
+					maxEdge = d13
+				}
+				if d23 > maxEdge {
+					maxEdge = d23
+				}
+
+				objectRadius := maxEdge / 2.0                                           // Use half the maximum edge as "radius"
+				sizeAngleOffset := float32(math.Atan(float64(objectRadius / distance))) // Angular size
+				adjustedMinDot := float32(math.Cos(float64(fovRadians/2.0 + sizeAngleOffset)))
+
+				// Check if triangle is within FOV cone
+				if dotProduct >= adjustedMinDot {
+					rl.DrawTriangle3D(entry.Point1, entry.Point2, entry.Point3, entry.Color)
+				}
+			}
+		}
+		return
+	}
+
+	if len(batch.Entries) == 0 {
+		return
+	}
 
 	// Batch render based on type with directional culling
 	switch batch.BatchType {

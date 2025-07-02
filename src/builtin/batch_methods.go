@@ -41,6 +41,51 @@ func RegisterAllBatchMethods(o *BatchObject) {
 		},
 	})
 
+	o.RegisterMethod("add_triangle3", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 4 {
+				vm.RunTimeError("add_triangle3() expects 4 arguments (point1, point2, point3, color)")
+				return core.NIL_VALUE
+			}
+
+			// Only allow this method for BATCH_TRIANGLE3 type
+			if o.Value.BatchType != BATCH_TRIANGLE3 {
+				vm.RunTimeError("add_triangle3() can only be used with BATCH_TRIANGLE3 batch type")
+				return core.NIL_VALUE
+			}
+
+			p1Val := vm.Stack(arg_stackptr)
+			p2Val := vm.Stack(arg_stackptr + 1)
+			p3Val := vm.Stack(arg_stackptr + 2)
+			colorVal := vm.Stack(arg_stackptr + 3)
+
+			if p1Val.Type != core.VAL_VEC3 {
+				vm.RunTimeError("add_triangle3() first argument must be a vec3 (point1)")
+				return core.NIL_VALUE
+			}
+			if p2Val.Type != core.VAL_VEC3 {
+				vm.RunTimeError("add_triangle3() second argument must be a vec3 (point2)")
+				return core.NIL_VALUE
+			}
+			if p3Val.Type != core.VAL_VEC3 {
+				vm.RunTimeError("add_triangle3() third argument must be a vec3 (point3)")
+				return core.NIL_VALUE
+			}
+			if colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("add_triangle3() fourth argument must be a vec4 (color)")
+				return core.NIL_VALUE
+			}
+
+			p1 := p1Val.Obj.(*core.Vec3Object)
+			p2 := p2Val.Obj.(*core.Vec3Object)
+			p3 := p3Val.Obj.(*core.Vec3Object)
+			color := colorVal.Obj.(*core.Vec4Object)
+
+			index := o.Value.AddTriangle3(p1, p2, p3, color)
+			return core.MakeIntValue(index, true)
+		},
+	})
+
 	o.RegisterMethod("set_position", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 2 {

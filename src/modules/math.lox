@@ -129,4 +129,14 @@ func sign(v) {
         return -1;
     }
     return 0; // Zero case
+}
+
+func radians(degrees) {
+    // Convert degrees to radians
+    return degrees * PI / 180.0;
+}
+
+func degrees(radians_val) {
+    // Convert radians to degrees
+    return radians_val * 180.0 / PI;
 } 

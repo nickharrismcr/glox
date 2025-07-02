@@ -885,6 +885,8 @@ func RegisterAllWindowConstants(o *WindowObject) {
 	o.RegisterConstant("BATCH_CUBE", core.MakeIntValue(int(BATCH_CUBE), true))
 	o.RegisterConstant("BATCH_SPHERE", core.MakeIntValue(int(BATCH_SPHERE), true))
 	o.RegisterConstant("BATCH_PLANE", core.MakeIntValue(int(BATCH_PLANE), true))
+	o.RegisterConstant("BATCH_TRIANGLE", core.MakeIntValue(int(BATCH_TRIANGLE), true))
+	o.RegisterConstant("BATCH_TRIANGLE3", core.MakeIntValue(int(BATCH_TRIANGLE3), true))
 
 	// Blend mode constants
 	o.RegisterConstant("BLEND_ADD", core.MakeIntValue(int(rl.BlendAdditive), true))
