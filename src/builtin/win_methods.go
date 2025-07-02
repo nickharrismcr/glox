@@ -805,7 +805,7 @@ func RegisterAllWindowMethods(o *WindowObject) {
 		},
 	})
 
-	o.RegisterMethod("ellipse", &core.BuiltInObject{
+	o.RegisterMethod("ellipse3", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 4 {
 				vm.RunTimeError("ellipse expects 4 arguments: center(vec3), radiusX(number), radiusZ(number), color(vec4)")
@@ -832,6 +832,49 @@ func RegisterAllWindowMethods(o *WindowObject) {
 
 			// Draw ellipse as a flattened cylinder
 			rl.DrawCylinder(center, radiusX, radiusZ, 0.01, 16, color)
+			return core.NIL_VALUE
+		},
+	})
+
+	o.RegisterMethod("triangle3", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 10 {
+				vm.RunTimeError("triangle expects 10 arguments: x1, y1, z1, x2, y2, z2, x3, y3, z3, color")
+				return core.NIL_VALUE
+			}
+
+			x1Val := vm.Stack(arg_stackptr)
+			y1Val := vm.Stack(arg_stackptr + 1)
+			z1Val := vm.Stack(arg_stackptr + 2)
+			x2Val := vm.Stack(arg_stackptr + 3)
+			y2Val := vm.Stack(arg_stackptr + 4)
+			z2Val := vm.Stack(arg_stackptr + 5)
+			x3Val := vm.Stack(arg_stackptr + 6)
+			y3Val := vm.Stack(arg_stackptr + 7)
+			z3Val := vm.Stack(arg_stackptr + 8)
+			colVal := vm.Stack(arg_stackptr + 9)
+			if colVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vec4 for triangle color")
+				return core.NIL_VALUE
+			}
+			v4obj := colVal.Obj.(*core.Vec4Object)
+			r := uint8(v4obj.X)
+			g := uint8(v4obj.Y)
+			b := uint8(v4obj.Z)
+			a := uint8(v4obj.W)
+			x1 := float32(x1Val.AsFloat())
+			y1 := float32(y1Val.AsFloat())
+			z1 := float32(z1Val.AsFloat())
+			x2 := float32(x2Val.AsFloat())
+			y2 := float32(y2Val.AsFloat())
+			z2 := float32(z2Val.AsFloat())
+			x3 := float32(x3Val.AsFloat())
+			y3 := float32(y3Val.AsFloat())
+			z3 := float32(z3Val.AsFloat())
+			rl.DrawTriangle3D(rl.Vector3{X: x1, Y: y1, Z: z1},
+				rl.Vector3{X: x2, Y: y2, Z: z2},
+				rl.Vector3{X: x3, Y: y3, Z: z3},
+				rl.NewColor(r, g, b, a))
 			return core.NIL_VALUE
 		},
 	})
