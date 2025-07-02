@@ -1,3 +1,4 @@
 export LOX_PATH=$(pwd)
 export PATH=$LOX_PATH/bin:$PATH
+export PATH=$(pwd):$PATH
 

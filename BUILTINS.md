@@ -101,7 +101,6 @@ win.init();
 - **`circle(x, y, radius, color_vec4)`** - Draw a circle outline
 - **`circle_fill(x, y, radius, color_vec4)`** - Draw a filled circle
 - **`triangle(x1, y1, x2, y2, x3, y3, color_vec4)`** - Draw a triangle
-- **`ellipse(center_x, center_y, center_z, radius_x, radius_z, color_vec4)`** - Draw a 3D ellipse
 - **`text(text, x, y, size, color_vec4)`** - Draw text
 
 #### Advanced Drawing
@@ -143,6 +142,8 @@ Key constants are available as `win.KEY_*` (e.g., `win.KEY_SPACE`, `win.KEY_ESCA
 - **`cylinder(x, y, z, radius_top, radius_bottom, height, slices, color)`** - Draw a 3D cylinder
 - **`grid(slices, spacing)`** - Draw a 3D grid
 - **`plane(x, y, z, width, length, color)`** - Draw a 3D plane
+- **`ellipse3(center_x, center_y, center_z, radius_x, radius_z, color_vec4)`** - Draw a 3D ellipse
+- **`triangle3(x1,y1,z1,z2,y2,z2,x3,y3,z3,color_vec4)`** - Draw a triangle in 3D
 
 ### Shader Support
 - **`begin_shader_mode(shader)`** - Begin custom shader mode

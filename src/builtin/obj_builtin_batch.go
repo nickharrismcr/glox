@@ -36,6 +36,7 @@ const (
 	BATCH_CUBE BatchPrimitive = iota
 	BATCH_SPHERE
 	BATCH_PLANE
+	BATCH_TRIANGLE
 )
 
 // Internal data structures

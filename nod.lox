@@ -1,25 +1,39 @@
-// Test integer keys
-d={1:2, 3:4}
-print "Integer keys:"
-print d[1]
-print d[3]
+import colour 
 
-// Test string keys  
-a={"a":1,"b":2}
-print "String keys:"
-print a["a"]
-print a["b"]   
+row_colors = [
+    colour.RED,
+    colour.GREEN,
+    colour.BLUE,
+    colour.YELLOW,
+    colour.CYAN,
+    colour.MAGENTA,
+    colour.ORANGE,
+    colour.PURPLE,
+    colour.LIME,
+    colour.PINK,
+    colour.SKYBLUE,
+    colour.GOLD
+]
 
-// Test get method with string keys
-print "Get method tests:"
-print a.get("a","default")     // should return 1
-print a.get("b",999)           // should return 2  
-print a.get("missing","found") // should return "found"
+row_dict={
+    "red": colour.RED,
+    "green": colour.GREEN,
+    "blue": colour.BLUE,
+    "yellow": colour.YELLOW,
+    "cyan": colour.CYAN,
+    "magenta": colour.MAGENTA,
+    "orange": colour.ORANGE,
+    "purple": colour.PURPLE,
+    "lime": colour.LIME,
+    "pink": colour.PINK,
+    "skyblue": colour.SKYBLUE,
+    "gold": colour.GOLD
+}
 
-// Test mixed assignment
-a["c"] = 3
-print a["c"]
+v4 = vec4(
+    colour.RED.x,
+    colour.RED.y,   
+    colour.RED.z,
+    colour.RED.w
+)
 
-// Test integer key assignment  
-d[5] = 6
-print d[5]

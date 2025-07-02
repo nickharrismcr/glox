@@ -325,7 +325,7 @@ class MovingObject {
         
         // Gray shadow color with fixed transparency
         shadow_color = vec4(100, 100, 100, 255)
-        win.ellipse(shadow_pos, shadow_radius_x, shadow_radius_z, shadow_color)
+        win.ellipse3(shadow_pos, shadow_radius_x, shadow_radius_z, shadow_color)
     }
 }
 
