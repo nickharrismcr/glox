@@ -86,6 +86,62 @@ func RegisterAllBatchMethods(o *BatchObject) {
 		},
 	})
 
+	o.RegisterMethod("add_textured_cube", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 4 {
+				vm.RunTimeError("add_textured_cube() expects 4 arguments (texture, position, size, base_color)")
+				return core.NIL_VALUE
+			}
+
+			// Check if this is a textured cube batch
+			if o.Value.BatchType != BATCH_TEXTURED_CUBE {
+				vm.RunTimeError("add_textured_cube() can only be used with BATCH_TEXTURED_CUBE batch type")
+				return core.NIL_VALUE
+			}
+
+			textureVal := vm.Stack(arg_stackptr)
+			posVal := vm.Stack(arg_stackptr + 1)
+			sizeVal := vm.Stack(arg_stackptr + 2)
+			colorVal := vm.Stack(arg_stackptr + 3)
+
+			// Extract texture object (can be either TextureObject or RenderTextureObject)
+			if textureVal.Type != core.VAL_OBJ {
+				vm.RunTimeError("add_textured_cube() first argument must be a texture or render_texture object")
+				return core.NIL_VALUE
+			}
+
+			var rayTexture rl.Texture2D
+			if textureObj, ok := textureVal.Obj.(*TextureObject); ok {
+				rayTexture = textureObj.Data.Texture
+			} else if renderTextureObj, ok := textureVal.Obj.(*RenderTextureObject); ok {
+				rayTexture = renderTextureObj.Data.RenderTexture.Texture
+			} else {
+				vm.RunTimeError("add_textured_cube() first argument must be a texture or render_texture object")
+				return core.NIL_VALUE
+			}
+
+			if posVal.Type != core.VAL_VEC3 {
+				vm.RunTimeError("add_textured_cube() second argument must be a vec3 (position)")
+				return core.NIL_VALUE
+			}
+			if sizeVal.Type != core.VAL_VEC3 {
+				vm.RunTimeError("add_textured_cube() third argument must be a vec3 (size)")
+				return core.NIL_VALUE
+			}
+			if colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("add_textured_cube() fourth argument must be a vec4 (base_color)")
+				return core.NIL_VALUE
+			}
+
+			pos := posVal.Obj.(*core.Vec3Object)
+			size := sizeVal.Obj.(*core.Vec3Object)
+			color := colorVal.Obj.(*core.Vec4Object)
+
+			index := o.Value.AddTexturedCube(rayTexture, pos, size, color)
+			return core.MakeIntValue(index, true)
+		},
+	})
+
 	o.RegisterMethod("set_position", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 2 {
@@ -257,7 +313,6 @@ func RegisterAllBatchMethods(o *BatchObject) {
 				vm.RunTimeError("draw() expects no arguments")
 				return core.NIL_VALUE
 			}
-
 			o.Value.Draw()
 			return core.NIL_VALUE
 		},

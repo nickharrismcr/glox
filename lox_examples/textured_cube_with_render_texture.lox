@@ -1,0 +1,96 @@
+// textured_cube_with_render_texture.lox - Example showing render_texture with textured_cube
+
+import math;
+
+// Create window
+var win = window(800, 600)
+win.init()
+
+// Create 3D camera
+var camera = camera(
+    vec3(4.0, 4.0, 4.0),    // position
+    vec3(0.0, 0.0, 0.0),    // target
+    vec3(0.0, 1.0, 0.0)     // up
+)
+
+// Load regular textures
+var ship_image = image("human.png")
+var ship_texture = texture(ship_image, 1, 1, 1)
+
+// Create a render texture and draw into it
+var render_tex = render_texture(256, 256)
+render_tex.clear(vec4(50, 50, 50, 255))  // Dark gray background
+render_tex.rectangle(30, 30, 196, 196, vec4(100, 200, 255, 255))  // Light blue square
+render_tex.circle_fill(128, 128, 80, vec4(255, 100, 100, 255))    // Light red circle
+render_tex.circle_fill(80, 80, 30, vec4(255, 255, 100, 255))      // Yellow circle (top-left)
+render_tex.circle_fill(176, 80, 30, vec4(100, 255, 100, 255))     // Green circle (top-right)
+render_tex.circle_fill(128, 176, 30, vec4(255, 100, 255, 255))    // Magenta circle (bottom)
+
+// Animation variables
+var time = 0.0
+
+// Main game loop
+while (!win.should_close()) {
+    // Update animation
+    time = time + 0.02
+    
+    // Calculate floating motion
+    var float_y = math.sin(time) * 0.5
+    var rotation_y = time * 30.0  // Rotate over time
+    
+    // Begin drawing
+    win.begin()
+    win.clear(vec4(20, 20, 40, 255))  // Dark blue background
+    
+    // Begin 3D mode
+    win.begin_3d(camera)
+    
+    // Draw cubes with different texture types
+    
+    // Left cube: Regular texture
+    win.textured_cube(
+        ship_texture,
+        vec3(-2.5, float_y, 0.0),
+        vec3(1.5, 1.5, 1.5),
+        vec4(255, 255, 255, 255)  // White base
+    )
+    
+    // Right cube: Render texture
+    win.textured_cube(
+        render_tex,
+        vec3(2.5, float_y, 0.0),
+        vec3(1.5, 1.5, 1.5),
+        vec4(255, 255, 255, 255)  // White base
+    )
+    
+    // Center cube: Render texture with colored base
+    win.textured_cube(
+        render_tex,
+        vec3(0.0, float_y + 1.0, 0.0),
+        vec3(1.0, 1.0, 1.0),
+        vec4(100, 255, 100, 255)  // Green base
+    )
+    
+    // Draw reference grid
+    win.grid(10, 1.0)
+    
+    // End 3D mode
+    win.end_3d()
+    
+    // Draw UI text
+    win.text("Textured Cube with Render Texture", 10, 10, 20, vec4(255, 255, 255, 255))
+    win.text("Left: Regular texture | Right: Render texture", 10, 40, 16, vec4(200, 200, 200, 255))
+    win.text("Center: Render texture with colored base", 10, 60, 16, vec4(200, 200, 200, 255))
+    win.text("Press ESC to exit", 10, 550, 16, vec4(150, 150, 150, 255))
+    
+    // End drawing
+    win.end()
+    
+    // Check for exit
+    if (win.key_pressed(win.KEY_ESCAPE)) {
+        break
+    }
+}
+
+// Cleanup
+win.close()

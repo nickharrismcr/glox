@@ -20,7 +20,7 @@ func RegisterAllWindowMethods(o *WindowObject) {
 	o.RegisterMethod("begin", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			rl.BeginDrawing()
-			rl.BeginBlendMode(rl.BlendAdditive)
+			rl.BeginBlendMode(rl.BlendAlpha)
 			return core.NIL_VALUE
 		},
 	})
@@ -878,6 +878,164 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			return core.NIL_VALUE
 		},
 	})
+
+	// Add this to your win_methods.go file, in the RegisterAllWindowMethods function
+
+	o.RegisterMethod("textured_cube", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 4 {
+				vm.RunTimeError("textured_cube expects 4 arguments: texture, position(vec3), size(vec3), base_color(vec4)")
+				return core.NIL_VALUE
+			}
+
+			textureVal := vm.Stack(arg_stackptr)
+			posVal := vm.Stack(arg_stackptr + 1)
+			sizeVal := vm.Stack(arg_stackptr + 2)
+			colorVal := vm.Stack(arg_stackptr + 3)
+
+			// Extract texture object (can be either TextureObject or RenderTextureObject)
+			if textureVal.Type != core.VAL_OBJ {
+				vm.RunTimeError("textured_cube first argument must be a texture or render_texture object")
+				return core.NIL_VALUE
+			}
+
+			var rayTexture rl.Texture2D
+			if textureObj, ok := textureVal.Obj.(*TextureObject); ok {
+				rayTexture = textureObj.Data.Texture
+			} else if renderTextureObj, ok := textureVal.Obj.(*RenderTextureObject); ok {
+				rayTexture = renderTextureObj.Data.RenderTexture.Texture
+			} else {
+				vm.RunTimeError("textured_cube first argument must be a texture or render_texture object")
+				return core.NIL_VALUE
+			}
+
+			// Extract position vector
+			if posVal.Type != core.VAL_VEC3 {
+				vm.RunTimeError("textured_cube second argument must be a vec3")
+				return core.NIL_VALUE
+			}
+			posObj := posVal.Obj.(*core.Vec3Object)
+
+			// Extract size vector
+			if sizeVal.Type != core.VAL_VEC3 {
+				vm.RunTimeError("textured_cube third argument must be a vec3")
+				return core.NIL_VALUE
+			}
+			sizeObj := sizeVal.Obj.(*core.Vec3Object)
+
+			// Extract base color
+			if colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("textured_cube fourth argument must be a vec4")
+				return core.NIL_VALUE
+			}
+			colorObj := colorVal.Obj.(*core.Vec4Object)
+
+			// Create position and size vectors
+			position := rl.Vector3{X: float32(posObj.X), Y: float32(posObj.Y), Z: float32(posObj.Z)}
+			width := float32(sizeObj.X)
+			height := float32(sizeObj.Y)
+			length := float32(sizeObj.Z)
+
+			// Create base color
+			baseColor := rl.Color{
+				R: uint8(colorObj.X),
+				G: uint8(colorObj.Y),
+				B: uint8(colorObj.Z),
+				A: uint8(colorObj.W),
+			}
+
+			// Draw textured cube with base color tint
+			rl.BeginBlendMode(rl.BlendAlpha)
+			DrawTexturedCube(rayTexture, position, width, height, length, baseColor)
+			rl.EndBlendMode()
+
+			return core.NIL_VALUE
+		},
+	})
+}
+
+// DrawTexturedCube draws a cube with texture on all faces
+func DrawTexturedCube(texture rl.Texture2D, position rl.Vector3, width, height, length float32, tint rl.Color) {
+	x := position.X
+	y := position.Y
+	z := position.Z
+
+	// Set texture and enable texturing
+	rl.SetTexture(texture.ID)
+
+	rl.Begin(rl.Quads)
+	rl.Color4ub(tint.R, tint.G, tint.B, tint.A)
+
+	// Front Face
+	rl.Normal3f(0.0, 0.0, 1.0)
+	rl.TexCoord2f(0.0, 0.0)
+	rl.Vertex3f(x-width/2, y-height/2, z+length/2)
+	rl.TexCoord2f(1.0, 0.0)
+	rl.Vertex3f(x+width/2, y-height/2, z+length/2)
+	rl.TexCoord2f(1.0, 1.0)
+	rl.Vertex3f(x+width/2, y+height/2, z+length/2)
+	rl.TexCoord2f(0.0, 1.0)
+	rl.Vertex3f(x-width/2, y+height/2, z+length/2)
+
+	// Back Face
+	rl.Normal3f(0.0, 0.0, -1.0)
+	rl.TexCoord2f(1.0, 0.0)
+	rl.Vertex3f(x-width/2, y-height/2, z-length/2)
+	rl.TexCoord2f(1.0, 1.0)
+	rl.Vertex3f(x-width/2, y+height/2, z-length/2)
+	rl.TexCoord2f(0.0, 1.0)
+	rl.Vertex3f(x+width/2, y+height/2, z-length/2)
+	rl.TexCoord2f(0.0, 0.0)
+	rl.Vertex3f(x+width/2, y-height/2, z-length/2)
+
+	// Top Face
+	rl.Normal3f(0.0, 1.0, 0.0)
+	rl.TexCoord2f(0.0, 1.0)
+	rl.Vertex3f(x-width/2, y+height/2, z-length/2)
+	rl.TexCoord2f(0.0, 0.0)
+	rl.Vertex3f(x-width/2, y+height/2, z+length/2)
+	rl.TexCoord2f(1.0, 0.0)
+	rl.Vertex3f(x+width/2, y+height/2, z+length/2)
+	rl.TexCoord2f(1.0, 1.0)
+	rl.Vertex3f(x+width/2, y+height/2, z-length/2)
+
+	// Bottom Face
+	rl.Normal3f(0.0, -1.0, 0.0)
+	rl.TexCoord2f(1.0, 1.0)
+	rl.Vertex3f(x-width/2, y-height/2, z-length/2)
+	rl.TexCoord2f(0.0, 1.0)
+	rl.Vertex3f(x+width/2, y-height/2, z-length/2)
+	rl.TexCoord2f(0.0, 0.0)
+	rl.Vertex3f(x+width/2, y-height/2, z+length/2)
+	rl.TexCoord2f(1.0, 0.0)
+	rl.Vertex3f(x-width/2, y-height/2, z+length/2)
+
+	// Right Face
+	rl.Normal3f(1.0, 0.0, 0.0)
+	rl.TexCoord2f(1.0, 0.0)
+	rl.Vertex3f(x+width/2, y-height/2, z-length/2)
+	rl.TexCoord2f(1.0, 1.0)
+	rl.Vertex3f(x+width/2, y+height/2, z-length/2)
+	rl.TexCoord2f(0.0, 1.0)
+	rl.Vertex3f(x+width/2, y+height/2, z+length/2)
+	rl.TexCoord2f(0.0, 0.0)
+	rl.Vertex3f(x+width/2, y-height/2, z+length/2)
+
+	// Left Face
+	rl.Normal3f(-1.0, 0.0, 0.0)
+	rl.TexCoord2f(0.0, 0.0)
+	rl.Vertex3f(x-width/2, y-height/2, z-length/2)
+	rl.TexCoord2f(1.0, 0.0)
+	rl.Vertex3f(x-width/2, y-height/2, z+length/2)
+	rl.TexCoord2f(1.0, 1.0)
+	rl.Vertex3f(x-width/2, y+height/2, z+length/2)
+	rl.TexCoord2f(0.0, 1.0)
+	rl.Vertex3f(x-width/2, y+height/2, z-length/2)
+
+	rl.End()
+
+	// Disable texturing
+	rl.SetTexture(0)
 }
 
 func RegisterAllWindowConstants(o *WindowObject) {
@@ -887,13 +1045,14 @@ func RegisterAllWindowConstants(o *WindowObject) {
 	o.RegisterConstant("BATCH_PLANE", core.MakeIntValue(int(BATCH_PLANE), true))
 	o.RegisterConstant("BATCH_TRIANGLE", core.MakeIntValue(int(BATCH_TRIANGLE), true))
 	o.RegisterConstant("BATCH_TRIANGLE3", core.MakeIntValue(int(BATCH_TRIANGLE3), true))
+	o.RegisterConstant("BATCH_TEXTURED_CUBE", core.MakeIntValue(int(BATCH_TEXTURED_CUBE), true))
 
 	// Blend mode constants
 	o.RegisterConstant("BLEND_ADD", core.MakeIntValue(int(rl.BlendAdditive), true))
 	o.RegisterConstant("BLEND_ALPHA", core.MakeIntValue(int(rl.BlendAlpha), true))
 	o.RegisterConstant("BLEND_MULTIPLY", core.MakeIntValue(int(rl.BlendMultiplied), true))
-	o.RegisterConstant("BLEND_SUBTRACT", core.MakeIntValue(int(rl.BlendSubtractColors), true))
-	o.RegisterConstant("BLEND_DEFAULT", core.MakeIntValue(int(rl.BlendAlpha), true)) // default blend mode
+	o.RegisterConstant("BLEND_SUBCOLOR", core.MakeIntValue(int(rl.BlendSubtractColors), true))
+	o.RegisterConstant("BLEND_ADDCOLOR", core.MakeIntValue(int(rl.BlendAddColors), true))
 
 	o.RegisterConstant(("KEY_NULL"), core.MakeIntValue(int(rl.KeyNull), true))
 	o.RegisterConstant(("KEY_SPACE"), core.MakeIntValue(int(rl.KeySpace), true))

@@ -123,6 +123,7 @@ win.init();
 
 #### Batch Type Constants
 - **`win.BATCH_CUBE`** - For cube batch creation
+- **`win.BATCH_TEXTURED_CUBE`** - For textured cube batch creation
 - **`win.BATCH_SPHERE`** - For sphere batch creation
 - **`win.BATCH_PLANE`** - For plane batch creation
 
@@ -138,6 +139,7 @@ Key constants are available as `win.KEY_*` (e.g., `win.KEY_SPACE`, `win.KEY_ESCA
 - **`end_3d()`** - End 3D mode
 - **`cube(x, y, z, width, height, length, color)`** - Draw a 3D cube
 - **`cube_wires(x, y, z, width, height, length, color)`** - Draw a 3D cube wireframe
+- **`textured_cube(texture, position, size, base_color)`** - Draw a 3D cube with base color and texture overlay (supports both texture and render_texture objects)
 - **`sphere(x, y, z, radius, color_vec4)`** - Draw a 3D sphere
 - **`cylinder(x, y, z, radius_top, radius_bottom, height, slices, color)`** - Draw a 3D cylinder
 - **`grid(slices, spacing)`** - Draw a 3D grid
@@ -168,6 +170,7 @@ var plane_batch = batch(win.BATCH_PLANE);    // Create a batch for planes
 
 **Supported batch types:**
 - `win.BATCH_CUBE`  - For rendering cubes
+- `win.BATCH_TEXTURED_CUBE` - For rendering textured cubes
 - `win.BATCH_SPHERE`   - For rendering spheres  
 - `win.BATCH_PLANE`   - For rendering planes
 
@@ -177,10 +180,18 @@ var plane_batch = batch(win.BATCH_PLANE);    // Create a batch for planes
 // Add primitives to batch (returns index for later modification)
 var index = cube_batch.add(position, size, color);
 
+// For textured cubes, use add_textured_cube method
+var textured_batch = batch(win.BATCH_TEXTURED_CUBE);
+var textured_index = textured_batch.add_textured_cube(texture, position, size, base_color);
+
 // Examples:
 var idx1 = cube_batch.add(vec3(0, 0, 0), vec3(1, 1, 1), vec4(255, 0, 0, 255));
 var idx2 = sphere_batch.add(vec3(2, 0, 0), vec3(0.5, 0.5, 0.5), vec4(0, 255, 0, 255));
 var idx3 = plane_batch.add(vec3(0, -1, 0), vec3(10, 1, 10), vec4(100, 100, 100, 255));
+
+// Textured cube example:
+var my_texture = texture(image("myimage.png"), 1, 1, 1);
+var idx4 = textured_batch.add_textured_cube(my_texture, vec3(0, 0, 0), vec3(1, 1, 1), vec4(255, 255, 255, 255));
 ```
 
 ### Updating Primitives
