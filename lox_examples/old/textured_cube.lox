@@ -1,0 +1,112 @@
+// textured_cube_example.lox - Example using the new textured_cube method
+
+import math;
+
+// Create window
+var win = window(800, 600)
+win.init()
+
+// Create 3D camera
+var camera = camera(
+    vec3(4.0, 4.0, 4.0),    // position
+    vec3(0.0, 0.0, 0.0),    // target
+    vec3(0.0, 1.0, 0.0)     // up
+)
+
+// Load textures - create image first, then texture from image
+var ship_image = image("lox_examples/assets/human.png")
+var ship_texture = texture(ship_image, 1, 1, 1)
+var lander_image = image("lox_examples/assets/lander.png")
+var lander_texture = texture(lander_image, 1, 1, 1)
+
+// Animation variables
+var rotation = 0.0
+var time = 0.0
+
+// Main game loop
+while (!win.should_close()) {
+    // Update animation
+    rotation = rotation + 1.0
+    time = time + 0.02
+    
+    // Calculate floating motion
+    var float_y = math.sin(time) * 0.5
+    
+    // Begin drawing
+    win.begin()
+    win.clear(vec4(50, 50, 80, 255))  // Dark blue background
+    
+    // Begin 3D mode
+    win.begin_3d(camera)
+    
+    // Draw textured cubes with different base colors
+    
+    // Black cube with ship texture (classic look)
+    win.textured_cube(
+        ship_texture,
+        vec3(-3.0, float_y, 0.0),
+        vec3(2.0, 2.0, 2.0),
+        vec4(0, 0, 0, 255)  // Black base
+    )
+    
+    // Red cube with lander texture
+    win.textured_cube(
+        lander_texture,
+        vec3(0.0, float_y, 0.0),
+        vec3(2.0, 2.0, 2.0),
+        vec4(255, 0, 0, 255)  // Red base
+    )
+    
+    // Blue cube with ship texture
+    win.textured_cube(
+        ship_texture,
+        vec3(3.0, float_y, 0.0),
+        vec3(2.0, 2.0, 2.0),
+        vec4(0, 0, 255, 255)  // Blue base
+    )
+    
+    // Rotating cubes at different positions
+    win.textured_cube(
+        lander_texture,
+        vec3(-3.0, -3.0, 0.0),
+        vec3(1.5, 1.5, 1.5),
+        vec4(0, 255, 0, 255)  // Green base
+    )
+    
+    win.textured_cube(
+        ship_texture,
+        vec3(0.0, -3.0, 0.0),
+        vec3(1.5, 1.5, 1.5),
+        vec4(255, 255, 0, 255)  // Yellow base
+    )
+    
+    win.textured_cube(
+        lander_texture,
+        vec3(3.0, -3.0, 0.0),
+        vec3(1.5, 1.5, 1.5),
+        vec4(255, 0, 255, 255)  // Magenta base
+    )
+    
+    // Draw a grid for reference
+    win.grid(10, 1.0)
+    
+    // End 3D mode
+    win.end_3d()
+    
+    // Draw UI text
+    win.text("Textured Cube Example", 10, 10, 20, vec4(255, 255, 255, 255))
+    win.text("Black base shows through transparent areas", 10, 40, 16, vec4(200, 200, 200, 255))
+    win.text("Different base colors create different effects", 10, 60, 16, vec4(200, 200, 200, 255))
+    win.text("Press ESC to exit", 10, 550, 16, vec4(150, 150, 150, 255))
+    
+    // End drawing
+    win.end()
+    
+    // Check for exit
+    if (win.key_pressed(win.KEY_ESCAPE)) {
+        break
+    }
+}
+
+// Cleanup
+win.close()

@@ -1,0 +1,145 @@
+import colour
+import math
+
+const speed = 2 
+const segmentCount = 64
+
+class Rect{
+    init(v1x,v1y, v2x, v2y ) {
+        this.v1 = vec2(v1x, v1y)
+        this.v2 = vec2(v2x, v2y)
+    }
+}
+
+// --- TextureSampler class ---
+class TextureSampler {
+    init(tex, sampleWidth, sampleHeight) {
+        this.tex = tex
+        this.TextureWidth = tex.width()
+        this.TextureHeight = tex.height()
+        this.SampleX = 0
+        this.SampleY = 0
+        this.SampleWidth = sampleWidth
+        this.SampleHeight = sampleHeight
+        this.VelX = speed
+        this.VelY = speed
+    }
+
+    update() {
+        this.SampleX = this.SampleX + this.VelX
+        this.SampleY = this.SampleY + this.VelY
+
+        if (this.SampleX <= 0) {
+            this.SampleX = 0
+            this.VelX = -this.VelX
+        } else if (this.SampleX >= this.TextureWidth - this.SampleWidth) {
+            this.SampleX = this.TextureWidth - this.SampleWidth
+            this.VelX = -this.VelX
+        }
+
+        if (this.SampleY <= 0) {
+            this.SampleY = 0
+            this.VelY = -this.VelY
+        } else if (this.SampleY >= this.TextureHeight - this.SampleHeight) {
+            this.SampleY = this.TextureHeight - this.SampleHeight
+            this.VelY = -this.VelY
+        }
+    }
+
+    get() {
+        return Rect(
+            this.SampleX, this.SampleY,
+            this.SampleX + this.SampleWidth, this.SampleY + this.SampleHeight
+        )
+    }
+}
+
+// --- Helper for triangle width ---
+fun get_width(segmentCount, screenHeight) {
+    segmentAngle = 2 * math.PI / segmentCount
+    radius = screenHeight
+    triangleWidth = 2 * radius * math.tan(segmentAngle / 2)
+    triangleWidth = triangleWidth * 1.1 // generous overlap
+    return [radius, triangleWidth]
+}
+
+// --- Draw a single segment ---
+fun draw_segment(win, rt, tex, sampler, posX, posY, rotation, flip) {
+    // Draw triangle mask to render texture
+    win.begin_blend_mode(win.BLEND_ALPHA)
+
+    rt.clear(vec4(0,0,0,0)) 
+    sw = sampler.SampleWidth
+    sh = sampler.SampleHeight
+    
+    // Triangle vertices (mask)
+    v1 = vec2(sw/2, -20)
+    v2 = vec2(-5, sh+5)
+    v3 = vec2(sw+5, sh+5)
+    rt.triangle(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y, colour.WHITE)
+    
+    win.end_blend_mode()
+    
+    // Masked texture
+    win.begin_blend_mode(win.BLEND_MULTIPLY)
+    src = sampler.get()
+    srcX = src.v1.x
+    srcY = src.v1.y
+    srcW = src.v2.x - src.v1.x
+    srcH = src.v2.y - src.v1.y
+    flipW = srcW
+    if (flip) {
+        flipW = -srcW
+    }
+    // draw_texture_pro: (texture, src_x, src_y, src_w, src_h, dst_x, dst_y, dst_w, dst_h, origin_x, origin_y, rotation, color)
+    rt.draw_texture_pro(tex, srcX, srcY, flipW, srcH, 0, 0, sw, sh, 0, 0, 0, colour.WHITE)
+    win.end_blend_mode()
+    
+    win.begin_blend_mode(win.BLEND_ALPHA)
+    //Draw the masked segment to the window
+    win.draw_texture_pro(rt, 0, 0, sw, -sh, posX, posY, sw, sh, sw/2, 0, rotation, colour.WHITE)
+ 
+    win.end_blend_mode()
+}
+
+// --- Kaleidoscope function ---
+fun kaleido(win,rt, segmentCount, centerX, centerY, tex, sampler) {
+    i = 0
+    seg_angle = 2 * math.PI / segmentCount
+    deg_factor = 180 / math.PI
+    while (i < segmentCount) {
+        angle = i * seg_angle
+        segmentRotation = angle * deg_factor
+        segmentRotation = segmentRotation + 20
+        flip = (i % 2) == 0
+        draw_segment(win,rt, tex, sampler, centerX, centerY, segmentRotation, flip)
+        i+=1
+    }
+}
+
+// --- Main ---
+win = window(800, 600)
+win.init()
+win.toggle_fullscreen()
+screenHeight = win.get_screen_height()
+screenWidth = win.get_screen_width()
+
+image = image("lox_examples/assets/img.jpg")
+tex = texture(image, 1, 1, 1)
+
+radius,triangleWidth = get_width(segmentCount, screenHeight)
+ 
+
+sampler = TextureSampler(tex, triangleWidth, radius)
+rt = render_texture(int(triangleWidth), int(radius))
+
+centerX = screenWidth / 2
+centerY = screenHeight / 2
+
+while (!win.should_close()) {
+    sampler.update()
+    win.begin()
+    win.clear(colour.BLACK)
+    kaleido(win, rt, segmentCount, centerX, centerY, tex, sampler)
+    win.end()
+}
