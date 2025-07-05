@@ -6,12 +6,12 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-var screenWidth int = 800
-var screenHeight int = 600
+var screenWidth int
+var screenHeight int
 
-const textureSpeed = 2
+const textureSpeed = 1
 const imagePath = "img.jpg"
-const segmentCount = 32
+const segmentCount = 256
 
 type Triangle struct {
 	P1 rl.Vector2 // Top vertex
@@ -80,7 +80,7 @@ func (t *TextureSampler) Get() rl.Rectangle {
 	}
 }
 
-func DrawSegment(renderTexture rl.RenderTexture2D,
+func drawSegment(renderTexture rl.RenderTexture2D,
 	texture rl.Texture2D,
 	sampler *TextureSampler,
 	position rl.Vector2,
@@ -91,14 +91,14 @@ func DrawSegment(renderTexture rl.RenderTexture2D,
 	rl.BeginTextureMode(renderTexture)
 	rl.ClearBackground(rl.Color{R: 0, G: 0, B: 0, A: 0}) // Clear with transparent
 
-	v1 := rl.Vector2{X: sampler.SampleWidth / 2, Y: -2}
+	v1 := rl.Vector2{X: sampler.SampleWidth / 2, Y: -12}
 	v2 := rl.Vector2{X: -5, Y: sampler.SampleHeight + 5}
 	v3 := rl.Vector2{X: sampler.SampleWidth + 5, Y: sampler.SampleHeight + 5}
 
 	// Draw the main triangle
 	rl.DrawTriangle(v1, v2, v3, rl.White)
 
-	// Then multiply the texture with this mask
+	// Then multiply the sampled texture with this mask
 	rl.BeginBlendMode(rl.BlendMultiplied)
 	sourceRect := sampler.Get()
 	if flip {
@@ -107,35 +107,36 @@ func DrawSegment(renderTexture rl.RenderTexture2D,
 	destRect := rl.Rectangle{X: 0, Y: 0, Width: sampler.SampleWidth, Height: sampler.SampleHeight}
 	rl.DrawTexturePro(texture, sourceRect, destRect, rl.Vector2{X: 0, Y: 0}, 0, rl.White)
 	rl.EndBlendMode()
-
 	rl.EndTextureMode()
 
-	// Step 2: Draw the masked result to screen
-	// Position the triangle so its tip ends up at the center position after rotation
-	// We want the tip (which is at Y=-2 in triangle coordinates) to end up at the center
-	renderDestRect := rl.Rectangle{X: position.X, Y: position.Y + 2, Width: sampler.SampleWidth, Height: sampler.SampleHeight}
+	renderDestRect := rl.Rectangle{X: position.X, Y: position.Y, Width: sampler.SampleWidth, Height: sampler.SampleHeight}
 	origin := rl.Vector2{X: sampler.SampleWidth / 2.0, Y: 0} // Origin at the tip position
-
-	// Draw the masked texture from render texture to screen
 	renderSourceRect := rl.Rectangle{X: 0, Y: 0, Width: sampler.SampleWidth, Height: -sampler.SampleHeight}
 	rl.DrawTexturePro(renderTexture.Texture, renderSourceRect, renderDestRect, origin, rotation, rl.White)
 }
 
-func GetWidth(segmentCount int, screenHeight int) (float32, float32) {
-	// Calculate triangle dimensions based on segment count for perfect tessellation
-	segmentAngle := 2.0 * 3.14159 / float32(segmentCount) // radians per segment
-	radius := float32(screenHeight)                       // Distance from center to triangle base
-	// Calculate exact base width for perfect tessellation
-	// For a triangle with tip at center extending to radius r,
-	// the base width for angle θ is: 2 * r * tan(θ/2)
+func getWidth(segmentCount int, screenHeight int) (float32, float32) {
+	// Calculate triangle dimensions based on segment count
+	segmentAngle := 2.0 * math.Pi / float32(segmentCount)
+	radius := float32(screenHeight)
 	triangleWidth := 2.0 * radius * float32(math.Tan(float64(segmentAngle)/2.0))
-	triangleWidth *= 1.01
+	triangleWidth *= 1.1 // generous overlap
 	return radius, triangleWidth
+}
+
+func kaleido(segmentCount int, centerX, centerY float32, texture rl.Texture2D, sampler *TextureSampler, renderTexture rl.RenderTexture2D) {
+
+	for i := 0; i < segmentCount; i++ {
+		angle := float32(i) * 2.0 * math.Pi / float32(segmentCount)
+		segmentRotation := angle * 180.0 / math.Pi // Convert to degrees
+		segmentRotation += 20
+		flip := (i % 2) == 0
+		drawSegment(renderTexture, texture, sampler, rl.Vector2{X: centerX, Y: centerY}, segmentRotation, flip)
+	}
 }
 
 func main() {
 	// Initialize window
-
 	rl.InitWindow(0, 0, "Triangle Segment Demo")
 	rl.ToggleFullscreen()
 	screenHeight = rl.GetScreenHeight() // Update height after fullscreen toggle
@@ -150,7 +151,7 @@ func main() {
 	texture := rl.LoadTextureFromImage(image)
 	defer rl.UnloadTexture(texture)
 
-	radius, triangleWidth := GetWidth(segmentCount, screenHeight/2)
+	radius, triangleWidth := getWidth(segmentCount, screenHeight)
 	sampler := makeTextureSampler(texture, triangleWidth, radius)
 	renderTexture := rl.LoadRenderTexture(int32(sampler.SampleWidth), int32(sampler.SampleHeight))
 	defer rl.UnloadRenderTexture(renderTexture)
@@ -165,14 +166,7 @@ func main() {
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Black)
 
-		// Normal mode: draw all segments
-		for i := 0; i < segmentCount; i++ {
-			angle := float32(i) * 2.0 * math.Pi / float32(segmentCount)
-			segmentRotation := angle * 180.0 / math.Pi // Convert to degrees
-			segmentRotation += 20
-			flip := (i % 2) == 0
-			DrawSegment(renderTexture, texture, sampler, rl.Vector2{X: centerX, Y: centerY}, segmentRotation, flip)
-		}
+		kaleido(segmentCount, centerX, centerY, texture, sampler, renderTexture)
 
 		rl.EndDrawing()
 	}
