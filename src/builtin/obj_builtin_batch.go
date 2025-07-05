@@ -89,10 +89,10 @@ type BatchObject struct {
 func MakeBatchObject(batchType BatchPrimitive) *BatchObject {
 	batch := &DrawBatch{
 		BatchType:           batchType,
-		Entries:             make([]BatchEntry, 0, 1000), // Pre-allocate capacity
-		TrianglePoints:      make([]TriangleBatchEntry, 0, 1000),
-		TexturedCubeEntries: make([]TexturedCubeBatchEntry, 0, 1000),
-		Capacity:            1000,
+		Entries:             make([]BatchEntry, 0), // Pre-allocate capacity
+		TrianglePoints:      make([]TriangleBatchEntry, 0),
+		TexturedCubeEntries: make([]TexturedCubeBatchEntry, 0),
+		Capacity:            0,
 		IsInitialized:       false,
 	}
 
@@ -283,6 +283,33 @@ func (batch *DrawBatch) SetSize(index int, size *core.Vec3Object) error {
 		X: float32(size.X),
 		Y: float32(size.Y),
 		Z: float32(size.Z),
+	}
+	return nil
+}
+
+func (batch *DrawBatch) SetTriangle3(index int, p1 *core.Vec3Object, p2 *core.Vec3Object, p3 *core.Vec3Object) error {
+	if index < 0 || index >= len(batch.TrianglePoints) {
+		return fmt.Errorf("index out of range :%d ", index)
+	}
+	// Preserve the color when updating the triangle points
+	oldEntry := batch.TrianglePoints[index]
+	batch.TrianglePoints[index] = TriangleBatchEntry{
+		Point1: rl.Vector3{
+			X: float32(p1.X),
+			Y: float32(p1.Y),
+			Z: float32(p1.Z),
+		},
+		Point2: rl.Vector3{
+			X: float32(p2.X),
+			Y: float32(p2.Y),
+			Z: float32(p2.Z),
+		},
+		Point3: rl.Vector3{
+			X: float32(p3.X),
+			Y: float32(p3.Y),
+			Z: float32(p3.Z),
+		},
+		Color: oldEntry.Color,
 	}
 	return nil
 }
@@ -845,4 +872,27 @@ func (batch *DrawBatch) drawTexturedCubesOldMethod() {
 		rl.End()
 		rl.EndBlendMode()
 	}
+}
+
+// Set the color of a triangle in a BATCH_TRIANGLE3 batch
+func (batch *DrawBatch) SetTriangle3Color(index int, color *core.Vec4Object) error {
+	if index < 0 || index >= len(batch.TrianglePoints) {
+		return fmt.Errorf("index out of range: %d", index)
+	}
+	batch.TrianglePoints[index].Color = rl.Color{
+		R: uint8(color.X),
+		G: uint8(color.Y),
+		B: uint8(color.Z),
+		A: uint8(color.W),
+	}
+	return nil
+}
+
+// Get the color of a triangle in a BATCH_TRIANGLE3 batch
+func (batch *DrawBatch) GetTriangle3Color(index int) (*core.Vec4Object, error) {
+	if index < 0 || index >= len(batch.TrianglePoints) {
+		return nil, fmt.Errorf("index out of range: %d", index)
+	}
+	color := &batch.TrianglePoints[index].Color
+	return core.MakeVec4Object(float64(color.R), float64(color.G), float64(color.B), float64(color.A)), nil
 }

@@ -97,6 +97,11 @@ func cos(angle) {
     return _cos(angle);
 } 
 
+func tan(angle) {
+    // Use native tangent function for better performance
+    return _tan(angle);
+}
+
 func sqrt(n){
     // Use native square root function for better performance
     return _sqrt(n);

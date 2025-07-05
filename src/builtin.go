@@ -37,6 +37,7 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "", "len", lenBuiltIn)
 	defineBuiltIn(vm, "", "_sin", sinBuiltIn)
 	defineBuiltIn(vm, "", "_cos", cosBuiltIn)
+	defineBuiltIn(vm, "", "_tan", tanBuiltIn)
 	defineBuiltIn(vm, "", "_sqrt", sqrtBuiltIn)
 	defineBuiltIn(vm, "", "append", appendBuiltIn)
 	defineBuiltIn(vm, "", "float", floatBuiltIn)
@@ -779,6 +780,24 @@ func cosBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	}
 	n := vnum.Float
 	return core.MakeFloatValue(math.Cos(n), false)
+}
+
+// cos(number)
+func tanBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+
+	if argCount != 1 {
+		vm.RunTimeError("Invalid argument count to tan.")
+		return core.NIL_VALUE
+	}
+	vnum := vm.Stack(arg_stackptr)
+
+	if vnum.Type != core.VAL_FLOAT {
+
+		vm.RunTimeError("Invalid argument type to tan.")
+		return core.NIL_VALUE
+	}
+	n := vnum.Float
+	return core.MakeFloatValue(math.Tan(n), false)
 }
 
 func sqrtBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {

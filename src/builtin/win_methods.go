@@ -570,11 +570,23 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			rotval := vm.Stack(arg_stackptr + 11)
 			colVal := vm.Stack(arg_stackptr + 12)
 
+			var to *TextureObject
+			var rto *RenderTextureObject
+			var texture rl.Texture2D
+
 			to, ok := textureVal.Obj.(*TextureObject)
 			if !ok {
-				vm.RunTimeError("Expected TextureObject for draw_texture_pro")
-				return core.NIL_VALUE
+				rto, ok = textureVal.Obj.(*RenderTextureObject)
+				if !ok {
+					vm.RunTimeError("Expected TextureObject for draw_texture_pro")
+					return core.NIL_VALUE
+				} else {
+					texture = rto.Data.RenderTexture.Texture
+				}
+			} else {
+				texture = to.Data.Texture
 			}
+
 			if colVal.Type != core.VAL_VEC4 {
 				vm.RunTimeError("Expected Vec4 for texture color")
 				return core.NIL_VALUE
@@ -611,7 +623,7 @@ func RegisterAllWindowMethods(o *WindowObject) {
 				Y: originY,
 			}
 
-			rl.DrawTexturePro(to.Data.Texture, srcRect, destRect, origin, rot, tint)
+			rl.DrawTexturePro(texture, srcRect, destRect, origin, rot, tint)
 			return core.NIL_VALUE
 		},
 	})

@@ -15,6 +15,12 @@ func RenderTextureBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) cor
 	}
 	widthVal := vm.Stack(arg_stackptr)
 	heightVal := vm.Stack(arg_stackptr + 1)
+
+	if widthVal.Type != core.VAL_INT || heightVal.Type != core.VAL_INT {
+		vm.RunTimeError("render_texture arguments must be integers")
+		return core.NIL_VALUE
+	}
+
 	width := widthVal.Int
 	height := heightVal.Int
 

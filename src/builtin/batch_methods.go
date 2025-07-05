@@ -427,18 +427,6 @@ func RegisterAllBatchMethods(o *BatchObject) {
 		},
 	})
 
-	o.RegisterMethod("capacity", &core.BuiltInObject{
-		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-			if argCount != 0 {
-				vm.RunTimeError("capacity() expects no arguments")
-				return core.NIL_VALUE
-			}
-
-			capacity := o.Value.Capacity
-			return core.MakeIntValue(capacity, true)
-		},
-	})
-
 	o.RegisterMethod("reserve", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 1 {
@@ -476,4 +464,90 @@ func RegisterAllBatchMethods(o *BatchObject) {
 			return core.MakeBooleanValue(valid, true)
 		},
 	})
+
+	o.RegisterMethod("set_triangle3", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 4 {
+				vm.RunTimeError("set_triangle3() expects 4 arguments (index, point1, point2, point3)")
+				return core.NIL_VALUE
+			}
+
+			// Only allow this method for BATCH_TRIANGLE3 type
+			if o.Value.BatchType != BATCH_TRIANGLE3 {
+				vm.RunTimeError("set_triangle3() can only be used with BATCH_TRIANGLE3 batch type")
+				return core.NIL_VALUE
+			}
+
+			indexVal := vm.Stack(arg_stackptr)
+			p1Val := vm.Stack(arg_stackptr + 1)
+			p2Val := vm.Stack(arg_stackptr + 2)
+			p3Val := vm.Stack(arg_stackptr + 3)
+
+			if !indexVal.IsInt() {
+				vm.RunTimeError("set_triangle3() first argument must be an integer (index)")
+				return core.NIL_VALUE
+			}
+			if p1Val.Type != core.VAL_VEC3 {
+				vm.RunTimeError("set_triangle3() second argument must be a vec3 (point1)")
+				return core.NIL_VALUE
+			}
+			if p2Val.Type != core.VAL_VEC3 {
+				vm.RunTimeError("set_triangle3() third argument must be a vec3 (point2)")
+				return core.NIL_VALUE
+			}
+			if p3Val.Type != core.VAL_VEC3 {
+				vm.RunTimeError("set_triangle3() fourth argument must be a vec3 (point3)")
+				return core.NIL_VALUE
+			}
+
+			index := indexVal.Int
+			p1 := p1Val.AsVec3()
+			p2 := p2Val.AsVec3()
+			p3 := p3Val.AsVec3()
+
+			if err := o.Value.SetTriangle3(index, p1, p2, p3); err != nil {
+				vm.RunTimeError(err.Error())
+				return core.NIL_VALUE
+			}
+
+			return core.NIL_VALUE
+		},
+	})
+	o.RegisterMethod("set_triangle3_color", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 2 {
+				vm.RunTimeError("set_triangle3_color() expects 2 arguments (index, color)")
+				return core.NIL_VALUE
+			}
+
+			// Only allow this method for BATCH_TRIANGLE3 type
+			if o.Value.BatchType != BATCH_TRIANGLE3 {
+				vm.RunTimeError("set_triangle3_color() can only be used with BATCH_TRIANGLE3 batch type")
+				return core.NIL_VALUE
+			}
+
+			indexVal := vm.Stack(arg_stackptr)
+			colorVal := vm.Stack(arg_stackptr + 1)
+
+			if !indexVal.IsInt() {
+				vm.RunTimeError("set_triangle3_color() first argument must be an integer (index)")
+				return core.NIL_VALUE
+			}
+			if colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("set_triangle3_color() second argument must be a vec4 (color)")
+				return core.NIL_VALUE
+			}
+
+			index := indexVal.Int
+			color := colorVal.Obj.(*core.Vec4Object)
+
+			if err := o.Value.SetTriangle3Color(index, color); err != nil {
+				vm.RunTimeError(err.Error())
+				return core.NIL_VALUE
+			}
+
+			return core.NIL_VALUE
+		},
+	})
+
 }

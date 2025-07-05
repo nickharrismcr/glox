@@ -138,6 +138,43 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 			return core.NIL_VALUE
 		},
 	})
+
+	o.RegisterMethod("triangle", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 7 {
+				vm.RunTimeError("triangle expects 7 arguments: x1, y1, x2, y2, x3, y3, color")
+				return core.NIL_VALUE
+			}
+			x1val := vm.Stack(arg_stackptr)
+			y1val := vm.Stack(arg_stackptr + 1)
+			x2val := vm.Stack(arg_stackptr + 2)
+			y2val := vm.Stack(arg_stackptr + 3)
+			x3val := vm.Stack(arg_stackptr + 4)
+			y3val := vm.Stack(arg_stackptr + 5)
+			colVal := vm.Stack(arg_stackptr + 6)
+			if colVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vec4 for rectangle color")
+				return core.NIL_VALUE
+			}
+			v4obj := colVal.Obj.(*core.Vec4Object)
+			r := int32(v4obj.X)
+			g := int32(v4obj.Y)
+			b := int32(v4obj.Z)
+			a := int32(v4obj.W)
+
+			x1 := float32(x1val.AsInt())
+			y1 := float32(y1val.AsInt())
+			x2 := float32(x2val.AsInt())
+			y2 := float32(y2val.AsInt())
+			x3 := float32(x3val.AsInt())
+			y3 := float32(y3val.AsInt())
+
+			rl.BeginTextureMode(o.Data.RenderTexture)
+			rl.DrawTriangle(rl.Vector2{X: x1, Y: y1}, rl.Vector2{X: x2, Y: y2}, rl.Vector2{X: x3, Y: y3}, rl.NewColor(uint8(r), uint8(g), uint8(b), uint8(a)))
+			rl.EndTextureMode()
+			return core.NIL_VALUE
+		},
+	})
 	o.RegisterMethod("circle_fill", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 4 {
@@ -261,6 +298,74 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 
 			rl.BeginTextureMode(o.Data.RenderTexture)
 			rl.DrawTexture(texture, x, y, rl.White)
+			rl.EndTextureMode()
+			return core.NIL_VALUE
+		},
+	})
+
+	o.RegisterMethod("draw_texture_pro", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 13 {
+				vm.RunTimeError("draw_texture_pro expects 13 arguments: texture, src_x, src_y, src_w, src_h, dest_x, dest_y, dest_w, dest_h, origin_x, origin_y, rotation, color")
+				return core.NIL_VALUE
+			}
+			textureVal := vm.Stack(arg_stackptr)
+			srcXVal := vm.Stack(arg_stackptr + 1)
+			srcYVal := vm.Stack(arg_stackptr + 2)
+			srcWVal := vm.Stack(arg_stackptr + 3)
+			srcHVal := vm.Stack(arg_stackptr + 4)
+			destXVal := vm.Stack(arg_stackptr + 5)
+			destYVal := vm.Stack(arg_stackptr + 6)
+			destWVal := vm.Stack(arg_stackptr + 7)
+			destHVal := vm.Stack(arg_stackptr + 8)
+			originXVal := vm.Stack(arg_stackptr + 9)
+			originYVal := vm.Stack(arg_stackptr + 10)
+			rotval := vm.Stack(arg_stackptr + 11)
+			colVal := vm.Stack(arg_stackptr + 12)
+
+			to, ok := textureVal.Obj.(*TextureObject)
+			if !ok {
+				vm.RunTimeError("Expected TextureObject for draw_texture_pro")
+				return core.NIL_VALUE
+			}
+			if colVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vec4 for texture color")
+				return core.NIL_VALUE
+			}
+			v4obj := colVal.Obj.(*core.Vec4Object)
+			tint := rl.NewColor(uint8(v4obj.X), uint8(v4obj.Y), uint8(v4obj.Z), uint8(v4obj.W))
+
+			srcX := float32(srcXVal.AsFloat())
+			srcY := float32(srcYVal.AsFloat())
+			srcW := float32(srcWVal.AsFloat())
+			srcH := float32(srcHVal.AsFloat())
+			destX := float32(destXVal.AsFloat())
+			destY := float32(destYVal.AsFloat())
+			destW := float32(destWVal.AsFloat())
+			destH := float32(destHVal.AsFloat())
+			originX := float32(originXVal.AsFloat())
+			originY := float32(originYVal.AsFloat())
+			rot := float32(rotval.AsFloat())
+
+			srcRect := rl.Rectangle{
+				X:      srcX,
+				Y:      srcY,
+				Width:  srcW,
+				Height: srcH,
+			}
+			destRect := rl.Rectangle{
+				X:      destX,
+				Y:      destY,
+				Width:  destW,
+				Height: destH,
+			}
+			origin := rl.Vector2{
+				X: originX,
+				Y: originY,
+			}
+
+			rl.BeginTextureMode(o.Data.RenderTexture)
+			rl.DrawTexturePro(to.Data.Texture, srcRect, destRect, origin, rot, tint)
 			rl.EndTextureMode()
 			return core.NIL_VALUE
 		},
