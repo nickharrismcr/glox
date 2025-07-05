@@ -91,12 +91,12 @@ func DrawSegment(renderTexture rl.RenderTexture2D,
 	rl.BeginTextureMode(renderTexture)
 	rl.ClearBackground(rl.Color{R: 0, G: 0, B: 0, A: 0}) // Clear with transparent
 
-	// Draw ONLY the triangle mask first (white triangle on transparent background)
-	// Make the triangle extend slightly past the center to ensure no gaps
-	v1 := rl.Vector2{X: sampler.SampleWidth / 2, Y: -5}               // top center (tip), extend 5 pixels past center
-	v2 := rl.Vector2{X: 0, Y: sampler.SampleHeight}                   // bottom left
-	v3 := rl.Vector2{X: sampler.SampleWidth, Y: sampler.SampleHeight} // bottom right
-	rl.DrawTriangle(v1, v2, v3, rl.White)                             // White triangle creates alpha mask
+	v1 := rl.Vector2{X: sampler.SampleWidth / 2, Y: -2}
+	v2 := rl.Vector2{X: -5, Y: sampler.SampleHeight + 5}
+	v3 := rl.Vector2{X: sampler.SampleWidth + 5, Y: sampler.SampleHeight + 5}
+
+	// Draw the main triangle
+	rl.DrawTriangle(v1, v2, v3, rl.White)
 
 	// Then multiply the texture with this mask
 	rl.BeginBlendMode(rl.BlendMultiplied)
@@ -112,8 +112,8 @@ func DrawSegment(renderTexture rl.RenderTexture2D,
 
 	// Step 2: Draw the masked result to screen
 	// Position the triangle so its tip ends up at the center position after rotation
-	// We want the tip (which is at Y=-5 in triangle coordinates) to end up at the center
-	renderDestRect := rl.Rectangle{X: position.X - sampler.SampleWidth/2.0, Y: position.Y + 5, Width: sampler.SampleWidth, Height: sampler.SampleHeight}
+	// We want the tip (which is at Y=-2 in triangle coordinates) to end up at the center
+	renderDestRect := rl.Rectangle{X: position.X, Y: position.Y + 2, Width: sampler.SampleWidth, Height: sampler.SampleHeight}
 	origin := rl.Vector2{X: sampler.SampleWidth / 2.0, Y: 0} // Origin at the tip position
 
 	// Draw the masked texture from render texture to screen
@@ -129,7 +129,7 @@ func GetWidth(segmentCount int, screenHeight int) (float32, float32) {
 	// For a triangle with tip at center extending to radius r,
 	// the base width for angle θ is: 2 * r * tan(θ/2)
 	triangleWidth := 2.0 * radius * float32(math.Tan(float64(segmentAngle)/2.0))
-	triangleWidth *= 1.2 // Add 20% overlap to eliminate gaps at center
+	triangleWidth *= 1.01
 	return radius, triangleWidth
 }
 
@@ -150,7 +150,7 @@ func main() {
 	texture := rl.LoadTextureFromImage(image)
 	defer rl.UnloadTexture(texture)
 
-	radius, triangleWidth := GetWidth(segmentCount, screenHeight)
+	radius, triangleWidth := GetWidth(segmentCount, screenHeight/2)
 	sampler := makeTextureSampler(texture, triangleWidth, radius)
 	renderTexture := rl.LoadRenderTexture(int32(sampler.SampleWidth), int32(sampler.SampleHeight))
 	defer rl.UnloadRenderTexture(renderTexture)
@@ -161,13 +161,15 @@ func main() {
 	for !rl.WindowShouldClose() {
 
 		sampler.Update()
+
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Black)
 
+		// Normal mode: draw all segments
 		for i := 0; i < segmentCount; i++ {
-
-			angle := float32(i) * 2.0 * 3.14159 / float32(segmentCount)
-			segmentRotation := angle * 180.0 / 3.14159 // Convert to degrees
+			angle := float32(i) * 2.0 * math.Pi / float32(segmentCount)
+			segmentRotation := angle * 180.0 / math.Pi // Convert to degrees
+			segmentRotation += 20
 			flip := (i % 2) == 0
 			DrawSegment(renderTexture, texture, sampler, rl.Vector2{X: centerX, Y: centerY}, segmentRotation, flip)
 		}
