@@ -550,6 +550,72 @@ func RegisterAllWindowMethods(o *WindowObject) {
 		},
 	})
 
+	o.RegisterMethod("draw_texture_pro", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 13 {
+				vm.RunTimeError("draw_texture_pro expects 13 arguments: texture, src_x, src_y, src_w, src_h, dest_x, dest_y, dest_w, dest_h, origin_x, origin_y, rotation, color")
+				return core.NIL_VALUE
+			}
+			textureVal := vm.Stack(arg_stackptr)
+			srcXVal := vm.Stack(arg_stackptr + 1)
+			srcYVal := vm.Stack(arg_stackptr + 2)
+			srcWVal := vm.Stack(arg_stackptr + 3)
+			srcHVal := vm.Stack(arg_stackptr + 4)
+			destXVal := vm.Stack(arg_stackptr + 5)
+			destYVal := vm.Stack(arg_stackptr + 6)
+			destWVal := vm.Stack(arg_stackptr + 7)
+			destHVal := vm.Stack(arg_stackptr + 8)
+			originXVal := vm.Stack(arg_stackptr + 9)
+			originYVal := vm.Stack(arg_stackptr + 10)
+			rotval := vm.Stack(arg_stackptr + 11)
+			colVal := vm.Stack(arg_stackptr + 12)
+
+			to, ok := textureVal.Obj.(*TextureObject)
+			if !ok {
+				vm.RunTimeError("Expected TextureObject for draw_texture_pro")
+				return core.NIL_VALUE
+			}
+			if colVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vec4 for texture color")
+				return core.NIL_VALUE
+			}
+			v4obj := colVal.Obj.(*core.Vec4Object)
+			tint := rl.NewColor(uint8(v4obj.X), uint8(v4obj.Y), uint8(v4obj.Z), uint8(v4obj.W))
+
+			srcX := float32(srcXVal.AsFloat())
+			srcY := float32(srcYVal.AsFloat())
+			srcW := float32(srcWVal.AsFloat())
+			srcH := float32(srcHVal.AsFloat())
+			destX := float32(destXVal.AsFloat())
+			destY := float32(destYVal.AsFloat())
+			destW := float32(destWVal.AsFloat())
+			destH := float32(destHVal.AsFloat())
+			originX := float32(originXVal.AsFloat())
+			originY := float32(originYVal.AsFloat())
+			rot := float32(rotval.AsFloat())
+
+			srcRect := rl.Rectangle{
+				X:      srcX,
+				Y:      srcY,
+				Width:  srcW,
+				Height: srcH,
+			}
+			destRect := rl.Rectangle{
+				X:      destX,
+				Y:      destY,
+				Width:  destW,
+				Height: destH,
+			}
+			origin := rl.Vector2{
+				X: originX,
+				Y: originY,
+			}
+
+			rl.DrawTexturePro(to.Data.Texture, srcRect, destRect, origin, rot, tint)
+			return core.NIL_VALUE
+		},
+	})
+
 	o.RegisterMethod("key_down", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 1 {
@@ -878,8 +944,6 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			return core.NIL_VALUE
 		},
 	})
-
-	// Add this to your win_methods.go file, in the RegisterAllWindowMethods function
 
 	o.RegisterMethod("textured_cube", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {

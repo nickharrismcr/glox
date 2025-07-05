@@ -898,6 +898,10 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 					vm.stack[vm.stackTop] = val
 					vm.stackTop++
 					continue
+				} else {
+					name := core.GetStringValue(nv)
+					vm.RunTimeError("Get property '%s' not found.", name)
+					goto End
 				}
 
 			case core.OBJECT_MODULE:
@@ -2401,7 +2405,7 @@ func (vm *VM) binaryDivide() bool {
 		}
 	}
 
-	vm.RunTimeError("Addition type mismatch")
+	vm.RunTimeError("Division type mismatch  %s / %s", v1.String(), v2.String())
 	return false
 }
 

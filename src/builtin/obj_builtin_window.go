@@ -7,6 +7,8 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+var windowCreated bool = false
+
 func WindowBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 	if argCount != 2 {
@@ -22,6 +24,7 @@ func WindowBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value
 	o := MakeWindowObject(wVal.Int, hVal.Int)
 	RegisterAllWindowMethods(o)
 	RegisterAllWindowConstants(o)
+	windowCreated = true
 	return core.MakeObjectValue(o, true)
 }
 

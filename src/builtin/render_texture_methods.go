@@ -233,6 +233,39 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 			return core.NIL_VALUE
 		},
 	})
+	// draw a texture to the render texture
+	o.RegisterMethod("draw_texture", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 3 {
+				vm.RunTimeError("texture expects 5 arguments: texture, x, y ")
+				return core.NIL_VALUE
+			}
+
+			texVal := vm.Stack(arg_stackptr)
+			xVal := vm.Stack(arg_stackptr + 1)
+			yVal := vm.Stack(arg_stackptr + 2)
+
+			if texVal.Type != core.VAL_OBJ {
+				vm.RunTimeError("Expected texture in parameter 1 for draw")
+				return core.NIL_VALUE
+			}
+			to, ok := texVal.Obj.(*TextureObject)
+			if !ok {
+				vm.RunTimeError("Expected texture in parameter 1 for draw")
+				return core.NIL_VALUE
+			}
+			texture := to.Data.Texture
+
+			x := int32(xVal.AsInt())
+			y := int32(yVal.AsInt())
+
+			rl.BeginTextureMode(o.Data.RenderTexture)
+			rl.DrawTexture(texture, x, y, rl.White)
+			rl.EndTextureMode()
+			return core.NIL_VALUE
+		},
+	})
+
 	o.RegisterMethod("text", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			xval := vm.Stack(arg_stackptr)

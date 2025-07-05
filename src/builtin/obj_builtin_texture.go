@@ -9,6 +9,11 @@ import (
 
 func TextureBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
+	if !windowCreated {
+		vm.RunTimeError("Cannot create texture: no window has been created.")
+		return core.NIL_VALUE
+	}
+
 	if argCount != 4 {
 		vm.RunTimeError("texture expects 4 arguments (image, frames, start_frame, end_frame)")
 		return core.NIL_VALUE
