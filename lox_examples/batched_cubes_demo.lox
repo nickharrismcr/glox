@@ -1,6 +1,7 @@
 // Massive Batched Cubes Demo - Performance Stress Test
-// Demonstrates batch drawing with thousands of cubes that would be impossible with individual draw calls
-// This creates 10,000+ cubes that animate smoothly thanks to batching!
+// Demonstrates batch drawing with thousands of cubes that would be impossible with individual lox draw calls.
+// Batch maintains a list of cubes, when lox does a batch draw call, vm does a raylib draw call for each cube in the batch.
+// This is not mesh instancing, that is a future feature and would be much more efficient.
 
 import math
 import random
