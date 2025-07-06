@@ -218,12 +218,45 @@ func mandelbrotCalcBlock(startRow, endRow, startCol, endCol, width, height, maxI
 				} else {
 			*/
 			{
-				// Basic Mandelbrot calculation - no periodicity checking
+				// Conservative periodicity checking for Mandelbrot set
+				// Check for period-1 and period-2 cycles after a threshold
+				const periodicityThreshold = 20
+				const periodicityEpsilon = 1e-10
+
+				var prevX, prevY float64   // For period-1 detection
+				var prev2X, prev2Y float64 // For period-2 detection
+				periodicityCheckEnabled := false
+
 				for (x*x+y*y <= 4.0) && (iteration < maxIteration) {
 					xtemp := x*x - y*y + x0
 					y = 2.0*x*y + y0
 					x = xtemp
 					iteration++
+
+					// Enable periodicity checking after threshold
+					if iteration >= periodicityThreshold {
+						if !periodicityCheckEnabled {
+							periodicityCheckEnabled = true
+							prevX, prevY = x, y
+							prev2X, prev2Y = x, y
+						} else {
+							// Check for period-1 cycle (fixed point)
+							if math.Abs(x-prevX) < periodicityEpsilon && math.Abs(y-prevY) < periodicityEpsilon {
+								iteration = maxIteration
+								break
+							}
+
+							// Check for period-2 cycle
+							if math.Abs(x-prev2X) < periodicityEpsilon && math.Abs(y-prev2Y) < periodicityEpsilon {
+								iteration = maxIteration
+								break
+							}
+
+							// Update previous values
+							prev2X, prev2Y = prevX, prevY
+							prevX, prevY = x, y
+						}
+					}
 				}
 			}
 
