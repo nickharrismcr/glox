@@ -400,6 +400,12 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			return core.NIL_VALUE
 		},
 	})
+	o.RegisterMethod("get_fps", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			fps := rl.GetFPS()
+			return core.MakeIntValue(int(fps), false)
+		},
+	})
 	o.RegisterMethod("draw_texture", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 4 {

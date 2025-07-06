@@ -138,98 +138,130 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.
 	yOffset := yoffsetVal.Float
 	scale := scaleVal.Float
 
+	// Calculate optimal number of blocks based on image size and CPU cores
+	// For larger images, use smaller blocks for better parallelism
+	// Target: 32x32 to 64x64 pixels per block for high-resolution images
+	minBlockSize := 32
+	if width*height < 160000 { // For smaller images (< 400x400)
+		minBlockSize = 64
+	}
+	maxBlocks := 512 // Increased for better parallelism on large images
+
+	// Calculate blocks based on image dimensions
+	blocksX := max(1, min(width/minBlockSize, int(math.Sqrt(float64(maxBlocks)))))
+	blocksY := max(1, min(height/minBlockSize, int(math.Sqrt(float64(maxBlocks)))))
+
+	blockHeight := (height + blocksY - 1) / blocksY
+	blockWidth := (width + blocksX - 1) / blocksX
+
+	// Precompute color table for all possible iterations
+	colorTable := precomputeColorTable(maxIteration)
+
 	var wg sync.WaitGroup
-	for row := range height {
-		wg.Add(1)
-		go func(row int) {
-			defer wg.Done()
-			mandelbrotCalcRow(row, width, height, maxIteration, scale, xOffset, yOffset, array)
-		}(row)
+	for by := 0; by < blocksY; by++ {
+		for bx := 0; bx < blocksX; bx++ {
+			startRow := by * blockHeight
+			endRow := min((by+1)*blockHeight, height)
+			startCol := bx * blockWidth
+			endCol := min((bx+1)*blockWidth, width)
+			if startRow >= endRow || startCol >= endCol {
+				continue
+			}
+			wg.Add(1)
+			go func(sr, er, sc, ec int) {
+				defer wg.Done()
+				mandelbrotCalcBlock(sr, er, sc, ec, width, height, maxIteration, scale, xOffset, yOffset, array, colorTable)
+			}(startRow, endRow, startCol, endCol)
+		}
 	}
 	wg.Wait()
 	return core.NIL_VALUE
 }
 
-// mandelbrotCalcRow calculates a single row of the mandelbrot set and stores the result in the provided FloatArrayObject
-// rows are calculated in parallel using goroutines
-func mandelbrotCalcRow(row, width, height, maxIteration int, scale, xOffset, yOffset float64, array *FloatArrayObject) {
-
-	const periodLength = 20
-
-	// Fix aspect ratio distortion by using consistent coordinate system
+// mandelbrotCalcBlock calculates a block of the mandelbrot set and stores the result in the provided FloatArrayObject
+// blocks are calculated in parallel using goroutines, with precomputed color table for fast lookup
+func mandelbrotCalcBlock(startRow, endRow, startCol, endCol, width, height, maxIteration int, scale, xOffset, yOffset float64, array *FloatArrayObject, colorTable []float64) {
 	// Use the larger dimension as reference to maintain square aspect ratio
 	maxDim := max(width, height)
 
-	y0 := scale*(float64(row)-float64(height)/2)/float64(maxDim) + yOffset
+	// Use float64 for better precision in deep zooms
+	maxDimFloat := float64(maxDim)
+	heightFloat := float64(height)
+	widthFloat := float64(width)
 
-	for col := 0; col < width; col++ {
+	// Precompute constants outside loops
+	scaleOverMaxDim := scale / maxDimFloat
+	halfHeight := heightFloat / 2.0
+	halfWidth := widthFloat / 2.0
 
-		var xold float64 = -1.0
-		var yold float64 = -1.0
-		var period int = 0
-		x0 := scale*(float64(col)-float64(width)/2)/float64(maxDim) + xOffset
+	// Direct access to the underlying slice for better performance
+	data := array.Value.Data
+	arrayWidth := array.Value.Width
 
-		x, y := 0.0, 0.0
-		iteration := 0
+	for row := startRow; row < endRow; row++ {
+		y0 := scaleOverMaxDim*(float64(row)-halfHeight) + yOffset
+		for col := startCol; col < endCol; col++ {
+			x0 := scaleOverMaxDim*(float64(col)-halfWidth) + xOffset
 
-		for (x*x+y*y <= 4) && (iteration < maxIteration) {
-			// optimisation : check for periodicity
-			if x == xold && y == yold {
-				iteration = maxIteration
-				goto bailout
+			x, y := 0.0, 0.0
+			iteration := 0
+
+			// Early bailout for known regions (effectiveness depends on zoom level)
+			// Temporarily disabled to debug black circle issue
+			/*
+				if !isDeepZoom && (isInMainCardioid(x0, y0) || isInPeriod2Bulb(x0, y0)) {
+					// Points in cardioid or bulb are definitely in the set
+					iteration = maxIteration
+				} else if isMediumZoom && isInMiniBulb(x0, y0) {
+					// Check smaller bulbs at medium zoom
+					iteration = maxIteration
+				} else {
+			*/
+			{
+				// Very conservative periodicity checking - only check occasionally
+				var px, py float64 = 0, 0 // Previous values for period-1 check
+				var ppx, ppy float64 = 0, 0 // Previous-previous values for period-2 check
+				
+				for (x*x+y*y <= 4.0) && (iteration < maxIteration) {
+					// Store previous values for periodicity checking
+					if iteration > 0 {
+						ppx, ppy = px, py
+						px, py = x, y
+					}
+					
+					// Only check for cycles occasionally and with loose tolerance
+					if iteration >= 20 && iteration%10 == 0 {
+						// Check for period-1 cycles (fixed points)
+						dx := x - px
+						dy := y - py
+						if dx*dx+dy*dy < 1e-16 {
+							break // Found period-1 cycle
+						}
+						
+						// Check for period-2 cycles
+						if iteration >= 30 {
+							dx = x - ppx
+							dy = y - ppy
+							if dx*dx+dy*dy < 1e-16 {
+								break // Found period-2 cycle
+							}
+						}
+					}
+
+					xtemp := x*x - y*y + x0
+					y = 2.0*x*y + y0
+					x = xtemp
+					iteration++
+				}
 			}
-			period++
-			if period > periodLength {
-				period = 0
-				xold = x
-				yold = y
-			}
 
-			xtemp := x*x - y*y + x0
-			y = 2*x*y + y0
-			x = xtemp
-			iteration++
+			// Direct slice access instead of array.Value.Set() for better performance
+			// Note: FloatArray uses y*Width+x indexing, so row*arrayWidth+col is correct
+			data[row*arrayWidth+col] = colorTable[iteration]
 		}
-	bailout:
-		var colour float64
-		if iteration == maxIteration {
-			colour = util.EncodeRGB(0, 0, 0)
-		} else {
-
-			//https://en.m.wikipedia.org/wiki/Plotting_algorithms_for_the_Mandelbrot_set
-
-			s := float64(iteration) / float64(maxIteration)
-			v := 1.0 - math.Pow(math.Cos(math.Pi*s), 2.0)
-			lum := 90 - (50 * v)
-			// chroma := 28+(75-(75*v))
-			// hue := int32(math.Pow(360*s, 1.5)) % 360
-
-			zn := math.Sqrt(x*x + y*y)
-			nu := math.Log2(math.Log2(zn))
-			smooth := float64(iteration) + 1 - nu
-
-			// Use a fixed scale for hue cycling, e.g. 20 or 30
-			hue := math.Mod(smooth, 360)
-			chroma := 70.0
-			//lum := 80.0
-
-			r, g, b := util.HCLToRGB255(float64(hue), float64(chroma), float64(lum))
-			colour = util.EncodeRGB(int(r), int(g), int(b))
-		}
-		array.Value.Set(row, col, colour)
 	}
 }
 
-// args:
-// 2D float array for plotting
-// height
-// width
-// max iterations
-// cx (real part of Julia constant)
-// cy (imaginary part of Julia constant)
-// scale
-
-// creates a goroutine for each row of the array, which calculates the julia set for that row
 // args:
 // 2D float array for plotting
 // height
@@ -303,49 +335,149 @@ func JuliaArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.V
 	xOffset := xoffsetVal.Float
 	yOffset := yoffsetVal.Float
 
+	// Calculate optimal number of blocks based on image size and CPU cores
+	// For larger images, use smaller blocks for better parallelism
+	// Target: 32x32 to 64x64 pixels per block for high-resolution images
+	minBlockSize := 32
+	if width*height < 160000 { // For smaller images (< 400x400)
+		minBlockSize = 64
+	}
+	maxBlocks := 512 // Increased for better parallelism on large images
+
+	// Calculate blocks based on image dimensions
+	blocksX := max(1, min(width/minBlockSize, int(math.Sqrt(float64(maxBlocks)))))
+	blocksY := max(1, min(height/minBlockSize, int(math.Sqrt(float64(maxBlocks)))))
+
+	blockHeight := (height + blocksY - 1) / blocksY
+	blockWidth := (width + blocksX - 1) / blocksX
+
+	// Precompute color table for all possible iterations
+	colorTable := precomputeColorTable(maxIteration)
+
 	var wg sync.WaitGroup
-	for row := range height {
-		wg.Add(1)
-		go func(row int) {
-			defer wg.Done()
-			juliaCalcRow(row, width, height, maxIteration, scale, cx, cy, xOffset, yOffset, array)
-		}(row)
+	for by := 0; by < blocksY; by++ {
+		for bx := 0; bx < blocksX; bx++ {
+			startRow := by * blockHeight
+			endRow := min((by+1)*blockHeight, height)
+			startCol := bx * blockWidth
+			endCol := min((bx+1)*blockWidth, width)
+			if startRow >= endRow || startCol >= endCol {
+				continue
+			}
+			wg.Add(1)
+			go func(sr, er, sc, ec int) {
+				defer wg.Done()
+				juliaCalcBlock(sr, er, sc, ec, width, height, maxIteration, scale, cx, cy, xOffset, yOffset, array, colorTable)
+			}(startRow, endRow, startCol, endCol)
+		}
 	}
 	wg.Wait()
 	return core.NIL_VALUE
 }
 
-// juliaCalcRow calculates a single row of the julia set and stores the result in the provided FloatArrayObject
-// rows are calculated in parallel using goroutines
-func juliaCalcRow(row, width, height, maxIteration int, scale, cx, cy, xOffset, yOffset float64, array *FloatArrayObject) {
+// juliaCalcBlock calculates a block of the julia set and stores the result in the provided FloatArrayObject
+// blocks are calculated in parallel using goroutines, with precomputed color table for fast lookup
+func juliaCalcBlock(startRow, endRow, startCol, endCol, width, height, maxIteration int, scale, cx, cy, xOffset, yOffset float64, array *FloatArrayObject, colorTable []float64) {
 	// Use the larger dimension as reference to maintain square aspect ratio
 	maxDim := max(width, height)
-	y0 := scale*(float64(row)-float64(height)/2)/float64(maxDim) + yOffset
-	for col := 0; col < width; col++ {
-		x0 := scale*(float64(col)-float64(width)/2)/float64(maxDim) + xOffset
-		zx, zy := x0, y0
-		iteration := 0
-		for (zx*zx+zy*zy <= 4) && (iteration < maxIteration) {
-			xtemp := zx*zx - zy*zy + cx
-			zy = 2*zx*zy + cy
-			zx = xtemp
-			iteration++
+
+	// Convert to float32 for better performance
+	scale32 := float32(scale)
+	cx32 := float32(cx)
+	cy32 := float32(cy)
+	xOffset32 := float32(xOffset)
+	yOffset32 := float32(yOffset)
+	maxDim32 := float32(maxDim)
+	height32 := float32(height)
+	width32 := float32(width)
+
+	// Precompute constants outside loops
+	scaleOverMaxDim := scale32 / maxDim32
+	halfHeight := height32 / 2
+	halfWidth := width32 / 2
+
+	// Direct access to the underlying slice for better performance
+	data := array.Value.Data
+	arrayWidth := array.Value.Width
+
+	for row := startRow; row < endRow; row++ {
+		y0 := scaleOverMaxDim*(float32(row)-halfHeight) + yOffset32
+		for col := startCol; col < endCol; col++ {
+			x0 := scaleOverMaxDim*(float32(col)-halfWidth) + xOffset32
+			zx, zy := x0, y0
+			iteration := 0
+
+			// Basic Julia set calculation - no periodicity checking needed
+			for (zx*zx+zy*zy <= 4.0) && (iteration < maxIteration) {
+				xtemp := zx*zx - zy*zy + cx32
+				zy = 2*zx*zy + cy32
+				zx = xtemp
+				iteration++
+			}
+
+			// Direct slice access instead of array.Value.Set() for better performance
+			data[row*arrayWidth+col] = colorTable[iteration]
 		}
-		var colour float64
-		if iteration == maxIteration {
-			colour = util.EncodeRGB(0, 0, 0)
-		} else {
-			s := float64(iteration) / float64(maxIteration)
-			v := 1.0 - math.Pow(math.Cos(math.Pi*s), 2.0)
-			lum := 90 - (50 * v)
-			zn := math.Sqrt(zx*zx + zy*zy)
-			nu := math.Log2(math.Log2(zn))
-			smooth := float64(iteration) + 1 - nu
-			hue := math.Mod(smooth, 360)
-			chroma := 70.0
-			r, g, b := util.HCLToRGB255(float64(hue), float64(chroma), float64(lum))
-			colour = util.EncodeRGB(int(r), int(g), int(b))
-		}
-		array.Value.Set(col, row, colour)
 	}
+}
+
+// precomputeColorTable creates a lookup table for fractal colors to avoid repeated calculations
+func precomputeColorTable(maxIteration int) []float64 {
+	colorTable := make([]float64, maxIteration+1)
+	maxIter32 := float32(maxIteration)
+
+	for i := 0; i <= maxIteration; i++ {
+		if i == maxIteration {
+			colorTable[i] = util.EncodeRGB(0, 0, 0)
+		} else {
+			s := float32(i) / maxIter32
+			v := 1.0 - float32(math.Pow(math.Cos(math.Pi*float64(s)), 2.0))
+			lum := 90 - (50 * v)
+			smooth := float32(i) + 1 - 0.0 // simplified without zn calculation
+			hue := float32(math.Mod(float64(smooth), 360))
+			chroma := float32(70.0)
+			r, g, b := util.HCLToRGB255(float64(hue), float64(chroma), float64(lum))
+			colorTable[i] = util.EncodeRGB(int(r), int(g), int(b))
+		}
+	}
+	return colorTable
+}
+
+// isInMainCardioid checks if a point is inside the main cardioid of the Mandelbrot set
+// Points inside the main cardioid are guaranteed to be in the set
+func isInMainCardioid(x, y float64) bool {
+	// Standard cardioid test for the main body of the Mandelbrot set
+	// Let q = (x-1/4)^2 + y^2
+	// The cardioid test is: q*(q + (x-1/4)) < 1/4*y^2
+	dx := x - 0.25
+	q := dx*dx + y*y
+	return q*(q+dx) < 0.25*y*y
+}
+
+// isInPeriod2Bulb checks if a point is inside the period-2 bulb
+// Points inside this bulb are guaranteed to be in the set
+func isInPeriod2Bulb(x, y float64) bool {
+	// Period-2 bulb is centered at (-1, 0) with radius 0.25
+	dx := x + 1.0
+	dy := y
+	return dx*dx+dy*dy < 0.0625 // 0.25^2
+}
+
+// isInMiniBulb checks if a point is inside one of the smaller bulbs
+// This is more effective at medium zoom levels
+func isInMiniBulb(x, y float64) bool {
+	// Check period-3 bulb (approximate)
+	dx := x + 1.25
+	dy := y
+	if dx*dx+dy*dy < 0.01 { // Small bulb near (-1.25, 0)
+		return true
+	}
+
+	// Check other small bulbs along the real axis
+	dx = x + 0.75
+	if dx*dx+dy*dy < 0.001 { // Very small bulb near (-0.75, 0)
+		return true
+	}
+
+	return false
 }

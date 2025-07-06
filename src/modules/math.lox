@@ -155,8 +155,8 @@ func pow(base, exponent) {
 
 func round_places(n, places) {
     // Round a number to a specified number of decimal places
-    n=float(n) 
-    places=float(places)
-    factor = _pow(10.0, places);
-    return floor(n * factor + 0.5) / factor;
+    fn=float(n) 
+    fplaces=float(places)
+    ffactor = _pow(10.0, fplaces);
+    return floor(fn * ffactor + 0.5) / ffactor;
 }

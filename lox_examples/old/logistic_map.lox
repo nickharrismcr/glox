@@ -51,7 +51,7 @@ while (!win.should_close()) {
  
     win.begin();
     win.clear(0,0,0);
-    win.draw_array(arraydata);
+    win.draw_array_fast(arraydata);
     win.end();
    
 }

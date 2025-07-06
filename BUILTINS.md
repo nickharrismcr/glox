@@ -89,6 +89,7 @@ win.init();
 - **`get_screen_width()`** - Returns current screen width
 - **`get_screen_height()`** - Returns current screen height
 - **`set_target_fps(fps)`** - Set target frame rate
+- **`get_fps()`** - Get current frame rate 
 
 ### Drawing Methods
 

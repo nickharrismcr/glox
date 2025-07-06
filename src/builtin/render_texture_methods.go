@@ -3,6 +3,7 @@ package builtin
 import (
 	"glox/src/core"
 	"glox/src/util"
+	"unsafe"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -372,22 +373,45 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 		},
 	})
 
-	o.RegisterMethod("draw_array", &core.BuiltInObject{
+	// Optimized array drawing method - uploads texture data in bulk instead of individual pixels
+	o.RegisterMethod("draw_array_fast", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			arrVal := vm.Stack(arg_stackptr)
 			arrobj := AsFloatArray(arrVal)
 			arr := arrobj.Value
 
-			rl.BeginTextureMode(o.Data.RenderTexture)
-			for x := range arr.Width {
-				for y := range arr.Height {
-					f := arr.Get(x, y)
-					r, g, b := util.DecodeRGB(f)
-					col := rl.NewColor(r, g, b, 255)
-					rl.DrawPixel(int32(x), int32(y), col)
-				}
+			// Create RGBA pixel data in memory
+			width := arr.Width
+			height := arr.Height
+			pixelData := make([]uint8, width*height*4) // RGBA format
+
+			// Convert float array to RGBA pixels in memory
+			for i, f := range arr.Data {
+				r, g, b := util.DecodeRGB(f)
+				pixelData[i*4] = r     // R
+				pixelData[i*4+1] = g   // G
+				pixelData[i*4+2] = b   // B
+				pixelData[i*4+3] = 255 // A
 			}
+
+			// Create image from pixel data and upload as texture
+			img := rl.Image{
+				Data:    unsafe.Pointer(&pixelData[0]),
+				Width:   int32(width),
+				Height:  int32(height),
+				Mipmaps: 1,
+				Format:  rl.UncompressedR8g8b8a8,
+			}
+			texture := rl.LoadTextureFromImage(&img)
+
+			// Draw the texture to render target
+			rl.BeginTextureMode(o.Data.RenderTexture)
+			rl.DrawTexture(texture, 0, 0, rl.White)
 			rl.EndTextureMode()
+
+			// Clean up texture only
+			rl.UnloadTexture(texture)
+
 			return core.NIL_VALUE
 		},
 	})
