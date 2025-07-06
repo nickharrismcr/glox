@@ -62,9 +62,9 @@ void main() {
 }
 "
 
-var WIDTH = 400
-var HEIGHT = 300
-var SCALE = 2.0 
+var WIDTH = 800
+var HEIGHT = 600
+var SCALE = 1.0 
 const ZOOM = 3
 const MAX_ITER = 100
 
@@ -100,7 +100,7 @@ while (!win.should_close()) {
     // native lox function to calculate the Julia set
     lox_julia_array(arr, WIDTH, HEIGHT, MAX_ITER, cx, cy, scale, 0.0, 0.0)
     rt.clear(vec4(0, 0, 0, 255))
-    rt.draw_array(arr, 0, 0, vec4(255, 255, 255, 255))
+    rt.draw_array_fast(arr) // Use optimized array drawing
  
     hue_shader.set_value_float(hue_shift, 0.5 + 0.5 * math.sin(t * 2))
     win.begin()
