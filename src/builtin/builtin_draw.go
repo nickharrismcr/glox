@@ -218,36 +218,8 @@ func mandelbrotCalcBlock(startRow, endRow, startCol, endCol, width, height, maxI
 				} else {
 			*/
 			{
-				// Very conservative periodicity checking - only check occasionally
-				var px, py float64 = 0, 0 // Previous values for period-1 check
-				var ppx, ppy float64 = 0, 0 // Previous-previous values for period-2 check
-				
+				// Basic Mandelbrot calculation - no periodicity checking
 				for (x*x+y*y <= 4.0) && (iteration < maxIteration) {
-					// Store previous values for periodicity checking
-					if iteration > 0 {
-						ppx, ppy = px, py
-						px, py = x, y
-					}
-					
-					// Only check for cycles occasionally and with loose tolerance
-					if iteration >= 20 && iteration%10 == 0 {
-						// Check for period-1 cycles (fixed points)
-						dx := x - px
-						dy := y - py
-						if dx*dx+dy*dy < 1e-16 {
-							break // Found period-1 cycle
-						}
-						
-						// Check for period-2 cycles
-						if iteration >= 30 {
-							dx = x - ppx
-							dy = y - ppy
-							if dx*dx+dy*dy < 1e-16 {
-								break // Found period-2 cycle
-							}
-						}
-					}
-
 					xtemp := x*x - y*y + x0
 					y = 2.0*x*y + y0
 					x = xtemp
