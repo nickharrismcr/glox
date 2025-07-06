@@ -1,48 +1,9 @@
-import colour
-import math
- 
- 
-// --- Main ---
-win = window(800,600)
-win.init()
-win.toggle_fullscreen()
-var screenHeight = win.get_screen_height()
-var screenWidth = win.get_screen_width()
+import math 
 
-var image = image("lox_examples/assets/img.jpg")
-var tex = texture(image, 1, 1, 1)
-var rt = render_texture(100,100) 
-
-var sw = rt.width()
-var sh = rt.height()
-
-// DEBUG: Try drawing the texture directly to the window first
-// If you see the image, texture loading works. If not, image path or loading is broken.
-// Comment out the render texture code for this test.
-
-// win.begin()
-// win.clear(colour.BLACK)
-// win.draw_texture_pro(tex, 0, 0, sw, sh, 0, 0, sw, sh, 0, 0, 0, colour.WHITE)
-// win.end()
-
-// If the above works, try drawing to the render texture with no blend modes or triangle mask:
-
-while (!win.should_close()) {
-    rt.clear(vec4(0,0,0,255)) // RED background for debug
-    // Draw a white triangle (no blend mode)
-    win.begin_blend_mode(win.BLEND_ALPHA)
-    rt.triangle(sw/2, 0, 0, sh, sw, sh, vec4(255,255,255,255))
-    win.end_blend_mode()
-    win.begin_blend_mode(win.BLEND_MULTIPLY)
-    // Draw the texture directly (no blend mode)
-    rt.draw_texture_pro(tex, 0, 0, sw, sh, 0, 0, sw, sh, 0, 0, 0, vec4(255,255,255,255))
-    win.end_blend_mode() 
-
-    win.begin()
-    win.begin_blend_mode(win.BLEND_ALPHA)
-    win.clear(colour.BLACK)
-    win.circle(150,150,20,colour.WHITE) // Draw a white circle for debug
-    win.draw_texture_pro(rt, 0, 0, sw, sh, 0, 0, sw, sh, 0, 0, 0, vec4(255,255,255,255))
-    win.end_blend_mode()    
-    win.end()
+radius = 0.7885 // classic radius for interesting Julia sets
+t=0.0
+while (true) {
+    ca = radius * math.cos(t)  
+    print ca
+    t = t + 0.01
 }

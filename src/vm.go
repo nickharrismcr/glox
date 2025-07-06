@@ -53,6 +53,8 @@ type VM struct {
 	DebugHook func(vm interface{}, event core.DebugEvent, data any)
 }
 
+var _ debug.VMInspector = (*VM)(nil)
+
 var ITER_METHOD = core.MakeStringObjectValue("__iter__", true)
 var NEXT_METHOD = core.MakeStringObjectValue("__next__", true)
 
@@ -1399,16 +1401,17 @@ func (vm *VM) run() (InterpretResult, core.Value) {
 
 func (vm *VM) callValue(callee core.Value, argCount int) bool {
 
+	//core.LogFmtLn(core.DEBUG, "Calling value %s with %d args", callee.String(), argCount)
+
 	if callee.Type == core.VAL_OBJ {
 		if callee.IsClosureObject() {
+			//core.LogFmt(core.DEBUG, "Calling closure %s with %d args", callee.Obj.String(), argCount)
 			return vm.call(core.GetClosureObjectValue(callee), argCount)
 
 		} else if callee.IsBuiltInObject() {
+			//core.LogFmt(core.DEBUG, "Calling built-in function %s with %d args", callee.Obj.String(), argCount)
 			nf := callee.AsBuiltIn()
 			res := nf.Function(argCount, vm.stackTop-argCount, vm)
-			if res.Type == core.VAL_NIL { // error occurred
-				return false
-			}
 			vm.stackTop -= argCount + 1
 			vm.stack[vm.stackTop] = res
 			vm.stackTop++
@@ -1431,6 +1434,7 @@ func (vm *VM) callValue(callee core.Value, argCount int) bool {
 			return vm.call(bound.Method, argCount)
 		}
 	}
+	core.LogFmtLn(core.DEBUG, "Cannot call value %s", callee.String())
 	vm.RunTimeError("Can only call functions and classes.")
 	return false
 }

@@ -145,3 +145,11 @@ func degrees(radians_val) {
     // Convert radians to degrees
     return radians_val * 180.0 / PI;
 } 
+
+func round_places(n, places) {
+    // Round a number to a specified number of decimal places
+    n=float(n) 
+    places=float(places)
+    factor = _pow(10.0, places);
+    return floor(n * factor + 0.5) / factor;
+}

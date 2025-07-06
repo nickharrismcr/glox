@@ -2,6 +2,7 @@ package builtin
 
 import (
 	"glox/src/core"
+	"glox/src/util"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -366,6 +367,26 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 
 			rl.BeginTextureMode(o.Data.RenderTexture)
 			rl.DrawTexturePro(to.Data.Texture, srcRect, destRect, origin, rot, tint)
+			rl.EndTextureMode()
+			return core.NIL_VALUE
+		},
+	})
+
+	o.RegisterMethod("draw_array", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			arrVal := vm.Stack(arg_stackptr)
+			arrobj := AsFloatArray(arrVal)
+			arr := arrobj.Value
+
+			rl.BeginTextureMode(o.Data.RenderTexture)
+			for x := range arr.Width {
+				for y := range arr.Height {
+					f := arr.Get(x, y)
+					r, g, b := util.DecodeRGB(f)
+					col := rl.NewColor(r, g, b, 255)
+					rl.DrawPixel(int32(x), int32(y), col)
+				}
+			}
 			rl.EndTextureMode()
 			return core.NIL_VALUE
 		},

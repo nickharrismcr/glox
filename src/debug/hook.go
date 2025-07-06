@@ -1,6 +1,7 @@
 package debug
 
 import (
+	"fmt"
 	"glox/src/core"
 )
 
@@ -10,7 +11,6 @@ import (
 
 type VMInspector interface {
 	ShowStack() string
-	ShowGlobals() string
 	Frame() *core.CallFrame
 	FrameAt(depth int) *core.CallFrame
 	FrameCount() int
@@ -19,13 +19,13 @@ type VMInspector interface {
 }
 
 func TraceOpcode(vm VMInspector) {
+
 	if vm == nil || vm.Frame() == nil {
+		fmt.Println("VM or Frame is nil, cannot trace opcode")
 		return
 	}
 	core.Log(core.TRACE, "-----------------------------------------------------")
-	if core.DebugShowGlobals {
-		core.LogFmt(core.TRACE, "Globals:\n%s\n", vm.ShowGlobals())
-	}
+
 	core.LogFmt(core.TRACE, "Stack:\n%s\n", vm.ShowStack())
 	chunk := vm.Frame().Closure.Function.Chunk
 	function := vm.Frame().Closure.Function
@@ -34,6 +34,9 @@ func TraceOpcode(vm VMInspector) {
 	code := vm.CurrCode()
 	depth := vm.Frame().Depth
 	offset := vm.Frame().Ip
+	if core.DebugShowGlobals {
+		core.LogFmt(core.TRACE, "Globals:\n%s\n", ShowGlobals(function.Environment))
+	}
 	_ = DisassembleInstruction(chunk, script, name, depth, code, offset)
 
 }
@@ -53,7 +56,11 @@ func TraceReturn(vm VMInspector, data any) {
 
 func TraceHook(vmContext interface{}, event core.DebugEvent, data any) {
 
-	vm, _ := vmContext.(VMInspector)
+	vm, ok := vmContext.(VMInspector)
+	if !ok {
+		fmt.Println("VMContext is not a VMInspector")
+		return
+	}
 	switch event {
 	case core.DebugEventOpcode:
 		TraceOpcode(vm)

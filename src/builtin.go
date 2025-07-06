@@ -39,10 +39,12 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "", "_cos", cosBuiltIn)
 	defineBuiltIn(vm, "", "_tan", tanBuiltIn)
 	defineBuiltIn(vm, "", "_sqrt", sqrtBuiltIn)
+	defineBuiltIn(vm, "", "_pow", powBuiltIn)
 	defineBuiltIn(vm, "", "append", appendBuiltIn)
 	defineBuiltIn(vm, "", "float", floatBuiltIn)
 	defineBuiltIn(vm, "", "int", intBuiltIn)
 	defineBuiltIn(vm, "", "lox_mandel_array", builtin.MandelArrayBuiltIn)
+	defineBuiltIn(vm, "", "lox_julia_array", builtin.JuliaArrayBuiltIn)
 	defineBuiltIn(vm, "", "replace", replaceBuiltIn)
 	defineBuiltIn(vm, "sys", "open", openBuiltIn)
 	defineBuiltIn(vm, "sys", "close", closeBuiltIn)
@@ -745,6 +747,24 @@ func lenBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	}
 	vm.RunTimeError("Invalid argument type to len.")
 	return core.NIL_VALUE
+}
+
+// sin(number)
+func powBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+
+	if argCount != 2 {
+		vm.RunTimeError("Invalid argument count to pow.")
+		return core.NIL_VALUE
+	}
+	vbase := vm.Stack(arg_stackptr)
+	vexp := vm.Stack(arg_stackptr + 1)
+
+	if vbase.Type != core.VAL_FLOAT || vexp.Type != core.VAL_FLOAT {
+		vm.RunTimeError("Invalid argument type to pow.")
+		return core.NIL_VALUE
+	}
+	n := vbase.Float
+	return core.MakeFloatValue(math.Pow(n, vexp.Float), false)
 }
 
 // sin(number)

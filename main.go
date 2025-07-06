@@ -120,6 +120,7 @@ func runFile(opts *Options) {
 	defineBuiltins := !core.DebugSkipBuiltins
 	vm := lox.NewVM(path, defineBuiltins)
 	vm.SetArgs(args)
+
 	if core.DebugTraceExecution {
 		vm.DebugHook = dbg.TraceHook
 	}
