@@ -206,20 +206,16 @@ func mandelbrotCalcBlock(startRow, endRow, startCol, endCol, width, height, maxI
 			x, y := 0.0, 0.0
 			iteration := 0
 
-			// Early bailout for known regions (effectiveness depends on zoom level)
-			// Temporarily disabled to debug black circle issue
-			/*
-				if !isDeepZoom && (isInMainCardioid(x0, y0) || isInPeriod2Bulb(x0, y0)) {
-					// Points in cardioid or bulb are definitely in the set
-					iteration = maxIteration
-				} else if isMediumZoom && isInMiniBulb(x0, y0) {
-					// Check smaller bulbs at medium zoom
-					iteration = maxIteration
-				} else {
-			*/
-			{
+			// Adaptive early bailout for known regions based on zoom level
+			// Focus on main cardioid and period-2 bulb for best performance
+			isDeepZoom := scale < 1e-5
+
+			if !isDeepZoom && (isInMainCardioid(x0, y0) || isInPeriod2Bulb(x0, y0)) {
+				// Points in main cardioid or period-2 bulb are definitely in the set
+				iteration = maxIteration
+			} else {
 				// Conservative periodicity checking for Mandelbrot set
-				// Check for period-1 and period-2 cycles after a threshold
+				// Focus on period-1 and period-2 only for best performance
 				const periodicityThreshold = 20
 				const periodicityEpsilon = 1e-10
 
@@ -466,23 +462,4 @@ func isInPeriod2Bulb(x, y float64) bool {
 	dx := x + 1.0
 	dy := y
 	return dx*dx+dy*dy < 0.0625 // 0.25^2
-}
-
-// isInMiniBulb checks if a point is inside one of the smaller bulbs
-// This is more effective at medium zoom levels
-func isInMiniBulb(x, y float64) bool {
-	// Check period-3 bulb (approximate)
-	dx := x + 1.25
-	dy := y
-	if dx*dx+dy*dy < 0.01 { // Small bulb near (-1.25, 0)
-		return true
-	}
-
-	// Check other small bulbs along the real axis
-	dx = x + 0.75
-	if dx*dx+dy*dy < 0.001 { // Very small bulb near (-0.75, 0)
-		return true
-	}
-
-	return false
 }
