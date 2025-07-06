@@ -146,6 +146,13 @@ func degrees(radians_val) {
     return radians_val * 180.0 / PI;
 } 
 
+func pow(base, exponent) {
+    // Calculate base raised to the power of exponent
+    base= float(base);
+    exponent= float(exponent);
+    return _pow(base, exponent);
+}
+
 func round_places(n, places) {
     // Round a number to a specified number of decimal places
     n=float(n) 
