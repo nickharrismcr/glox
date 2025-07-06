@@ -26,30 +26,26 @@ posy= (win.get_screen_height() - height) / 2
 
 // Create render texture for fast array drawing
 rt = render_texture(width, height)
+ 
+var scale=4;
+ 
+ 
+var xOffset= -0.7269;
+var yOffset= 0.1889;
 
-var scale=1;
-// seahorse valley parameters
-var xOffset= -0.7436438870371587;
-var yOffset= 0.13182590420531197;
+ 
 var array_rgb=float_array(width,height)
-
-var zoom_speed = 0.99; // Constant zoom speed
+var max_iterations = 500;
+var zoom_speed = 0.98;  
  
 
 while (!win.should_close()) {
  
     // Get current FPS for display
     var current_fps = win.get_fps();
-    
-    // Adaptive iteration count based on zoom level - improved logic
-    var adaptive_iterations = max_iteration
-    if (scale > 0.01) {
-        // Only reduce iterations when very zoomed out
-        adaptive_iterations = int(max_iteration * (1.0 - scale * 0.3))
-        adaptive_iterations = math.max(100, math.min(adaptive_iterations, max_iteration))
-    }
+ 
    
-    calc(array_rgb,width,height,adaptive_iterations,scale,xOffset,yOffset);
+    calc(array_rgb,width,height,max_iterations,scale,xOffset,yOffset);
     
     // Use fast array drawing method
     rt.clear(vec4(0, 0, 0, 255))
@@ -58,14 +54,13 @@ while (!win.should_close()) {
     win.begin();
     win.clear(colour.BLACK);
     win.draw_render_texture(rt, posx, posy, vec4(255, 255, 255, 255))
-    win.text("Max Iteration: " + str(adaptive_iterations), 10, 40, 20, vec4(255, 255, 255, 255));
-    win.text("Scale: " + str(math.round_places(scale, 6)), 10, 70, 16, vec4(200, 200, 200, 255));
-    win.text("FPS: " + str(current_fps), 10, 100, 16, vec4(200, 200, 200, 255));
+    win.text("Max Iteration: " + str(max_iterations), 10, 40, 20, vec4(255, 255, 255, 255));
+    win.text("Scale: " + str(math.round_places(scale, 20)), 10, 70, 16, vec4(200, 200, 200, 255));
     win.text("Zoom Speed: " + str(zoom_speed), 10, 130, 16, vec4(200, 200, 200, 255));
-    win.text("Optimized Mandelbrot with all enhancements", 10, 160, 16, vec4(150, 255, 150, 255));
     win.end();
     scale=scale*zoom_speed;
-    max_iteration += 2
+    max_iterations += 5
+ 
 }
 win.close();
 

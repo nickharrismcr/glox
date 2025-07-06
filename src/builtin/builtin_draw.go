@@ -425,20 +425,62 @@ func juliaCalcBlock(startRow, endRow, startCol, endCol, width, height, maxIterat
 // precomputeColorTable creates a lookup table for fractal colors to avoid repeated calculations
 func precomputeColorTable(maxIteration int) []float64 {
 	colorTable := make([]float64, maxIteration+1)
-	maxIter32 := float32(maxIteration)
 
 	for i := 0; i <= maxIteration; i++ {
 		if i == maxIteration {
+			// Points in the set are black
 			colorTable[i] = util.EncodeRGB(0, 0, 0)
 		} else {
-			s := float32(i) / maxIter32
-			v := 1.0 - float32(math.Pow(math.Cos(math.Pi*float64(s)), 2.0))
-			lum := 90 - (50 * v)
-			smooth := float32(i) + 1 - 0.0 // simplified without zn calculation
-			hue := float32(math.Mod(float64(smooth), 360))
-			chroma := float32(70.0)
-			r, g, b := util.HCLToRGB255(float64(hue), float64(chroma), float64(lum))
-			colorTable[i] = util.EncodeRGB(int(r), int(g), int(b))
+			// High contrast color scheme with sharp transitions
+			t := float64(i) / float64(maxIteration)
+
+			var r, g, b int
+
+			// Create sharp, high-contrast bands
+			if t < 0.16 {
+				// Electric blue to cyan
+				ratio := t / 0.16
+				r = int(ratio * 50)
+				g = int(100 + ratio*155)
+				b = 255
+			} else if t < 0.32 {
+				// Cyan to green
+				ratio := (t - 0.16) / 0.16
+				r = int(50 * (1 - ratio))
+				g = 255
+				b = int(255 * (1 - ratio))
+			} else if t < 0.48 {
+				// Green to yellow
+				ratio := (t - 0.32) / 0.16
+				r = int(ratio * 255)
+				g = 255
+				b = 0
+			} else if t < 0.64 {
+				// Yellow to red
+				ratio := (t - 0.48) / 0.16
+				r = 255
+				g = int(255 * (1 - ratio))
+				b = 0
+			} else if t < 0.80 {
+				// Red to magenta
+				ratio := (t - 0.64) / 0.16
+				r = 255
+				g = 0
+				b = int(ratio * 255)
+			} else {
+				// Magenta to white (high contrast finale)
+				ratio := (t - 0.80) / 0.20
+				r = 255
+				g = int(ratio * 255)
+				b = 255
+			}
+
+			// Ensure values are in valid range
+			r = max(0, min(255, r))
+			g = max(0, min(255, g))
+			b = max(0, min(255, b))
+
+			colorTable[i] = util.EncodeRGB(r, g, b)
 		}
 	}
 	return colorTable
