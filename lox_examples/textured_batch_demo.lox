@@ -1,4 +1,4 @@
-// Comprehensive textured cube batch performance demo
+// textured cube batch performance demo
 // Shows thousands of textured cubes with camera orbit and culling
 import math;
 import sys;

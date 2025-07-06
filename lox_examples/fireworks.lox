@@ -1,3 +1,5 @@
+// 2d particle system fireworks demo
+
 
 import random;
 import colour;

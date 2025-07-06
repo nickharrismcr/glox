@@ -1,5 +1,4 @@
-// Cube Stack Fly 2.0 - Redesigned with batched rendering and cleaner architecture
-// Based on the design in cube_stack_fly.design.md
+// city of stacks with colored cubes
 
 import math
 import random

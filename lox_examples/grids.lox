@@ -1,3 +1,5 @@
+// draw some nice animated grids with a colour shift
+
 
 import random
 import colour

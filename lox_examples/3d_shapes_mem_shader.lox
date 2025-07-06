@@ -110,12 +110,6 @@ if (memory_shader.is_valid()) {
     view_pos_loc = memory_shader.get_location("viewPos")
     translation_loc = memory_shader.get_location("translation")
     rotation_loc = memory_shader.get_location("rotation")
-    print("Shader loaded from memory!")
-    print("Brightness location:", brightness_loc)
-    print("Light position location:", light_pos_loc)
-    print("View position location:", view_pos_loc)
-    print("Translation location:", translation_loc)
-    print("Rotation location:", rotation_loc)
 } else {
     print("Failed to load shader from memory")
 }
@@ -131,10 +125,6 @@ light_speed_x = random.float(0.008, 0.025)
 light_speed_y = random.float(0.012, 0.035)
 light_speed_z = random.float(0.006, 0.02)
 
-// Use native HSV to RGB conversion for better performance
-// (Removed custom hsv_to_rgb function - using colour_utils.hsv_to_rgb instead)
-
-// Simple demo objects - lit rotating cylinders with orbital motion
 class BrightObject {
     init(pos, vel, size, color) {
         this.size = size
@@ -150,7 +140,7 @@ class BrightObject {
         this.orbit_radius = random.float(5, 25)
         this.orbit_speed = random.float(0.005, 0.02) * (1.0 / this.orbit_radius)  // Closer objects orbit faster
         this.orbit_angle = random.float(0, 6.28)  // Random starting angle
-        this.orbit_height = 10.0  // Fixed Y position for all cylinders
+        this.orbit_height = 10.0  // Fixed Y position for all  
         
         // Calculate initial position
         this.pos = vec3(math.cos(this.orbit_angle) * this.orbit_radius, this.orbit_height, math.sin(this.orbit_angle) * this.orbit_radius)
@@ -184,7 +174,7 @@ class BrightObject {
             }
         }
         
-        // Draw cylinder at origin since translation is handled by shader
+        // Draw shape at origin since translation is handled by shader
         win.cylinder(vec3(0, 0, 0), this.size*0.5, 0.1, 0.5, this.color)
         
         if (memory_shader.is_valid()) {
@@ -197,7 +187,7 @@ class BrightObject {
 objects = []
 for (i = 0; i < SHAPES; i = i + 1) {
     size = random.float(1, 2.0)
-    color = colour_utils.random()  // Use native random color function
+    color = colour_utils.random()  
     objects.append(BrightObject(vec3(0, 0, 0), vec3(0, 0, 0), size, color))
 }
 
@@ -205,7 +195,7 @@ while (!win.should_close()) {
     angle = angle + 0.01
     x = math.cos(angle) * 30
     z = math.sin(angle) * 30
-    // Add slow vertical movement - oscillate between y=5 and y=15
+    // Add slow vertical camera movement - oscillate between y=5 and y=15
     y = 10 + 50 * math.sin(angle * 0.3)
     cam.set_position(vec3(x, y, z))
     // Keep camera pointed at center of action
@@ -240,7 +230,7 @@ while (!win.should_close()) {
     }
     
     win.begin()
-    win.begin_blend_mode(win.BLEND_ALPHA)  // Commented out to disable alpha blending
+    win.begin_blend_mode(win.BLEND_ALPHA)  
     
     // Slowly changing background hue - smooth HSV color cycling
     hue_time = frame_count * 0.001  // Very slow color change
