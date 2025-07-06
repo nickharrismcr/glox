@@ -258,7 +258,7 @@ func mandelbrotCalcBlock(startRow, endRow, startCol, endCol, width, height, maxI
 
 			// Direct slice access instead of array.Value.Set() for better performance
 			// Note: FloatArray uses y*Width+x indexing, so row*arrayWidth+col is correct
-			data[row*arrayWidth+col] = colorTable[iteration]
+			data[row*arrayWidth+col] = colorTable[(iteration*2)%maxIteration]
 		}
 	}
 }

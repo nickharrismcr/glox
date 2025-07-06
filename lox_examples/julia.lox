@@ -62,15 +62,16 @@ void main() {
 }
 "
 
-var WIDTH = 800
-var HEIGHT = 600
+ 
 var SCALE = 1.0 
-const ZOOM = 3
+const ZOOM = 4
 const MAX_ITER = 100
 
 win = window(1,1)
 win.init()
 win.toggle_fullscreen()
+WIDTH = int(win.get_screen_width())
+HEIGHT = int(win.get_screen_height())
 
 // set draw position based on window size
 xpos = (win.get_screen_width() - WIDTH * SCALE) / 2
@@ -102,7 +103,7 @@ while (!win.should_close()) {
     rt.clear(vec4(0, 0, 0, 255))
     rt.draw_array_fast(arr) // Use optimized array drawing
  
-    hue_shader.set_value_float(hue_shift, 0.5 + 0.5 * math.sin(t * 2))
+    hue_shader.set_value_float(hue_shift, 0.5 + 0.5 * math.sin(t*0.5))
     win.begin()
   
     win.begin_shader_mode(hue_shader)

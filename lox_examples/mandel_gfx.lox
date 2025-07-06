@@ -8,8 +8,6 @@ import math;
  
  
 func calc(array,width,height,max_iteration,zoom,xoff,yoff) {
-    
-
     lox_mandel_array(array,height,width,max_iteration,float(xoff),float(yoff),float(zoom))
 }
 
