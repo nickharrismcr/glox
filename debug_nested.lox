@@ -1,0 +1,45 @@
+class SimpleIterable {
+  init(end) {
+    this.end = end;
+    this.index = 0;
+  }
+  __iter__() {
+    print "calling __iter__, resetting index to 0";
+    this.index = 0;
+    return this;
+  }
+  __next__() {
+    print "calling __next__, index:";
+    print this.index;
+    if (this.index >= this.end) {
+      print "returning nil";
+      return nil;
+    }
+    var value = this.index;
+    this.index = this.index + 1;
+    print "returning value:";
+    print value;
+    return value;
+  }
+}
+
+var a = SimpleIterable(3);
+var b = SimpleIterable(2);
+
+print "First foreach with a:";
+foreach (var i in a) {
+  print "got i:";
+  print i;
+}
+
+print "Second foreach with b:";
+foreach (var j in b) {
+  print "got j:";
+  print j;
+}
+
+print "Third foreach with b again:";
+foreach (var k in b) {
+  print "got k:";
+  print k;
+}

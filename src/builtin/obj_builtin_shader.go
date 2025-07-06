@@ -8,12 +8,13 @@ import (
 )
 
 func ShaderBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-	if argCount == 0 {
+	switch argCount {
+	case 0:
 		// Create empty shader object
 		o := MakeShaderObject(rl.Shader{})
 		RegisterAllShaderMethods(o)
 		return core.MakeObjectValue(o, true)
-	} else if argCount == 2 {
+	case 2:
 		// Load shader from files
 		vsFileVal := vm.Stack(arg_stackptr)
 		fsFileVal := vm.Stack(arg_stackptr + 1)
@@ -30,7 +31,7 @@ func ShaderBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value
 		o := MakeShaderObject(shader)
 		RegisterAllShaderMethods(o)
 		return core.MakeObjectValue(o, true)
-	} else {
+	default:
 		vm.RunTimeError("shader expects 0 or 2 arguments")
 		return core.NIL_VALUE
 	}

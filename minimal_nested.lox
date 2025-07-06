@@ -1,0 +1,32 @@
+class Iterable {
+  init(lst) {
+    this.items = lst;
+    this.index = 0;
+  }
+  __iter__() {
+    this.index = 0;
+    return this;
+  }
+  __next__() {
+    if (this.index == len(this.items)) {
+      return nil;
+    }
+    var rv = this.items[this.index];
+    this.index = this.index + 1;
+    return rv;
+  }
+}
+
+var a = Iterable([1, 2]);
+var b = Iterable([10, 20]);
+
+print "a:"; print a;
+print "b:"; print b;
+
+foreach (var i in a) {
+  print "i:"; print i;
+  print "b before inner:"; print b;
+  foreach (var j in b) {
+    print "j:"; print j;
+  }
+}

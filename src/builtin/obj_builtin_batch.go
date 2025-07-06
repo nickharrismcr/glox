@@ -699,78 +699,78 @@ func (batch *DrawBatch) initializeInstancedRendering() {
 	batch.IsInitialized = true
 }
 
-// Clean up instanced rendering resources
-func (batch *DrawBatch) cleanupInstancedRendering() {
-	if !batch.IsInitialized {
-		return
-	}
+// // Clean up instanced rendering resources
+// func (batch *DrawBatch) cleanupInstancedRendering() {
+// 	if !batch.IsInitialized {
+// 		return
+// 	}
 
-	if batch.CubeMesh != nil {
-		rl.UnloadMesh(batch.CubeMesh)
-		batch.CubeMesh = nil
-	}
+// 	if batch.CubeMesh != nil {
+// 		rl.UnloadMesh(batch.CubeMesh)
+// 		batch.CubeMesh = nil
+// 	}
 
-	if batch.DefaultMaterial != nil {
-		rl.UnloadMaterial(*batch.DefaultMaterial)
-		batch.DefaultMaterial = nil
-	}
+// 	if batch.DefaultMaterial != nil {
+// 		rl.UnloadMaterial(*batch.DefaultMaterial)
+// 		batch.DefaultMaterial = nil
+// 	}
 
-	batch.IsInitialized = false
-}
+// 	batch.IsInitialized = false
+// }
 
-// Optimized instanced rendering for textured cubes
-func (batch *DrawBatch) drawTexturedCubesInstanced() {
-	if len(batch.TexturedCubeEntries) == 0 {
-		return
-	}
+// // Optimized instanced rendering for textured cubes
+// func (batch *DrawBatch) drawTexturedCubesInstanced() {
+// 	if len(batch.TexturedCubeEntries) == 0 {
+// 		return
+// 	}
 
-	// Ensure instanced rendering is initialized
-	if !batch.IsInitialized {
-		batch.initializeInstancedRendering()
-	}
+// 	// Ensure instanced rendering is initialized
+// 	if !batch.IsInitialized {
+// 		batch.initializeInstancedRendering()
+// 	}
 
-	// Group cubes by texture for efficient batching
-	textureGroups := make(map[uint32][]TexturedCubeBatchEntry)
-	for _, entry := range batch.TexturedCubeEntries {
-		textureGroups[entry.Texture.ID] = append(textureGroups[entry.Texture.ID], entry)
-	}
+// 	// Group cubes by texture for efficient batching
+// 	textureGroups := make(map[uint32][]TexturedCubeBatchEntry)
+// 	for _, entry := range batch.TexturedCubeEntries {
+// 		textureGroups[entry.Texture.ID] = append(textureGroups[entry.Texture.ID], entry)
+// 	}
 
-	// Render each texture group using instanced rendering
-	for textureID, entries := range textureGroups {
-		if len(entries) == 0 {
-			continue
-		}
+// 	// Render each texture group using instanced rendering
+// 	for textureID, entries := range textureGroups {
+// 		if len(entries) == 0 {
+// 			continue
+// 		}
 
-		// Create transform matrices for all cubes in this texture group
-		transforms := make([]rl.Matrix, len(entries))
-		for i, entry := range entries {
-			// Create scale matrix
-			scaleMatrix := rl.MatrixScale(entry.Size.X, entry.Size.Y, entry.Size.Z)
+// 		// Create transform matrices for all cubes in this texture group
+// 		transforms := make([]rl.Matrix, len(entries))
+// 		for i, entry := range entries {
+// 			// Create scale matrix
+// 			scaleMatrix := rl.MatrixScale(entry.Size.X, entry.Size.Y, entry.Size.Z)
 
-			// Create translation matrix
-			translateMatrix := rl.MatrixTranslate(entry.Position.X, entry.Position.Y, entry.Position.Z)
+// 			// Create translation matrix
+// 			translateMatrix := rl.MatrixTranslate(entry.Position.X, entry.Position.Y, entry.Position.Z)
 
-			// Combine translation and scale (order matters: T * S)
-			transforms[i] = rl.MatrixMultiply(translateMatrix, scaleMatrix)
-		}
+// 			// Combine translation and scale (order matters: T * S)
+// 			transforms[i] = rl.MatrixMultiply(translateMatrix, scaleMatrix)
+// 		}
 
-		// Create a fresh material for this texture group
-		material := rl.LoadMaterialDefault()
+// 		// Create a fresh material for this texture group
+// 		material := rl.LoadMaterialDefault()
 
-		// Set the texture directly on the diffuse map
-		diffuseMap := material.GetMap(rl.MapDiffuse)
-		diffuseMap.Texture = rl.Texture2D{ID: textureID}
+// 		// Set the texture directly on the diffuse map
+// 		diffuseMap := material.GetMap(rl.MapDiffuse)
+// 		diffuseMap.Texture = rl.Texture2D{ID: textureID}
 
-		// Use white as the base color (texture will provide the color)
-		diffuseMap.Color = rl.White
+// 		// Use white as the base color (texture will provide the color)
+// 		diffuseMap.Color = rl.White
 
-		// Use instanced rendering - much more efficient than individual draws
-		rl.DrawMeshInstanced(*batch.CubeMesh, material, transforms, int32(len(entries)))
+// 		// Use instanced rendering - much more efficient than individual draws
+// 		rl.DrawMeshInstanced(*batch.CubeMesh, material, transforms, int32(len(entries)))
 
-		// Clean up the temporary material
-		rl.UnloadMaterial(material)
-	}
-}
+// 		// Clean up the temporary material
+// 		rl.UnloadMaterial(material)
+// 	}
+// }
 
 // Old method for debugging comparison
 func (batch *DrawBatch) drawTexturedCubesOldMethod() {
