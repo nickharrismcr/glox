@@ -154,16 +154,15 @@ The batch object provides high-performance rendering for large numbers of simila
  
 var cube_batch = batch(win.BATCH_CUBE);      // Create a batch for cubes
 var sphere_batch = batch(win.BATCH_SPHERE);  // Create a batch for spheres
-var plane_batch = batch(win.BATCH_PLANE);    // Create a batch for planes
 
- 
 ```
 
 **Supported batch types:**
 - `win.BATCH_CUBE`  - For rendering cubes
 - `win.BATCH_TEXTURED_CUBE` - For rendering textured cubes
-- `win.BATCH_SPHERE`   - For rendering spheres  
-- `win.BATCH_PLANE`   - For rendering planes
+- `win.BATCH_SPHERE`   - For rendering spheres
+- `win.BATCH_TRIANGLE3` - for rendering triangles
+ 
 
 ### Adding Primitives
 
@@ -178,7 +177,7 @@ var textured_index = textured_batch.add_textured_cube(texture, position, size, b
 // Examples:
 var idx1 = cube_batch.add(vec3(0, 0, 0), vec3(1, 1, 1), vec4(255, 0, 0, 255));
 var idx2 = sphere_batch.add(vec3(2, 0, 0), vec3(0.5, 0.5, 0.5), vec4(0, 255, 0, 255));
-var idx3 = plane_batch.add(vec3(0, -1, 0), vec3(10, 1, 10), vec4(100, 100, 100, 255));
+ 
 
 // Textured cube example:
 var my_texture = texture(image("myimage.png"), 1, 1, 1);
@@ -213,7 +212,6 @@ cube_batch.draw();
 win.begin_3d(camera);
 cube_batch.draw();      // Renders all cubes in one call
 sphere_batch.draw();    // Renders all spheres in one call
-plane_batch.draw();     // Renders all planes in one call
 win.end_3d();
 ```
 
