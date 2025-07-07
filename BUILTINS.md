@@ -22,18 +22,7 @@
 
 ### Core Functions
 
-
 - **`type(value)`** - Returns the type of a value as a string
-- **`len(container)`** - Returns the length of a container (string, list, etc.)
-
-
-### Mathematical Functions
-
-- **`sin(x)`** - Returns the sine of x (in radians)
-- **`cos(x)`** - Returns the cosine of x (in radians)
-- **`sqrt(x)`** - Returns the square root of x
-- **`atan2(y, x)`** - Returns the arctangent of y/x in radians
-- **`rand()`** - Returns a random number between 0 and 1
 
 ### Type Conversion Functions
 
@@ -42,6 +31,7 @@
 
 ### Container Functions
 
+- **`len(container)`** - Returns the length of a container (string, list, etc.)
 - **`append(list, item)`** - Appends an item to a list
 - **`range(n)`** - Creates a range iterator from 0 to n-1
 
@@ -286,13 +276,8 @@ var cube_batch = batch("cube");
 for (var i = 0; i < 1000; i = i + 1) {
     cube_batch.add(positions[i], sizes[i], colors[i]);  // Add to batch
 }
-cube_batch.draw();  // Single draw call for ALL 1000 cubes!
+cube_batch.draw();  // Single lox draw call for all 1000 cubes 
 ```
-
-**Performance Comparison:**
-- **1,000 cubes:** 1,000 draw calls → 1 draw call (1000x improvement)
-- **10,000 cubes:** 10,000 draw calls → 1 draw call (10,000x improvement)
-- **Real-world result:** 10,000+ animated cubes running at 60+ FPS
 
 ### Complete Example
 
