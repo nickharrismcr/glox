@@ -30,7 +30,7 @@ func heightToColor(height) {
     return vec4(rgb.x, rgb.y, rgb.z, 255)
 }
 
-print("Generating terrain with " + str(TERRAIN_SIZE * TERRAIN_SIZE * 2) + " triangles...")
+print(format("Generating terrain with %d triangles...", TERRAIN_SIZE * TERRAIN_SIZE * 2))
 
 // Triangle info class for better structure
 class TriInfo {
@@ -64,7 +64,7 @@ for (x = 0; x < TERRAIN_SIZE - 1; x += 1) {
     }
 }
 
-print("Generated " + str(batch.count()) + " triangles!")
+print(format("Generated %d triangles!", batch.count()))
 
 
 // Animation variables

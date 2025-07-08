@@ -110,7 +110,7 @@ while (!win.should_close()) {
     win.clear(vec4(10, 10, 30, 255))
 
     win.draw_render_texture_ex(rt, xpos, ypos, 0, SCALE, vec4(255,255,255,255))
-    win.text("Julia Set c = " + str(math.round_places(cx, 2)) + " + " + str(math.round_places(cy, 2)) + "i", 100, 10, 20, vec4(255,255,255,255))
+    win.text(format("Julia Set c = %g + %gi", math.round_places(cx, 2), math.round_places(cy, 2)), 100, 10, 20, vec4(255,255,255,255))
     win.end_shader_mode()
     win.end()
 }

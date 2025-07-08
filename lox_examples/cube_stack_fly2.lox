@@ -506,9 +506,9 @@ while (!win.should_close()) {
     win.end_shader_mode()
 
     // draw grid pos x and y text 
-    gridPosText = "Target Grid Position: (" + str(int(controller.targetGridPos.x)) + ", " + str(int(controller.targetGridPos.z)) + ")"
+    gridPosText = format("Target Grid Position: (%d, %d)", int(controller.targetGridPos.x), int(controller.targetGridPos.z))
     win.text(gridPosText, 10, 40, 18, vec4(255, 255, 255, 255))
-    distanceText = "Distance to Target: " + str(int(controller.distanceToTarget))
+    distanceText = format("Distance to Target: %d", int(controller.distanceToTarget))
     win.text(distanceText, 10, 65, 18, vec4(255, 255, 255, 255))
     win.end()
 }

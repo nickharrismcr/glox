@@ -18,7 +18,7 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
     var half_width = 800;  // screen_width / 2
     var half_height = 450; // screen_height / 2
     
-    print("Using dimensions: " + str(screen_width) + "x" + str(screen_height));
+    print(format("Using dimensions: %dx%d", screen_width, screen_height));
 
     var r_min = 2.5;
     var r_max = 4.0;
@@ -69,7 +69,7 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
             // Restart animation
             rr = original_rr;
             bifurcation_buffer.clear(grey);
-            print("Animation restarted from r = " + str(rr));
+            print(format("Animation restarted from r = %g", rr));
         }
         
         if (win.key_pressed(win.KEY_ESCAPE)) {
@@ -82,22 +82,22 @@ fun draw_cobweb_and_live_bifurcation(rr, x0, steps) {
             if (win.key_pressed(win.KEY_LEFT)) {
                 rr = rr - manual_step;
                 if (rr < r_min) rr = r_min;
-                print("r = " + str(rr));
+                print(format("r = %g", rr));
             }
             if (win.key_pressed(win.KEY_RIGHT)) {
                 rr = rr + manual_step;
                 if (rr > r_max) rr = r_max;
-                print("r = " + str(rr));
+                print(format("r = %g", rr));
             }
             if (win.key_pressed(win.KEY_UP)) {
                 manual_step = manual_step * 2.0;
                 if (manual_step > 0.1) manual_step = 0.1;
-                print("Manual step size: " + str(manual_step));
+                print(format("Manual step size: %g", manual_step));
             }
             if (win.key_pressed(win.KEY_DOWN)) {
                 manual_step = manual_step / 2.0;
                 if (manual_step < 0.0001) manual_step = 0.0001;
-                print("Manual step size: " + str(manual_step));
+                print(format("Manual step size: %g", manual_step));
             }
             
             // If parameter changed, fill in bifurcation points between old and new values

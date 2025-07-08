@@ -27,7 +27,7 @@ var cube_spacing = 3.0
 var cube_size = 2.0
 var grid_offset = -(grid_size * cube_spacing) / 2.0
 
-print "Generating " + str(grid_size * grid_size) + " textured cubes..."
+print format("Generating %d textured cubes...", grid_size * grid_size)
 
 // Add textured cubes in a large grid pattern
 for (var x = 0; x < grid_size; x = x + 1) {
@@ -53,7 +53,7 @@ for (var x = 0; x < grid_size; x = x + 1) {
     }
 }
 
-print "Created textured cube batch with " + str(textured_batch.count()) + " cubes"
+print format("Created textured cube batch with %d cubes", textured_batch.count())
 
 // Performance tracking
 var frame_count = 0
@@ -122,21 +122,21 @@ while (!win.should_close()) {
     
     // UI
     win.text("Textured Cube Batch Performance Demo", 10, 10, 24, vec4(255, 255, 255, 255))
-    win.text("Cubes: " + str(textured_batch.count()), 10, 45, 18, vec4(200, 200, 200, 255))
+    win.text(format("Cubes: %d", textured_batch.count()), 10, 45, 18, vec4(200, 200, 200, 255))
     
     var culling_text = "OFF"
     if (enable_culling) {
         culling_text = "ON"
     }
-    win.text("Culling: " + culling_text, 10, 70, 18, vec4(200, 200, 200, 255))
+    win.text(format("Culling: %s", culling_text), 10, 70, 18, vec4(200, 200, 200, 255))
     
     var camera_text = "Auto Orbit"
     if (manual_camera) {
         camera_text = "Manual (WASD)"
     }
-    win.text("Camera: " + camera_text, 10, 95, 18, vec4(200, 200, 200, 255))
+    win.text(format("Camera: %s", camera_text), 10, 95, 18, vec4(200, 200, 200, 255))
     
-    win.text("Frame: " + str(frame_count), 10, 120, 16, vec4(180, 180, 180, 255))
+    win.text(format("Frame: %d", frame_count), 10, 120, 16, vec4(180, 180, 180, 255))
     
     win.text("Controls:", 10, 650, 16, vec4(150, 150, 150, 255))
     win.text("C - Toggle culling | M - Toggle manual camera", 10, 670, 14, vec4(150, 150, 150, 255))
@@ -172,8 +172,8 @@ var total_time = sys.clock() - start_time
 var avg_fps = frame_count / total_time
 
 print "Demo finished:"
-print "Total frames: " + str(frame_count)
-print "Total time: " + str(total_time) + " seconds"
-print "Average FPS: " + str(avg_fps)
+print format("Total frames: %d", frame_count)
+print format("Total time: %g seconds", total_time)
+print format("Average FPS: %g", avg_fps)
 
 win.close()

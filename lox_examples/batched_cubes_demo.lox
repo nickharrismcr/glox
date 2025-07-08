@@ -172,10 +172,10 @@ while (!win.should_close()) {
     
     // Performance info display
  
-    win.text("Total cubes: " + str(cubeCount), 10, 40, 18, vec4(255, 255, 255, 255))
-    win.text("Batch entries: " + str(cube_batch.count()), 10, 65, 18, vec4(255, 255, 255, 255))
-    win.text("FPS: " + str(currentFPS), 10, 90, 18, vec4(100, 255, 100, 255))
-    win.text("Update time: " + str(int(updateTime * 1000)) + " ms", 10, 115, 16, vec4(200, 200, 255, 255))
+    win.text(format("Total cubes: %d", cubeCount), 10, 40, 18, vec4(255, 255, 255, 255))
+    win.text(format("Batch entries: %d", cube_batch.count()), 10, 65, 18, vec4(255, 255, 255, 255))
+    win.text(format("FPS: %d", currentFPS), 10, 90, 18, vec4(100, 255, 100, 255))
+    win.text(format("Update time: %d ms", int(updateTime * 1000)), 10, 115, 16, vec4(200, 200, 255, 255))
     win.text("🎮 ESC to exit", 10, 215, 16, vec4(200, 200, 200, 255))
     win.end_blend_mode()
     win.end()
