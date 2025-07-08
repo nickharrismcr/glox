@@ -1,10 +1,36 @@
 // kaleidoscope from loaded image  
 
-import colour
-import math
+import colour,math,random,os 
 
-const speed = 2 
-const segmentCount = 64
+
+const speed = 0.5
+
+
+
+import os
+
+func get_imagefile_list(){
+    
+
+    rv = []
+    pictures = os.listdir("D:/pictures")
+    foreach (item in pictures) {
+        if (!os.isdir("D:/pictures/" + item)) {
+            continue
+        }
+        foreach (file in os.listdir("D:/pictures/" + item)) {
+            if (os.isfile("D:/pictures/" + item + "/" + file)) {
+                parts = os.splitext(file)
+                if (parts[1] in (".png", ".PNG", ".jpg", ".JPG", ".jpeg", ".JPEG")) {
+                    rv.append(os.join("D:/pictures/" + item, file))
+  
+                }
+            }
+        }
+    }
+    return rv
+}
+
 
 class Rect{
     init(v1x,v1y, v2x, v2y ) {
@@ -119,29 +145,46 @@ fun kaleido(win,rt, segmentCount, centerX, centerY, tex, sampler) {
     }
 }
 
+
+fun load_kaleido (imagelist,index, screenHeight, segmentCount) {
+
+    img = image(imagelist[index])
+    tex = texture(img, 1, 1, 1)
+    tex.set_wrap_mode(win.WRAP_REPEAT)  // Set texture to repeat when sampling beyond 0-1 range
+    radius,triangleWidth = get_width(segmentCount, screenHeight)
+    sampler = TextureSampler(tex, triangleWidth, radius)
+    rt = render_texture(int(triangleWidth), int(radius))
+
+    return (tex,rt,sampler)
+}
+
 // --- Main ---
 win = window(800, 600)
 win.init()
 win.toggle_fullscreen()
 screenHeight = win.get_screen_height()
 screenWidth = win.get_screen_width()
+imagelist = get_imagefile_list()
 
-image = image("lox_examples/assets/img.jpg")
-tex = texture(image, 1, 1, 1)
-
-radius,triangleWidth = get_width(segmentCount, screenHeight)
- 
-
-sampler = TextureSampler(tex, triangleWidth, radius)
-rt = render_texture(int(triangleWidth), int(radius))
+segmentCount = 128
+index = random.integer(0, imagelist.length() - 1)
+tex,rt,sampler = load_kaleido(imagelist, index, screenHeight, segmentCount)
 
 centerX = screenWidth / 2
 centerY = screenHeight / 2
 
+counter=0 
 while (!win.should_close()) {
     sampler.update()
     win.begin()
     win.clear(colour.BLACK)
     kaleido(win, rt, segmentCount, centerX, centerY, tex, sampler)
     win.end()
+    counter += 1
+    if (counter >= 480 ) {
+        tex.unload()
+        index = random.integer(0, imagelist.length() - 1)
+        tex,rt,sampler = load_kaleido(imagelist, index, screenHeight, segmentCount)  
+        counter = 0 
+    }
 }
