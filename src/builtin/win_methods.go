@@ -1136,6 +1136,12 @@ func RegisterAllWindowConstants(o *WindowObject) {
 	o.RegisterConstant("BLEND_SUBCOLOR", core.MakeIntValue(int(rl.BlendSubtractColors), true))
 	o.RegisterConstant("BLEND_ADDCOLOR", core.MakeIntValue(int(rl.BlendAddColors), true))
 
+	// Texture wrap mode constants
+	o.RegisterConstant("WRAP_REPEAT", core.MakeIntValue(int(rl.WrapRepeat), true))
+	o.RegisterConstant("WRAP_CLAMP", core.MakeIntValue(int(rl.WrapClamp), true))
+	o.RegisterConstant("WRAP_MIRROR_REPEAT", core.MakeIntValue(int(rl.WrapMirrorRepeat), true))
+	o.RegisterConstant("WRAP_MIRROR_CLAMP", core.MakeIntValue(int(rl.WrapMirrorClamp), true))
+
 	o.RegisterConstant(("KEY_NULL"), core.MakeIntValue(int(rl.KeyNull), true))
 	o.RegisterConstant(("KEY_SPACE"), core.MakeIntValue(int(rl.KeySpace), true))
 	o.RegisterConstant(("KEY_ESCAPE"), core.MakeIntValue(int(rl.KeyEscape), true))

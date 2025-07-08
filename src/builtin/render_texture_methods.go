@@ -433,4 +433,11 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 		},
 	})
 
+	o.RegisterMethod("unload", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			// Unload the render texture from GPU memory
+			rl.UnloadRenderTexture(o.Data.RenderTexture)
+			return core.NIL_VALUE
+		},
+	})
 }
