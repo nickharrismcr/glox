@@ -2,9 +2,9 @@
 =====================================================
 Frame: init (ip=18)
 Stack: 
--><instance A>
-->2 (a)
--><module inspect>
+0-><instance A>
+1->2 (a)
+2-><module inspect>
 
 Globals: __main__
 A -> <class A>
@@ -14,8 +14,8 @@ inspect -> <module inspect>
 =====================================================
 Frame: out (ip=5)
 Stack: 
--><instance A>
--><module inspect>
+0-><instance A>
+1-><module inspect>
 
 Globals: __main__
 A -> <class A>

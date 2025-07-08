@@ -26,13 +26,11 @@ class Iterable {
     return rv
   }
 }
-a=Iterable(range(1,100))
-b=Iterable(range(1,100))
+a=Iterable(range(1,10))
+ 
 
 x=0
 foreach ( var i in a ) {
-    foreach ( var j in b ) {
-        x=x+i+j
-    }   
+  x = x + i
 }
 print x

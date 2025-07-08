@@ -725,6 +725,9 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			}
 			core.LogFmtLn(core.DEBUG, "vm.FrameCount: %d, startFrame: %d", vm.frameCount, startFrame)
 			if mode == RUN_CURRENT_FUNCTION && vm.frameCount+1 == startFrame {
+				vm.stackTop = frame.Slots
+				vm.stack[vm.stackTop] = result
+				vm.stackTop++
 				core.Log(core.DEBUG, "run return")
 				return INTERPRET_OK, result
 			}
@@ -1249,14 +1252,32 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 				if ok {
 					vm.stack[vm.stackTop] = iterable // push the iterator object onto the stack for call
 					vm.stackTop++
+
+					// Assert: stack should have the iterable object at the top
+					expectedStackTop := vm.stackTop
+					if vm.stackTop == 0 || !core.ValuesEqual(vm.stack[vm.stackTop-1], iterable, false) {
+						core.LogFmtLn(core.ERROR, "ASSERTION FAILED: Expected iterable at stack top before iter call. stackTop=%d", vm.stackTop)
+					}
+
 					vm.invoke(ITER_METHOD, 0)
 					iok, result := vm.run(RUN_CURRENT_FUNCTION)
+
+					// Assert: stack top should be same after vm.run since invoke/run should manage stack properly
+					if vm.stackTop != expectedStackTop {
+						core.LogFmtLn(core.ERROR, "ASSERTION FAILED: Stack top changed unexpectedly after iter vm.run. Expected=%d, Actual=%d", expectedStackTop, vm.stackTop)
+					}
+
 					if iok != INTERPRET_OK {
 						goto End
 					}
 					frame = vm.frame()
 					core.Log(core.DEBUG, "iter pop")
 					vm.pop()
+
+					// Assert: stack top should be back to original level after pop
+					if vm.stackTop != expectedStackTop-1 {
+						core.LogFmtLn(core.ERROR, "ASSERTION FAILED: Stack top incorrect after iter pop. Expected=%d, Actual=%d", expectedStackTop-1, vm.stackTop)
+					}
 					if !result.IsInstanceObject() {
 						vm.RunTimeError("Foreach iterator must be a object with a __next__ method.")
 						goto End
@@ -1271,14 +1292,31 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 					vm.stack[frame.Slots+int(iterableSlot)] = result // store iterator object in stack				vm.stack[vm.stackTop] = result                   // push the iterator object onto the stack for call
 					vm.stackTop++
 
+					// Assert: stack should have the result (iterator) object at the top
+					expectedStackTop2 := vm.stackTop
+					if vm.stackTop == 0 || !core.ValuesEqual(vm.stack[vm.stackTop-1], result, false) {
+						core.LogFmtLn(core.ERROR, "ASSERTION FAILED: Expected result at stack top before next call. stackTop=%d", vm.stackTop)
+					}
+
 					vm.invoke(NEXT_METHOD, 0)
 					iok, result = vm.run(RUN_CURRENT_FUNCTION)
+
+					// Assert: stack top should be same after vm.run since invoke/run should manage stack properly
+					if vm.stackTop != expectedStackTop2 {
+						core.LogFmtLn(core.ERROR, "ASSERTION FAILED: Stack top changed unexpectedly after next vm.run. Expected=%d, Actual=%d", expectedStackTop2, vm.stackTop)
+					}
+
 					if iok != INTERPRET_OK {
 						goto End
 					}
 					frame = vm.frame()
 					core.Log(core.DEBUG, "next pop in foreach")
 					vm.pop()
+
+					// Assert: stack top should be back to original level after pop
+					if vm.stackTop != expectedStackTop2-1 {
+						core.LogFmtLn(core.ERROR, "ASSERTION FAILED: Stack top incorrect after next pop. Expected=%d, Actual=%d", expectedStackTop2-1, vm.stackTop)
+					}
 					if result.Type == core.VAL_NIL {
 						// we have no items, so jump to end of foreach loop
 						frame.Ip += int(jumpToEnd - 2)
@@ -1307,14 +1345,32 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			} else {
 				vm.stack[vm.stackTop] = iterVal
 				vm.stackTop++ // push the iterator object onto the stack for call
+
+				// Assert: stack should have the iterVal object at the top
+				expectedStackTop3 := vm.stackTop
+				if vm.stackTop == 0 || !core.ValuesEqual(vm.stack[vm.stackTop-1], iterVal, false) {
+					core.LogFmtLn(core.ERROR, "ASSERTION FAILED: Expected iterVal at stack top before next call. stackTop=%d", vm.stackTop)
+				}
+
 				vm.invoke(NEXT_METHOD, 0)
 				ok, rv := vm.run(RUN_CURRENT_FUNCTION)
+
+				// Assert: stack top should be same after vm.run since invoke/run should manage stack properly
+				if vm.stackTop != expectedStackTop3 {
+					core.LogFmtLn(core.ERROR, "ASSERTION FAILED: Stack top changed unexpectedly after next vm.run (OP_NEXT). Expected=%d, Actual=%d", expectedStackTop3, vm.stackTop)
+				}
 
 				if ok != INTERPRET_OK {
 					goto End
 				}
 				core.Log(core.DEBUG, "next pop")
 				vm.pop()
+
+				// Assert: stack top should be back to original level after pop
+				if vm.stackTop != expectedStackTop3-1 {
+					core.LogFmtLn(core.ERROR, "ASSERTION FAILED: Stack top incorrect after next pop (OP_NEXT). Expected=%d, Actual=%d", expectedStackTop3-1, vm.stackTop)
+				}
+
 				frame = vm.frame()
 				if rv.Type != core.VAL_NIL {
 					vm.stack[iterSlot-1] = rv
