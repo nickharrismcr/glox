@@ -111,7 +111,7 @@ class Tiler {
         this.offset = vec2(0, 0) // scrolling offset in pixels
         this.scale = scale
         this.speed = speed
-        this.scroll_angle = atan2(speed.y, speed.x)
+        this.scroll_angle = math.atan2(speed.y, speed.x)
         this.scroll_speed = math.sqrt(speed.x * speed.x + speed.y * speed.y)
         this.target_angle = this.scroll_angle
     }
@@ -123,7 +123,7 @@ class Tiler {
     }
     set_speed(vec2speed) {
         this.scroll_speed = math.sqrt(vec2speed.x * vec2speed.x + vec2speed.y * vec2speed.y)
-        this.target_angle = atan2(vec2speed.y, vec2speed.x)
+        this.target_angle = math.atan2(vec2speed.y, vec2speed.x)
     }
     update() {
         // Smoothly interpolate scroll_angle toward target_angle

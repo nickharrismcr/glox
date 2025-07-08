@@ -1,7 +1,7 @@
 
-var f = encode_rgb(10,20,30)
+var f = encode_rgba(10,20,30)
 print f
-var t = decode_rgb(f)
+var t = decode_rgba(f)
 
 print t[0]
 print t[1]

@@ -33,7 +33,7 @@ var yOffset= 0.1889;
 
  
 var array_rgb=float_array(width,height)
-var max_iterations = 500;
+var max_iterations = 5000;
 var zoom_speed = 0.98;  
  
 
@@ -53,11 +53,11 @@ while (!win.should_close()) {
     win.clear(colour.BLACK);
     win.draw_render_texture(rt, posx, posy, vec4(255, 255, 255, 255))
     win.text(format("Max Iteration: %d", max_iterations), 10, 40, 20, vec4(255, 255, 255, 255));
-    win.text(format("Scale: %g", math.round_places(scale, 20)), 10, 70, 16, vec4(200, 200, 200, 255));
+    win.text(format("Scale: %g", math.round_places(scale, 10)), 10, 70, 16, vec4(200, 200, 200, 255));
     win.text(format("Zoom Speed: %g", zoom_speed), 10, 130, 16, vec4(200, 200, 200, 255));
     win.end();
     scale=scale*zoom_speed;
-    max_iterations += 5
+    //max_iterations += 5
  
 }
 win.close();

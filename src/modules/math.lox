@@ -1,4 +1,3 @@
-
 //
 // @file math.lox
 // @brief Extended mathematical utilities for GLOX
@@ -100,6 +99,11 @@ func cos(angle) {
 func tan(angle) {
     // Use native tangent function for better performance
     return _tan(angle);
+}
+
+func atan2(y, x) {
+    // Two-argument arctangent function for better performance
+    return _atan2(float(y), float(x));
 }
 
 func sqrt(n){

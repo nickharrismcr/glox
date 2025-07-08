@@ -27,7 +27,8 @@ import random, color as clr
 - Modules are cached as bytecode after first import for fast loading.
 - Aliases allow you to refer to a module with a different name.
 - Compiled modules are stored in `__loxcache__/<module>.lxc` and reloaded unless the source is newer.
-- `sys` module for io etc.
+- `sys` module for system functions (args, clock)
+- `os` module for file and directory operations
 - `inspect` module for vm state dumps
 ---
 
@@ -422,14 +423,45 @@ try {
 
 ##### File Operations
 ```lox
-import sys
-f = sys.open("file.txt", "r")
-line = sys.readln(f)
-sys.write(f,"hello\n")
-sys.close(f)
+import os
+f = os.open("file.txt", "r")
+line = os.readln(f)
+os.write(f,"hello\n")
+os.close(f)
 ```
 - Native file open, close, readln, write.
 - `readln` throws EOFError on end of file.
+- File operations are part of the `os` module along with directory operations.
+
+##### Directory Operations
+```lox
+import os
+
+// Directory listing
+files = os.listdir(".")
+for file in files {
+    if (os.isdir(file)) {
+        print "[DIR]  " + file
+    } else if (os.isfile(file)) {
+        print "[FILE] " + file
+    }
+}
+
+// Path manipulation
+full_path = os.join("assets", "images", "sprite.png")
+dir = os.dirname(full_path)      // "assets/images"
+filename = os.basename(full_path) // "sprite.png"
+parts = os.splitext(filename)    // ["sprite", ".png"]
+
+// Directory operations
+os.mkdir("new_directory")
+current_dir = os.getcwd()
+os.chdir("../parent")
+```
+- Comprehensive file system operations: `listdir`, `mkdir`, `rmdir`, `remove`
+- Path testing: `exists`, `isdir`, `isfile`
+- Path manipulation: `join`, `dirname`, `basename`, `splitext`
+- Working directory: `getcwd`, `chdir`
 
 #### VM inspection
 ```

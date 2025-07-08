@@ -1,17 +1,17 @@
-import sys
+import os
 
-var fp = sys.open("lox/io_read.lox","r");
+var fp = os.open("lox/io_read.lox","r");
 print "reading";
 var i=1;
 try {
     while (true) {
-        var s = sys.readln(fp);
+        var s = os.readln(fp);
         print str(i)+" "+s;
         i=i+1;
     }
 } except EOFError as e {
     print "in EOFError handler";
 }
-sys.close(fp);
+os.close(fp);
 print "file closed";
-var s = sys.readln(fp);
+var s = os.readln(fp);

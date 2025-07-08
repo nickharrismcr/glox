@@ -1,0 +1,19 @@
+=== OS Module Test ===
+Current directory: D:\go\glox\tests
+\nListing current directory:
+  [DIR]  lox
+  [DIR]  output
+  [FILE] test.py
+  [FILE] tmp
+\nPath manipulation test with: lox_examples/kaleido.lox
+dirname: lox_examples
+basename: kaleido.lox
+splitext: [lox_examples/kaleido, .lox]
+joined path: lox_examples/assets/img.jpg
+\nFile existence tests:
+kaleido.lox exists: false
+nonexistent.txt exists: false
+lox_examples is directory: false
+main.go is directory: false
+\n=== Test Complete ===
+nil

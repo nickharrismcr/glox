@@ -1,21 +1,21 @@
 reading
-1 import sys
+1 import os
 2 
-3 var fp = sys.open("lox/io_read.lox","r");
+3 var fp = os.open("lox/io_read.lox","r");
 4 print "reading";
 5 var i=1;
 6 try {
 7     while (true) {
-8         var s = sys.readln(fp);
+8         var s = os.readln(fp);
 9         print str(i)+" "+s;
 10         i=i+1;
 11     }
 12 } except EOFError as e {
 13     print "in EOFError handler";
 14 }
-15 sys.close(fp);
+15 os.close(fp);
 16 print "file closed";
-17 var s = sys.readln(fp);
+17 var s = os.readln(fp);
 18 
 in EOFError handler
 file closed

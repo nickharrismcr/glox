@@ -60,6 +60,44 @@ success = os.chdir("../parent_directory")
 
 ## File Operations
 
+### `os.open(path, mode)` → file
+Opens a file for reading or writing.
+- **path**: String path to the file
+- **mode**: String mode ("r" for read, "w" for write, "a" for append)
+- **Returns**: File object
+
+```lox
+file = os.open("data.txt", "r")
+```
+
+### `os.close(file)` → bool
+Closes an open file.
+- **file**: File object to close
+- **Returns**: `true` on success
+
+```lox
+os.close(file)
+```
+
+### `os.readln(file)` → string
+Reads a line from an open file.
+- **file**: File object to read from
+- **Returns**: String line (without newline characters)
+
+```lox
+line = os.readln(file)
+```
+
+### `os.write(file, text)` → bool
+Writes text to an open file.
+- **file**: File object to write to
+- **text**: String text to write
+- **Returns**: `true` on success
+
+```lox
+os.write(file, "Hello, world!")
+```
+
 ### `os.remove(path)` → bool
 Removes a file.
 - **path**: String path to file
@@ -239,9 +277,119 @@ if (!os.exists("output")) {
 }
 ```
 
+### File I/O Operations
+```lox
+import os
+
+// Writing to a file
+fun write_config(filename, data) {
+    file = os.open(filename, "w")
+    if (file != nil) {
+        os.write(file, "# Configuration file\n")
+        os.write(file, "version = 1.0\n")
+        os.write(file, "debug = true\n")
+        os.close(file)
+        print "Config written to " + filename
+    }
+}
+
+// Reading from a file
+fun read_config(filename) {
+    if (!os.exists(filename)) {
+        print "Config file not found: " + filename
+        return
+    }
+    
+    file = os.open(filename, "r")
+    if (file != nil) {
+        print "Reading config from " + filename + ":"
+        
+        // Read all lines (simplified - would need EOF handling)
+        i = 0
+        while (i < 10) {  // Limit to prevent infinite loop
+            try {
+                line = os.readln(file)
+                if (line != nil and line != "") {
+                    print "  " + line
+                }
+                i = i + 1
+            } catch (EOFError) {
+                break
+            }
+        }
+        
+        os.close(file)
+    }
+}
+
+// Example usage
+config_file = "app_config.txt"
+write_config(config_file, "")
+read_config(config_file)
+
+// Clean up
+if (os.exists(config_file)) {
+    os.remove(config_file)
+    print "Cleaned up " + config_file
+}
+```
+
+### Log File Management
+```lox
+import os
+
+// Create a simple logging system
+fun log_message(message) {
+    log_dir = "logs"
+    if (!os.exists(log_dir)) {
+        os.mkdir(log_dir)
+    }
+    
+    log_file = os.join(log_dir, "app.log")
+    file = os.open(log_file, "a")  // Append mode
+    if (file != nil) {
+        // In a real implementation, you'd add timestamps
+        os.write(file, "[LOG] " + message + "\n")
+        os.close(file)
+    }
+}
+
+// Usage
+log_message("Application started")
+log_message("Processing data...")
+log_message("Operation completed")
+
+// Read back the log
+if (os.exists(os.join("logs", "app.log"))) {
+    print "Log contents:"
+    file = os.open(os.join("logs", "app.log"), "r")
+    if (file != nil) {
+        i = 0
+        while (i < 20) {  // Safety limit
+            try {
+                line = os.readln(file)
+                if (line != nil and line != "") {
+                    print line
+                }
+                i = i + 1
+            } catch (EOFError) {
+                break
+            }
+        }
+        os.close(file)
+    }
+}
+```
+
 ## Notes
 
 - All path operations use forward slashes (`/`) as separators for cross-platform compatibility
 - Directory creation with `mkdir` will create parent directories if they don't exist
 - Error handling: Functions return `false` or raise runtime errors on failure
 - Paths can be absolute or relative to the current working directory
+- File operations:
+  - Always `close()` files after opening them to prevent resource leaks
+  - File modes: "r" (read), "w" (write/create), "a" (append)
+  - `readln()` reads one line at a time and may raise `EOFError` at end of file
+  - `write()` expects string input and handles `\n` escape sequences
+- The `os` module consolidates all file system operations in one place
