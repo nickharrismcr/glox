@@ -22,18 +22,7 @@
 
 ### Core Functions
 
-
 - **`type(value)`** - Returns the type of a value as a string
-- **`len(container)`** - Returns the length of a container (string, list, etc.)
-
-
-### Mathematical Functions
-
-- **`sin(x)`** - Returns the sine of x (in radians)
-- **`cos(x)`** - Returns the cosine of x (in radians)
-- **`sqrt(x)`** - Returns the square root of x
-- **`atan2(y, x)`** - Returns the arctangent of y/x in radians
-- **`rand()`** - Returns a random number between 0 and 1
 
 ### Type Conversion Functions
 
@@ -42,6 +31,7 @@
 
 ### Container Functions
 
+- **`len(container)`** - Returns the length of a container (string, list, etc.)
 - **`append(list, item)`** - Appends an item to a list
 - **`range(n)`** - Creates a range iterator from 0 to n-1
 
@@ -164,16 +154,15 @@ The batch object provides high-performance rendering for large numbers of simila
  
 var cube_batch = batch(win.BATCH_CUBE);      // Create a batch for cubes
 var sphere_batch = batch(win.BATCH_SPHERE);  // Create a batch for spheres
-var plane_batch = batch(win.BATCH_PLANE);    // Create a batch for planes
 
- 
 ```
 
 **Supported batch types:**
 - `win.BATCH_CUBE`  - For rendering cubes
 - `win.BATCH_TEXTURED_CUBE` - For rendering textured cubes
-- `win.BATCH_SPHERE`   - For rendering spheres  
-- `win.BATCH_PLANE`   - For rendering planes
+- `win.BATCH_SPHERE`   - For rendering spheres
+- `win.BATCH_TRIANGLE3` - for rendering triangles
+ 
 
 ### Adding Primitives
 
@@ -188,7 +177,7 @@ var textured_index = textured_batch.add_textured_cube(texture, position, size, b
 // Examples:
 var idx1 = cube_batch.add(vec3(0, 0, 0), vec3(1, 1, 1), vec4(255, 0, 0, 255));
 var idx2 = sphere_batch.add(vec3(2, 0, 0), vec3(0.5, 0.5, 0.5), vec4(0, 255, 0, 255));
-var idx3 = plane_batch.add(vec3(0, -1, 0), vec3(10, 1, 10), vec4(100, 100, 100, 255));
+ 
 
 // Textured cube example:
 var my_texture = texture(image("myimage.png"), 1, 1, 1);
@@ -223,7 +212,6 @@ cube_batch.draw();
 win.begin_3d(camera);
 cube_batch.draw();      // Renders all cubes in one call
 sphere_batch.draw();    // Renders all spheres in one call
-plane_batch.draw();     // Renders all planes in one call
 win.end_3d();
 ```
 
@@ -286,13 +274,8 @@ var cube_batch = batch("cube");
 for (var i = 0; i < 1000; i = i + 1) {
     cube_batch.add(positions[i], sizes[i], colors[i]);  // Add to batch
 }
-cube_batch.draw();  // Single draw call for ALL 1000 cubes!
+cube_batch.draw();  // Single lox draw call for all 1000 cubes 
 ```
-
-**Performance Comparison:**
-- **1,000 cubes:** 1,000 draw calls → 1 draw call (1000x improvement)
-- **10,000 cubes:** 10,000 draw calls → 1 draw call (10,000x improvement)
-- **Real-world result:** 10,000+ animated cubes running at 60+ FPS
 
 ### Complete Example
 

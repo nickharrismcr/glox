@@ -455,4 +455,4 @@ but hey-ho. This is a learning exercise, the Go code is probably not very ideoma
   
 There are some optimisations such as string interning to allow integer hash keys for method lookup, singleton NIL_VALUE, inlined functions in the main run loop.  
 
-Instrumented runs on my I7 PC show between 6 and 14M bytecode instructions per second are being handled,  and the VM is capable of 60 FPS when updating and drawing hundreds of 3D primitives with lox-implemented physics. There's scope for implementing a physics system in native either with homegrown code or a lib.
+Instrumented runs on my I7 PC show between 6 and 14M bytecode instructions per second are being handled,  and the VM is capable of 60 FPS when updating and drawing thousands of 3D primitives with lox-implemented physics. There's scope for implementing a physics system in native either with homegrown code or a lib.
