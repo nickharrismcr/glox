@@ -368,7 +368,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_EQUAL:
 			// Pop two values from stack, compare for equality, push boolean result
-			// pop 2 stack values, stack top = boolean
+
 			a := vm.pop()
 			b := vm.pop()
 			vm.stack[vm.stackTop] = core.MakeBooleanValue(core.ValuesEqual(a, b, false), false)
@@ -381,7 +381,6 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_GREATER:
 			// Pop two values, compare if first > second, push boolean result
-			// pop 2 stack values, stack top = boolean
 
 			v2 := vm.pop()
 			v1 := vm.pop()
@@ -401,7 +400,6 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_LESS:
 			// Pop two values, compare if first < second, push boolean result
-			// pop 2 stack values, stack top = boolean
 
 			v2 := vm.pop()
 			v1 := vm.pop()
@@ -421,7 +419,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_INC_LOCAL:
 			// Increment local variable at specified slot by 1 (handles int and float types)
-			// increment the local variable at operand index by 1
+
 			slot := int(vm.currCode[frame.Ip])
 			frame.Ip++
 			if vm.stack[frame.Slots+slot].Immutable() {
@@ -441,20 +439,20 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			goto End
 
 		case core.OP_PRINT:
-			// Pop value from stack and print it to stdout (compiler ensures it's a string)
+			// Pop value from stack and print it to stdout
 			// compiler ensures stack top will be a string object via core.OP_STR
 			v := vm.pop()
 			fmt.Printf("%s\n", v.AsString().Get())
 
 		case core.OP_POP:
 			// Pop and discard the top value from the stack
-			// pop 1 stack value and discard
+
 			_ = vm.pop()
 
 		case core.OP_DEFINE_GLOBAL:
 			// Define a new global variable with name from constants and value from stack
 			// name = constant at operand index
-			// pop 1 stack value and set globals[name] to it
+
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 
@@ -466,7 +464,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		case core.OP_DEFINE_GLOBAL_CONST:
 			// Define a new global constant with name from constants and value from stack
 			// name = constant at operand index
-			// pop 1 stack value and set globals[name] to it and flag as immutable
+
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			id := constants[idx].InternedId
@@ -478,7 +476,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		case core.OP_GET_GLOBAL:
 			// Look up global variable by name from constants and push its value onto stack
 			// name = constant at operand index
-			// push globals[name] onto stack
+
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			id := constants[idx].InternedId
@@ -499,7 +497,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		case core.OP_SET_GLOBAL:
 			// Assign value from stack top to existing global variable (must exist and be mutable)
 			// name = constant at operand index
-			// set globals[name] to stack top, key must exist
+
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			id := constants[idx].InternedId
@@ -514,7 +512,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_GET_LOCAL:
 			// Get local variable from stack at specified slot and push onto stack top
-			// get local from stack at position = operand and push on stack top
+
 			slot_idx := int(vm.currCode[frame.Ip])
 			frame.Ip++
 			vm.stack[vm.stackTop] = vm.stack[frame.Slots+slot_idx]
@@ -522,7 +520,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_SET_LOCAL:
 			// Assign value from stack top to local variable at specified slot (must be mutable)
-			// get value at stack top and store it in stack at position = operand
+
 			val := vm.Peek(0)
 			slot_idx := int(vm.currCode[frame.Ip])
 			frame.Ip++
@@ -534,7 +532,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_JUMP_IF_FALSE:
 			// Conditional jump: if stack top is falsy, jump forward by offset amount
-			// if stack top is falsey, jump by offset ( 2 operands )
+
 			offset := vm.readShort()
 			if vm.isFalsey(vm.Peek(0)) {
 				frame.Ip += int(offset)
@@ -542,7 +540,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_JUMP:
 			// Unconditional jump forward by offset amount (used for control flow)
-			// jump by offset ( 2 operands )
+
 			offset := vm.readShort()
 			frame.Ip += int(offset)
 
@@ -567,7 +565,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_CONSTANT:
 			// Load constant at specified index from constants table and push onto stack
-			// get the constant indexed by operand and push it onto the stack
+
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			constant := constants[idx]
@@ -585,7 +583,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_ADD:
 			// Pop two values from stack, add them (handles int, float, vectors, strings, lists), push result
-			// pop 2 stack values, add them and push onto the stack
+
 			v2 := vm.pop()
 			v1 := vm.pop()
 			switch v2.Type {
@@ -685,59 +683,59 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_SUBTRACT:
 			// Pop two values from stack, subtract second from first, push result
-			// pop 2 stack values, subtract and push onto the stack
+
 			if !vm.binarySubtract() {
 				goto End
 			}
 
 		case core.OP_MULTIPLY:
 			// Pop two values from stack, multiply them (handles numbers, vectors, string repetition), push result
-			// pop 2 stack values, multiply and push onto the stack
+
 			if !vm.binaryMultiply() {
 				goto End
 			}
 
 		case core.OP_MODULUS:
 			// Pop two values from stack, compute modulus (first % second), push result
-			// pop 2 stack values, take modulus and push onto the stack
+
 			if !vm.binaryModulus() {
 				goto End
 			}
 
 		case core.OP_DIVIDE:
 			// Pop two values from stack, divide first by second, push result
-			// pop 2 stack values, divide and push onto the stack
+
 			if !vm.binaryDivide() {
 				goto End
 			}
 
 		case core.OP_DUP:
 			// Duplicate the value at the top of the stack
-			// duplicate the value at stack top
+
 			vm.stack[vm.stackTop] = vm.stack[vm.stackTop-1]
 			vm.stackTop++
 
 		case core.OP_NIL:
 			// Push the nil value onto the stack
-			// push nil val onto the stack
+
 			vm.stack[vm.stackTop] = core.NIL_VALUE
 			vm.stackTop++
 
 		case core.OP_TRUE:
 			// Push the boolean true value onto the stack
-			// push true bool val onto the stack
+
 			vm.stack[vm.stackTop] = core.MakeBooleanValue(true, false)
 			vm.stackTop++
 
 		case core.OP_FALSE:
 			// Push the boolean false value onto the stack
-			// push false bool val onto the stack
+
 			vm.stack[vm.stackTop] = core.MakeBooleanValue(false, false)
 			vm.stackTop++
 
 		case core.OP_NOT:
 			// Pop value from stack, apply logical NOT, push boolean result
-			// replace stack top with boolean not of itself
+
 			v := vm.pop()
 			bv := vm.isFalsey(v)
 			vm.stack[vm.stackTop] = core.MakeBooleanValue(bv, false)
@@ -745,7 +743,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_LOOP:
 			// Jump backward by offset amount (used for loop constructs)
-			// jump back by offset ( 2 operands )
+
 			offset := vm.readShort()
 			frame.Ip -= int(offset)
 
@@ -762,7 +760,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_CLOSURE:
 			// Create closure from function constant, capturing upvalues as specified
-			// get the function indexed by operand from constants, wrap in a closure object and push onto stack
+
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			function := constants[idx]
@@ -784,7 +782,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_RETURN:
 			// Return from current function with value from stack top, unwinding call frame
-			// exit, return the value at stack top
+
 			result := vm.pop()
 			vm.closeUpvalues(frame.Slots)
 			vm.frameCount--
@@ -824,7 +822,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_NEGATE:
 			// Pop numeric value from stack, negate it, push result (handles int and float)
-			// negate the value at stack top
+
 			v := vm.pop()
 			switch v.Type {
 			case core.VAL_FLOAT:
@@ -962,7 +960,6 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		// stack top is value, byte operand is the index of the property name in constants,
 		// stack + 1 is the object to set the property on.
 		case core.OP_SET_PROPERTY:
-			// Set property/field on object using name from constants and value from stack
 
 			val := vm.Peek(0)
 			v := vm.Peek(1)
@@ -1170,8 +1167,6 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 				return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 			}
 
-		// NJH added:
-		// import a module by name (1) and alias (2)
 		case core.OP_IMPORT:
 			// Import module: load and register module by name with optional alias
 
@@ -1206,7 +1201,6 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		// 0 = import all functions
 		// byte operands 3..n are the indices of the functions to import
 		case core.OP_IMPORT_FROM:
-			// Import specific functions from module: selective import with function names
 
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
@@ -1244,7 +1238,6 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		case core.OP_STR:
 			// Convert stack top value to string representation (handles class toString methods)
 
-			// replace stack top with string repr of it
 			v := vm.Peek(0) // may be needed for class toString so don't pop now
 			s := v.String()
 			switch v.Type {
@@ -1505,13 +1498,12 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			}
 		case core.OP_BREAKPOINT:
 			// Debug breakpoint: pause execution for debugging
-			// hit a breakpoint, pause execution
+
 			vm.pauseExecution()
 
 		//unpack a tuple or list on stack top.
 		// byte will be the number of items to unpack
 		case core.OP_UNPACK:
-			// Unpack tuple/list: pop container, push individual elements onto stack
 
 			count := int(vm.readByte())
 			if count == 0 {
