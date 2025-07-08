@@ -73,6 +73,8 @@ var NEXT_METHOD = core.MakeStringObjectValue("__next__", true)
 var globalModuleSource = map[string]string{}
 var globalModules = map[string]*core.ModuleObject{}
 
+// NewVM creates and initializes a new virtual machine instance for executing Lox scripts.
+// It sets up the initial state including stack, frames, and optionally defines built-in functions.
 func NewVM(script string, defineBuiltIns bool) *VM {
 
 	vm := &VM{
@@ -95,12 +97,15 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 
 //------------------------------------------------------------------------------------------
 
+// SetArgs sets the command-line arguments that will be available to the running Lox script.
 func (vm *VM) SetArgs(args []string) {
 	vm.args = args
 }
 
 //------------------------------------------------------------------------------------------
 
+// Interpret compiles and executes the given Lox source code, returning the result and any output.
+// It handles the full lifecycle from compilation through execution, including module import preparation.
 func (vm *VM) Interpret(source string, module string) (InterpretResult, string) {
 
 	core.LogFmt(core.INFO, "VM %s starting execution\n", vm.script)
@@ -130,6 +135,8 @@ func (vm *VM) Interpret(source string, module string) (InterpretResult, string) 
 
 //------------------------------------------------------------------------------------------
 
+// Stack returns the value at the specified index in the VM's stack, or NIL_VALUE if index is invalid.
+// Used for debugging and inspection purposes.
 func (vm *VM) Stack(index int) core.Value {
 
 	if index < 0 || index >= vm.stackTop {
@@ -140,6 +147,7 @@ func (vm *VM) Stack(index int) core.Value {
 
 //------------------------------------------------------------------------------------------
 
+// Args returns the command-line arguments that were set for this VM instance.
 func (vm *VM) Args() []string {
 
 	return vm.args
@@ -147,11 +155,13 @@ func (vm *VM) Args() []string {
 
 //------------------------------------------------------------------------------------------
 
+// StartTime returns the timestamp when this VM instance was created and started execution.
 func (vm *VM) StartTime() time.Time {
 
 	return vm.Starttime
 }
 
+// FileName extracts and returns the base filename of the script being executed by this VM.
 func (vm *VM) FileName() string {
 
 	// returns the script name
@@ -163,6 +173,8 @@ func (vm *VM) FileName() string {
 
 //------------------------------------------------------------------------------------------
 
+// RunTimeError stores a runtime error message in the VM for later exception handling.
+// This is typically called when an operation fails during bytecode execution.
 func (vm *VM) RunTimeError(format string, args ...any) {
 
 	vm.ErrorMsg = fmt.Sprintf(format, args...)
@@ -170,6 +182,8 @@ func (vm *VM) RunTimeError(format string, args ...any) {
 
 //------------------------------------------------------------------------------------------
 
+// Peek looks at a value on the stack at the specified distance from the top without removing it.
+// Distance 0 means the top of the stack, 1 means one below the top, etc.
 func (vm *VM) Peek(dist int) core.Value {
 
 	return vm.stack[(vm.stackTop-1)-dist]
@@ -177,17 +191,21 @@ func (vm *VM) Peek(dist int) core.Value {
 
 //------------------------------------------------------------------------------------------
 
+// Frame returns the current call frame (the topmost frame on the call stack).
 // Exported Frame method
 func (vm *VM) Frame() *core.CallFrame {
 	return vm.frames[vm.frameCount-1]
 }
 
+// FrameCount returns the number of active call frames on the call stack.
 func (vm *VM) FrameCount() int {
 	return vm.frameCount
 }
 
 //------------------------------------------------------------------------------------------
 
+// FrameAt returns the call frame at the specified index, or nil if the index is invalid.
+// Used for debugging and stack trace generation.
 func (vm *VM) FrameAt(index int) *core.CallFrame {
 	if index < 0 || index >= vm.frameCount {
 		return nil
@@ -197,18 +215,21 @@ func (vm *VM) FrameAt(index int) *core.CallFrame {
 
 //------------------------------------------------------------------------------------------
 
+// StackTop returns the current stack pointer (number of values currently on the stack).
 func (vm *VM) StackTop() int {
 	return vm.stackTop
 }
 
 //------------------------------------------------------------------------------------------
 
+// CurrCode returns the current bytecode instruction being executed at the instruction pointer.
 func (vm *VM) CurrCode() uint8 {
 	return vm.currCode[vm.frame().Ip]
 }
 
 //------------------------------------------------------------------------------------------
 
+// ShowStack returns a formatted string representation of the current stack contents.
 // Exported ShowStack returns stack as string
 func (vm *VM) ShowStack() string {
 
@@ -234,6 +255,8 @@ func (vm *VM) ShowStack() string {
 	return sb.String()
 }
 
+// LocalName looks up the name of a local variable at the given slot and instruction pointer.
+// Returns empty string if no local variable name is found for the given position.
 // ------------------------------------------------------------------------------------------
 func (vm *VM) LocalName(slot int, ip int) string {
 	for _, info := range vm.frame().Closure.Function.Chunk.LocalVars {
@@ -246,11 +269,13 @@ func (vm *VM) LocalName(slot int, ip int) string {
 
 //------------------------------------------------------------------------------------------
 
+// Script returns the name/path of the script file being executed by this VM.
 func (vm *VM) Script() string {
 	// returns the script name
 	return vm.script
 }
 
+// GetGlobals returns the global environment/scope of the currently executing function.
 // ------------------------------------------------------------------------------------------
 func (vm *VM) GetGlobals() *core.Environment {
 	if vm.frame().Closure.Function.Environment == nil {
@@ -261,6 +286,8 @@ func (vm *VM) GetGlobals() *core.Environment {
 
 //------------------------------------------------------------------------------------------
 
+// frame returns the current call frame (internal helper function).
+// This is the private version of Frame() for internal VM use.
 func (vm *VM) frame() *core.CallFrame {
 
 	return vm.frames[vm.frameCount-1]
@@ -268,6 +295,7 @@ func (vm *VM) frame() *core.CallFrame {
 
 //------------------------------------------------------------------------------------------
 
+// getCode returns the bytecode array of the currently executing function.
 func (vm *VM) getCode() []uint8 {
 
 	return vm.frame().Closure.Function.Chunk.Code
@@ -275,6 +303,7 @@ func (vm *VM) getCode() []uint8 {
 
 //------------------------------------------------------------------------------------------
 
+// resetStack resets the VM's execution stack and call frames to their initial empty state.
 func (vm *VM) resetStack() {
 
 	vm.stackTop = 0
@@ -283,6 +312,7 @@ func (vm *VM) resetStack() {
 
 //------------------------------------------------------------------------------------------
 
+// push adds a value to the top of the VM's execution stack.
 func (vm *VM) push(v core.Value) {
 
 	vm.stack[vm.stackTop] = v
@@ -291,6 +321,8 @@ func (vm *VM) push(v core.Value) {
 
 //------------------------------------------------------------------------------------------
 
+// pop removes and returns the value from the top of the VM's execution stack.
+// Returns NIL_VALUE if the stack is empty.
 func (vm *VM) pop() core.Value {
 
 	if vm.stackTop == 0 {
@@ -302,6 +334,8 @@ func (vm *VM) pop() core.Value {
 
 //------------------------------------------------------------------------------------------
 
+// run executes the main bytecode interpretation loop, processing instructions until completion or error.
+// The mode parameter controls whether to run to completion or just the current function.
 // main interpreter loop
 func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 	counter := 0
@@ -333,6 +367,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		switch inst {
 
 		case core.OP_EQUAL:
+			// Pop two values from stack, compare for equality, push boolean result
 			// pop 2 stack values, stack top = boolean
 			a := vm.pop()
 			b := vm.pop()
@@ -340,10 +375,12 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.stackTop++
 
 		case core.OP_ONE:
+			// Push integer constant 1 onto the stack
 			vm.stack[vm.stackTop] = core.MakeIntValue(1, false)
 			vm.stackTop++
 
 		case core.OP_GREATER:
+			// Pop two values, compare if first > second, push boolean result
 			// pop 2 stack values, stack top = boolean
 
 			v2 := vm.pop()
@@ -363,6 +400,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.stackTop++
 
 		case core.OP_LESS:
+			// Pop two values, compare if first < second, push boolean result
 			// pop 2 stack values, stack top = boolean
 
 			v2 := vm.pop()
@@ -382,6 +420,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.stackTop++
 
 		case core.OP_INC_LOCAL:
+			// Increment local variable at specified slot by 1 (handles int and float types)
 			// increment the local variable at operand index by 1
 			slot := int(vm.currCode[frame.Ip])
 			frame.Ip++
@@ -402,15 +441,18 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			goto End
 
 		case core.OP_PRINT:
+			// Pop value from stack and print it to stdout (compiler ensures it's a string)
 			// compiler ensures stack top will be a string object via core.OP_STR
 			v := vm.pop()
 			fmt.Printf("%s\n", v.AsString().Get())
 
 		case core.OP_POP:
+			// Pop and discard the top value from the stack
 			// pop 1 stack value and discard
 			_ = vm.pop()
 
 		case core.OP_DEFINE_GLOBAL:
+			// Define a new global variable with name from constants and value from stack
 			// name = constant at operand index
 			// pop 1 stack value and set globals[name] to it
 			idx := vm.currCode[frame.Ip]
@@ -422,6 +464,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.pop()
 
 		case core.OP_DEFINE_GLOBAL_CONST:
+			// Define a new global constant with name from constants and value from stack
 			// name = constant at operand index
 			// pop 1 stack value and set globals[name] to it and flag as immutable
 			idx := vm.currCode[frame.Ip]
@@ -433,6 +476,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.pop()
 
 		case core.OP_GET_GLOBAL:
+			// Look up global variable by name from constants and push its value onto stack
 			// name = constant at operand index
 			// push globals[name] onto stack
 			idx := vm.currCode[frame.Ip]
@@ -453,6 +497,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.stackTop++
 
 		case core.OP_SET_GLOBAL:
+			// Assign value from stack top to existing global variable (must exist and be mutable)
 			// name = constant at operand index
 			// set globals[name] to stack top, key must exist
 			idx := vm.currCode[frame.Ip]
@@ -468,6 +513,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			function.Environment.SetVar(id, core.Mutable(vm.Peek(0))) // in case of assignment of const
 
 		case core.OP_GET_LOCAL:
+			// Get local variable from stack at specified slot and push onto stack top
 			// get local from stack at position = operand and push on stack top
 			slot_idx := int(vm.currCode[frame.Ip])
 			frame.Ip++
@@ -475,6 +521,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.stackTop++
 
 		case core.OP_SET_LOCAL:
+			// Assign value from stack top to local variable at specified slot (must be mutable)
 			// get value at stack top and store it in stack at position = operand
 			val := vm.Peek(0)
 			slot_idx := int(vm.currCode[frame.Ip])
@@ -486,6 +533,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.stack[frame.Slots+slot_idx] = core.Mutable(val)
 
 		case core.OP_JUMP_IF_FALSE:
+			// Conditional jump: if stack top is falsy, jump forward by offset amount
 			// if stack top is falsey, jump by offset ( 2 operands )
 			offset := vm.readShort()
 			if vm.isFalsey(vm.Peek(0)) {
@@ -493,11 +541,13 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			}
 
 		case core.OP_JUMP:
+			// Unconditional jump forward by offset amount (used for control flow)
 			// jump by offset ( 2 operands )
 			offset := vm.readShort()
 			frame.Ip += int(offset)
 
 		case core.OP_GET_UPVALUE:
+			// Get upvalue (closed-over variable) at specified slot and push onto stack
 			slot := vm.currCode[frame.Ip]
 			frame.Ip++
 			valIdx := frame.Closure.Upvalues[slot].Location
@@ -505,15 +555,18 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.stackTop++
 
 		case core.OP_SET_UPVALUE:
+			// Set upvalue (closed-over variable) at specified slot to stack top value
 			slot := vm.currCode[frame.Ip]
 			frame.Ip++
 			*(frame.Closure.Upvalues[slot].Location) = vm.Peek(0)
 
 		case core.OP_CLOSE_UPVALUE:
+			// Close upvalue at specified stack position and pop the value
 			vm.closeUpvalues(vm.stackTop - 1)
 			vm.pop()
 
 		case core.OP_CONSTANT:
+			// Load constant at specified index from constants table and push onto stack
 			// get the constant indexed by operand and push it onto the stack
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
@@ -522,6 +575,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.stackTop++
 
 		case core.OP_CALL:
+			// Call function/method with specified argument count (callable object is after args on stack)
 			// arg count is operand, callable object is on stack after arguments, result will be stack top
 			argCount := vm.currCode[frame.Ip]
 			frame.Ip++
@@ -530,6 +584,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			}
 
 		case core.OP_ADD:
+			// Pop two values from stack, add them (handles int, float, vectors, strings, lists), push result
 			// pop 2 stack values, add them and push onto the stack
 			v2 := vm.pop()
 			v1 := vm.pop()
@@ -629,51 +684,59 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			goto End
 
 		case core.OP_SUBTRACT:
+			// Pop two values from stack, subtract second from first, push result
 			// pop 2 stack values, subtract and push onto the stack
 			if !vm.binarySubtract() {
 				goto End
 			}
 
 		case core.OP_MULTIPLY:
+			// Pop two values from stack, multiply them (handles numbers, vectors, string repetition), push result
 			// pop 2 stack values, multiply and push onto the stack
 			if !vm.binaryMultiply() {
 				goto End
 			}
 
 		case core.OP_MODULUS:
+			// Pop two values from stack, compute modulus (first % second), push result
 			// pop 2 stack values, take modulus and push onto the stack
 			if !vm.binaryModulus() {
 				goto End
 			}
 
 		case core.OP_DIVIDE:
+			// Pop two values from stack, divide first by second, push result
 			// pop 2 stack values, divide and push onto the stack
 			if !vm.binaryDivide() {
 				goto End
 			}
 
 		case core.OP_DUP:
-
+			// Duplicate the value at the top of the stack
 			// duplicate the value at stack top
 			vm.stack[vm.stackTop] = vm.stack[vm.stackTop-1]
 			vm.stackTop++
 
 		case core.OP_NIL:
+			// Push the nil value onto the stack
 			// push nil val onto the stack
 			vm.stack[vm.stackTop] = core.NIL_VALUE
 			vm.stackTop++
 
 		case core.OP_TRUE:
+			// Push the boolean true value onto the stack
 			// push true bool val onto the stack
 			vm.stack[vm.stackTop] = core.MakeBooleanValue(true, false)
 			vm.stackTop++
 
 		case core.OP_FALSE:
+			// Push the boolean false value onto the stack
 			// push false bool val onto the stack
 			vm.stack[vm.stackTop] = core.MakeBooleanValue(false, false)
 			vm.stackTop++
 
 		case core.OP_NOT:
+			// Pop value from stack, apply logical NOT, push boolean result
 			// replace stack top with boolean not of itself
 			v := vm.pop()
 			bv := vm.isFalsey(v)
@@ -681,11 +744,13 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.stackTop++
 
 		case core.OP_LOOP:
+			// Jump backward by offset amount (used for loop constructs)
 			// jump back by offset ( 2 operands )
 			offset := vm.readShort()
 			frame.Ip -= int(offset)
 
 		case core.OP_INVOKE:
+			// Optimized method call: directly invoke method by name with argument count
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			method := constants[idx]
@@ -696,6 +761,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			}
 
 		case core.OP_CLOSURE:
+			// Create closure from function constant, capturing upvalues as specified
 			// get the function indexed by operand from constants, wrap in a closure object and push onto stack
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
@@ -717,6 +783,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			}
 
 		case core.OP_RETURN:
+			// Return from current function with value from stack top, unwinding call frame
 			// exit, return the value at stack top
 			result := vm.pop()
 			vm.closeUpvalues(frame.Slots)
@@ -742,18 +809,21 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.stackTop++
 
 		case core.OP_METHOD:
+			// Define method on a class using name from constants
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			name := constants[idx]
 			vm.defineMethod(name.InternedId, false)
 
 		case core.OP_STATIC_METHOD:
+			// Define static method on a class using name from constants
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			name := constants[idx]
 			vm.defineMethod(name.InternedId, true)
 
 		case core.OP_NEGATE:
+			// Pop numeric value from stack, negate it, push result (handles int and float)
 			// negate the value at stack top
 			v := vm.pop()
 			switch v.Type {
@@ -772,6 +842,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			goto End
 
 		case core.OP_GET_PROPERTY:
+			// Get property/field from object using name from constants (handles various object types)
 
 			v := vm.Peek(0)
 			if v.Type != core.VAL_OBJ && v.Type != core.VAL_VEC2 && v.Type != core.VAL_VEC3 && v.Type != core.VAL_VEC4 {
@@ -891,6 +962,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		// stack top is value, byte operand is the index of the property name in constants,
 		// stack + 1 is the object to set the property on.
 		case core.OP_SET_PROPERTY:
+			// Set property/field on object using name from constants and value from stack
 
 			val := vm.Peek(0)
 			v := vm.Peek(1)
@@ -1011,6 +1083,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		// entered a try block, IP of the except block is encoded in the next 2 instructions
 		// push an exception handler storing that info
 		case core.OP_TRY:
+			// Begin try block: push exception handler with address of except block
 			exceptIP := vm.readShort()
 			frame.Handlers = &core.ExceptionHandler{
 				ExceptIP: exceptIP,
@@ -1020,14 +1093,17 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		// ended a try block OK, so pop the handler block
 		case core.OP_END_TRY:
+			// End try block successfully: remove exception handler from stack
 			frame.Handlers = frame.Handlers.Prev
 
 		// marks the start of an exception handler block.  index of exception classname is in next instruction
 		case core.OP_EXCEPT:
+			// Begin except block: exception handler start marker
 			frame.Ip++
 
 		// marks the end of an exception handler block
 		case core.OP_END_EXCEPT:
+			// End except block: exception handler end marker
 
 		// 1 pop the thrown exception instance from the stack
 		// 2 get the top frame exception handler - this has the IP of the first handler core.OP_EXCEPT.
@@ -1036,12 +1112,14 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		//   else skip to the next handler if it exists, or unwind the call stack and retry.
 		//   we'll either hit a matching hander or exit the vm with an unhandled exception error.
 		case core.OP_RAISE:
+			// Raise/throw an exception: pop exception object and start exception handling
 			err := vm.pop()
 			if !vm.raiseException(err) {
 				return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 			}
 
 		case core.OP_CLASS:
+			// Create new class object using name from constants and push onto stack
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			name := core.GetStringValue(constants[idx])
@@ -1049,6 +1127,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.stackTop++
 
 		case core.OP_INHERIT:
+			// Set up class inheritance: subclass inherits methods from superclass
 			superclass := vm.Peek(1)
 			subclass := vm.Peek(0).AsClass()
 			if superclass.Type == core.VAL_OBJ {
@@ -1067,6 +1146,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 
 		case core.OP_GET_SUPER:
+			// Get method from superclass and bind it to current instance
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			name := constants[idx].AsString()
@@ -1079,6 +1159,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			}
 
 		case core.OP_SUPER_INVOKE:
+			// Optimized super method call: invoke superclass method directly
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			method := constants[idx]
@@ -1092,6 +1173,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		// NJH added:
 		// import a module by name (1) and alias (2)
 		case core.OP_IMPORT:
+			// Import module: load and register module by name with optional alias
 
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
@@ -1124,6 +1206,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		// 0 = import all functions
 		// byte operands 3..n are the indices of the functions to import
 		case core.OP_IMPORT_FROM:
+			// Import specific functions from module: selective import with function names
 
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
@@ -1159,6 +1242,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			}
 
 		case core.OP_STR:
+			// Convert stack top value to string representation (handles class toString methods)
 
 			// replace stack top with string repr of it
 			v := vm.Peek(0) // may be needed for class toString so don't pop now
@@ -1185,35 +1269,42 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.stackTop++
 
 		case core.OP_CREATE_LIST:
+			// Create list object from values on stack: pop item count, create list with those items
 			// item count is operand, expects items on stack,  list object will be stack top
 			vm.createList(frame)
 
 		case core.OP_CREATE_TUPLE:
+			// Create tuple object from values on stack: pop item count, create immutable tuple
 			// item count is operand, expects items on stack,  list object will be stack top
 			vm.createTuple(frame)
 
 		case core.OP_CREATE_DICT:
+			// Create dictionary object from key-value pairs on stack
 			// key/pair item count is operand, expects keys/values on stack,  dict object will be stack top
 			vm.createDict(frame)
 
 		case core.OP_INDEX:
+			// Index into list/string/dict: pop index and container, push element at index
 			// list/map + index on stack,  item at index -> stack top
 			if !vm.index() {
 				goto End
 			}
 
 		case core.OP_INDEX_ASSIGN:
+			// Assign to index in list/dict: pop value, index, and container, update in place
 			// list + index + RHS on stack,  list updated in place
 			if !vm.indexAssign() {
 				goto End
 			}
 
 		case core.OP_SLICE:
+			// Create slice of list/string: pop from/to indices and container, push new slice
 			// list + from/to on stack. nil indicates from start/end.  new list at index -> stack top
 			if !vm.slice() {
 				goto End
 			}
 		case core.OP_SLICE_ASSIGN:
+			// Assign slice to list: pop slice, from/to indices, and list, update in place
 			// list + from/to + RHS on stack.  list updated in place
 			if !vm.sliceAssign() {
 				goto End
@@ -1225,6 +1316,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		// with __iter__ method returning an iterator object implementing __next__ method
 
 		case core.OP_FOREACH:
+			// Begin foreach loop: set up iteration over iterable object (list, string, or custom iterator)
 			slot := vm.readByte()
 			iterableSlot := vm.readByte()
 			jumpToEnd := vm.readShort()
@@ -1333,6 +1425,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 				goto End
 			}
 		case core.OP_NEXT:
+			// Continue foreach loop: get next item from iterator, jump back if more items available
 
 			jumpToStart := vm.readShort()
 			iterSlot := frame.Slots + int(vm.readByte())
@@ -1381,11 +1474,13 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			}
 
 		case core.OP_END_FOREACH:
+			// End foreach loop marker (no operation needed)
 
 		// stack 1 : string or list
 		// stack 2 : key or substring
 
 		case core.OP_IN:
+			// Check membership: test if value is in string/list, push boolean result
 
 			b := vm.pop()
 			a := vm.pop()
@@ -1409,12 +1504,14 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 				vm.stackTop++
 			}
 		case core.OP_BREAKPOINT:
+			// Debug breakpoint: pause execution for debugging
 			// hit a breakpoint, pause execution
 			vm.pauseExecution()
 
 		//unpack a tuple or list on stack top.
 		// byte will be the number of items to unpack
 		case core.OP_UNPACK:
+			// Unpack tuple/list: pop container, push individual elements onto stack
 
 			count := int(vm.readByte())
 			if count == 0 {
@@ -1445,6 +1542,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			}
 
 		default:
+			// Unknown/invalid opcode encountered
 			vm.RunTimeError("Invalid Opcode")
 			goto End
 		}
@@ -1462,6 +1560,8 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 //------------------------------------------------------------------------------------------
 
+// callValue attempts to call a value with the specified number of arguments.
+// Handles closures, built-in functions, classes (constructors), and bound methods.
 func (vm *VM) callValue(callee core.Value, argCount int) bool {
 
 	//core.LogFmtLn(core.DEBUG, "Calling value %s with %d args", callee.String(), argCount)
@@ -1504,6 +1604,7 @@ func (vm *VM) callValue(callee core.Value, argCount int) bool {
 
 //------------------------------------------------------------------------------------------
 
+// invoke performs optimized method calls and module access without separate property lookup.
 // optimised method call/module access
 func (vm *VM) invoke(name core.Value, argCount int) bool {
 	receiver := vm.Peek(argCount)
@@ -1544,6 +1645,7 @@ func (vm *VM) invoke(name core.Value, argCount int) bool {
 
 //------------------------------------------------------------------------------------------
 
+// invokeFromClass calls a method from a specific class, handling both static and instance methods.
 func (vm *VM) invokeFromClass(class *core.ClassObject, name core.Value, argCount int, isStatic bool) bool {
 	i := name.InternedId
 	if isStatic {
@@ -1564,6 +1666,7 @@ func (vm *VM) invokeFromClass(class *core.ClassObject, name core.Value, argCount
 
 //------------------------------------------------------------------------------------------
 
+// invokeFromModule calls a function from a loaded module by name.
 func (vm *VM) invokeFromModule(module *core.ModuleObject, name core.Value, argCount int) bool {
 
 	fn, ok := module.Environment.GetVar(name.InternedId)
@@ -1577,6 +1680,7 @@ func (vm *VM) invokeFromModule(module *core.ModuleObject, name core.Value, argCo
 
 //------------------------------------------------------------------------------------------
 
+// invokeFromBuiltin calls a method on a built-in object (native Go object with exposed methods).
 func (vm *VM) invokeFromBuiltin(obj core.Object, name core.Value, argCount int) bool {
 
 	n := core.GetStringValue(name)
@@ -1599,6 +1703,7 @@ func (vm *VM) invokeFromBuiltin(obj core.Object, name core.Value, argCount int) 
 
 //------------------------------------------------------------------------------------------
 
+// VectorMethodCall handles method calls on vector types (Vec2, Vec3, Vec4) with optimized operations.
 func (vm *VM) VectorMethodCall(receiver core.Value, name core.Value, argCount int) bool {
 	switch receiver.Type {
 	case core.VAL_VEC2:
@@ -1640,6 +1745,7 @@ func (vm *VM) VectorMethodCall(receiver core.Value, name core.Value, argCount in
 	return false
 }
 
+// bindMethod creates a bound method object that combines an instance with a method from its class.
 func (vm *VM) bindMethod(class *core.ClassObject, stringId int) bool {
 	method, ok := class.Methods[stringId]
 	if !ok {
@@ -1655,6 +1761,7 @@ func (vm *VM) bindMethod(class *core.ClassObject, stringId int) bool {
 
 //------------------------------------------------------------------------------------------
 
+// captureUpvalue creates or finds an upvalue for a local variable at the specified stack slot.
 func (vm *VM) captureUpvalue(slot int) *core.UpvalueObject {
 
 	var prevUpvalue *core.UpvalueObject = nil
@@ -1679,6 +1786,7 @@ func (vm *VM) captureUpvalue(slot int) *core.UpvalueObject {
 
 //------------------------------------------------------------------------------------------
 
+// closeUpvalues closes all open upvalues at or above the specified stack position.
 func (vm *VM) closeUpvalues(last int) {
 	for vm.openUpValues != nil && vm.openUpValues.Slot >= last {
 		upvalue := vm.openUpValues
@@ -1690,6 +1798,7 @@ func (vm *VM) closeUpvalues(last int) {
 
 //------------------------------------------------------------------------------------------
 
+// defineMethod adds a method to a class, handling both static and instance methods.
 func (vm *VM) defineMethod(stringID int, isStatic bool) {
 	method := vm.Peek(0)
 	class := vm.Peek(1).AsClass()
@@ -1703,6 +1812,7 @@ func (vm *VM) defineMethod(stringID int, isStatic bool) {
 
 //------------------------------------------------------------------------------------------
 
+// call sets up a new call frame for executing a closure with the specified argument count.
 func (vm *VM) call(closure *core.ClosureObject, argCount int) bool {
 	if vm.DebugHook != nil {
 		vm.DebugHook(vm, core.DebugEventCall, closure)
@@ -1731,6 +1841,7 @@ func (vm *VM) call(closure *core.ClosureObject, argCount int) bool {
 
 //------------------------------------------------------------------------------------------
 
+// readShort reads a 16-bit value from the current instruction stream (big-endian format).
 func (vm *VM) readShort() uint16 {
 
 	vm.frame().Ip += 2
@@ -1741,6 +1852,7 @@ func (vm *VM) readShort() uint16 {
 
 //------------------------------------------------------------------------------------------
 
+// readByte reads a single byte from the current instruction stream and advances the instruction pointer.
 func (vm *VM) readByte() uint8 {
 
 	vm.frame().Ip += 1
@@ -1749,6 +1861,8 @@ func (vm *VM) readByte() uint8 {
 
 //------------------------------------------------------------------------------------------
 
+// isFalsey determines if a value should be considered false in a boolean context.
+// Only nil and false are falsy in Lox.
 func (vm *VM) isFalsey(v core.Value) bool {
 
 	switch v.Type {
@@ -1769,6 +1883,7 @@ func (vm *VM) isFalsey(v core.Value) bool {
 // - make an instance of the class and set the message on it
 // - pass the instance to raiseException
 // used for vm raising errors that can be handled in lox e.g EOFError when reading a file
+// RaiseExceptionByName creates and raises an exception with the specified name and message.
 func (vm *VM) RaiseExceptionByName(name string, msg string) bool {
 
 	classVal := vm.builtIns[core.InternName(name)]
@@ -1780,6 +1895,7 @@ func (vm *VM) RaiseExceptionByName(name string, msg string) bool {
 
 //------------------------------------------------------------------------------------------
 
+// raiseException handles exception propagation through the call stack and exception handlers.
 func (vm *VM) raiseException(err core.Value) bool {
 
 	for {
@@ -1838,6 +1954,7 @@ func (vm *VM) raiseException(err core.Value) bool {
 
 //------------------------------------------------------------------------------------------
 
+// nextHandler moves to the next exception handler in the current frame.
 func (vm *VM) nextHandler() bool {
 
 	code := vm.getCode()
@@ -1856,6 +1973,7 @@ func (vm *VM) nextHandler() bool {
 
 //------------------------------------------------------------------------------------------
 
+// popFrame removes the current call frame and continues exception handling in the previous frame.
 func (vm *VM) popFrame() bool {
 	if vm.frameCount == 1 {
 		return false
@@ -1867,6 +1985,7 @@ func (vm *VM) popFrame() bool {
 
 //------------------------------------------------------------------------------------------
 
+// appendStackTrace adds the current function call information to the stack trace.
 func (vm *VM) appendStackTrace() {
 
 	frame := vm.frame()
@@ -1889,6 +2008,7 @@ func (vm *VM) appendStackTrace() {
 
 //------------------------------------------------------------------------------------------
 
+// PrintStackTrace outputs the current stack trace to stderr for debugging.
 func (vm *VM) PrintStackTrace() {
 	for _, v := range vm.stackTrace {
 		fmt.Fprintf(os.Stderr, "%s\n", v)
@@ -1897,6 +2017,7 @@ func (vm *VM) PrintStackTrace() {
 
 //------------------------------------------------------------------------------------------
 
+// sourceLine extracts a specific line from the source code for error reporting.
 func (vm *VM) sourceLine(script string, line int) string {
 
 	source := vm.source
@@ -1914,6 +2035,7 @@ func (vm *VM) sourceLine(script string, line int) string {
 
 //------------------------------------------------------------------------------------------
 
+// importModule loads and executes a Lox module, adding it to the current environment.
 func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 
 	core.LogFmt(core.DEBUG, "Importing module %s as %s\n", moduleName, alias)
@@ -1967,6 +2089,7 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 
 //------------------------------------------------------------------------------------------
 
+// callLoadedChunk executes a compiled chunk in a new environment with module isolation.
 func (subvm *VM) callLoadedChunk(name string, newEnv *core.Environment, chunk *core.Chunk) {
 
 	function := core.MakeFunctionObject(name, newEnv)
@@ -1980,6 +2103,7 @@ func (subvm *VM) callLoadedChunk(name string, newEnv *core.Environment, chunk *c
 
 //------------------------------------------------------------------------------------------
 
+// importFunctionFromModule imports a specific function from a module into the current environment.
 func (vm *VM) importFunctionFromModule(module string, name string) bool {
 
 	moduleId := core.InternName(module)
@@ -2021,6 +2145,7 @@ func (vm *VM) importFunctionFromModule(module string, name string) bool {
 
 //------------------------------------------------------------------------------------------
 
+// createList creates a list object from the specified number of values on the stack.
 func (vm *VM) createList(frame *core.CallFrame) {
 
 	itemCount := int(vm.currCode[frame.Ip])
@@ -2037,6 +2162,7 @@ func (vm *VM) createList(frame *core.CallFrame) {
 
 //------------------------------------------------------------------------------------------
 
+// createTuple creates an immutable tuple object from the specified number of values on the stack.
 func (vm *VM) createTuple(frame *core.CallFrame) {
 
 	itemCount := int(vm.currCode[frame.Ip])
@@ -2053,6 +2179,7 @@ func (vm *VM) createTuple(frame *core.CallFrame) {
 
 //------------------------------------------------------------------------------------------
 
+// createDict creates a dictionary object from key-value pairs on the stack.
 func (vm *VM) createDict(frame *core.CallFrame) {
 
 	itemCount := int(vm.currCode[frame.Ip])
@@ -2079,6 +2206,7 @@ func (vm *VM) createDict(frame *core.CallFrame) {
 
 //------------------------------------------------------------------------------------------
 
+// index performs indexing operation on lists, strings, and dictionaries.
 func (vm *VM) index() bool {
 
 	iv := vm.pop()
@@ -2145,6 +2273,7 @@ func (vm *VM) index() bool {
 
 //------------------------------------------------------------------------------------------
 
+// indexAssign performs assignment to an index in lists and dictionaries.
 func (vm *VM) indexAssign() bool {
 
 	// collection, index, RHS on stack
@@ -2190,6 +2319,7 @@ func (vm *VM) indexAssign() bool {
 
 //------------------------------------------------------------------------------------------
 
+// slice creates a new list/string from a slice of an existing list/string.
 func (vm *VM) slice() bool {
 
 	var from_idx, to_idx int
@@ -2243,6 +2373,7 @@ func (vm *VM) slice() bool {
 
 //------------------------------------------------------------------------------------------
 
+// sliceAssign assigns a slice of values to a range in a list.
 func (vm *VM) sliceAssign() bool {
 
 	var from_idx, to_idx int
@@ -2292,6 +2423,7 @@ func (vm *VM) sliceAssign() bool {
 
 //------------------------------------------------------------------------------------------
 
+// binarySubtract performs subtraction operation on numeric values and vectors.
 func (vm *VM) binarySubtract() bool {
 
 	v2 := vm.pop()
@@ -2362,6 +2494,7 @@ func (vm *VM) binarySubtract() bool {
 
 //------------------------------------------------------------------------------------------
 
+// binaryMultiply performs multiplication operation on numbers, vectors, and string repetition.
 func (vm *VM) binaryMultiply() bool {
 
 	v2 := vm.pop()
@@ -2425,6 +2558,7 @@ func (vm *VM) binaryMultiply() bool {
 
 //------------------------------------------------------------------------------------------
 
+// binaryDivide performs division operation on numeric values and vectors.
 func (vm *VM) binaryDivide() bool {
 
 	v2 := vm.pop()
@@ -2478,6 +2612,7 @@ func (vm *VM) binaryDivide() bool {
 
 //------------------------------------------------------------------------------------------
 
+// binaryModulus performs modulus operation on integer values.
 func (vm *VM) binaryModulus() bool {
 
 	v2 := vm.pop()
@@ -2495,6 +2630,7 @@ func (vm *VM) binaryModulus() bool {
 
 //------------------------------------------------------------------------------------------
 
+// stringMultiply creates a new string by repeating the input string x times.
 func (vm *VM) stringMultiply(s string, x int) core.Value {
 
 	rv := ""
@@ -2505,6 +2641,7 @@ func (vm *VM) stringMultiply(s string, x int) core.Value {
 }
 
 // ------------------------------------------------------------------------------------------
+// pauseExecution handles breakpoint debugging by pausing VM execution.
 func (vm *VM) pauseExecution() {
 
 	fmt.Println("⚠️  BREAKPOINT HIT")
@@ -2525,6 +2662,7 @@ func (vm *VM) pauseExecution() {
 // return the path to the given module.
 // first, will look in lox/modules in the lox installation directory defined in LOX_PATH environment var.
 // if not found will look in the directory containing the main module being run
+// getPath constructs the full file path for a module, handling both absolute and relative paths.
 func getPath(args []string, module string) string {
 
 	lox_inst_dir := os.Getenv("LOX_PATH")
@@ -2557,6 +2695,7 @@ func getPath(args []string, module string) string {
 
 //------------------------------------------------------------------------------------------
 
+// getModule extracts the module name from a file path by removing the directory and extension.
 func getModule(fullPath string) string {
 	base := filepath.Base(fullPath)      // "foo.lox"
 	ext := filepath.Ext(base)            // ".lox"
