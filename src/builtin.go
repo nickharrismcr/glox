@@ -70,6 +70,7 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "inspect", "dump_frame", dumpFrameBuiltIn)
 	defineBuiltIn(vm, "inspect", "get_frame", getFrameBuiltIn)
 	defineBuiltIn(vm, "", "atan2", atan2BuiltIn)
+	defineBuiltIn(vm, "", "format", formatBuiltIn)
 
 	// Color utility functions (colour_utils module)
 	defineBuiltIn(vm, "colour_utils", "fade", colourUtilsFadeBuiltIn)
@@ -903,6 +904,54 @@ func replaceBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 	s := target.AsString()
 	return s.Replace(from, to)
 }
+
+// format(template, ...args) - Printf-style formatting
+func formatBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+	if argCount < 1 {
+		vm.RunTimeError("format expects at least 1 argument")
+		return core.NIL_VALUE
+	}
+
+	templateVal := vm.Stack(arg_stackptr)
+	if templateVal.Type != core.VAL_OBJ || templateVal.Obj.GetType() != core.OBJECT_STRING {
+		vm.RunTimeError("format template must be a string")
+		return core.NIL_VALUE
+	}
+
+	template := templateVal.AsString().Get()
+
+	// Convert Lox values to Go interfaces for fmt.Sprintf
+	goArgs := make([]interface{}, argCount-1)
+	for i := 1; i < argCount; i++ {
+		arg := vm.Stack(arg_stackptr + i)
+		goArgs[i-1] = valueToGoInterface(arg)
+	}
+
+	result := fmt.Sprintf(template, goArgs...)
+	return core.MakeStringObjectValue(result, true)
+}
+
+// Helper function to convert Lox value to Go interface for fmt.Sprintf
+func valueToGoInterface(val core.Value) interface{} {
+	switch val.Type {
+	case core.VAL_INT:
+		return val.Int
+	case core.VAL_FLOAT:
+		return val.Float
+	case core.VAL_BOOL:
+		return val.Bool
+	case core.VAL_NIL:
+		return nil
+	case core.VAL_OBJ:
+		if val.Obj.GetType() == core.OBJECT_STRING {
+			return val.AsString().Get()
+		}
+		return fmt.Sprintf("%v", val.Obj)
+	}
+	return fmt.Sprintf("%v", val)
+}
+
+// ...existing code...
 
 // return a FileObject
 func openBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
