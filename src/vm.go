@@ -225,9 +225,10 @@ func (vm *VM) ShowStack() string {
 			localname = fmt.Sprintf(" (%s)", localname)
 		}
 		if i >= vm.frame().Slots {
-			sb.WriteString(fmt.Sprintf("->%s%s%s\n", s, im, localname))
+			slot := i - vm.frame().Slots
+			sb.WriteString(fmt.Sprintf("%04d->%s%s%s\n", slot, s, im, localname))
 		} else {
-			sb.WriteString(fmt.Sprintf("  %s%s%s\n", s, im, localname))
+			sb.WriteString(fmt.Sprintf("      %s%s%s\n", s, im, localname))
 		}
 	}
 	return sb.String()
