@@ -324,6 +324,15 @@ a.remove(key)
 
 #### Strings
 
+##### Formatting (wrapper for Go fmt.Sprintf)
+
+```lox
+a=math.sqrt(2.0)
+b="hello"
+c="world
+print format("%s %s %f",a,b,c)
+```
+
 ##### Concatenation
 ```lox
 s = "hello" + "4"
