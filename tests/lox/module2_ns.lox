@@ -1,11 +1,11 @@
 
 
 func internal2_func(a){
-    print "2mf1 "+str(a)
+    print "2mf1 " & str(a)
 }
 
 func internal2_func2(a){
-    print "2mf2 "+str(a)
+    print "2mf2 " & str(a)
 }
 
 var internal2_var

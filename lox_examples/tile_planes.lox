@@ -136,8 +136,8 @@ class Tiler {
         this.speed.x = this.scroll_speed * math.cos(this.scroll_angle)
         this.speed.y = this.scroll_speed * math.sin(this.scroll_angle)
         this.tile.update()
-        this.offset.x = this.offset.x + this.speed.x
-        this.offset.y = this.offset.y + this.speed.y
+        this.offset = this.offset ++ this.speed 
+ 
     }
     draw(win) {
         var tw = this.tile.width * this.scale
@@ -170,7 +170,7 @@ func make_lines(n, width, height, alpha,margin) {
 
 func get_tilers()
 {
-    var margin = 30 // adjust as needed for inner square size
+    var margin = 80 // adjust as needed for inner square size
     tilers= [] 
     t=Tiler(1.0,vec2(4,4))
     t.add(Tile(ww, wh, make_lines(5, ww, wh, 255, margin), margin))
@@ -185,7 +185,7 @@ func get_tilers()
 }
 
 func clear_tilers(tilers) {
-    margin = 30
+    margin = 80
     for (i = 0; i < len(tilers); i = i + 1) {
         t = tilers[i]
         t.tile.clear(vec4(0, 0, 0, 0)) // Use transparent clear, not black

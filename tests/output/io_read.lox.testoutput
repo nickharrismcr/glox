@@ -7,7 +7,7 @@ reading
 6 try {
 7     while (true) {
 8         var s = os.readln(fp);
-9         print str(i)+" "+s;
+9         print str(i)&" "&s;
 10         i=i+1;
 11     }
 12 } except EOFError as e {

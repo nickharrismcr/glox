@@ -12,4 +12,4 @@ var a = module.internal_class("setclass");
 print a.get();
 
 var b = module.internal_var2;
-print "b="+b;
+print "b=" & b;

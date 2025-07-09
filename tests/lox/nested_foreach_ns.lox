@@ -3,10 +3,10 @@ var b =""
 var c =""
 
 foreach (var x in a) {
-    b=b+x
+    b=b & x
     print b
     foreach (var y in b) {
-        c=c+y
-        print ">"+c
+        c=c & y
+        print ">" & c
     }
 }

@@ -1,11 +1,11 @@
 import module2
 
 func internal_func(a){
-    print "mf1 "+str(a)
+    print "mf1 " & str(a)
 }
 
 func internal_func2(a){
-    print "mf2 "+str(a)
+    print "mf2 " & str(a)
 }
 
 var internal_var

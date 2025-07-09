@@ -5,7 +5,7 @@ import os
 print "=== OS Module Test ==="
 
 // Test current working directory
-print "Current directory: " + os.getcwd()
+print "Current directory: " & os.getcwd()
 
 // Test directory listing
 print "\nListing current directory:"
@@ -14,32 +14,32 @@ i = 0
 while (i < len(files)) {
     file = files[i]
     if (os.isdir(file)) {
-        print "  [DIR]  " + file
+        print "  [DIR]  " & file
     } else if (os.isfile(file)) {
-        print "  [FILE] " + file
+        print "  [FILE] " & file
     }
     i = i + 1
 }
 
 // Test path manipulation
 testPath = "lox_examples/kaleido.lox"
-print "\nPath manipulation test with: " + testPath
-print "dirname: " + os.dirname(testPath)
-print "basename: " + os.basename(testPath)
+print "\nPath manipulation test with: " & testPath
+print "dirname: " & os.dirname(testPath)
+print "basename: " & os.basename(testPath)
 splitResult = os.splitext(testPath)
-print "splitext: [" + splitResult[0] + ", " + splitResult[1] + "]"
+print "splitext: [" & splitResult[0] & ", " & splitResult[1] & "]"
 
 // Test path joining
 joinedPath = os.join("lox_examples", "assets", "img.jpg")
-print "joined path: " + joinedPath
+print "joined path: " & joinedPath
 
 // Test file existence
 print "\nFile existence tests:"
-print "kaleido.lox exists: " + str(os.exists("lox_examples/kaleido.lox"))
-print "nonexistent.txt exists: " + str(os.exists("nonexistent.txt"))
+print "kaleido.lox exists: " & str(os.exists("lox_examples/kaleido.lox"))
+print "nonexistent.txt exists: " & str(os.exists("nonexistent.txt"))
 
 // Test directory existence
-print "lox_examples is directory: " + str(os.isdir("lox_examples"))
-print "main.go is directory: " + str(os.isdir("main.go"))
+print "lox_examples is directory: " & str(os.isdir("lox_examples"))
+print "main.go is directory: " & str(os.isdir("main.go"))
 
 print "\n=== Test Complete ==="

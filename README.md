@@ -90,7 +90,7 @@ foreach (i in range(0, 10, 2)) {
 
 ---
 
-#### Compound assignment+add/subtract Operators
+#### Compound numeric assignment+add/subtract Operators
 
 ##### Syntax
 ```lox
@@ -259,7 +259,7 @@ a[2:5] = [7, 8, 9]
 
 ##### Concatenation
 ```lox
-c = a + b
+c = a & b
 ```
 
 ##### Membership Test
@@ -336,7 +336,7 @@ print format("%s %s %f",a,b,c)
 
 ##### Concatenation
 ```lox
-s = "hello" + "4"
+s = "hello" & "4"
 ```
 
 ##### Replace

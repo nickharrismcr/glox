@@ -16,5 +16,5 @@ try {
 except Exception as e {
     var x=2;
     print "in Exception handler";
-    print "oops "+e.name+" "+str(e);
+    print "oops " & e.name & " " & str(e);
 }

@@ -75,6 +75,8 @@ const (
 	TOKEN_BREAKPOINT
 	TOKEN_STATIC
 	TOKEN_FROM
+	TOKEN_PLUS_PLUS // ++
+	TOKEN_AMPERSAND // &
 )
 
 var keywords = map[string]TokenType{
@@ -176,6 +178,8 @@ var repr = map[TokenType]string{
 	TOKEN_BREAKPOINT:    "TOKEN_BREAKPOINT",
 	TOKEN_STATIC:        "TOKEN_STATIC",
 	TOKEN_FROM:          "TOKEN_FROM",
+	TOKEN_PLUS_PLUS:     "TOKEN_PLUS_PLUS",
+	TOKEN_AMPERSAND:     "TOKEN_AMPERSAND",
 }
 
 type Scanner struct {
@@ -313,7 +317,12 @@ func (s *Scanner) ScanToken() Token {
 			if s.Match("=") {
 				return s.MakeToken(TOKEN_PLUS_EQUAL)
 			}
+			if s.Match("+") {
+				return s.MakeToken(TOKEN_PLUS_PLUS)
+			}
 			return s.MakeToken(TOKEN_PLUS)
+		case "&":
+			return s.MakeToken(TOKEN_AMPERSAND)
 		case "%":
 			return s.MakeToken(TOKEN_PERCENT)
 		case "/":

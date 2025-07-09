@@ -20,12 +20,12 @@ try {
     except MyException as e {
         var x=2;
         print "in inner MyException handler";
-        print "oops "+e.name+" "+str(e);
+        print "oops " & e.name& " " & str(e);
     }
     except Exception as e {
         var x=2;
         print "in inner Exception handler";
-        print "oops "+e.name+" "+str(e);
+        print "oops " & e.name& " " & str(e);
     }
 
     print "raising Exception (outer something happened)";
@@ -34,11 +34,11 @@ try {
 except MyException as e {
     var x=2;
     print "in outer MyException handler";
-    print "oops "+e.name+" "+str(e);
+    print "oops " & e.name& " " & str(e);
 }
  except Exception as e {
         var x=2;
         print "in outer Exception handler";
-        print "oops "+e.name+" "+str(e);
+        print "oops " & e.name& " " & str(e);
     }
 

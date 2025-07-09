@@ -92,7 +92,7 @@ class Buffer{
         return lst.length
     }
     toString() {
-        return "Buffer(" + str(this.size) + ", " + str(this.data) + ")"
+        return "Buffer(" & str(this.size) & ", " & str(this.data) & ")"
     }
 }
 
@@ -152,7 +152,7 @@ class Line {
         return Line(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a, this.width, this.height)
     }
     toString() {
-        return "Line(" + str(this.x1) + ", " + str(this.y1) + ", " + str(this.x2) + ", " + str(this.y2) + ", " + str(this.r) + ", " + str(this.g) + ", " + str(this.b) + ", " + str(this.a) + ")"
+        return "Line(" & str(this.x1) & ", " & str(this.y1) & ", " & str(this.x2) & ", " & str(this.y2) & ", " & str(this.r) & ", " & str(this.g) & ", " & str(this.b) & ", " & str(this.a) & ")"
     }
     copy() {
         return Line(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a, this.width, this.height)

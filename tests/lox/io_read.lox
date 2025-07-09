@@ -6,7 +6,7 @@ var i=1;
 try {
     while (true) {
         var s = os.readln(fp);
-        print str(i)+" "+s;
+        print str(i)&" "&s;
         i=i+1;
     }
 } except EOFError as e {

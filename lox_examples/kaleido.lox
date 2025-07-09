@@ -15,14 +15,14 @@ func get_imagefile_list(){
     rv = []
     pictures = os.listdir("D:/pictures")
     foreach (item in pictures) {
-        if (!os.isdir("D:/pictures/" + item)) {
+        if (!os.isdir("D:/pictures/" & item)) {
             continue
         }
-        foreach (file in os.listdir("D:/pictures/" + item)) {
-            if (os.isfile("D:/pictures/" + item + "/" + file)) {
+        foreach (file in os.listdir("D:/pictures/" & item)) {
+            if (os.isfile("D:/pictures/" & item & "/" & file)) {
                 parts = os.splitext(file)
                 if (parts[1] in (".png", ".PNG", ".jpg", ".JPG", ".jpeg", ".JPEG")) {
-                    rv.append(os.join("D:/pictures/" + item, file))
+                    rv.append(os.join("D:/pictures/" & item, file))
   
                 }
             }

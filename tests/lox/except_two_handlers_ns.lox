@@ -16,10 +16,10 @@ try {
 except MyException as e {
     var x=2
     print "in MyException handler"
-    print "oops "+e.name+" "+str(e)
+    print "oops " & e.name& " " & str(e)
 }
 except Exception as e {
     var x=2
     print "in Exception handler"
-    print "oops "+e.name+" "+str(e)
+    print "oops " & e.name& " " & str(e)
 }

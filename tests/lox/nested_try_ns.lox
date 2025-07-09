@@ -20,7 +20,7 @@ try {
     except MyException as e {
         var x=2
         print "in inner MyException handler"
-        print "oops "+e.name+" "+str(e)
+        print "oops " & e.name& " " & str(e)
     }
 
     print "raising MyException (outer something happened)"
@@ -29,5 +29,5 @@ try {
 except MyException as e {
     var x=2
     print "in outer MyException handler"
-    print "oops "+e.name+" "+str(e)
+    print "oops " & e.name& " " & str(e)
 }

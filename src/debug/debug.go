@@ -54,8 +54,12 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		return constantInstruction(c, "OP_CONSTANT", offset)
 	case core.OP_NEGATE:
 		return simpleInstruction("OP_NEGATE", offset)
-	case core.OP_ADD:
-		return simpleInstruction("OP_ADD", offset)
+	case core.OP_ADD_NUMERIC:
+		return simpleInstruction("OP_ADD_NUMERIC", offset)
+	case core.OP_CONCAT:
+		return simpleInstruction("OP_CONCAT_STRING", offset)
+	case core.OP_ADD_VECTOR:
+		return simpleInstruction("OP_ADD_VECTOR", offset)
 	case core.OP_SUBTRACT:
 		return simpleInstruction("OP_SUBTRACT", offset)
 	case core.OP_MODULUS:

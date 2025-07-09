@@ -151,7 +151,7 @@ while (!win.should_close()) {
         if (enable_culling) {
             culling_status = "enabled"
         }
-        print "Culling " + culling_status
+        print "Culling " & culling_status
     }
     
     if (win.key_pressed(win.KEY_M)) {
@@ -160,7 +160,7 @@ while (!win.should_close()) {
         if (manual_camera) {
             camera_mode = "Manual"
         }
-        print "Camera mode: " + camera_mode
+        print "Camera mode: " & camera_mode
     }
     
     if (win.key_pressed(win.KEY_ESCAPE)) {

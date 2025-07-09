@@ -20,5 +20,5 @@ try {
 } 
 except Exception as e
 {
-    print "Caught "+e.msg;
+    print "Caught " & e.msg;
 }

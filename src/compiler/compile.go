@@ -203,6 +203,8 @@ func (p *Parser) setRules() {
 		TOKEN_DOT:           {prefix: nil, infix: dot, prec: PREC_CALL},
 		TOKEN_MINUS:         {prefix: unary, infix: binary, prec: PREC_TERM},
 		TOKEN_PLUS:          {prefix: nil, infix: binary, prec: PREC_TERM},
+		TOKEN_PLUS_PLUS:     {prefix: nil, infix: binary, prec: PREC_TERM},
+		TOKEN_AMPERSAND:     {prefix: nil, infix: binary, prec: PREC_TERM},
 		TOKEN_SEMICOLON:     {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_EOL:           {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_SLASH:         {prefix: nil, infix: binary, prec: PREC_FACTOR},
@@ -1620,7 +1622,7 @@ func (p *Parser) handleCompoundAssignment(canAssign bool, getOp uint8, setOp uin
 		// Perform the operation
 		switch opType {
 		case TOKEN_PLUS_EQUAL:
-			p.emitByte(core.OP_ADD)
+			p.emitByte(core.OP_ADD_NUMERIC)
 		case TOKEN_MINUS_EQUAL:
 			p.emitByte(core.OP_SUBTRACT)
 		}
@@ -1871,7 +1873,11 @@ func binary(p *Parser, canAssign bool) {
 
 	switch opType {
 	case TOKEN_PLUS:
-		p.emitByte(core.OP_ADD)
+		p.emitByte(core.OP_ADD_NUMERIC)
+	case TOKEN_PLUS_PLUS:
+		p.emitByte(core.OP_ADD_VECTOR)
+	case TOKEN_AMPERSAND:
+		p.emitByte(core.OP_CONCAT)
 	case TOKEN_MINUS:
 		p.emitByte(core.OP_SUBTRACT)
 	case TOKEN_STAR:
@@ -2077,7 +2083,11 @@ func (p *Parser) handlePropertyCompoundAssignment(canAssign bool, name uint8) bo
 		// Perform the operation
 		switch opType {
 		case TOKEN_PLUS_EQUAL:
-			p.emitByte(core.OP_ADD)
+			p.emitByte(core.OP_ADD_NUMERIC)
+		case TOKEN_PLUS_PLUS:
+			p.emitByte(core.OP_ADD_VECTOR)
+		case TOKEN_AMPERSAND:
+			p.emitByte(core.OP_CONCAT)
 		case TOKEN_MINUS_EQUAL:
 			p.emitByte(core.OP_SUBTRACT)
 		}

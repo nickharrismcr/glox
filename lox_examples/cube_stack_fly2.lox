@@ -319,15 +319,15 @@ class Controller {
                 // Style 1: Update direction immediately - camera moves toward where it's looking
                 this.direction = this.newDirection
                 this.targetAngle = this.directionToAngle(this.newDirection)
-                this.targetGridPos = this.gridPos + MOVEMENTS[ this.newDirection ]
+                this.targetGridPos = this.gridPos ++ MOVEMENTS[ this.newDirection ]
             } else if (moveStyle == 1) {
                 // Style 2: Keep old direction - camera strafes while turning (cinematic)
                 this.targetAngle = this.directionToAngle(this.newDirection)
-                this.targetGridPos = this.gridPos + MOVEMENTS[ this.direction ]
+                this.targetGridPos = this.gridPos ++ MOVEMENTS[ this.direction ]
             } else {
                 // Style 3: Diagonal movement - blend of both directions
                 this.targetAngle = this.directionToAngle(this.newDirection)
-                this.targetGridPos = this.gridPos + MOVEMENTS[ this.direction ] + MOVEMENTS[ this.newDirection ]
+                this.targetGridPos = this.gridPos ++ MOVEMENTS[ this.direction ] ++ MOVEMENTS[ this.newDirection ]
             }
             
             // Reset angle delta for smooth gradual rotation
@@ -338,7 +338,7 @@ class Controller {
             
         } else {
             steps=math.min(distance_to_edge - 2, random.integer(1, 8))
-            this.targetGridPos = this.gridPos + math.scale3(MOVEMENTS[ this.direction ], steps)
+            this.targetGridPos = this.gridPos ++ math.scale3(MOVEMENTS[ this.direction ], steps)
             
             // Clamp target position to valid street boundaries
             this.targetGridPos = vec3(math.max(2, math.min(this.grid.size - 3, this.targetGridPos.x)), 0, math.max(2, math.min(this.grid.size - 3, this.targetGridPos.z)))
@@ -408,10 +408,10 @@ class Controller {
             // Smooth movement with constant speed
             normalizedDir = math.scale3(this.diff, 1.0 / ln)
             moveVec = math.scale3(normalizedDir, this.speed)
-            this.worldPos += moveVec
+            this.worldPos = this.worldPos ++ moveVec
         } else {
             // Very close to target, ease in smoothly
-            this.worldPos += math.scale3(this.diff, 0.01)
+            this.worldPos = this.worldPos ++ math.scale3(this.diff, 0.01)
         }
     }
 

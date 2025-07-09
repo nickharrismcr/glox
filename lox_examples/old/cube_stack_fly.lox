@@ -265,8 +265,8 @@ class CubeStackScene {
                 }
             }
         }
-        
-        print("Created " + str(this.stacks.length()) + " stacks in a " + str(grid_size) + "x" + str(grid_size) + " grid with clear avenues")
+
+        print(format("Created %s stacks in a %sx%s grid with clear avenues", str(this.stacks.length()), str(grid_size), str(grid_size)))
     }
     
     update() {
@@ -317,9 +317,9 @@ var scene = CubeStackScene()
 
 // Display clear, simple boundary information
 print("=== CITY BOUNDARIES ===")
-print("Outer boundary: ±" + str(CITY_BOUNDARY) + " world units")
-print("Inner boundary: ±" + str(INNER_BOUNDARY) + " world units (camera turns here)")
-print("Stack spacing: " + str(STACK_SPACING) + " units")
+print("Outer boundary: ±" & str(CITY_BOUNDARY) & " world units")
+print("Inner boundary: ±" & str(INNER_BOUNDARY) & " world units (camera turns here)")
+print("Stack spacing: " & str(STACK_SPACING) & " units")
 print("Grid: 7x7 stacks in regular pattern")
 print("Camera restricted to cardinal directions only")
 
@@ -330,7 +330,7 @@ var avenue_position = STACK_SPACING / 2  // 8 units - halfway between center and
 var cam_start_x = avenue_position   // Start in an avenue
 var cam_start_z = 0.0              // Start at center line
 
-print("Camera starts at: (" + str(cam_start_x) + ", " + str(cam_start_z) + ") - in avenue between stacks")
+print("Camera starts at: (" & str(cam_start_x) & ", " & str(cam_start_z) & ") - in avenue between stacks")
 
 // Camera position variables - start in an avenue between stacks
 var cam_x = cam_start_x   // Start in avenue
@@ -362,7 +362,7 @@ while (!win.should_close()) {
     // Debug output for boundary violations (limit to every 60 frames)
     debug_counter = debug_counter + 1
     if (debug_counter > 60 and boundary_result[0]) {
-        print("BOUNDARY VIOLATION: cam at (" + str(cam_x) + ", " + str(cam_z) + ") -> turning toward center")
+        print("BOUNDARY VIOLATION: cam at (" & str(cam_x) & ", " & str(cam_z) & ") -> turning toward center")
         debug_counter = 0
     }
     

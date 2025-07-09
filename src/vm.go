@@ -581,8 +581,8 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 				goto End
 			}
 
-		case core.OP_ADD:
-			// Pop two values from stack, add them (handles int, float, vectors, strings, lists), push result
+		case core.OP_ADD_NUMERIC:
+			// Pop two values from stack, add them (handles int, float), push result
 
 			v2 := vm.pop()
 			v1 := vm.pop()
@@ -614,7 +614,16 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 				}
 				vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
 				goto End
+			}
 
+			vm.RunTimeError("Invalid operands for addition: %s + %s", v1.String(), v2.String())
+			goto End
+
+		case core.OP_ADD_VECTOR:
+			// Pop two vector values from stack, add them (handles vec2, vec3, vec4), push result
+			v2 := vm.pop()
+			v1 := vm.pop()
+			switch v2.Type {
 			case core.VAL_VEC2:
 				if v1.Type != core.VAL_VEC2 {
 					vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
@@ -644,6 +653,15 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 				vm.stack[vm.stackTop] = core.MakeVec4Value(v3.X, v3.Y, v3.Z, v3.W, false)
 				vm.stackTop++
 				continue
+			}
+
+			vm.RunTimeError("Invalid operands for vector addition: %s + %s", v1.String(), v2.String())
+			goto End
+
+		case core.OP_CONCAT:
+			v2 := vm.pop()
+			v1 := vm.pop()
+			switch v2.Type {
 
 			case core.VAL_OBJ:
 				ov2 := v2.Obj
@@ -651,7 +669,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 				case core.OBJECT_STRING:
 					if v1.Type != core.VAL_OBJ {
-						vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
+						vm.RunTimeError("Concatenation type mismatch: %s + %s", v1.String(), v2.String())
 						goto End
 					}
 					ov1 := v1.Obj
@@ -660,11 +678,11 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 						vm.stackTop++
 						continue
 					}
-					vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
+					vm.RunTimeError("Concatenation type mismatch: %s + %s", v1.String(), v2.String())
 					goto End
 				case core.OBJECT_LIST:
 					if v1.Type != core.VAL_OBJ {
-						vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
+						vm.RunTimeError("Concatenation type mismatch: %s + %s", v1.String(), v2.String())
 						goto End
 					}
 					ov1 := v1.Obj
@@ -674,11 +692,11 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 						vm.stackTop++
 						continue
 					}
-					vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
+					vm.RunTimeError("Concatenation type mismatch: %s + %s", v1.String(), v2.String())
 					goto End
 				}
 			}
-			vm.RunTimeError("Invalid operands for addition: %s + %s", v1.String(), v2.String())
+			vm.RunTimeError("Invalid operands for concatenation: %s + %s", v1.String(), v2.String())
 			goto End
 
 		case core.OP_SUBTRACT:

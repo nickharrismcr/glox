@@ -17,5 +17,5 @@ try {
 }
 except Exception as e {
     print "in exception handler";
-    print "oops "+str(e);
+    print "oops " & str(e);
 }

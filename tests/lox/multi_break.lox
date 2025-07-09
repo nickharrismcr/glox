@@ -6,11 +6,11 @@ while (true) {
     if (a < 5) {
         continue;
     }
-    t=t+str(a);
+    t=t & str(a);
     if (a < 10) {
         continue;
     }
-    s=s+str(a);
+    s=s & str(a);
     if (a > 15) {
         break;
     }
@@ -30,11 +30,11 @@ while (true) {
     if (a < 5) {
         continue;
     }
-    t=t+str(a);
+    t=t & str(a);
     if (a < 10) {
         continue;
     }
-    s=s+str(a);
+    s=s & str(a);
     if (a > 20) {
         break;
     }

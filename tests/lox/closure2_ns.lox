@@ -3,7 +3,7 @@ func meta_func() {
   func get_func() {
     var x = "outside"
     func _func(y) {
-      print x+" "+y
+      print x & " " & y
     }
 
     return _func

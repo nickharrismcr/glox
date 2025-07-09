@@ -46,7 +46,7 @@ class Particle {
     }
 
     toString() {
-        return "Particle(pos=" + str(this.pos) + ", dpos=" + str(this.dpos) + ", life=" + str(this.life) + ")";
+        return "Particle(pos=" & str(this.pos) & ", dpos=" & str(this.dpos) & ", life=" & str(this.life) & ")";
     }   
 }
 

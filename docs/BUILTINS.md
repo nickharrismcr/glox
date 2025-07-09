@@ -532,7 +532,17 @@ var v3 = vec3(x, y, z);
 var v4 = vec4(x, y, z, w);
 ```
 
-Vectors support standard mathematical operations and are used extensively in 3D graphics and physics calculations.
+### Vector properties
+```lox
+v2.x = 1 
+v2.y = 2
+```
+
+### Vector addition 
+```lox
+v1=vec3(1,3,4)
+v2=vec3(2,4,5)
+v3=v2 ++ v1
 
 ---
 

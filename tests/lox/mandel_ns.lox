@@ -33,7 +33,7 @@ func mandelbrot() {
         for (var j = 0; j < width; j=j+1) {
             var iters=calc(i,j,height,width,max_iteration)
             var idx=iters%15
-            line=line+chars[idx:idx+1]
+            line=line & chars[idx:idx+1]
         }
         print line
     }

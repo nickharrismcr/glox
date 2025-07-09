@@ -1,9 +1,26 @@
-import math 
 
-radius = 0.7885 // classic radius for interesting Julia sets
-t=0.0
-while (true) {
-    ca = radius * math.cos(t)  
-    print ca
-    t = t + 0.01
+import os
+
+func get_imagefile_list(){
+    
+
+    rv = []
+    pictures = os.listdir("D:/pictures")
+    foreach (item in pictures) {
+        if (!os.isdir("D:/pictures/" & item)) {
+            continue
+        }
+        foreach (file in os.listdir("D:/pictures/" & item)) {
+            if (os.isfile("D:/pictures/" & item & "/" & file)) {
+                parts = os.splitext(file)
+                if (parts[1] in (".png", ".PNG", ".jpg", ".JPG", ".jpeg", ".JPEG")) {
+                    rv.append(os.join("D:/pictures/" & item, file))
+  
+                }
+            }
+        }
+    }
+    return rv
 }
+
+ 
