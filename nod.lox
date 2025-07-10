@@ -1,26 +1,11 @@
 
-import os
-
-func get_imagefile_list(){
-    
-
-    rv = []
-    pictures = os.listdir("D:/pictures")
-    foreach (item in pictures) {
-        if (!os.isdir("D:/pictures/" & item)) {
-            continue
-        }
-        foreach (file in os.listdir("D:/pictures/" & item)) {
-            if (os.isfile("D:/pictures/" & item & "/" & file)) {
-                parts = os.splitext(file)
-                if (parts[1] in (".png", ".PNG", ".jpg", ".JPG", ".jpeg", ".JPEG")) {
-                    rv.append(os.join("D:/pictures/" & item, file))
-  
-                }
-            }
-        }
+func testlocals(c) {
+    a=1
+    b=2
+    foreach (i in range(0,10000*3000)){
+        c=c+a+b
     }
-    return rv
+    return c
 }
 
- 
+print testlocals(3)

@@ -366,6 +366,8 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		frame.Ip++
 		switch inst {
 
+		case core.OP_NOOP:
+
 		case core.OP_EQUAL:
 			// Pop two values from stack, compare for equality, push boolean result
 
@@ -657,6 +659,77 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 			vm.RunTimeError("Invalid operands for vector addition: %s + %s", v1.String(), v2.String())
 			goto End
+
+		case core.OP_ADD_NN:
+			// optimised addition for numbers: byte 1, byte 2, numbers to add ( byte 3 = specialisation flag (TODO))
+			slotA := vm.readByte()
+			slotB := vm.readByte()
+			specialisation := vm.readByte() // currently unused, reserved for future optimisations
+			_ = specialisation              // silence unused warning
+
+			valA := vm.stack[frame.Slots+int(slotA)]
+			valB := vm.stack[frame.Slots+int(slotB)]
+
+			// Immediate specializations for common cases
+			if valA.Type == core.VAL_INT && valB.Type == core.VAL_INT {
+				// Patch and execute specialized version immediately
+				vm.patchInstruction(frame.Ip-4, core.OP_ADD_II)
+				vm.stack[vm.stackTop] = core.MakeIntValue(valA.Int+valB.Int, false)
+				vm.stackTop++
+				continue
+			}
+			if valA.Type == core.VAL_FLOAT && valB.Type == core.VAL_FLOAT {
+				// Patch and execute specialized version immediately
+				vm.patchInstruction(frame.Ip-4, core.OP_ADD_FF)
+				vm.stack[vm.stackTop] = core.MakeFloatValue(valA.Float+valB.Float, false)
+				vm.stackTop++
+				continue
+			}
+
+			switch valB.Type {
+			case core.VAL_INT:
+				vm.stack[vm.stackTop] = core.MakeFloatValue(valA.Float+float64(valB.Int), false)
+				vm.stackTop++
+				continue
+
+			case core.VAL_FLOAT:
+				vm.stack[vm.stackTop] = core.MakeFloatValue(float64(valA.Int)+valB.Float, false)
+				vm.stackTop++
+				continue
+			}
+
+		case core.OP_ADD_II:
+			// optimised addition for local ints: byte 1, byte 2, numbers to add ( byte 3 = specialisation flag (TODO))
+
+			frm := vm.frames[vm.frameCount-1]
+			frm.Ip += 3
+			slotA := vm.currCode[frm.Ip-3]
+			slotB := vm.currCode[frm.Ip-2]
+			//next is unused byte, reserved for future optimisations
+			base := frm.Slots
+			vm.stack[vm.stackTop] = core.Value{
+				Type:  core.VAL_INT,
+				Int:   vm.stack[base+int(slotA)].Int + vm.stack[base+int(slotB)].Int,
+				Immut: false,
+			}
+			vm.stackTop++
+			continue
+
+		case core.OP_ADD_FF:
+			// optimised addition for local floats: byte 1, byte 2, numbers to add ( byte 3 = specialisation flag (TODO))
+			frm := vm.frames[vm.frameCount-1]
+			frm.Ip += 3
+			slotA := vm.currCode[frm.Ip-3]
+			slotB := vm.currCode[frm.Ip-2]
+			//next is unused byte, reserved for future optimisations
+			base := frm.Slots
+			vm.stack[vm.stackTop] = core.Value{
+				Type:  core.VAL_FLOAT,
+				Float: vm.stack[base+int(slotA)].Float + vm.stack[base+int(slotB)].Float,
+				Immut: false,
+			}
+			vm.stackTop++
+			continue
 
 		case core.OP_CONCAT:
 			v2 := vm.pop()
@@ -1865,8 +1938,9 @@ func (vm *VM) readShort() uint16 {
 // readByte reads a single byte from the current instruction stream and advances the instruction pointer.
 func (vm *VM) readByte() uint8 {
 
-	vm.frame().Ip += 1
-	return vm.currCode[vm.frame().Ip-1]
+	frame := vm.frames[vm.frameCount-1]
+	frame.Ip += 1
+	return vm.currCode[frame.Ip-1]
 }
 
 //------------------------------------------------------------------------------------------
@@ -2667,6 +2741,14 @@ func (vm *VM) pauseExecution() {
 	//buf.ReadBytes('\n')
 }
 
+// ------------------------------------------------------------------------------------------
+// patchInstruction replaces an instruction at the specified instruction pointer with a new operation code.
+// used to specialise optimised addition to int or float addition
+func (vm *VM) patchInstruction(ip int, newOp byte) {
+	vm.currCode[ip] = newOp
+}
+
+//------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------
 
 // return the path to the given module.

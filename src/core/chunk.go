@@ -8,6 +8,7 @@ import (
 
 const (
 	OP_RETURN uint8 = iota
+	OP_NOOP
 	OP_CONSTANT
 	OP_NEGATE
 	OP_ADD_NUMERIC
@@ -74,6 +75,9 @@ const (
 	OP_ONE
 	OP_DUP
 	OP_INC_LOCAL
+	OP_ADD_NN
+	OP_ADD_II
+	OP_ADD_FF
 )
 
 func NewChunk(filename string) *Chunk {

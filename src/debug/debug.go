@@ -46,6 +46,8 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 	switch i {
 	case core.OP_ONE:
 		return simpleInstruction("OP_ONE", offset)
+	case core.OP_NOOP:
+		return simpleInstruction("OP_NOOP", offset)
 	case core.OP_DUP:
 		return simpleInstruction("OP_DUP", offset)
 	case core.OP_RETURN:
@@ -196,6 +198,12 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		return byteInstruction(c, "OP_UNPACK", offset)
 	case core.OP_IMPORT_FROM:
 		return importFromInstruction(c, "OP_IMPORT_FROM", offset)
+	case core.OP_ADD_NN:
+		return threeByteInstruction(c, "OP_ADD_NN", offset)
+	case core.OP_ADD_II:
+		return threeByteInstruction(c, "OP_ADD_II", offset)
+	case core.OP_ADD_FF:
+		return threeByteInstruction(c, "OP_ADD_FF", offset)
 	default:
 		core.LogFmt(core.TRACE, "Unknown opcode %d\n", i)
 		return offset + 1
@@ -234,6 +242,16 @@ func byteInstruction(c *core.Chunk, name string, offset int) int {
 	byte_ := c.Code[offset+1]
 	core.LogFmt(core.TRACE, "%-16s %04d\n", name, byte_)
 	return offset + 2
+}
+
+func threeByteInstruction(c *core.Chunk, name string, offset int) int {
+
+	byte1 := uint32(c.Code[offset+1])
+	byte2 := uint32(c.Code[offset+2])
+	byte3 := uint32(c.Code[offset+3])
+
+	core.LogFmt(core.TRACE, "%-16s %04d %04d %04d\n", name, byte1, byte2, byte3)
+	return offset + 4
 }
 
 func jumpInstruction(c *core.Chunk, name string, sign int, offset int) int {
