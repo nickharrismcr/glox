@@ -8,10 +8,10 @@ const FULLSCREEN = true
 
 // Configuration constants
 const CITY_SIZE = 45     // Reduced from 45 for better performance
-const STACK_SPACING = 12.0    
+const STACK_SPACING = 7.0    
 const MIN_STACK_HEIGHT = 3
 const MAX_STACK_HEIGHT = 20
-const BASE_CUBE_SIZE = 5.50
+const BASE_CUBE_SIZE = 2.50
 const CAMERA_HEIGHT = 8.0
 const MAX_CAMERA_SPEED = 0.4  
 const CAMERA_ACCELERATION = MAX_CAMERA_SPEED / 30.0  // Much gentler acceleration
@@ -88,50 +88,50 @@ class Cube {
     }
 }
 
-// CompositeCube class - a building block with wireframe effect
+// CompositeCube class - a building block with colored window faces
 class CompositeCube {    
     init(position, size) {
         this.position = position
         this.cubes = []
         this.size = size  // Use provided size instead of generating random
         
-        // Create main colored cube
-        mainColor = this.generateFaceColor()
-        mainCube = Cube(position.x, position.y, position.z, this.size, mainColor)
-        this.cubes.append(mainCube)
-        
-        // Create black wireframe overlays - almost the full size of the face for wireframe effect
-        halfSize = this.size / 2
-        faceOffset = 0.5 // Increased offset to prevent z-fighting
-        faceSize = this.size * 0.95  // 95% of cube size for wireframe effect
-        faceThickness = 0.2  // Very thin for wireframe lines
+        // Create main black cube
         blackColor = vec4(0, 0, 0, 255)
+        mainCube = Cube(position.x, position.y, position.z, this.size, blackColor)
+        this.cubes.append(mainCube)
+          // Create colored face overlays matching original design
+        halfSize = this.size / 2
+        faceOffset = 0.2 // Increased from 0.15 to reduce z-fighting
+        faceSize = this.size * random.float(0.2,0.7)  // 80% of cube size like original
+        faceThickness = 0.35  // Increased thickness for better visibility
         
-        // Front face (positive Z) - wireframe
+        // Front face (positive Z)
         frontPos = vec3(position.x, position.y, position.z + halfSize + faceOffset)
-        frontCube = Cube(frontPos.x, frontPos.y, frontPos.z, faceThickness, blackColor)
+        frontColor = this.generateFaceColor()
+        frontCube = Cube(frontPos.x, frontPos.y, frontPos.z, faceThickness, frontColor)
         frontCube.faceSize = vec3(faceSize, faceSize, faceThickness)  // Store custom size
         this.cubes.append(frontCube)
         
-        // Back face (negative Z) - wireframe
+        // Back face (negative Z)
         backPos = vec3(position.x, position.y, position.z - halfSize - faceOffset)
-        backCube = Cube(backPos.x, backPos.y, backPos.z, faceThickness, blackColor)
+        backColor = this.generateFaceColor()
+        backCube = Cube(backPos.x, backPos.y, backPos.z, faceThickness, backColor)
         backCube.faceSize = vec3(faceSize, faceSize, faceThickness)
         this.cubes.append(backCube)
         
-        // Right face (positive X) - wireframe
+        // Right face (positive X)
         rightPos = vec3(position.x + halfSize + faceOffset, position.y, position.z)
-        rightCube = Cube(rightPos.x, rightPos.y, rightPos.z, faceThickness, blackColor)
+        rightColor = this.generateFaceColor()
+        rightCube = Cube(rightPos.x, rightPos.y, rightPos.z, faceThickness, rightColor)
         rightCube.faceSize = vec3(faceThickness, faceSize, faceSize)
         this.cubes.append(rightCube)
         
-        // Left face (negative X) - wireframe
+        // Left face (negative X)
         leftPos = vec3(position.x - halfSize - faceOffset, position.y, position.z)
-        leftCube = Cube(leftPos.x, leftPos.y, leftPos.z, faceThickness, blackColor)
+        leftColor = this.generateFaceColor()
+        leftCube = Cube(leftPos.x, leftPos.y, leftPos.z, faceThickness, leftColor)
         leftCube.faceSize = vec3(faceThickness, faceSize, faceSize)
         this.cubes.append(leftCube)
-        
-       
     }
     generateFaceColor() {
         // Create more muted, varied colors by reducing saturation and adjusting brightness
@@ -423,7 +423,7 @@ class Controller {
 
     getCamera() {
         // Simple camera pointing in current direction with gentler vertical movement
-        camY = 4* CAMERA_HEIGHT + math.sin(this.frameCount * 0.005) * 7.0  // Slower, smaller oscillation
+        camY = 2* CAMERA_HEIGHT + math.sin(this.frameCount * 0.005) * 3.0  // Slower, smaller oscillation
         
         lookDistance = 25.0
         lookX = this.worldPos.x + math.sin(this.currentAngle) * lookDistance
@@ -490,15 +490,16 @@ while (!win.should_close()) {
     win.plane(vec3(0, -1, 0), vec2(groundSize, groundSize), vec4(15, 15, 15, 255))
     
     // Draw all cubes with frustum culling for optimal performance
-    // Use the same camera position as the actual camera for accurate culling
+    // Extract camera position and forward direction from controller
+    cameraPos = vec3(controller.worldPos.x, 2 * CAMERA_HEIGHT, controller.worldPos.z)
     
     // Calculate camera forward direction from current angle
     cameraForward = vec3(math.sin(controller.currentAngle), 0, math.cos(controller.currentAngle))
-     
-    fovDegrees = 100.0    // Field of view in degrees (wider than typical 60 for better visibility)
     
-    print type(cam.position)
-    cubeBatch.draw_frustum_culled(cam.get_position(), cameraForward, DRAW_DISTANCE, fovDegrees)
+     
+    fovDegrees = 75.0    // Field of view in degrees (wider than typical 60 for better visibility)
+    
+    cubeBatch.draw_frustum_culled(cameraPos, cameraForward, DRAW_DISTANCE, fovDegrees)
    
     
     win.end_3d()

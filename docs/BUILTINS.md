@@ -340,7 +340,7 @@ For scenes with thousands of objects, use culling to maintain performance:
 import colour_utils;
 
 var CITY_SIZE = 50;  // 50x50 = 2500 buildings
-var camera = camera_3d(vec3(0, 20, 0), vec3(0, 0, 0), vec3(0, 1, 0));
+var camera = camera(vec3(0, 20, 0), vec3(0, 0, 0), vec3(0, 1, 0));
 
 // Create batch and generate a city
 var cube_batch = batch(win.BATCH_CUBE);
@@ -453,8 +453,9 @@ var cam = camera(position_vec3, target_vec3, up_vec3);
 
 ### Camera Methods
 
-- **`set_position(vec3_position)`** - Set camera position using a Vec3
-- **`set_target(vec3_target)`** - Set camera target (what it's looking at) using a Vec3
+- **`set_position(vec3_position)`** - Set camera position using a vec3
+- **`get_position()`** - get position vec3 
+- **`set_target(vec3_target)`** - Set camera target (what it's looking at) using a vec3
 - **`set_fovy(field_of_view)`** - Set field of view in degrees
 - **`update()`** - Update camera (enables free-look controls)
 

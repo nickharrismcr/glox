@@ -59,4 +59,15 @@ func RegisterAllCameraMethods(c *CameraObject) {
 			return core.NIL_VALUE
 		},
 	})
+
+	c.RegisterMethod("get_position", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 0 {
+				vm.RunTimeError("get_position expects no arguments")
+				return core.NIL_VALUE
+			}
+			pos := c.Camera.Position
+			return core.MakeVec3Value(float64(pos.X), float64(pos.Y), float64(pos.Z), false)
+		},
+	})
 }
