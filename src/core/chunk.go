@@ -78,6 +78,9 @@ const (
 	OP_ADD_NN
 	OP_ADD_II
 	OP_ADD_FF
+	OP_INCR_CONST_N
+	OP_INCR_CONST_I
+	OP_INCR_CONST_F
 )
 
 func NewChunk(filename string) *Chunk {

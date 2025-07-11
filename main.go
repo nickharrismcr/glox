@@ -64,6 +64,8 @@ func parseArgs() *Options {
 				opts.printTokens = true
 			case "--instrument", "-i":
 				core.DebugInstrument = true
+			case "--no-peephole", "-n":
+				core.DebugSkipPeephole = true
 			default:
 				usage()
 			}

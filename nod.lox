@@ -1,11 +1,16 @@
+var l=[];
 
-func testlocals(c) {
-    a=1
-    b=2
-    foreach (i in range(0,10000*3000)){
-        c=c+a+b
-    }
-    return c
+for (var i=0; i < 10; i=i+1)
+{
+     var x=float(i);
+     func closure(){
+       return x;
+     } 
+     
+     append(l,closure);
 }
 
-print testlocals(3)
+for (var j=0; j < 10; j=j+1)
+{
+    print l[j]();
+}

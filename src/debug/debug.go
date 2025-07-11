@@ -199,11 +199,17 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 	case core.OP_IMPORT_FROM:
 		return importFromInstruction(c, "OP_IMPORT_FROM", offset)
 	case core.OP_ADD_NN:
-		return threeByteInstruction(c, "OP_ADD_NN", offset)
+		return twoByteInstruction(c, "OP_ADD_NN", offset)
 	case core.OP_ADD_II:
-		return threeByteInstruction(c, "OP_ADD_II", offset)
+		return twoByteInstruction(c, "OP_ADD_II", offset)
 	case core.OP_ADD_FF:
-		return threeByteInstruction(c, "OP_ADD_FF", offset)
+		return twoByteInstruction(c, "OP_ADD_FF", offset)
+	case core.OP_INCR_CONST_N:
+		return byteConstantInstruction(c, "OP_INCR_CONST_N", offset)
+	case core.OP_INCR_CONST_I:
+		return byteConstantInstruction(c, "OP_INCR_CONST_I", offset)
+	case core.OP_INCR_CONST_F:
+		return byteConstantInstruction(c, "OP_INCR_CONST_F", offset)
 	default:
 		core.LogFmt(core.TRACE, "Unknown opcode %d\n", i)
 		return offset + 1
@@ -236,6 +242,15 @@ func twoConstantInstruction(c *core.Chunk, name string, offset int) int {
 	core.LogFmt(core.TRACE, "  %s\n", value2.String())
 	return offset + 3
 }
+func byteConstantInstruction(c *core.Chunk, name string, offset int) int {
+
+	byte_ := c.Code[offset+1]
+	constant := c.Code[offset+2]
+	core.LogFmt(core.TRACE, "%-16s %04d %04d", name, byte_, constant)
+	value := c.Constants[constant]
+	core.LogFmt(core.TRACE, "  %s\n", value.String())
+	return offset + 3
+}
 
 func byteInstruction(c *core.Chunk, name string, offset int) int {
 
@@ -244,13 +259,12 @@ func byteInstruction(c *core.Chunk, name string, offset int) int {
 	return offset + 2
 }
 
-func threeByteInstruction(c *core.Chunk, name string, offset int) int {
+func twoByteInstruction(c *core.Chunk, name string, offset int) int {
 
 	byte1 := uint32(c.Code[offset+1])
 	byte2 := uint32(c.Code[offset+2])
-	byte3 := uint32(c.Code[offset+3])
 
-	core.LogFmt(core.TRACE, "%-16s %04d %04d %04d\n", name, byte1, byte2, byte3)
+	core.LogFmt(core.TRACE, "%-16s %04d %04d \n", name, byte1, byte2)
 	return offset + 4
 }
 

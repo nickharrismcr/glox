@@ -1201,7 +1201,9 @@ func (p *Parser) endCompiler() *core.FunctionObject {
 
 	p.emitReturn()
 
-	p.peepHoleOptimise()
+	if !core.DebugSkipPeephole {
+		p.peepHoleOptimise()
+	}
 
 	function := p.currentCompiler.function
 	s := ""
@@ -2106,33 +2108,70 @@ func (p *Parser) peepHoleOptimise() {
 	chunk := p.currentChunk()
 	code := chunk.Code
 
-	// Need at least 5 bytes for the pattern: GET_LOCAL(2) + GET_LOCAL(2) + ADD_NUMERIC(1)
-	if len(code) < 5 {
+	// Need at least 8 bytes for the pattern: GET_LOCAL(2) + GET_LOCAL(2) + ADD_NUMERIC(1) + SET_LOCAL(2) + POP(1)
+	if len(code) < 8 {
 		return
 	}
 
 	i := 0
 
-	for i <= len(code)-5 {
-		// Look for pattern: GET_LOCAL A, GET_LOCAL B, ADD_NUMERIC
+	for i <= len(code)-8 {
+		// Look for pattern: GET_LOCAL X, GET_LOCAL Y, ADD_NUMERIC, SET LOCAL X, POP
 		if code[i] == core.OP_GET_LOCAL &&
 			code[i+2] == core.OP_GET_LOCAL &&
-			code[i+4] == core.OP_ADD_NUMERIC {
-
+			code[i+4] == core.OP_ADD_NUMERIC &&
+			code[i+5] == core.OP_SET_LOCAL &&
+			code[i+7] == core.OP_POP {
 			// Extract slot indices
-			slotA := code[i+1]
-			slotB := code[i+3]
+			slotX := code[i+1]
+			slotY := code[i+3]
+			slotSet := code[i+6]
 
-			// Replace with optimizable superinstruction
-			code[i] = core.OP_ADD_NN
-			code[i+1] = slotA
-			code[i+2] = slotB
-			code[i+3] = 0 // specialization flag (0 = not specialized yet)
-			code[i+4] = core.OP_NOOP
-			i += 5
-		} else {
-			i++
+			// Verify it's increment pattern: x = x + y
+			if slotX == slotSet {
+				// Replace entire sequence with increment instruction
+				code[i] = core.OP_ADD_NN // x += y
+				code[i+1] = slotX        // destination slot
+				code[i+2] = slotY        // increment slot
+				code[i+3] = core.OP_NOOP
+				code[i+4] = core.OP_NOOP
+				code[i+5] = core.OP_NOOP
+				code[i+6] = core.OP_NOOP
+				code[i+7] = core.OP_NOOP
+
+				i += 8
+				continue
+			}
 		}
+		// Pattern: GET_LOCAL X, CONSTANT Y, ADD_NUMERIC, SET_LOCAL X, POP
+		if code[i] == core.OP_GET_LOCAL &&
+			code[i+2] == core.OP_CONSTANT &&
+			code[i+4] == core.OP_ADD_NUMERIC &&
+			code[i+5] == core.OP_SET_LOCAL &&
+			code[i+7] == core.OP_POP {
+
+			slotVar := code[i+1]    // variable slot
+			constIndex := code[i+3] // constant index
+			slotSet := code[i+6]    // set destination
+
+			// Verify it's increment pattern: x = x + constant
+			if slotVar == slotSet {
+				// Replace with increment-by-constant instruction
+				code[i] = core.OP_INCR_CONST_N // x += constant
+				code[i+1] = slotVar            // variable slot
+				code[i+2] = constIndex         // constant index
+				code[i+3] = core.OP_NOOP
+				code[i+4] = core.OP_NOOP
+				code[i+5] = core.OP_NOOP
+				code[i+6] = core.OP_NOOP
+				code[i+7] = core.OP_NOOP
+
+				i += 8
+				continue
+			}
+		}
+		i++
+
 	}
 
 }

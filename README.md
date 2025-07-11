@@ -87,6 +87,7 @@ foreach (i in range(0, 10, 2)) {
 }
 ```
 - `range(start, end, step)` returns an efficient integer iterator.
+- `foreach ( a in range... )` is much faster than the equivalent for loop.s
 
 ---
 
@@ -487,6 +488,7 @@ My implementation is slow compared to CLox. Fibonacci benchmark averages 1s, CLo
 
 The VM :
 - does a lot of function calls in place of C macros, not all of which get inlined
+    - TODO : manual inlining of calls.
 - has a large switch/case inner loop which Go compiler doesn't optimise at all well ( no computed goto ) 
 - uses slow map for globals - function code runs much quicker 
 - uses interface{} for objects ( values are tagged union structs for speed but contain a pointer for objects ) 
@@ -494,6 +496,7 @@ The VM :
 
 but hey-ho. This is a learning exercise, the Go code is probably not very ideomatic. The fun is in figuring out how to get the interpreter to do new language stuff.
   
-There are some optimisations such as string interning to allow integer hash keys for method lookup, singleton NIL_VALUE, inlined functions in the main run loop.  
+There are some optimisations such as string interning to allow integer hash keys for method lookup, singleton NIL_VALUE, inlined functions in the main run loop. 
+A peephole optimiser compile step replaces two get locals and a numeric add with a single superinstruction OP_ADD_NN working directly on the stack, with a further runtime specialisation opcode rewrite to int+int or float+float if possible. This is good for for loops. 
 
-Instrumented runs on my I7 PC show between 6 and 14M bytecode instructions per second are being handled,  and the VM is capable of 60 FPS when updating and drawing thousands of 3D primitives with lox-implemented physics. There's scope for implementing a physics system in native either with homegrown code or a lib.
+Instrumented runs on my I7 PC show up to 70M bytecode instructions per second are being handled,  and the VM is capable of 60 FPS when updating and drawing thousands of 3D primitives. 

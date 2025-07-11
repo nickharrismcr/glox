@@ -661,74 +661,131 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			goto End
 
 		case core.OP_ADD_NN:
-			// optimised addition for numbers: byte 1, byte 2, numbers to add ( byte 3 = specialisation flag (TODO))
-			slotA := vm.readByte()
-			slotB := vm.readByte()
-			specialisation := vm.readByte() // currently unused, reserved for future optimisations
-			_ = specialisation              // silence unused warning
-
-			valA := vm.stack[frame.Slots+int(slotA)]
-			valB := vm.stack[frame.Slots+int(slotB)]
+			// optimised x = x + y for numbers: byte 1, byte 2, numbers to add
+			slotDest := vm.readByte()
+			slotInc := vm.readByte()
+			base := frame.Slots
+			valA := vm.stack[base+int(slotDest)]
+			valB := vm.stack[base+int(slotInc)]
 
 			// Immediate specializations for common cases
 			if valA.Type == core.VAL_INT && valB.Type == core.VAL_INT {
 				// Patch and execute specialized version immediately
-				vm.patchInstruction(frame.Ip-4, core.OP_ADD_II)
-				vm.stack[vm.stackTop] = core.MakeIntValue(valA.Int+valB.Int, false)
-				vm.stackTop++
+				vm.patchInstruction(frame.Ip-3, core.OP_ADD_II)
+				vm.stack[base+int(slotDest)] = core.MakeIntValue(valA.Int+valB.Int, false)
 				continue
 			}
 			if valA.Type == core.VAL_FLOAT && valB.Type == core.VAL_FLOAT {
 				// Patch and execute specialized version immediately
-				vm.patchInstruction(frame.Ip-4, core.OP_ADD_FF)
-				vm.stack[vm.stackTop] = core.MakeFloatValue(valA.Float+valB.Float, false)
-				vm.stackTop++
+				vm.patchInstruction(frame.Ip-3, core.OP_ADD_FF)
+				vm.stack[base+int(slotDest)] = core.MakeFloatValue(valA.Float+valB.Float, false)
 				continue
 			}
 
 			switch valB.Type {
 			case core.VAL_INT:
-				vm.stack[vm.stackTop] = core.MakeFloatValue(valA.Float+float64(valB.Int), false)
-				vm.stackTop++
-				continue
+				vm.stack[base+int(slotDest)] = core.MakeFloatValue(valA.Float+float64(valB.Int), false)
 
 			case core.VAL_FLOAT:
-				vm.stack[vm.stackTop] = core.MakeFloatValue(float64(valA.Int)+valB.Float, false)
-				vm.stackTop++
-				continue
+				vm.stack[base+int(slotDest)] = core.MakeFloatValue(float64(valA.Int)+valB.Float, false)
 			}
 
 		case core.OP_ADD_II:
-			// optimised addition for local ints: byte 1, byte 2, numbers to add ( byte 3 = specialisation flag (TODO))
+			// optimised x=x+y for local ints: byte 1, byte 2, numbers to add
 
 			frm := vm.frames[vm.frameCount-1]
-			frm.Ip += 3
-			slotA := vm.currCode[frm.Ip-3]
-			slotB := vm.currCode[frm.Ip-2]
-			//next is unused byte, reserved for future optimisations
+			frm.Ip += 2
+			slotDest := vm.currCode[frm.Ip-2]
+			slotInc := vm.currCode[frm.Ip-1]
+
 			base := frm.Slots
-			vm.stack[vm.stackTop] = core.Value{
+			vm.stack[base+int(slotDest)] = core.Value{
 				Type:  core.VAL_INT,
-				Int:   vm.stack[base+int(slotA)].Int + vm.stack[base+int(slotB)].Int,
+				Int:   vm.stack[base+int(slotDest)].Int + vm.stack[base+int(slotInc)].Int,
 				Immut: false,
 			}
-			vm.stackTop++
 			continue
 
 		case core.OP_ADD_FF:
-			// optimised addition for local floats: byte 1, byte 2, numbers to add ( byte 3 = specialisation flag (TODO))
+			// optimised x=x+y for local floats: byte 1, byte 2, numbers to add
 			frm := vm.frames[vm.frameCount-1]
-			frm.Ip += 3
-			slotA := vm.currCode[frm.Ip-3]
-			slotB := vm.currCode[frm.Ip-2]
-			//next is unused byte, reserved for future optimisations
+			frm.Ip += 2
+			slotDest := vm.currCode[frm.Ip-2]
+			slotInc := vm.currCode[frm.Ip-1]
+
 			base := frm.Slots
-			vm.stack[vm.stackTop] = core.Value{
+			vm.stack[base+int(slotDest)] = core.Value{
 				Type:  core.VAL_FLOAT,
-				Float: vm.stack[base+int(slotA)].Float + vm.stack[base+int(slotB)].Float,
+				Float: vm.stack[base+int(slotDest)].Float + vm.stack[base+int(slotInc)].Float,
 				Immut: false,
 			}
-			vm.stackTop++
+			continue
+
+		case core.OP_INCR_CONST_N:
+			// optimised x = x + c for numbers: byte 1 local, byte 2 constant, numbers to add
+			slotDest := vm.readByte()
+			slotIncIndex := vm.readByte()
+			base := frame.Slots
+			valDest := vm.stack[base+int(slotDest)]
+			constVal := frame.Closure.Function.Chunk.Constants[slotIncIndex]
+
+			core.LogFmt(core.DEBUG, "incr_const_n: dest tpe %d, const type %d\n", valDest.Type, constVal.Type)
+			// Immediate specializations for common cases
+			if valDest.Type == core.VAL_INT && constVal.Type == core.VAL_INT {
+				// Patch and execute specialized version immediately
+				vm.patchInstruction(frame.Ip-3, core.OP_INCR_CONST_I)
+				vm.stack[base+int(slotDest)] = core.MakeIntValue(valDest.Int+constVal.Int, false)
+				continue
+			}
+			if valDest.Type == core.VAL_FLOAT && constVal.Type == core.VAL_FLOAT {
+				// Patch and execute specialized version immediately
+				vm.patchInstruction(frame.Ip-3, core.OP_INCR_CONST_F)
+				vm.stack[base+int(slotDest)] = core.MakeFloatValue(valDest.Float+constVal.Float, false)
+				continue
+			}
+
+			switch constVal.Type {
+			case core.VAL_INT:
+				vm.stack[base+int(slotDest)] = core.MakeFloatValue(valDest.Float+float64(constVal.Int), false)
+
+			case core.VAL_FLOAT:
+				vm.stack[base+int(slotDest)] = core.MakeFloatValue(float64(valDest.Int)+constVal.Float, false)
+			}
+
+		case core.OP_INCR_CONST_I:
+			// optimised x=x+c for local ints: byte 1 local, byte 2 constant, numbers to add
+			frm := vm.frames[vm.frameCount-1]
+			frm.Ip += 2
+			slotVar := vm.currCode[frm.Ip-2]
+			constIndex := vm.currCode[frm.Ip-1]
+
+			base := frm.Slots
+			constVal := frm.Closure.Function.Chunk.Constants[constIndex].Int
+
+			// Direct integer increment
+			vm.stack[base+int(slotVar)] = core.Value{
+				Type:  core.VAL_INT,
+				Int:   vm.stack[base+int(slotVar)].Int + constVal,
+				Immut: false,
+			}
+			continue
+
+		case core.OP_INCR_CONST_F:
+			// optimised x=x+c for local ints: byte 1 local, byte 2 constant, numbers to add
+			frm := vm.frames[vm.frameCount-1]
+			frm.Ip += 2
+			slotVar := vm.currCode[frm.Ip-2]
+			constIndex := vm.currCode[frm.Ip-1]
+
+			base := frm.Slots
+			constVal := frm.Closure.Function.Chunk.Constants[constIndex].Float
+
+			// Direct integer increment
+			vm.stack[base+int(slotVar)] = core.Value{
+				Type:  core.VAL_FLOAT,
+				Float: vm.stack[base+int(slotVar)].Float + constVal,
+				Immut: false,
+			}
 			continue
 
 		case core.OP_CONCAT:
