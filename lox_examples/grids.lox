@@ -105,9 +105,9 @@ class Grid {
         this.cy = y
         this.size = size
     }
-    draw(win,alpha) {
+    draw(win,alpha,scale) {
         n = this.cells 
-        sz=this.size
+        sz=this.size*scale 
         a=this.angle
         sp = float(sz) / n
         for (var i = -n; i <= n; i = i + 1) {
@@ -147,7 +147,7 @@ func enumerate(list) {
  
 
 idx=0 
-gridcount=100
+gridcount=200
  
 posx = random.integer(300, width-300)
 posy = random.integer(300, height-300)
@@ -175,15 +175,20 @@ while (!win.should_close()) {
     grids[0].update(x.get(), y.get(), size.get())
     shift.update()
     grids[0].col = shift.get()
-    grids[0].draw(win,255)
+    grids[0].draw(win,255,1.0)
 
+    
     for (var i = len(grids) - 1; i > 0; i = i - 1) {
         if (grids[i-1] == false) {
             continue
         }
         grids[i] = grids[i-1].copy()
         if ( i%6==0) {
-            grids[i].draw(win,255*((1-float(i)/len(grids))))
+            lg=float(len(grids))  
+            fi=float(i+1)
+            scale = 1.0 - (float(i) / float(len(grids)))*0.7
+            grids[i].draw(win,255*((1-float(i)/len(grids))),scale)
+
         }
         
     }
