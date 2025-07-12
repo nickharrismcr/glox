@@ -93,7 +93,7 @@ time_value = 0.0               // Time in seconds (for shader uniforms)
 pulse_center = vec3(0, 5, 0)   // Moving center point for pulse shader effect
 
 // ========== PHYSICS SIMULATION CONSTANTS ==========
-const GRID_SIZE = 20.0         // Half-size of simulation boundary (40x40x40 total space)
+const GRID_SIZE = 30.0         // Half-size of simulation boundary (40x40x40 total space)
 const BOUNCE_DAMPING = 0.9     // Energy loss factor on boundary collisions (0.9 = 10% loss)
 const SHAPES=100               // Number of physics objects (reduced for shader performance)
 const FORCE=0.9                // Explosion force multiplier (affects blast radius impact)

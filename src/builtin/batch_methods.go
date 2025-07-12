@@ -86,7 +86,7 @@ func RegisterAllBatchMethods(o *BatchObject) {
 		},
 	})
 
-	o.RegisterMethod("add_textured_cube", &core.BuiltInObject{
+	/* 	o.RegisterMethod("add_textured_cube", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 4 {
 				vm.RunTimeError("add_textured_cube() expects 4 arguments (texture, position, size, base_color)")
@@ -140,7 +140,7 @@ func RegisterAllBatchMethods(o *BatchObject) {
 			index := o.Value.AddTexturedCube(rayTexture, pos, size, color)
 			return core.MakeIntValue(index, true)
 		},
-	})
+	}) */
 
 	o.RegisterMethod("set_position", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
@@ -314,40 +314,6 @@ func RegisterAllBatchMethods(o *BatchObject) {
 				return core.NIL_VALUE
 			}
 			o.Value.Draw()
-			return core.NIL_VALUE
-		},
-	})
-
-	o.RegisterMethod("draw_culled", &core.BuiltInObject{
-		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-			if argCount != 2 {
-				vm.RunTimeError("draw_culled() expects 2 arguments (camera_position, max_distance)")
-				return core.NIL_VALUE
-			}
-
-			camPosVal := vm.Stack(arg_stackptr)
-			maxDistVal := vm.Stack(arg_stackptr + 1)
-
-			if camPosVal.Type != core.VAL_VEC3 {
-				vm.RunTimeError("draw_culled() first argument must be a vec3 (camera position)")
-				return core.NIL_VALUE
-			}
-			if !maxDistVal.IsFloat() && !maxDistVal.IsInt() {
-				vm.RunTimeError("draw_culled() second argument must be a number (max distance)")
-				return core.NIL_VALUE
-			}
-
-			camPos := camPosVal.Obj.(*core.Vec3Object)
-			maxDistance := float32(maxDistVal.AsFloat())
-
-			// Convert to raylib Vector3
-			rlCamPos := rl.Vector3{
-				X: float32(camPos.X),
-				Y: float32(camPos.Y),
-				Z: float32(camPos.Z),
-			}
-
-			o.Value.DrawWithCulling(rlCamPos, maxDistance)
 			return core.NIL_VALUE
 		},
 	})

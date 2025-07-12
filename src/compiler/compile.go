@@ -703,8 +703,8 @@ func (p *Parser) constDeclaration() {
 func (p *Parser) isVariableDefined(name Token, lexeme string) bool {
 
 	var rv bool
-	// core.LogFmt(core.DEBUG, "Checking if variable %s is defined\n", lexeme)
-	// core.LogFmt(core.DEBUG, "p.globals: %v\n", p.globals)
+	// core.LogFmtLn(core.DEBUG, "Checking if variable %s is defined\n", lexeme)
+	// core.LogFmtLn(core.DEBUG, "p.globals: %v\n", p.globals)
 	if p.currentCompiler.scopeDepth > 0 {
 		rv = !(p.resolveLocal(p.currentCompiler, name) == -1 &&
 			p.resolveUpvalue(p.currentCompiler, name) == -1 &&
@@ -712,7 +712,7 @@ func (p *Parser) isVariableDefined(name Token, lexeme string) bool {
 	} else {
 		rv = p.checkGlobals(lexeme)
 	}
-	// core.LogFmt(core.DEBUG, "Variable %s is defined: %t\n", lexeme, rv)
+	// core.LogFmtLn(core.DEBUG, "Variable %s is defined: %t\n", lexeme, rv)
 	return rv
 }
 
@@ -729,7 +729,7 @@ func (p *Parser) handleImplicitDeclaration() bool {
 			if p.currentCompiler.scopeDepth > 0 {
 				p.varDeclaration(false)
 			} else {
-				// core.LogFmt(core.DEBUG, "Implicitly declaring global variable %s\n", l)
+				// core.LogFmtLn(core.DEBUG, "Implicitly declaring global variable %s\n", l)
 				p.globals[l] = true
 				p.varDeclaration(false)
 			}
@@ -785,7 +785,7 @@ func (p *Parser) handleUnpackingAssignment() bool {
 			for i := len(names) - 1; i >= 0; i-- {
 				name := names[i]
 				if !p.isVariableDefined(name.Token, name.Str) {
-					//core.LogFmt(core.DEBUG, "Implicitly declaring global variable %s\n", name.Str)
+					//core.LogFmtLn(core.DEBUG, "Implicitly declaring global variable %s\n", name.Str)
 					p.globals[name.Str] = true
 					arg := int(p.identifierConstant(name.Token))
 					p.emitBytes(core.OP_SET_GLOBAL, uint8(arg))
@@ -1435,7 +1435,7 @@ func (p *Parser) defineVariable(global uint8) {
 		return
 	}
 	x := p.currentChunk().Constants[global].AsString().Get()
-	// core.LogFmt(core.DEBUG, "Adding global identifier '%s'\n", x)
+	// core.LogFmtLn(core.DEBUG, "Adding global identifier '%s'\n", x)
 	p.globals[x] = true
 	p.emitBytes(core.OP_DEFINE_GLOBAL, global)
 }
@@ -1569,7 +1569,7 @@ func (p *Parser) checkGlobals(name string) bool {
 // Used by namedVariable to generate the correct variable access bytecode.
 func (p *Parser) resolveVariable(name Token) (int, uint8, uint8) {
 
-	// core.LogFmt(core.DEBUG, "namedVariable %s canAssign %t\n", name.Lexeme(), canAssign)
+	// core.LogFmtLn(core.DEBUG, "namedVariable %s canAssign %t\n", name.Lexeme(), canAssign)
 	var getOp, setOp uint8
 	a := name.Lexeme()
 	_ = a
@@ -1577,17 +1577,17 @@ func (p *Parser) resolveVariable(name Token) (int, uint8, uint8) {
 	if arg != -1 {
 		getOp = core.OP_GET_LOCAL
 		setOp = core.OP_SET_LOCAL
-		// core.LogFmt(core.DEBUG, "Local variable %s found at index %d\n", name.Lexeme(), arg)
+		// core.LogFmtLn(core.DEBUG, "Local variable %s found at index %d\n", name.Lexeme(), arg)
 	} else if arg = p.resolveUpvalue(p.currentCompiler, name); arg != -1 {
 		getOp = core.OP_GET_UPVALUE
 		setOp = core.OP_SET_UPVALUE
-		// core.LogFmt(core.DEBUG, "Upvalue %s found at index %d\n", name.Lexeme(), arg)
+		// core.LogFmtLn(core.DEBUG, "Upvalue %s found at index %d\n", name.Lexeme(), arg)
 
 	} else {
 		arg = int(p.identifierConstant(name))
 		getOp = core.OP_GET_GLOBAL
 		setOp = core.OP_SET_GLOBAL
-		// core.LogFmt(core.DEBUG, "Global variable %s found at index %d\n", name.Lexeme(), arg)
+		// core.LogFmtLn(core.DEBUG, "Global variable %s found at index %d\n", name.Lexeme(), arg)
 	}
 	return arg, getOp, setOp
 }
@@ -1656,7 +1656,7 @@ func (p *Parser) addLocal(name Token) {
 	}
 	p.currentCompiler.locals[p.currentCompiler.localCount] = local
 	p.currentCompiler.localCount += 1
-	// core.LogFmt(core.DEBUG, "Added local %d %s at depth %d\n", p.currentCompiler.localCount, local.lexeme, p.currentCompiler.scopeDepth)
+	// core.LogFmtLn(core.DEBUG, "Added local %d %s at depth %d\n", p.currentCompiler.localCount, local.lexeme, p.currentCompiler.scopeDepth)
 
 	// add local var info to current chunk for debugging
 	chunk := p.currentChunk()

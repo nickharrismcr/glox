@@ -36,6 +36,7 @@ const (
 	NATIVE_CAMERA
 	NATIVE_SHADER
 	NATIVE_BATCH
+	NATIVE_BATCH_INSTANCED
 )
 
 type Object interface {

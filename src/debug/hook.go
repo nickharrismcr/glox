@@ -26,7 +26,7 @@ func TraceOpcode(vm VMInspector) {
 	}
 	core.Log(core.TRACE, "-----------------------------------------------------")
 
-	core.LogFmt(core.TRACE, "Stack:\n%s\n", vm.ShowStack())
+	core.LogFmtLn(core.TRACE, "Stack:\n%s\n", vm.ShowStack())
 	chunk := vm.Frame().Closure.Function.Chunk
 	function := vm.Frame().Closure.Function
 	name := function.Name.Get()
@@ -35,7 +35,7 @@ func TraceOpcode(vm VMInspector) {
 	depth := vm.Frame().Depth
 	offset := vm.Frame().Ip
 	if core.DebugShowGlobals {
-		core.LogFmt(core.TRACE, "Globals:\n%s\n", ShowGlobals(function.Environment))
+		core.LogFmtLn(core.TRACE, "Globals:\n%s\n", ShowGlobals(function.Environment))
 	}
 	_ = DisassembleInstruction(chunk, script, name, depth, code, offset)
 
@@ -44,13 +44,13 @@ func TraceOpcode(vm VMInspector) {
 func TraceCall(vm VMInspector, data any) {
 
 	closure := data.(*core.ClosureObject)
-	core.LogFmt(core.TRACE, "Call: %s\n", closure.Function.Name.Get())
+	core.LogFmtLn(core.TRACE, "Call: %s\n", closure.Function.Name.Get())
 }
 
 func TraceReturn(vm VMInspector, data any) {
 
 	value := data.(core.Value)
-	core.LogFmt(core.TRACE, "Return: %s\n", value.String())
+	core.LogFmtLn(core.TRACE, "Return: %s\n", value.String())
 
 }
 

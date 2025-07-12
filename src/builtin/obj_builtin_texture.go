@@ -88,7 +88,7 @@ type TextureObject struct {
 func MakeTextureObject(image *rl.Image, frames int, startFrame int, endFrame int) *TextureObject {
 
 	texture := rl.LoadTextureFromImage(image)
-	core.LogFmt(core.INFO, "Loaded texture from image")
+	core.LogFmtLn(core.INFO, "Loaded texture from image")
 
 	w := texture.Width
 	h := texture.Height
@@ -110,6 +110,32 @@ func MakeTextureObject(image *rl.Image, frames int, startFrame int, endFrame int
 		x1 := float32((f - 1) * data.FrameWidth)
 		rect := rl.NewRectangle(x1, 0, float32(data.FrameWidth), float32(h))
 		data.FrameRects = append(data.FrameRects, rect)
+	}
+
+	rv := &TextureObject{
+		BuiltInObject: core.BuiltInObject{},
+		Data:          data,
+	}
+
+	return rv
+}
+
+func MakeTextureObjectFromTexture2D(texture rl.Texture2D) *TextureObject {
+	w := texture.Width
+	h := texture.Height
+	data := Texture{
+		Width:         int32(w),
+		Height:        int32(h),
+		Image:         nil, // No image available
+		Texture:       texture,
+		Frames:        1, // Default to 1 frame
+		FrameWidth:    int(w),
+		StartFrame:    1,
+		EndFrame:      1,
+		FrameRects:    []rl.Rectangle{rl.NewRectangle(0, 0, float32(w), float32(h))},
+		TicksPerFrame: 0, // Default to no animation
+		Ticks:         0, // Ticks since last frame change
+		CurrentFrame:  0, // Start at the first frame
 	}
 
 	rv := &TextureObject{

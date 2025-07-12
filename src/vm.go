@@ -108,7 +108,7 @@ func (vm *VM) SetArgs(args []string) {
 // It handles the full lifecycle from compilation through execution, including module import preparation.
 func (vm *VM) Interpret(source string, module string) (InterpretResult, string) {
 
-	core.LogFmt(core.INFO, "VM %s starting execution\n", vm.script)
+	core.LogFmtLn(core.INFO, "VM %s starting execution\n", vm.script)
 	vm.source = source
 	function := compiler.Compile(vm.script, source, module)
 	if function == nil {
@@ -128,7 +128,7 @@ func (vm *VM) Interpret(source string, module string) (InterpretResult, string) 
 	vm.stackTop++
 	vm.call(closure, 0)
 	res, val := vm.run(RUN_TO_COMPLETION)
-	core.LogFmt(core.INFO, "VM %s finished execution\n", vm.script)
+	core.LogFmtLn(core.INFO, "VM %s finished execution\n", vm.script)
 
 	return res, val.String()
 }
@@ -729,7 +729,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			valDest := vm.stack[base+int(slotDest)]
 			constVal := frame.Closure.Function.Chunk.Constants[slotIncIndex]
 
-			core.LogFmt(core.DEBUG, "incr_const_n: dest tpe %d, const type %d\n", valDest.Type, constVal.Type)
+			core.LogFmtLn(core.DEBUG, "incr_const_n: dest tpe %d, const type %d\n", valDest.Type, constVal.Type)
 			// Immediate specializations for common cases
 			if valDest.Type == core.VAL_INT && constVal.Type == core.VAL_INT {
 				// Patch and execute specialized version immediately
@@ -1339,7 +1339,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 			status := vm.importModule(module, alias)
 			if status != INTERPRET_OK {
-				core.LogFmt(core.ERROR, "Failed to import module '%s' as '%s'.\n", module, alias)
+				core.LogFmtLn(core.ERROR, "Failed to import module '%s' as '%s'.\n", module, alias)
 				return status, core.NIL_VALUE
 			}
 
@@ -1708,11 +1708,11 @@ func (vm *VM) callValue(callee core.Value, argCount int) bool {
 
 	if callee.Type == core.VAL_OBJ {
 		if callee.IsClosureObject() {
-			//core.LogFmt(core.DEBUG, "Calling closure %s with %d args", callee.Obj.String(), argCount)
+			//core.LogFmtLn(core.DEBUG, "Calling closure %s with %d args", callee.Obj.String(), argCount)
 			return vm.call(core.GetClosureObjectValue(callee), argCount)
 
 		} else if callee.IsBuiltInObject() {
-			//core.LogFmt(core.DEBUG, "Calling built-in function %s with %d args", callee.Obj.String(), argCount)
+			//core.LogFmtLn(core.DEBUG, "Calling built-in function %s with %d args", callee.Obj.String(), argCount)
 			nf := callee.AsBuiltIn()
 			res := nf.Function(argCount, vm.stackTop-argCount, vm)
 			vm.stackTop -= argCount + 1
@@ -2179,7 +2179,7 @@ func (vm *VM) sourceLine(script string, line int) string {
 // importModule loads and executes a Lox module, adding it to the current environment.
 func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 
-	core.LogFmt(core.DEBUG, "Importing module %s as %s\n", moduleName, alias)
+	core.LogFmtLn(core.DEBUG, "Importing module %s as %s\n", moduleName, alias)
 	searchPath := getPath(vm.Args(), moduleName) + ".lox"
 	bytes, err := os.ReadFile(searchPath)
 	if err != nil {
@@ -2189,7 +2189,7 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 	module, ok := globalModules[moduleName]
 	if ok {
 		// module already loaded, just add to the current environment
-		core.LogFmt(core.DEBUG, "Module %s already loaded, adding to current environment.\n", moduleName)
+		core.LogFmtLn(core.DEBUG, "Module %s already loaded, adding to current environment.\n", moduleName)
 		v := core.MakeObjectValue(module, false)
 		vm.frame().Closure.Function.Environment.SetVar(core.InternName(alias), v)
 		return INTERPRET_OK
@@ -2203,20 +2203,20 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 	// see if we can load lxc bytecode file for the module.
 	// if so run it
 	if loadedChunk, newEnv, ok := loadLxc(searchPath); ok {
-		core.LogFmt(core.DEBUG, "Loaded module %s from bytecode.\n", moduleName)
+		core.LogFmtLn(core.DEBUG, "Loaded module %s from bytecode.\n", moduleName)
 		loadedChunk.Filename = moduleName
 		subvm.callLoadedChunk(moduleName, newEnv, loadedChunk)
-		core.LogFmt(core.DEBUG, "Completed run of module %s.\n", moduleName)
+		core.LogFmtLn(core.DEBUG, "Completed run of module %s.\n", moduleName)
 	} else {
 		// if not, load the module source, compile it and run it
-		core.LogFmt(core.DEBUG, "Compiling module %s from source.\n", moduleName)
+		core.LogFmtLn(core.DEBUG, "Compiling module %s from source.\n", moduleName)
 		res, _ := subvm.Interpret(string(bytes), moduleName)
 		if res != INTERPRET_OK {
 			return res
 		}
-		core.LogFmt(core.DEBUG, "Completed compile/run of module %s.\n", moduleName)
+		core.LogFmtLn(core.DEBUG, "Completed compile/run of module %s.\n", moduleName)
 	}
-	core.LogFmt(core.DEBUG, "Created module object for %s.\n", moduleName)
+	core.LogFmtLn(core.DEBUG, "Created module object for %s.\n", moduleName)
 	subfn := subvm.frames[0].Closure.Function
 	mo := core.MakeModuleObject(moduleName, *subfn.Environment)
 
@@ -2224,7 +2224,7 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 	v := core.MakeObjectValue(mo, false)
 	debug.TraceDumpValue("Dump:", v)
 	vm.frame().Closure.Function.Environment.SetVar(core.InternName(alias), v)
-	core.LogFmt(core.DEBUG, "ImportModule %s as %s return\n", moduleName, alias)
+	core.LogFmtLn(core.DEBUG, "ImportModule %s as %s return\n", moduleName, alias)
 	return INTERPRET_OK
 }
 

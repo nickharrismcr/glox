@@ -170,16 +170,14 @@ var sphere_batch = batch(win.BATCH_SPHERE);  // Create a batch for spheres
 // Add primitives to batch (returns index for later modification)
 var index = cube_batch.add(position, size, color);
 
-// For textured cubes, use add_textured_cube method
-var textured_batch = batch(win.BATCH_TEXTURED_CUBE);
-var textured_index = textured_batch.add_textured_cube(texture, position, size, base_color);
-
+ 
 // Examples:
 var idx1 = cube_batch.add(vec3(0, 0, 0), vec3(1, 1, 1), vec4(255, 0, 0, 255));
 var idx2 = sphere_batch.add(vec3(2, 0, 0), vec3(0.5, 0.5, 0.5), vec4(0, 255, 0, 255));
  
 
 // Textured cube example:
+var textured_batch = batch(win.BATCH_TEXTURED_CUBE);
 var my_texture = texture(image("myimage.png"), 1, 1, 1);
 var idx4 = textured_batch.add_textured_cube(my_texture, vec3(0, 0, 0), vec3(1, 1, 1), vec4(255, 255, 255, 255));
 ```

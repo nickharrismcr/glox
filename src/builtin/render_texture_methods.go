@@ -21,6 +21,13 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 		},
 	})
 
+	// method to get the texture from the render texture
+	o.RegisterMethod("get_texture", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			return core.MakeObjectValue(MakeTextureObjectFromTexture2D(o.Data.RenderTexture.Texture), true)
+		},
+	})
+
 	o.RegisterMethod("clear", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			v4val := vm.Stack(arg_stackptr)

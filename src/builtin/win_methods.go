@@ -693,6 +693,42 @@ func RegisterAllWindowMethods(o *WindowObject) {
 		},
 	})
 
+	// Texture mode methods
+	o.RegisterMethod("begin_texture_mode", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 1 {
+				vm.RunTimeError("begin_texture_mode expects 1 argument (render_texture)")
+				return core.NIL_VALUE
+			}
+			renderTextureVal := vm.Stack(arg_stackptr)
+			if renderTextureVal.Type != core.VAL_OBJ {
+				vm.RunTimeError("Expected render texture object")
+				return core.NIL_VALUE
+			}
+
+			// Type assertion to check if it's a RenderTextureObject
+			renderTextureObj, ok := renderTextureVal.Obj.(*RenderTextureObject)
+			if !ok {
+				vm.RunTimeError("Expected render texture object")
+				return core.NIL_VALUE
+			}
+
+			rl.BeginTextureMode(renderTextureObj.Data.RenderTexture)
+			return core.NIL_VALUE
+		},
+	})
+
+	o.RegisterMethod("end_texture_mode", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 0 {
+				vm.RunTimeError("end_texture_mode expects no arguments")
+				return core.NIL_VALUE
+			}
+			rl.EndTextureMode()
+			return core.NIL_VALUE
+		},
+	})
+
 	// Shader mode methods
 	o.RegisterMethod("begin_shader_mode", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
@@ -1125,10 +1161,7 @@ func RegisterAllWindowConstants(o *WindowObject) {
 	// Batch type constants
 	o.RegisterConstant("BATCH_CUBE", core.MakeIntValue(int(BATCH_CUBE), true))
 	o.RegisterConstant("BATCH_SPHERE", core.MakeIntValue(int(BATCH_SPHERE), true))
-	o.RegisterConstant("BATCH_PLANE", core.MakeIntValue(int(BATCH_PLANE), true))
-	o.RegisterConstant("BATCH_TRIANGLE", core.MakeIntValue(int(BATCH_TRIANGLE), true))
 	o.RegisterConstant("BATCH_TRIANGLE3", core.MakeIntValue(int(BATCH_TRIANGLE3), true))
-	o.RegisterConstant("BATCH_TEXTURED_CUBE", core.MakeIntValue(int(BATCH_TEXTURED_CUBE), true))
 
 	// Blend mode constants
 	o.RegisterConstant("BLEND_ADD", core.MakeIntValue(int(rl.BlendAdditive), true))

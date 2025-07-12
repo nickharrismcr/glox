@@ -15,7 +15,7 @@ import (
 
 func defineBuiltIn(vm *VM, module string, name string, fn core.BuiltInFn) {
 	// Add the built-in to the specified module namespace (environment)
-	// For now, assume 'sys' is the only module, so use vm.builtIns as before
+
 	if module != "" {
 		addBuiltInModuleFunction(vm, module, name, fn)
 	} else {
@@ -25,14 +25,14 @@ func defineBuiltIn(vm *VM, module string, name string, fn core.BuiltInFn) {
 }
 
 func DefineBuiltIns(vm *VM) {
-	// Only create the sys module, do not inject it into the global environment
+
 	makeBuiltInModule(vm, "sys")
 	makeBuiltInModule(vm, "inspect")
 	makeBuiltInModule(vm, "colour_utils")
 	makeBuiltInModule(vm, "os")
 
 	core.Log(core.INFO, "Defining built-in functions")
-	// native functions
+
 	defineBuiltIn(vm, "sys", "args", argsBuiltIn)
 	defineBuiltIn(vm, "sys", "clock", clockBuiltIn)
 	defineBuiltIn(vm, "", "type", typeBuiltIn)
@@ -66,6 +66,7 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "", "shader", builtin.ShaderBuiltIn)
 	defineBuiltIn(vm, "", "camera", builtin.CameraBuiltIn)
 	defineBuiltIn(vm, "", "batch", builtin.BatchBuiltIn)
+	defineBuiltIn(vm, "", "batch_instanced", builtin.BatchInstancedBuiltIn)
 	defineBuiltIn(vm, "", "float_array", builtin.FloatArrayBuiltin)
 	defineBuiltIn(vm, "inspect", "dump_frame", dumpFrameBuiltIn)
 	defineBuiltIn(vm, "inspect", "get_frame", getFrameBuiltIn)
@@ -1087,7 +1088,7 @@ func makeBuiltInModule(vm *VM, moduleName string) {
 	env := core.NewEnvironment(moduleName)
 	module := core.MakeModuleObject(moduleName, *env)
 	vm.builtInModules[core.InternName(moduleName)] = module
-	core.LogFmt(core.INFO, "Created built-in module %s", moduleName)
+	core.LogFmtLn(core.INFO, "Created built-in module %s", moduleName)
 
 }
 
