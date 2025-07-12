@@ -4,46 +4,67 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-const MAX_INSTANCES = 100000
+const MAX_INSTANCES = 100
 
+// holds camera, mesh, shader, and material needed for instance rendering
+type Context struct {
+	camera   rl.Camera
+	cube     rl.Mesh
+	shader   rl.Shader
+	material rl.Material
+}
+
+func MakeContext() *Context {
+	return &Context{
+		camera: rl.Camera{
+			Position:   rl.NewVector3(-100.0, 30.0, -50.0),
+			Target:     rl.NewVector3(0.0, 0.0, 0.0),
+			Up:         rl.NewVector3(0.0, 1.0, 0.0),
+			Fovy:       45.0,
+			Projection: rl.CameraPerspective,
+		},
+		cube:     rl.GenMeshCube(10.0, 10.0, 10.0),
+		shader:   rl.LoadShader("glsl330/base_lighting_instanced.vs", "glsl330/lighting.fs"),
+		material: rl.LoadMaterialDefault(),
+	}
+}
+
+// Instance represents a single instance of a mesh with its transformation matrices
 type Instance struct {
 	translation rl.Matrix
 	rotation    rl.Matrix
 }
 
-func makeInstance(x, y, z, axisX, axisY, axisZ, angle float32) Instance {
+func MakeInstance(x, y, z, axisX, axisY, axisZ, angle float32) Instance {
 	translation := rl.MatrixTranslate(x, y, z)
 	axis := rl.Vector3Normalize(rl.NewVector3(axisX, axisY, axisZ))
 	rotation := rl.MatrixRotate(axis, angle*rl.Deg2rad)
 	return Instance{translation: translation, rotation: rotation}
 }
 
-func main() {
-	var (
-		screenWidth   = int32(800) // Framebuffer width
-		screenHeight  = int32(450) // Framebuffer height
-		fps           = 60         // Frames per second
-		framesCounter = 0
-		instances     = make([]*Instance, 0, MAX_INSTANCES) // Slice to hold instances
-		transforms    = make([]rl.Matrix, MAX_INSTANCES)    // Transform matrices for instancing
-	)
+// Instances holds a list of Instance objects
+type Instances struct {
+	list []*Instance
+}
 
-	rl.SetConfigFlags(rl.FlagMsaa4xHint) // Enable Multi Sampling Anti Aliasing 4x (if available)
-	rl.InitWindow(screenWidth, screenHeight, "raylib [shaders] example - mesh instancing")
+func MakeInstances() *Instances {
+	return &Instances{list: make([]*Instance, 0, MAX_INSTANCES)}
+}
 
-	// Define the camera to look into our 3d world
-	camera := rl.Camera{
-		Position:   rl.NewVector3(-100.0, 30.0, -50.0),
-		Target:     rl.NewVector3(0.0, 0.0, 0.0),
-		Up:         rl.NewVector3(0.0, 1.0, 0.0),
-		Fovy:       45.0,
-		Projection: rl.CameraPerspective,
+func (i *Instances) AddInstance(x, y, z, axisX, axisY, axisZ, angle float32) {
+	instance := MakeInstance(x, y, z, axisX, axisY, axisZ, angle)
+	i.list = append(i.list, &instance)
+}
+
+func (i *Instances) GetInstance(index int) *Instance {
+	if index < 0 || index >= len(i.list) {
+		return nil // Handle out of bounds
 	}
+	return i.list[index]
+}
 
-	cube := rl.GenMeshCube(1.0, 1.0, 1.0)
-
-	// Scatter random cubes around
-	for i := 0; i < MAX_INSTANCES; i++ {
+func AddRandomCubes(instances *Instances, count int) {
+	for i := 0; i < count; i++ {
 		x := float32(rl.GetRandomValue(-50, 50))
 		y := float32(rl.GetRandomValue(-50, 50))
 		z := float32(rl.GetRandomValue(-50, 50))
@@ -54,23 +75,42 @@ func main() {
 		axis := rl.Vector3Normalize(rl.NewVector3(xa, ya, za))
 		angle := float32(rl.GetRandomValue(0, 10)) * rl.Deg2rad
 
-		instance := makeInstance(x, y, z, axis.X, axis.Y, axis.Z, angle)
-		instances = append(instances, &instance)
+		instances.AddInstance(x, y, z, axis.X, axis.Y, axis.Z, angle)
 	}
+}
 
-	shader := rl.LoadShader("glsl330/base_lighting_instanced.vs", "glsl330/lighting.fs")
-	shader.UpdateLocation(rl.ShaderLocMatrixMvp, rl.GetShaderLocation(shader, "mvp"))
-	shader.UpdateLocation(rl.ShaderLocVectorView, rl.GetShaderLocation(shader, "viewPos"))
-	shader.UpdateLocation(rl.ShaderLocMatrixModel, rl.GetShaderLocationAttrib(shader, "instanceTransform"))
+func main() {
+	var (
+		screenWidth   = int32(800) // Framebuffer width
+		screenHeight  = int32(450) // Framebuffer height
+		fps           = 60         // Frames per second
+		framesCounter = 0
+		instances     = MakeInstances()
+		transforms    = make([]rl.Matrix, MAX_INSTANCES) // Transform matrices for instancing
+	)
+
+	rl.SetConfigFlags(rl.FlagMsaa4xHint) // Enable Multi Sampling Anti Aliasing 4x (if available)
+	rl.InitWindow(screenWidth, screenHeight, "raylib [shaders] example - mesh instancing")
+
+	context := MakeContext()
+
+	// Scatter random cubes around
+	AddRandomCubes(instances, MAX_INSTANCES)
+
+	mvp := rl.GetShaderLocation(context.shader, "mvp")
+	viewPos := rl.GetShaderLocation(context.shader, "viewPos")
+	transform := rl.GetShaderLocationAttrib(context.shader, "instanceTransform")
+	context.shader.UpdateLocation(rl.ShaderLocMatrixMvp, mvp)
+	context.shader.UpdateLocation(rl.ShaderLocVectorView, viewPos)
+	context.shader.UpdateLocation(rl.ShaderLocMatrixModel, transform)
 
 	// ambient light level
-	ambientLoc := rl.GetShaderLocation(shader, "ambient")
-	rl.SetShaderValue(shader, ambientLoc, []float32{0.2, 0.2, 0.2, 1.0}, rl.ShaderUniformVec4)
-	NewLight(LightTypeDirectional, rl.NewVector3(50.0, 50.0, 0.0), rl.Vector3Zero(), rl.White, shader)
+	ambientLoc := rl.GetShaderLocation(context.shader, "ambient")
+	rl.SetShaderValue(context.shader, ambientLoc, []float32{10.0, 10.0, 10.0, 10.0}, rl.ShaderUniformVec4)
+	//NewLight(LightTypeDirectional, rl.NewVector3(50.0, 50.0, 0.0), rl.Vector3Zero(), rl.White, context.shader)
 
-	material := rl.LoadMaterialDefault()
-	material.Shader = shader
-	mmap := material.GetMap(rl.MapDiffuse)
+	context.material.Shader = context.shader
+	mmap := context.material.GetMap(rl.MapDiffuse)
 	mmap.Color = rl.Red
 
 	rl.SetTargetFPS(int32(fps))
@@ -81,17 +121,17 @@ func main() {
 		framesCounter++
 
 		// Update the light shader with the camera view position
-		rl.SetShaderValue(shader, shader.GetLocation(rl.ShaderLocVectorView),
-			[]float32{camera.Position.X, camera.Position.Y, camera.Position.Z}, rl.ShaderUniformVec3)
+		rl.SetShaderValue(context.shader, context.shader.GetLocation(rl.ShaderLocVectorView),
+			[]float32{context.camera.Position.X, context.camera.Position.Y, context.camera.Position.Z}, rl.ShaderUniformVec3)
 
 		// Apply per-instance transformations
 		for i := 0; i < MAX_INSTANCES; i++ {
-			instance := instances[i]
+			instance := instances.GetInstance(i)
 			transforms[i] = rl.MatrixMultiply(instance.rotation, instance.translation)
 			//transforms[i] = rl.MatrixMultiply(transforms[i], rl.MatrixTranslate(0.0, y, 0.0))
 		}
 
-		rl.UpdateCamera(&camera, rl.CameraOrbital) // Update camera with orbital camera mode
+		rl.UpdateCamera(&context.camera, rl.CameraOrbital) // Update camera with orbital camera mode
 		//----------------------------------------------------------------------------------
 
 		// Draw
@@ -100,9 +140,9 @@ func main() {
 		{
 			rl.ClearBackground(rl.RayWhite)
 
-			rl.BeginMode3D(camera)
+			rl.BeginMode3D(context.camera)
 			//rl.DrawMesh(cube, material, rl.MatrixIdentity())
-			rl.DrawMeshInstanced(cube, material, transforms, MAX_INSTANCES)
+			rl.DrawMeshInstanced(context.cube, context.material, transforms, MAX_INSTANCES)
 			rl.EndMode3D()
 
 			rl.DrawFPS(10, 10)
