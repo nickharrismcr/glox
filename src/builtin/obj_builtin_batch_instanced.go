@@ -66,11 +66,11 @@ func BatchInstancedBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) co
 		return core.NIL_VALUE
 	}
 	cubeSizeVal := vm.Stack(arg_stackptr + 1)
-	if !cubeSizeVal.IsInt() {
-		vm.RunTimeError("BatchInstancedBuiltIn: expected int for cubeSize, got %s", cubeSizeVal.String())
+	if !cubeSizeVal.IsFloat() {
+		vm.RunTimeError("BatchInstancedBuiltIn: expected float for cubeSize, got %s", cubeSizeVal.String())
 		return core.NIL_VALUE
 	}
-	cubeSize := cubeSizeVal.Int
+	cubeSize := cubeSizeVal.Float
 
 	maxInstancesVal := vm.Stack(arg_stackptr + 2)
 	if !maxInstancesVal.IsInt() {
@@ -79,12 +79,12 @@ func BatchInstancedBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) co
 	}
 	maxInstances := maxInstancesVal.Int
 
-	batchObj := MakeInstancedBatchInstancedObject(to.Data.Texture, cubeSize, maxInstances)
+	batchObj := MakeInstancedBatchInstancedObject(to.Data.Texture, float32(cubeSize), maxInstances)
 	RegisterAllBatchInstancedMethods(batchObj)
 	return core.MakeObjectValue(batchObj, true)
 }
 
-func MakeInstancedBatchInstancedObject(texture rl.Texture2D, cubeSize int, maxInstances int) *BatchInstancedObject {
+func MakeInstancedBatchInstancedObject(texture rl.Texture2D, cubeSize float32, maxInstances int) *BatchInstancedObject {
 	if shaderInstanced == nil {
 		shaderInstanced = InitShader()
 	}

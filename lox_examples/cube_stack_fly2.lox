@@ -3,20 +3,21 @@
 import math
 import random
 import colour_utils
+import colour
 
 const FULLSCREEN = true 
 
 // Configuration constants
-const CITY_SIZE = 45     // Reduced from 45 for better performance
-const STACK_SPACING = 7.0    
+const CITY_SIZE = 85    // Reduced from 45 for better performance
+const STACK_SPACING = 5
 const MIN_STACK_HEIGHT = 3
 const MAX_STACK_HEIGHT = 20
-const BASE_CUBE_SIZE = 2.50
-const CAMERA_HEIGHT = 8.0
-const MAX_CAMERA_SPEED = 0.4  
+const BASE_CUBE_SIZE = 2
+const CAMERA_HEIGHT = 2.0
+const MAX_CAMERA_SPEED = 0.1  
 const CAMERA_ACCELERATION = MAX_CAMERA_SPEED / 30.0  // Much gentler acceleration
 const ROTATION_SPEED = 0.01  // Much slower rotation for smoothness
-const DRAW_DISTANCE = 500.0
+const MAX_COLOURS = 30
 
 // Direction constants
 const NORTH = 0
@@ -56,6 +57,36 @@ DIRECTION_NAMES= {
 }
 
 
+// Add this function before the main program
+func createColoredTextures(count) {
+    textures = []
+    
+    for (i = 0; i < count; i = i + 1) {
+        // Create render texture
+        texture = render_texture(32, 32)
+        
+        // Generate vibrant colors using HSV 
+        hue = random.integer(0, 360)        // Full hue range (0-360 degrees)
+        saturation = 1.0 // High saturation for vibrant colors
+        value = random.float(0.3, 0.7)     // High brightness for vivid colors
+        
+        // Convert HSV to RGB (returns vec4 with 0-255 values directly)
+        rectColor = colour.hsv_to_rgb(hue, saturation, value)
+ 
+        
+        // Clear with dark background
+        texture.clear(colour.BLACK)
+        // Add vibrant colored rectangle
+        rectSize = random.integer(6, 20)  // Randomize rectangle size for variety
+        rectX = (32-rectSize)/2
+        rectY = (32-rectSize)/2
+        texture.rectangle(rectX, rectY, rectSize, rectSize, rectColor)
+ 
+        textures.append(texture)
+    }
+    return textures
+}
+
 func even(value) {
     value = int(value)
     // Ensure value is even
@@ -65,145 +96,82 @@ func even(value) {
     return value
 }
 
-// Cube class - represents a single colored cube
-class Cube {
-    init(x, y, z, size, color) {
-        this.position = vec3(x, y, z)
-        this.size = size
-        this.color = color
-        this.index = -1  // Will store batch index when added
-        this.faceSize = nil  // Custom size for face cubes
+class Batches {
+    init() {
+        this.batches = []
+        this.sizes = []
+        this.textures = createColoredTextures(MAX_COLOURS)  // Create textures for cubes
+        foreach (i in range(0,MAX_COLOURS)){
+            size = BASE_CUBE_SIZE * random.float(0.5, 1.5)  // Randomize size slightly
+            batch = batch_instanced(this.textures[i].get_texture(),size,10000)  // Create batch for each texture
+            this.batches.append(batch)
+            this.sizes.append(size)  // Store size for each batch
+        }
+    }
+    get_random_batch() {
+        // Get a random batch and its size
+        which = random.integer(0, MAX_COLOURS - 1)  // Randomly select a texture
+        return (this.batches[which], this.sizes[which])  // Return batch and size
     }
     
-    add_to_batch(batch) {
-        // Use custom face size if available, otherwise use default cube size
-        dimensions = this.faceSize
-        if (dimensions == nil) {
-            dimensions = vec3(this.size, this.size, this.size)
+
+    make_transforms() {
+        // Generate transforms for all batches
+        foreach (batch in this.batches) {
+            batch.make_transforms()
         }
-        
-        // Add the cube to the batch with its color and dimensions
-        this.index = batch.add(this.position, dimensions, this.color)
-        return this.index
+    }   
+ 
+    draw(cam){
+        // Draw all batches
+        foreach (batch in this.batches) {
+         
+            batch.draw(cam)
+        }
     }
 }
 
-// CompositeCube class - a building block with colored window faces
-class CompositeCube {    
-    init(position, size) {
-        this.position = position
-        this.cubes = []
-        this.size = size  // Use provided size instead of generating random
-        
-        // Create main black cube
-        blackColor = vec4(0, 0, 0, 255)
-        mainCube = Cube(position.x, position.y, position.z, this.size, blackColor)
-        this.cubes.append(mainCube)
-          // Create colored face overlays matching original design
-        halfSize = this.size / 2
-        faceOffset = 0.2 // Increased from 0.15 to reduce z-fighting
-        faceSize = this.size * random.float(0.2,0.7)  // 80% of cube size like original
-        faceThickness = 0.35  // Increased thickness for better visibility
-        
-        // Front face (positive Z)
-        frontPos = vec3(position.x, position.y, position.z + halfSize + faceOffset)
-        frontColor = this.generateFaceColor()
-        frontCube = Cube(frontPos.x, frontPos.y, frontPos.z, faceThickness, frontColor)
-        frontCube.faceSize = vec3(faceSize, faceSize, faceThickness)  // Store custom size
-        this.cubes.append(frontCube)
-        
-        // Back face (negative Z)
-        backPos = vec3(position.x, position.y, position.z - halfSize - faceOffset)
-        backColor = this.generateFaceColor()
-        backCube = Cube(backPos.x, backPos.y, backPos.z, faceThickness, backColor)
-        backCube.faceSize = vec3(faceSize, faceSize, faceThickness)
-        this.cubes.append(backCube)
-        
-        // Right face (positive X)
-        rightPos = vec3(position.x + halfSize + faceOffset, position.y, position.z)
-        rightColor = this.generateFaceColor()
-        rightCube = Cube(rightPos.x, rightPos.y, rightPos.z, faceThickness, rightColor)
-        rightCube.faceSize = vec3(faceThickness, faceSize, faceSize)
-        this.cubes.append(rightCube)
-        
-        // Left face (negative X)
-        leftPos = vec3(position.x - halfSize - faceOffset, position.y, position.z)
-        leftColor = this.generateFaceColor()
-        leftCube = Cube(leftPos.x, leftPos.y, leftPos.z, faceThickness, leftColor)
-        leftCube.faceSize = vec3(faceThickness, faceSize, faceSize)
-        this.cubes.append(leftCube)
+// Cube class - represents a single textured cube instance
+class Cube {
+    init(position) {
+        this.position = vec3(position.x, position.y, position.z)
     }
-    generateFaceColor() {
-        // Create more muted, varied colors by reducing saturation and adjusting brightness
-        hue = random.integer(0, 360)
-        saturation = random.float(0.1, 1.0)  // Reduced from 0.6-0.9 for less primary colors
-        brightness = random.float(0.1, 0.7) // Reduced from 0.7-1.0 for more muted tones
-        
-        // Add some bias towards certain hue ranges for more pleasing color schemes
-        bias = random.integer(0, 3)
-        if (bias == 0) {
-            // Blues and teals
-            hue = random.integer(180, 240)
-        } else {
-            if (bias == 1) {
-                // Warm colors (reds, oranges, yellows)
-                hue = random.integer(0, 60)
-            } else {
-                if (bias == 2) {
-                    // Greens
-                    hue = random.integer(90, 150)
-                }
-                // else use the random hue (bias == 3)
-            }
-        }
-        
-        return colour_utils.hsv_to_rgb(hue, saturation, brightness)
-    }
-    
-    
-    add_to_batch(batch) {
-        // Add all cubes in this composite to the batch
-        foreach (cube in this.cubes) {
-            cube.add_to_batch(batch)
-        }
+    add_to_batch(batch) {  
+       
+        return batch.add(this.position, vec3(1,0,0), 0.0 )
     }
 }
+
+ 
 
 // Stack class - a vertical stack of CompositeCubes
 class Stack {
-    init(gridX, gridZ, height) {
+    init(gridX, gridZ, height, cubeBatches) {
         this.gridX = gridX
         this.gridZ = gridZ
         this.height = height
-        this.compositeCubes = []
+ 
           // Convert grid position to world coordinates
         halfSize = int(CITY_SIZE / 2)
         worldX = (gridX - halfSize) * STACK_SPACING
         worldZ = (gridZ - halfSize) * STACK_SPACING
-        
         currentY = 0.0        // Create stack of composite cubes
         for (i = 0; i < height; i = i + 1) {
-            cubeSize = BASE_CUBE_SIZE + random.float(-0.2, 0.4)  // Variation per level
+            
+            batch,cubeSize=cubeBatches.get_random_batch()  // Get a random batch from the cubeBatches 
             position = vec3(worldX, currentY + cubeSize/2, worldZ)  // Center cube at currentY + half size
-            
-            compositeCube = CompositeCube(position, cubeSize)  // Pass the size
-            this.compositeCubes.append(compositeCube)
-            
+            cube = Cube(position)
+            cube.add_to_batch(batch)  // Add cube to batch and get size
             currentY = currentY + cubeSize  // Use actual cube size to eliminate gaps
         }
     }
     
-    add_to_batch(batch) {
-        // Add all composite cubes to the batch
-        foreach (compositeCube in this.compositeCubes) {
-            compositeCube.add_to_batch(batch)
-        }
-    }
+ 
 }
 
 // Grid class - manages the city layout with stacks and streets
 class Grid {
-    init(size) {
+    init(size, cubeBatch) {
         this.size = size
         this.stacks = []
           // Create stacks only at odd grid positions (leaving even positions as streets)
@@ -211,19 +179,14 @@ class Grid {
             for (z = 1; z < size; z = z + 2) {  // Odd positions only
                
                 stackHeight = random.integer(MIN_STACK_HEIGHT, MAX_STACK_HEIGHT + 1)
-                stack = Stack(x, z, stackHeight)
+                stack = Stack(x, z, stackHeight,cubeBatch)  // Create stack at (x, z) with random height
                 this.stacks.append(stack)
             }
         }        
         stackCount = len(this.stacks)
     }
     
-    add_to_batch(batch) {
-        // Add all stacks to the batch
-        foreach (stack in this.stacks) {
-            stack.add_to_batch(batch)
-        }
-    }
+    
       // Check if a grid position is valid for camera movement (even positions = streets)
     isValidStreetPosition(gridX, gridZ) {
         validX = (gridX >= 0 and gridX < this.size)
@@ -423,12 +386,11 @@ class Controller {
 
     getCamera() {
         // Simple camera pointing in current direction with gentler vertical movement
-        camY = 2* CAMERA_HEIGHT + math.sin(this.frameCount * 0.005) * 3.0  // Slower, smaller oscillation
+        camY = 8* CAMERA_HEIGHT + math.sin(this.frameCount * 0.005) * 8.0  // Slower, smaller oscillation
         
         lookDistance = 25.0
         lookX = this.worldPos.x + math.sin(this.currentAngle) * lookDistance
         lookZ = this.worldPos.z + math.cos(this.currentAngle) * lookDistance
-
         camPos = vec3(this.worldPos.x, camY, this.worldPos.z)
         lookPos = vec3(lookX, camY, lookZ)
         upVec = vec3(0, 1, 0)
@@ -437,79 +399,65 @@ class Controller {
 }
 
 // MAIN PROGRAM
-
-// Initialize application first
+ 
 win = window(WIDTH, HEIGHT)
 win.init()
-win.set_target_fps(30)   
+win.set_target_fps(60)   
 if (FULLSCREEN) {
     win.toggle_fullscreen()
 }  
 
+sw = win.get_screen_width()
+sh = win.get_screen_height() 
+// Create framebuffer for rendering
+fb = render_texture(int(sw), int(sh))   
+fb.clear(colour.BLACK)   
+
 // Load shader after window initialization (OpenGL context must exist)
 rainbow_shader = shader("lox_examples/shaders/rainbow.vs", "lox_examples/shaders/rainbow.fs")
-time_location = -1      // Rainbow shader time uniform (for color animation)
- 
-if (rainbow_shader.is_valid()) {
-    time_location = rainbow_shader.get_location("time")
-} else {
-    print("Warning: Rainbow shader failed to load. Using default rendering.")
-}
- 
-// Create batch for all cubes
-cubeBatch = batch(win.BATCH_CUBE)
-
+time_location = rainbow_shader.get_location("time")
+  
+cubeBatch = Batches() 
 // Create grid and populate with stacks
-grid = Grid(CITY_SIZE)
-grid.add_to_batch(cubeBatch)
+grid = Grid(CITY_SIZE,cubeBatch)   
+cubeBatch.make_transforms()  // Prepare batch instance transforms 
 
-// Create controller
 controller = Controller(grid)
 
 // Main render loop
 frameCounter = 0
+groundSize = CITY_SIZE * STACK_SPACING * 2
+
+
+
 while (!win.should_close()) {
+
     frameCounter = frameCounter + 1
-    rainbow_shader.set_value_float(time_location, float(frameCounter) * 0.01)  // Update shader time uniform
+    rainbow_shader.set_value_float(time_location, float(frameCounter) * 0.001)  // Update shader time uniform
+    
     win.begin()
+    win.begin_texture_mode(fb)
     win.begin_blend_mode(win.BLEND_ALPHA)
-    win.clear(vec4(10, 10, 50, 255))  // Dark red background like original
-    
-    
-    // Update controller
+    win.clear(vec4(10, 10, 50, 255))   
+
     controller.update()
-    
-    // Get camera from controller
     cam = controller.getCamera()
     
-    // Begin 3D rendering
     win.begin_3d(cam)
-    win.begin_shader_mode(rainbow_shader)
-    // Draw ground plane
-    groundSize = CITY_SIZE * STACK_SPACING * 1.2
     win.plane(vec3(0, -1, 0), vec2(groundSize, groundSize), vec4(15, 15, 15, 255))
     
-    // Draw all cubes with frustum culling for optimal performance
-    // Extract camera position and forward direction from controller
-    cameraPos = vec3(controller.worldPos.x, 2 * CAMERA_HEIGHT, controller.worldPos.z)
-    
-    // Calculate camera forward direction from current angle
-    cameraForward = vec3(math.sin(controller.currentAngle), 0, math.cos(controller.currentAngle))
-    
-     
-    fovDegrees = 75.0    // Field of view in degrees (wider than typical 60 for better visibility)
-    
-    cubeBatch.draw_frustum_culled(cameraPos, cameraForward, DRAW_DISTANCE, fovDegrees)
-   
-    
+    cubeBatch.draw(cam)
     win.end_3d()
-    win.end_shader_mode()
+    win.end_texture_mode() 
 
-    // draw grid pos x and y text 
+    win.begin_shader_mode(rainbow_shader)  // Use rainbow shader for rendering
+    win.draw_render_texture(fb,0,0,colour.WHITE)  // Draw framebuffer to window
     gridPosText = format("Target Grid Position: (%d, %d)", int(controller.targetGridPos.x), int(controller.targetGridPos.z))
     win.text(gridPosText, 10, 40, 18, vec4(255, 255, 255, 255))
     distanceText = format("Distance to Target: %d", int(controller.distanceToTarget))
     win.text(distanceText, 10, 65, 18, vec4(255, 255, 255, 255))
+    win.end_shader_mode()
+     
     win.end()
 }
 
