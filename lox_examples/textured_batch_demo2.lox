@@ -47,13 +47,18 @@ camera_target = vec3(0, 0, 0)
 
 // Create single texture for all cubes
 texture1 = render_texture(32, 32)
-texture1.clear(vec4(30, 0, 0, 255))  // Gray background
+texture1.clear(vec4(0, 0, 0, 255))  // Gray background
 texture1.rectangle(4, 4, 24, 24, vec4(255, 200, 0, 255))  // Orange square
 texture1.circle_fill(16, 16, 8, vec4(255, 0, 0, 255))  // Red circle
 
- 
+texture2 = render_texture(32, 32)
+texture2.clear(vec4(0, 0, 0, 255))  // Gray background
+texture2.rectangle(4, 4, 24, 24, vec4(0, 200, 0, 255))  // Green square
+texture2.circle_fill(16, 16, 8, vec4(0, 0, 255, 255))  // Blue circle
+
 batch_size=30000
-textured_batch = batch_instanced(texture1.get_texture(),cube_size,batch_size)
+textured_batch1 = batch_instanced(texture1.get_texture(),float(cube_size),batch_size)
+textured_batch2 = batch_instanced(texture2.get_texture(),float(cube_size),batch_size)
 
 grid_offset = -(grid_size * cube_spacing) / 2.0
 
@@ -69,14 +74,18 @@ for (x = 0; x < grid_size; x+=1) {
                 grid_offset + y * cube_spacing,
                 grid_offset + z * cube_spacing
             )
-            textured_batch.add(vec3(pos.x, pos.y, pos.z), rot, 0.0)
+            if ((x + y + z) % 2 == 0) {
+                textured_batch1.add(vec3(pos.x, pos.y, pos.z), rot, 0.0)
+            } else {
+                textured_batch2.add(vec3(pos.x, pos.y, pos.z), rot, 0.0)
+            }
         }
     }
 }
-textured_batch.make_transforms()
+textured_batch1.make_transforms()
+textured_batch2.make_transforms()
 
-print format("Created textured cube batch with %d cubes", textured_batch.count())
-
+ 
 // Performance tracking
 frame_count = 0
  
@@ -93,10 +102,11 @@ while (!win.should_close()) {
     
     win.begin()
     win.begin_texture_mode(screen_buffer)
-    win.clear(vec4(20, 25, 35, 255))  // Dark blue background
+    win.clear(colour.WHITE)
     
     win.begin_3d(cam) 
-    textured_batch.draw(cam)
+    textured_batch1.draw(cam)
+    textured_batch2.draw(cam)
     win.end_3d()
     win.end_texture_mode()
     

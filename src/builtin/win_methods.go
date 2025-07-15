@@ -12,7 +12,7 @@ func RegisterAllWindowMethods(o *WindowObject) {
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			rl.SetTraceLogLevel(rl.LogNone)
 			// Set config flags before window initialization
-			rl.SetConfigFlags(rl.FlagVsyncHint | rl.FlagMsaa4xHint)
+			rl.SetConfigFlags(rl.FlagVsyncHint)
 			rl.InitWindow(o.Value.Width, o.Value.Height, "GLOX")
 			rl.SetTargetFPS(60)
 			return core.NIL_VALUE

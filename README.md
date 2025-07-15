@@ -196,7 +196,8 @@ while (!win.should_close()) {
 win.close()
 ```
 - Supports drawing 2d and 3d primitives, camera, images, textures, shaders, and reading keyboard state.
-- **NEW: High-performance batch rendering** - Render thousands of objects with a single draw call using `batch()` objects. Perfect for particle systems, large scenes, and real-time simulations.
+- **Batch rendering** - Render thousands of objects with a single draw call using `batch()` objects. For particle systems, large scenes, and real-time simulations.
+`batch_instanced()` uses mesh instancing to draw 100k+ textured cubes in one call. 
 
 ##### Batch Rendering Example
 ```lox
@@ -216,7 +217,7 @@ win.begin_3d(camera);
 cube_batch.draw();  // Replaces 1000 individual draw calls
 win.end_3d();
 ```
-**Performance:** 10,000+ animated cubes running at 60+ FPS!
+ 
 
 ---
 
@@ -459,7 +460,7 @@ os.mkdir("new_directory")
 current_dir = os.getcwd()
 os.chdir("../parent")
 ```
-- Comprehensive file system operations: `listdir`, `mkdir`, `rmdir`, `remove`
+- File system operations: `listdir`, `mkdir`, `rmdir`, `remove`
 - Path testing: `exists`, `isdir`, `isfile`
 - Path manipulation: `join`, `dirname`, `basename`, `splitext`
 - Working directory: `getcwd`, `chdir`
@@ -494,9 +495,9 @@ The VM :
 - uses interface{} for objects ( values are tagged union structs for speed but contain a pointer for objects ) 
 - GC is handled by the Go runtime. 
 
-but hey-ho. This is a learning exercise, the Go code is probably not very ideomatic. The fun is in figuring out how to get the interpreter to do new language stuff.
+ 
   
 There are some optimisations such as string interning to allow integer hash keys for method lookup, singleton NIL_VALUE, inlined functions in the main run loop. 
-A peephole optimiser compile step replaces two get locals and a numeric add with a single superinstruction OP_ADD_NN working directly on the stack, with a further runtime specialisation opcode rewrite to int+int or float+float if possible. This is good for for loops. 
+A peephole optimiser compile step replaces two get locals and a numeric add with a single superinstruction OP_ADD_NN working directly on the stack, with a further runtime specialisation opcode rewrite to int+int or float+float if possible. This is good for for loops. A similar optimisation is done for local = local + constant.  
 
-Instrumented runs on my I7 PC show up to 70M bytecode instructions per second are being handled,  and the VM is capable of 60 FPS when updating and drawing thousands of 3D primitives. 
+ 

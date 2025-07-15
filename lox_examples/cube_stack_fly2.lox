@@ -8,8 +8,8 @@ import colour
 const FULLSCREEN = true 
 
 // Configuration constants
-const CITY_SIZE = 85    // Reduced from 45 for better performance
-const STACK_SPACING = 5
+const CITY_SIZE = 105    // Reduced from 45 for better performance
+const STACK_SPACING = 4
 const MIN_STACK_HEIGHT = 3
 const MAX_STACK_HEIGHT = 20
 const BASE_CUBE_SIZE = 2
@@ -17,7 +17,7 @@ const CAMERA_HEIGHT = 2.0
 const MAX_CAMERA_SPEED = 0.1  
 const CAMERA_ACCELERATION = MAX_CAMERA_SPEED / 30.0  // Much gentler acceleration
 const ROTATION_SPEED = 0.01  // Much slower rotation for smoothness
-const MAX_COLOURS = 30
+const MAX_COLOURS = 50
 
 // Direction constants
 const NORTH = 0
@@ -64,23 +64,33 @@ func createColoredTextures(count) {
     for (i = 0; i < count; i = i + 1) {
         // Create render texture
         texture = render_texture(32, 32)
-        
-        // Generate vibrant colors using HSV 
-        hue = random.integer(0, 360)        // Full hue range (0-360 degrees)
-        saturation = 1.0 // High saturation for vibrant colors
-        value = random.float(0.3, 0.7)     // High brightness for vivid colors
-        
-        // Convert HSV to RGB (returns vec4 with 0-255 values directly)
-        rectColor = colour.hsv_to_rgb(hue, saturation, value)
- 
-        
+      
         // Clear with dark background
         texture.clear(colour.BLACK)
-        // Add vibrant colored rectangle
-        rectSize = random.integer(6, 20)  // Randomize rectangle size for variety
-        rectX = (32-rectSize)/2
-        rectY = (32-rectSize)/2
-        texture.rectangle(rectX, rectY, rectSize, rectSize, rectColor)
+        
+        // Create four smaller rectangles with different hues but same saturation/value
+        rectSize = 8  // Fixed size for each small rectangle
+        spacing = 4   // Space between rectangles
+        
+        // Calculate positions for 2x2 grid of rectangles
+        positions = [
+            vec2(spacing, spacing),                    // Top-left
+            vec2(32 - spacing - rectSize, spacing),   // Top-right
+            vec2(spacing, 32 - spacing - rectSize),   // Bottom-left
+            vec2(32 - spacing - rectSize, 32 - spacing - rectSize)  // Bottom-right
+        ]
+        
+        // Draw four rectangles with different random hues
+        foreach (pos in positions) {
+            hue = random.integer(0, 360)  // Different random hue for each rectangle
+              
+            // Generate base HSV values
+            saturation = random.float(0.9,1.0)  // High saturation for vibrant colors
+            value = random.float(0.01, 0.4)     // Random brightness for variety
+        
+            rectColor = colour.hsv_to_rgb(hue, saturation, value)
+            texture.rectangle(int(pos.x), int(pos.y), rectSize, rectSize, rectColor)
+        }
  
         textures.append(texture)
     }
@@ -433,7 +443,7 @@ groundSize = CITY_SIZE * STACK_SPACING * 2
 while (!win.should_close()) {
 
     frameCounter = frameCounter + 1
-    rainbow_shader.set_value_float(time_location, float(frameCounter) * 0.001)  // Update shader time uniform
+    rainbow_shader.set_value_float(time_location, float(frameCounter) * 0.003)  // Update shader time uniform
     
     win.begin()
     win.begin_texture_mode(fb)
