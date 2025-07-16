@@ -1,57 +1,11 @@
-// ============================================================================
-// GLOX : ENHANCED 3D PHYSICS DEMO WITH REAL-TIME SHADER EFFECTS
-// ============================================================================
-// This comprehensive 3D physics demo showcases advanced real-time graphics
-// programming techniques including physics simulation, shader programming,
-// and performance optimization within the GLox environment.
-//
-// CORE SYSTEMS:
-// 1. PHYSICS SIMULATION
-//    - Newtonian mechanics with gravity, velocity, and acceleration
-//    - Elastic collision detection and response using sphere-sphere intersection
-//    - Boundary collision handling with energy damping
-//    - Explosion mechanics with radial force propagation
-//
-// 2. SHADER SYSTEM ARCHITECTURE
-//    - Multi-shader rendering pipeline with three effect types:
-//      * Normal: Basic flat-shaded colored spheres (no lighting model)
-//      * Rainbow: Time-based HSV color cycling using sine wave modulation
-//      * Pulse: Distance-based energy rings emanating from animated center
-//    - Real-time uniform parameter updates for shader animation
-//    - GPU resource management with proper loading/unloading
-//
-// 3. VISUAL EFFECTS
-//    - Pseudo-shadow system using elliptical ground projections
-//    - Explosion flash effects with floor illumination
-//    - Pre-explosion warning system (object expansion and color change)
-//    - Orbital camera movement for dynamic scene presentation
-//
-// 4. PERFORMANCE OPTIMIZATIONS
-//    - Spatial culling for collision detection (early exit conditions)
-//    - Reduced collision frequency (every 3rd frame) for improved framerate
-//    - Efficient squared-distance calculations avoiding expensive math.math.math.sqrt()
-//    - Object lifecycle management with automatic cleanup
-//
-// TECHNICAL DETAILS:
-// - Coordinate System: Right-handed 3D with Y-up convention
-// - Physics Integration: Euler method with fixed timestep
-// - Collision Response: Impulse-based with restitution coefficient
-// - Shader Pipeline: Custom GLSL vertex/fragment shader pairs with uniform parameters
-// - Rendering: Raylib's built-in sphere rendering with optional shader override
-// - Memory Management: Automatic object pooling and GPU resource cleanup
-//
-// CONTROLS:
-// - Simulation runs automatically with orbital camera movement
-// - Objects explode after random intervals (5-220 seconds)
-// - Explosions propagate force to nearby objects within blast radius
-// ============================================================================
+// 3D Physics Simulation with Shaders
 
 import colour  as col
 import random
 import math
 
 // Initialize graphics system
-win = window(1,1)
+win = window(800,600)
 win.init()
 win.toggle_fullscreen()
 
@@ -93,10 +47,10 @@ time_value = 0.0               // Time in seconds (for shader uniforms)
 pulse_center = vec3(0, 5, 0)   // Moving center point for pulse shader effect
 
 // ========== PHYSICS SIMULATION CONSTANTS ==========
-const GRID_SIZE = 30.0         // Half-size of simulation boundary (40x40x40 total space)
+const GRID_SIZE = 30.0         // Half-size of simulation boundary (60x60x60 total space)
 const BOUNCE_DAMPING = 0.9     // Energy loss factor on boundary collisions (0.9 = 10% loss)
-const SHAPES=100               // Number of physics objects (reduced for shader performance)
-const FORCE=0.9                // Explosion force multiplier (affects blast radius impact)
+const SHAPES = 250              
+const FORCE = 0.9              // Explosion force multiplier (affects blast radius impact)
 const DISTANCE = 40.0          // Camera orbital distance from center
 
 // ========== MOVING OBJECT CLASS ==========
@@ -109,7 +63,7 @@ class MovingObject {
         this.color = color                                  // RGBA color (vec4)
         this.shape_type = shape_type                        // Shape identifier (currently "sphere")
         this.radius = this.get_collision_radius()          // Collision radius for physics
-        this.explosion_timer = random.float(500, 13200)    // Random countdown to explosion (5-220 seconds)
+        this.explosion_timer = random.float(200,3000)    // Random countdown to explosion 
         this.is_exploded = false                            // Explosion state flag
         this.shader_type = int(random.float(0, 3))          // Shader assignment: 0=normal, 1=rainbow, 2=pulse
     }
@@ -290,12 +244,12 @@ class MovingObject {
             win.sphere(this.pos, expanded_size, col.WHITE)  // Flash white warning
         } else {
             // Normal rendering with shader effects based on object's shader_type
-            if (this.shader_type == 1 and rainbow_shader.is_valid()) {
+            if (this.shader_type == 1  ) {
                 // Rainbow shader: Time-based color cycling
                 win.begin_shader_mode(rainbow_shader)
                 win.sphere(this.pos, this.size.x, this.color)
                 win.end_shader_mode()
-            } else if (this.shader_type == 2 and pulse_shader.is_valid()) {
+            } else if (this.shader_type == 2 ) {
                 // Pulse shader: Energy pulse effects with distance-based rings
                 win.begin_shader_mode(pulse_shader)
                 win.sphere(this.pos, this.size.x, this.color)
@@ -344,13 +298,7 @@ for (i = 0; i < SHAPES; i = i + 1) {
     objects.append(MovingObject(pos, vel, size, col.random_rgb(), "sphere"))
 }
 
-// Count and display shader distribution for debugging
-shader_counts = [0, 0, 0]  // [normal, rainbow, pulse]
-foreach (obj in objects) {
-    shader_counts[obj.shader_type] = shader_counts[obj.shader_type] + 1
-}
-
-print("Created objects: Normal:", shader_counts[0], "Rainbow:", shader_counts[1], "Pulse:", shader_counts[2])
+ 
 
 // ========== MAIN SIMULATION LOOP ==========
 while (!win.should_close()) {
@@ -365,29 +313,7 @@ while (!win.should_close()) {
     frame_count = frame_count + 1
     time_value = frame_count * 0.016  // Convert frames to seconds (assuming 60 FPS)
     
-    // Animate pulse shader center point in complex 3D Lissajous pattern
-    // This creates smooth, organic movement for the pulse effect origin
-    pulse_center.x = math.sin(time_value * 0.5) * 10.0    // Slow horizontal oscillation (period ~12.6s)
-    pulse_center.z = math.cos(time_value * 0.3) * 8.0     // Medium depth oscillation (period ~21s)  
-    pulse_center.y = 5.0 + math.sin(time_value * 0.7) * 3.0  // Fast vertical oscillation (period ~9s) around Y=5
-    
-    // ===== SHADER UNIFORM UPDATES =====
-    // Update rainbow shader time uniform for color animation
-    if (rainbow_shader.is_valid() and time_location >= 0) {
-        rainbow_shader.set_value_float(time_location, time_value)
-    }
-    
-    // Update pulse shader uniforms for pulse effect animation
-    if (pulse_shader.is_valid()) {
-        // Time uniform for pulse timing
-        if (pulse_time_loc >= 0) {
-            pulse_shader.set_value_float(pulse_time_loc, time_value)
-        }
-        // Center position uniform for distance-based effects
-        if (pulse_center_loc >= 0) {
-            pulse_shader.set_value_vec3(pulse_center_loc, pulse_center)
-        }
-    }
+    rainbow_shader.set_value_float(time_location, time_value)
     
     // Update all moving objects
     foreach (obj in objects) {
@@ -397,7 +323,10 @@ while (!win.should_close()) {
     // ===== EXPLOSION MECHANICS =====
     // Check for objects whose explosion timers have expired
     explosions = []
-    for (i = 0; i < objects.length(); i = i + 1) {
+    object_count = objects.length()  // Cache length to avoid issues during iteration
+    
+    for (i = 0; i < object_count; i = i + 1) {
+        
         obj = objects[i]
         if (obj.should_explode()) {
             // Record explosion position for force propagation
@@ -418,43 +347,70 @@ while (!win.should_close()) {
     }
     
     // ===== FORCE PROPAGATION =====
-    // Apply explosion forces to all nearby objects
+    // Apply explosion forces to all nearby objects (optimized)
     foreach (explosion_pos in explosions) {
         foreach (obj in objects) {
+            // Skip exploded objects early
+            if (obj.is_exploded) {
+                continue
+            }
+            
+            // Fast distance culling before expensive force calculation
+            dx = obj.pos.x - explosion_pos.x
+            dy = obj.pos.y - explosion_pos.y
+            dz = obj.pos.z - explosion_pos.z
+            
+            // Skip if outside explosion radius (64 = 8^2)
+            if (dx*dx + dy*dy + dz*dz > 64) {
+                continue
+            }
+            
             obj.apply_explosion_force(explosion_pos, FORCE)
         }
     }
     
-    // ===== OBJECT LIFECYCLE MANAGEMENT =====
-    // Remove exploded objects from simulation (cleanup phase)
-    new_objects = []
-    foreach (obj in objects) {
-        if (!obj.is_exploded) {
-            new_objects.append(obj)
-        }
-    }
-    objects = new_objects
     
     // ===== COLLISION DETECTION (PERFORMANCE OPTIMIZED) =====
-    // Run collision detection every 3rd frame to improve performance
+    // Run collision detection every 6th frame to improve performance
     // This reduces computational load while maintaining realistic physics
-    if (frame_count % 3 == 0) {
-        for (i = 0; i < objects.length(); i = i + 1) {
-            for (j = i + 1; j < objects.length(); j = j + 1) {
-                obj1 = objects[i]
+    if (frame_count % 6 == 0) {
+        object_count = objects.length()  // Cache length to avoid issues during iteration
+        
+        for (i = 0; i < object_count; i = i + 1) {
+            // Bounds check to prevent index out of range
+            
+            obj1 = objects[i]
+            // Skip exploded objects early
+            if (obj1.is_exploded) {
+                continue
+            }
+            
+            for (j = i + 1; j < object_count; j = j + 1) {
+                
                 obj2 = objects[j]
+                // Skip exploded objects early
+                if (obj2.is_exploded) {
+                    continue
+                }
                 
                 // Pre-collision spatial culling (early exit optimizations)
                 dx = obj1.pos.x - obj2.pos.x
                 dy = obj1.pos.y - obj2.pos.y
                 dz = obj1.pos.z - obj2.pos.z
                 
-                // Skip objects too far apart horizontally (4 units squared = 2 unit radius)
-                if (dx*dx + dz*dz > 4) {
+                // Skip objects too far apart horizontally (16 units squared = 4 unit radius)
+                if (dx*dx + dz*dz > 16) {
                     continue
                 }
-                // Skip objects too far apart vertically (9 units squared = 3 unit radius)
-                if (dy*dy > 9) {
+                // Skip objects too far apart vertically (25 units squared = 5 unit radius)
+                if (dy*dy > 25) {
+                    continue
+                }
+                
+                // Fast squared distance check before expensive collision calculation
+                dist_sq = dx*dx + dy*dy + dz*dz
+                max_dist = obj1.radius + obj2.radius + 0.1  // Small buffer
+                if (dist_sq > max_dist * max_dist) {
                     continue
                 }
                 
@@ -496,10 +452,7 @@ while (!win.should_close()) {
     // ===== BOUNDARY VISUALIZATION =====
     // Draw wireframe boundary cube to show simulation limits
     win.cube_wires(vec3(0, 5, 0), vec3(GRID_SIZE*2, 10, GRID_SIZE*2), vec4(100, 100, 100, 100))
-    
-    // ===== SHADER EFFECT INDICATORS =====
-    // Draw yellow sphere to show current pulse shader center
-    //win.sphere(pulse_center, 0.3, vec4(255, 255, 0, 255))
+ 
     
     // ===== OBJECT RENDERING PASS =====
     // Render all physics objects with their assigned shader effects
