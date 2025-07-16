@@ -544,6 +544,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			// Unconditional jump forward by offset amount (used for control flow)
 
 			offset := vm.readShort()
+			core.LogFmtLn(core.DEBUG, "Jumping %d from %d to %d\n", offset, frame.Ip, frame.Ip+int(offset))
 			frame.Ip += int(offset)
 
 		case core.OP_GET_UPVALUE:

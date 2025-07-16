@@ -43,7 +43,8 @@ type Loop struct {
 	start     int
 	breaks    []int
 	foreach   bool
-	continue_ int
+	continues []int
+	previous  *Loop
 }
 
 type Upvalue struct {
@@ -54,9 +55,11 @@ type Upvalue struct {
 // NewLoop creates and returns a new Loop structure for managing loop control flow.
 // Loop structures track loop state including start position, break statements,
 // foreach loop type, and continue jump positions for break/continue implementation.
-func NewLoop() *Loop {
+func NewLoop(previous *Loop) *Loop {
 
-	return &Loop{}
+	return &Loop{
+		previous: previous,
+	}
 }
 
 type FunctionType int
@@ -285,10 +288,10 @@ func (p *Parser) checkNext(tt TokenType) bool {
 // checkAhead peeks at a token at the specified offset from the current position.
 // This allows checking multiple tokens ahead for complex parsing decisions
 // that require examining several upcoming tokens.
-func (p *Parser) checkAhead(tt TokenType, offset int) bool {
+// func (p *Parser) checkAhead(tt TokenType, offset int) bool {
 
-	return p.scn.Tokens.At(p.scn.TokenIdx+offset).Tokentype == tt
-}
+// 	return p.scn.Tokens.At(p.scn.TokenIdx+offset).Tokentype == tt
+// }
 
 // advance moves to the next token in the input stream, storing the current token as previous.
 // It skips over any error tokens by reporting them and continuing to the next valid token.
@@ -870,7 +873,7 @@ func (p *Parser) returnStatement() {
 func (p *Parser) whileStatement() {
 
 	loopSave := p.currentCompiler.loop
-	p.currentCompiler.loop = NewLoop()
+	p.currentCompiler.loop = NewLoop(loopSave)
 
 	p.currentCompiler.loop.start = len(p.currentChunk().Code)
 	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after while.")
@@ -889,7 +892,7 @@ func (p *Parser) whileStatement() {
 	p.patchJump(exitJump)
 	p.emitByte(core.OP_POP)
 
-	p.currentCompiler.loop = loopSave
+	p.currentCompiler.loop = p.currentCompiler.loop.previous
 }
 
 // forStatement compiles traditional for loops with initialization, condition, and increment.
@@ -899,7 +902,7 @@ func (p *Parser) whileStatement() {
 func (p *Parser) forStatement() {
 
 	loopSave := p.currentCompiler.loop
-	p.currentCompiler.loop = NewLoop()
+	p.currentCompiler.loop = NewLoop(loopSave)
 
 	p.beginScope()
 	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after for.")
@@ -945,7 +948,7 @@ func (p *Parser) forStatement() {
 		p.emitByte(core.OP_POP)
 	}
 	p.endScope()
-	p.currentCompiler.loop = loopSave
+	p.currentCompiler.loop = p.currentCompiler.loop.previous
 }
 
 // breakStatement compiles break statements for exiting loops early.
@@ -998,7 +1001,7 @@ func (p *Parser) continueStatement() {
 		}
 	}
 	if p.currentCompiler.loop.foreach {
-		p.currentCompiler.loop.continue_ = p.emitJump(core.OP_JUMP)
+		p.currentCompiler.loop.continues = append(p.currentCompiler.loop.continues, p.emitJump(core.OP_JUMP))
 	} else {
 		p.emitLoop(core.OP_LOOP, p.currentCompiler.loop.start)
 	}
@@ -1016,7 +1019,7 @@ func (p *Parser) continueStatement() {
 func (p *Parser) foreachStatement() {
 
 	loopSave := p.currentCompiler.loop
-	p.currentCompiler.loop = NewLoop()
+	p.currentCompiler.loop = NewLoop(loopSave)
 	p.currentCompiler.loop.foreach = true // so continue knows to jump to next
 
 	p.beginScope()
@@ -1040,8 +1043,10 @@ func (p *Parser) foreachStatement() {
 	// body of foreach
 	p.statement()
 	// if it contained a continue, patch its jump to come here
-	if p.currentCompiler.loop.continue_ != 0 {
-		p.patchJump(p.currentCompiler.loop.continue_)
+	if len(p.currentCompiler.loop.continues) != 0 {
+		for _, jump := range p.currentCompiler.loop.continues {
+			p.patchJump(jump)
+		}
 	}
 	// jump to loop start
 	p.emitLoop(core.OP_NEXT, p.currentCompiler.loop.start)
@@ -1056,7 +1061,7 @@ func (p *Parser) foreachStatement() {
 		}
 	}
 	p.endScope()
-	p.currentCompiler.loop = loopSave
+	p.currentCompiler.loop = p.currentCompiler.loop.previous
 }
 
 // printStatement compiles print statements for outputting values.
@@ -1852,11 +1857,12 @@ func (p *Parser) errorAt(tok Token, msg string) {
 	p.panicMode = true
 	fmt.Printf("In %s: ", p.currentCompiler.scriptName)
 	fmt.Printf("[line %d] Error ", tok.Line)
-	if tok.Tokentype == TOKEN_EOF {
+	switch tok.Tokentype {
+	case TOKEN_EOF:
 		fmt.Printf(" at end")
-	} else if tok.Tokentype == TOKEN_ERROR {
+	case TOKEN_ERROR:
 		fmt.Printf(" at %s ", tok.Lexeme())
-	} else {
+	default:
 		fmt.Printf(" at %s ", tok.Lexeme())
 	}
 	fmt.Printf(" : %s\n", msg)

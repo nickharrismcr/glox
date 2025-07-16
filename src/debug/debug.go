@@ -7,7 +7,7 @@ import (
 
 func Disassemble(c *core.Chunk, name string) {
 
-	core.LogFmtLn(core.TRACE, "=== %s ===\n", name)
+	core.LogFmt(core.TRACE, "=== %s ===\n", name)
 	s := ""
 	for _, v := range c.Constants {
 		s = s + fmt.Sprintf("[ %s ]", v.String())
@@ -32,14 +32,14 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 			name = function
 		}
 	}
-	core.LogFmtLn(core.TRACE, "%02d : [%-10s] : ", depth, name)
+	core.LogFmt(core.TRACE, "%02d : [%-10s] : ", depth, name)
 
-	core.LogFmtLn(core.TRACE, "%04d ", offset)
+	core.LogFmt(core.TRACE, "%04d ", offset)
 	if offset > 0 && c.Lines[offset] == lastoffset {
-		core.LogFmtLn(core.TRACE, "   | ")
+		core.LogFmt(core.TRACE, "   | ")
 
 	} else {
-		core.LogFmtLn(core.TRACE, "%04d ", c.Lines[offset])
+		core.LogFmt(core.TRACE, "%04d ", c.Lines[offset])
 	}
 	lastoffset = c.Lines[offset]
 
@@ -139,9 +139,9 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		offset++
 		constant := c.Code[offset]
 		offset++
-		core.LogFmtLn(core.TRACE, "%-16s %04d", "OP_CLOSURE", constant)
+		core.LogFmt(core.TRACE, "%-16s %04d", "OP_CLOSURE", constant)
 		value := c.Constants[constant]
-		core.LogFmtLn(core.TRACE, "  %s\n", value.String())
+		core.LogFmt(core.TRACE, "  %s\n", value.String())
 		function := core.GetFunctionObjectValue(value)
 		for j := 0; j < function.UpvalueCount; j++ {
 			isLocal := c.Code[offset]
@@ -153,7 +153,7 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 			} else {
 				s = "upvalue"
 			}
-			core.LogFmtLn(core.TRACE, "%04d      |                     %s %d\n", offset-2, s, index)
+			core.LogFmt(core.TRACE, "%04d      |                     %s %d\n", offset-2, s, index)
 		}
 		return offset
 	case core.OP_GET_UPVALUE:
@@ -211,23 +211,23 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 	case core.OP_INCR_CONST_F:
 		return byteConstantInstruction(c, "OP_INCR_CONST_F", offset)
 	default:
-		core.LogFmtLn(core.TRACE, "Unknown opcode %d\n", i)
+		core.LogFmt(core.TRACE, "Unknown opcode %d\n", i)
 		return offset + 1
 	}
 }
 
 func simpleInstruction(name string, offset int) int {
 
-	core.LogFmtLn(core.TRACE, "%s\n", name)
+	core.LogFmt(core.TRACE, "%s\n", name)
 	return offset + 1
 }
 
 func constantInstruction(c *core.Chunk, name string, offset int) int {
 
 	constant := c.Code[offset+1]
-	core.LogFmtLn(core.TRACE, "%-16s %04d", name, constant)
+	core.LogFmt(core.TRACE, "%-16s %04d", name, constant)
 	value := c.Constants[constant]
-	core.LogFmtLn(core.TRACE, "  %s\n", value.String())
+	core.LogFmt(core.TRACE, "  %s\n", value.String())
 	return offset + 2
 }
 
@@ -235,27 +235,27 @@ func twoConstantInstruction(c *core.Chunk, name string, offset int) int {
 
 	constant1 := c.Code[offset+1]
 	constant2 := c.Code[offset+2]
-	core.LogFmtLn(core.TRACE, "%-16s %04d %04d", name, constant1, constant2)
+	core.LogFmt(core.TRACE, "%-16s %04d %04d", name, constant1, constant2)
 	value1 := c.Constants[constant1]
 	value2 := c.Constants[constant2]
-	core.LogFmtLn(core.TRACE, "  %s", value1.String())
-	core.LogFmtLn(core.TRACE, "  %s\n", value2.String())
+	core.LogFmt(core.TRACE, "  %s", value1.String())
+	core.LogFmt(core.TRACE, "  %s\n", value2.String())
 	return offset + 3
 }
 func byteConstantInstruction(c *core.Chunk, name string, offset int) int {
 
 	byte_ := c.Code[offset+1]
 	constant := c.Code[offset+2]
-	core.LogFmtLn(core.TRACE, "%-16s %04d %04d", name, byte_, constant)
+	core.LogFmt(core.TRACE, "%-16s %04d %04d", name, byte_, constant)
 	value := c.Constants[constant]
-	core.LogFmtLn(core.TRACE, "  %s\n", value.String())
+	core.LogFmt(core.TRACE, "  %s\n", value.String())
 	return offset + 3
 }
 
 func byteInstruction(c *core.Chunk, name string, offset int) int {
 
 	byte_ := c.Code[offset+1]
-	core.LogFmtLn(core.TRACE, "%-16s %04d\n", name, byte_)
+	core.LogFmt(core.TRACE, "%-16s %04d\n", name, byte_)
 	return offset + 2
 }
 
@@ -264,7 +264,7 @@ func twoByteInstruction(c *core.Chunk, name string, offset int) int {
 	byte1 := uint32(c.Code[offset+1])
 	byte2 := uint32(c.Code[offset+2])
 
-	core.LogFmtLn(core.TRACE, "%-16s %04d %04d \n", name, byte1, byte2)
+	core.LogFmt(core.TRACE, "%-16s %04d %04d \n", name, byte1, byte2)
 	return offset + 4
 }
 
@@ -278,7 +278,7 @@ func jumpInstruction(c *core.Chunk, name string, sign int, offset int) int {
 	jump = uint16(jump1 << 8)
 	jump |= uint16(jump2)
 
-	core.LogFmtLn(core.TRACE, "%-16s %04d -> %d \n", name, offset, uint16(offset)+3+(uint16(sign)*jump))
+	core.LogFmt(core.TRACE, "%-16s %04d -> %d \n", name, offset, uint16(offset)+3+(uint16(sign)*jump))
 	return offset + 3
 }
 func foreachInstruction(c *core.Chunk, offset int) int {
@@ -292,7 +292,7 @@ func foreachInstruction(c *core.Chunk, offset int) int {
 	jump = uint16(jump1 << 8)
 	jump |= uint16(jump2)
 
-	core.LogFmtLn(core.TRACE, "%-16s %04d %04d %04d -> %d \n", "OP_FOREACH", slot, iterslot, jump, uint16(offset)+4+jump)
+	core.LogFmt(core.TRACE, "%-16s %04d %04d %04d -> %d \n", "OP_FOREACH", slot, iterslot, jump, uint16(offset)+4+jump)
 	return offset + 5
 }
 
@@ -306,7 +306,7 @@ func nextInstruction(c *core.Chunk, name string, sign int, offset int) int {
 	jump = uint16(jump1 << 8)
 	jump |= uint16(jump2)
 
-	core.LogFmtLn(core.TRACE, "%-16s %04d %04d -> %d \n", name, iterSlot, offset, uint16(offset)+3+(uint16(sign)*jump))
+	core.LogFmt(core.TRACE, "%-16s %04d %04d -> %d \n", name, iterSlot, offset, uint16(offset)+3+(uint16(sign)*jump))
 	return offset + 4
 }
 func addressInstruction(c *core.Chunk, name string, offset int) int {
@@ -319,16 +319,16 @@ func addressInstruction(c *core.Chunk, name string, offset int) int {
 	address = uint16(addr1 << 8)
 	address |= uint16(addr2)
 
-	core.LogFmtLn(core.TRACE, "%-16s %04d -> %d  \n", name, offset, address)
+	core.LogFmt(core.TRACE, "%-16s %04d -> %d  \n", name, offset, address)
 	return offset + 3
 }
 
 func invokeInstruction(c *core.Chunk, name string, offset int) int {
 	constant := c.Code[offset+1]
 	argCount := c.Code[offset+2]
-	core.LogFmtLn(core.TRACE, "%-16s (%d args) %4d", name, argCount, constant)
+	core.LogFmt(core.TRACE, "%-16s (%d args) %4d", name, argCount, constant)
 	value := c.Constants[constant]
-	core.LogFmtLn(core.TRACE, "  %s\n", value.String())
+	core.LogFmt(core.TRACE, "  %s\n", value.String())
 	return offset + 3
 }
 
@@ -337,14 +337,14 @@ func importFromInstruction(c *core.Chunk, name string, offset int) int {
 	moduleName := c.Constants[constant].String()
 	listLength := c.Code[offset+2]
 	if listLength == 0 {
-		core.LogFmtLn(core.TRACE, "%-16s %s -> all\n", name, moduleName)
+		core.LogFmt(core.TRACE, "%-16s %s -> all\n", name, moduleName)
 	} else {
-		core.LogFmtLn(core.TRACE, "%-16s %s (%d items) -> ", name, moduleName, listLength)
+		core.LogFmt(core.TRACE, "%-16s %s (%d items) -> ", name, moduleName, listLength)
 		for i := 0; i < int(listLength); i++ {
 			constant = c.Code[offset+3+i]
-			core.LogFmtLn(core.TRACE, "  %s", c.Constants[constant].String())
+			core.LogFmt(core.TRACE, "  %s", c.Constants[constant].String())
 		}
-		core.LogFmtLn(core.TRACE, "\n")
+		core.LogFmt(core.TRACE, "\n")
 	}
 	return offset + 3 + int(listLength)
 }

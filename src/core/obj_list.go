@@ -75,7 +75,7 @@ func (o *ListObject) RegisterAllListMethods() {
 			val := vm.Peek(0)
 			for i, item := range o.Items {
 				if ValuesEqual(item, val, true) {
-					return MakeIntValue(i, true)
+					return MakeIntValue(i, false)
 				}
 			}
 			return NIL_VALUE
@@ -87,7 +87,7 @@ func (o *ListObject) RegisterAllListMethods() {
 				vm.RunTimeError("length takes no arguments.")
 				return NIL_VALUE
 			}
-			return MakeIntValue(o.GetLength(), true)
+			return MakeIntValue(o.GetLength(), false)
 		},
 	})
 }
