@@ -48,9 +48,9 @@ pulse_center = vec3(0, 5, 0)   // Moving center point for pulse shader effect
 
 // ========== PHYSICS SIMULATION CONSTANTS ==========
 const GRID_SIZE = 30.0         // Half-size of simulation boundary (60x60x60 total space)
-const BOUNCE_DAMPING = 0.9     // Energy loss factor on boundary collisions (0.9 = 10% loss)
-const SHAPES = 250              
-const FORCE = 0.9              // Explosion force multiplier (affects blast radius impact)
+const BOUNCE_DAMPING = 0.5     // Energy loss factor on boundary collisions (0.9 = 10% loss)
+const SHAPES = 200              
+const FORCE = 0.5              // Explosion force multiplier (affects blast radius impact)
 const DISTANCE = 40.0          // Camera orbital distance from center
 
 // ========== MOVING OBJECT CLASS ==========
@@ -63,7 +63,7 @@ class MovingObject {
         this.color = color                                  // RGBA color (vec4)
         this.shape_type = shape_type                        // Shape identifier (currently "sphere")
         this.radius = this.get_collision_radius()          // Collision radius for physics
-        this.explosion_timer = random.float(200,3000)    // Random countdown to explosion 
+        this.explosion_timer = random.float(200,7000)    // Random countdown to explosion 
         this.is_exploded = false                            // Explosion state flag
         this.shader_type = int(random.float(0, 3))          // Shader assignment: 0=normal, 1=rainbow, 2=pulse
     }
@@ -204,7 +204,14 @@ class MovingObject {
         if (this.is_exploded) {
             return
         }
-        
+
+        if (math.abs(this.pos.x - explosion_pos.x) > 8.0) {
+            return
+        }
+        if (math.abs(this.pos.z - explosion_pos.z) > 8.0) {
+            return
+        }
+
         // Calculate direction and distance from explosion center
         dx = this.pos.x - explosion_pos.x
         dy = this.pos.y - explosion_pos.y

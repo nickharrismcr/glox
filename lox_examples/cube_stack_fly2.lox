@@ -9,7 +9,7 @@ const FULLSCREEN = true
 
 // Configuration constants
 const CITY_SIZE = 105    // Reduced from 45 for better performance
-const STACK_SPACING = 4
+const STACK_SPACING = 3.5
 const MIN_STACK_HEIGHT = 3
 const MAX_STACK_HEIGHT = 20
 const BASE_CUBE_SIZE = 2
@@ -68,26 +68,34 @@ func createColoredTextures(count) {
         // Clear with dark background
         texture.clear(colour.BLACK)
         
-        // Create four smaller rectangles with different hues but same saturation/value
-        rectSize = 8  // Fixed size for each small rectangle
-        spacing = 4   // Space between rectangles
+        // Create sixteen smaller rectangles in a 4x4 grid with different hues
+        rectSize = 4  // Smaller size for 4x4 grid
+        spacing = 2   // Smaller space between rectangles
         
-        // Calculate positions for 2x2 grid of rectangles
-        positions = [
-            vec2(spacing, spacing),                    // Top-left
-            vec2(32 - spacing - rectSize, spacing),   // Top-right
-            vec2(spacing, 32 - spacing - rectSize),   // Bottom-left
-            vec2(32 - spacing - rectSize, 32 - spacing - rectSize)  // Bottom-right
-        ]
+        // Calculate positions for 4x4 grid of rectangles
+        positions = []
+        for (row = 0; row < 4; row = row + 1) {
+            for (col = 0; col < 4; col = col + 1) {
+                x = spacing + col * (rectSize + spacing)
+                y = spacing + row * (rectSize + spacing)
+                positions.append(vec2(x, y))
+            }
+        }
         
-        // Draw four rectangles with different random hues
+       
         foreach (pos in positions) {
+            if (random.integer(0,2) != 0) {
+                continue  // Skip some rectangles randomly
+            }   
             hue = random.integer(0, 360)  // Different random hue for each rectangle
               
             // Generate base HSV values
             saturation = random.float(0.9,1.0)  // High saturation for vibrant colors
             value = random.float(0.01, 0.4)     // Random brightness for variety
-        
+            if (random.integer(0, 3) == 0) {
+                 saturation = 0.1 
+                 hue = 60.0
+            }
             rectColor = colour.hsv_to_rgb(hue, saturation, value)
             texture.rectangle(int(pos.x), int(pos.y), rectSize, rectSize, rectColor)
         }
