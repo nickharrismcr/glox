@@ -49,7 +49,7 @@ pulse_center = vec3(0, 5, 0)   // Moving center point for pulse shader effect
 // ========== PHYSICS SIMULATION CONSTANTS ==========
 const GRID_SIZE = 30.0         // Half-size of simulation boundary (60x60x60 total space)
 const BOUNCE_DAMPING = 0.5     // Energy loss factor on boundary collisions (0.9 = 10% loss)
-const SHAPES = 200              
+const SHAPES = 120              
 const FORCE = 0.5              // Explosion force multiplier (affects blast radius impact)
 const DISTANCE = 40.0          // Camera orbital distance from center
 const NORMAL=0
@@ -357,14 +357,13 @@ while (!win.should_close()) {
     }
     
     
-    // ===== COLLISION DETECTION (PERFORMANCE OPTIMIZED) =====
-    // Run collision detection every 6th frame to improve performance
-    // This reduces computational load while maintaining realistic physics
-    if (frame_count % 6 == 0) {
+    // ===== COLLISION DETECTION AND RESOLUTION =====
+    if (frame_count % 10 == 0) {
         object_count = objects.length()  // Cache length to avoid issues during iteration
         for (i = 0; i < object_count; i = i + 1) {
+            
             obj1 = objects[i]
-            if (obj1.is_exploded) {
+            if (obj1.is_exploded  ) {
                 continue
             }
             
