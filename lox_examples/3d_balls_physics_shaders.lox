@@ -52,6 +52,9 @@ const BOUNCE_DAMPING = 0.5     // Energy loss factor on boundary collisions (0.9
 const SHAPES = 200              
 const FORCE = 0.5              // Explosion force multiplier (affects blast radius impact)
 const DISTANCE = 40.0          // Camera orbital distance from center
+const NORMAL=0
+const RAINBOW=1
+const PULSE=2
 
 // ========== MOVING OBJECT CLASS ==========
 // Represents a physics object with collision, explosion, and shader rendering capabilities
@@ -65,7 +68,7 @@ class MovingObject {
         this.radius = this.get_collision_radius()          // Collision radius for physics
         this.explosion_timer = random.float(200,7000)    // Random countdown to explosion 
         this.is_exploded = false                            // Explosion state flag
-        this.shader_type = int(random.float(0, 3))          // Shader assignment: 0=normal, 1=rainbow, 2=pulse
+        this.shader_type = random.choice((NORMAL, RAINBOW, PULSE))         
     }
     
     // Calculate collision radius from size
@@ -183,6 +186,8 @@ class MovingObject {
             this.pos.y = ground_level + this.radius  // Place sphere bottom at ground level
             this.vel.y = -this.vel.y * BOUNCE_DAMPING  // Bounce with energy loss
         }
+        this.vel.x = this.vel.x * 0.99  // Apply slight air resistance (friction)
+        this.vel.z = this.vel.z * 0.99  // Apply slight air resistance
         
         // Apply gravity acceleration (constant downward force)
         this.vel.y = this.vel.y - 0.01  // Gravity strength: -0.01 units/frame^2
@@ -239,7 +244,7 @@ class MovingObject {
     }
     
     // Render object with appropriate shader effect
-    draw(win) {
+    draw(win,shader_type) {
         // Don't render exploded objects
         if (this.is_exploded) {
             return
@@ -250,23 +255,11 @@ class MovingObject {
             expanded_size = this.size.x * 3.0  // Triple size for dramatic effect
             win.sphere(this.pos, expanded_size, col.WHITE)  // Flash white warning
         } else {
-            // Normal rendering with shader effects based on object's shader_type
-            if (this.shader_type == 1  ) {
-                // Rainbow shader: Time-based color cycling
-                win.begin_shader_mode(rainbow_shader)
-                win.sphere(this.pos, this.size.x, this.color)
-                win.end_shader_mode()
-            } else if (this.shader_type == 2 ) {
-                // Pulse shader: Energy pulse effects with distance-based rings
-                win.begin_shader_mode(pulse_shader)
-                win.sphere(this.pos, this.size.x, this.color)
-                win.end_shader_mode()
-            } else {
-                // Normal rendering: Basic flat-shaded sphere with object's base color
-                // (shader_type == 0 or shader loading failed - no lighting calculations)
+            if (this.shader_type == shader_type ){
                 win.sphere(this.pos, this.size.x, this.color)
             }
         }
+             
     }
     
     // Render fake shadow as ellipse projected on ground plane
@@ -290,27 +283,22 @@ class MovingObject {
     }
 }
 
-// ========== OBJECT CREATION AND INITIALIZATION ==========
-// Create physics objects with random properties
-objects = []
-for (i = 0; i < SHAPES; i = i + 1) {
-    // Random spawn position (elevated above ground)
-    pos = vec3(random.float(-5, 5), random.float(10, 18), random.float(-5, 5))
-    // Random initial velocity (small values for realistic movement)
-    vel = vec3(random.float(-0.15, 0.15), random.float(-0.05, 0.05), random.float(-0.15, 0.15))
-    // Random size between 0.3 and 0.7 units
-    s = random.float(0.3,0.7)
-    size = vec3(s, s, s)  // Uniform sphere size
-    // Create object with random color and add to simulation
-    objects.append(MovingObject(pos, vel, size, col.random_rgb(), "sphere"))
-}
-
  
-
-// ========== MAIN SIMULATION LOOP ==========
+objects = []
+added = 0  
+ 
 while (!win.should_close()) {
+
+    if ( added < SHAPES ) {
+        pos = vec3(random.float(-5, 5), random.float(10, 18), random.float(-5, 5))
+        vel = vec3(random.float(-0.15, 0.15), random.float(-0.05, 0.05), random.float(-0.15, 0.15))
+        s = random.float(0.3,0.7)
+        size = vec3(s, s, s)   
+        objects.append(MovingObject(pos, vel, size, col.random_rgb(), "sphere"))
+        added+=1
+    }
+
     // ===== CAMERA CONTROL =====
-    // Smooth orbital camera movement around the scene center
     angle = angle + 0.005  // Rotation speed (radians per frame)
     x = math.cos(angle) * DISTANCE  // Calculate X position on circle
     z = math.sin(angle) * DISTANCE  // Calculate Z position on circle
@@ -319,7 +307,6 @@ while (!win.should_close()) {
     // ===== TIMING AND ANIMATION =====
     frame_count = frame_count + 1
     time_value = frame_count * 0.016  // Convert frames to seconds (assuming 60 FPS)
-    
     rainbow_shader.set_value_float(time_location, time_value)
     
     // Update all moving objects
@@ -331,9 +318,7 @@ while (!win.should_close()) {
     // Check for objects whose explosion timers have expired
     explosions = []
     object_count = objects.length()  // Cache length to avoid issues during iteration
-    
     for (i = 0; i < object_count; i = i + 1) {
-        
         obj = objects[i]
         if (obj.should_explode()) {
             // Record explosion position for force propagation
@@ -342,7 +327,6 @@ while (!win.should_close()) {
         }
     }
     
-    // ===== VISUAL EFFECTS =====
     // Trigger floor flash effect when any explosions occur
     if (explosions.length() > 0) {
         floor_flash_timer = 10  // Flash duration in frames
@@ -353,7 +337,6 @@ while (!win.should_close()) {
         floor_flash_timer = floor_flash_timer - 1
     }
     
-    // ===== FORCE PROPAGATION =====
     // Apply explosion forces to all nearby objects (optimized)
     foreach (explosion_pos in explosions) {
         foreach (obj in objects) {
@@ -361,17 +344,14 @@ while (!win.should_close()) {
             if (obj.is_exploded) {
                 continue
             }
-            
             // Fast distance culling before expensive force calculation
             dx = obj.pos.x - explosion_pos.x
             dy = obj.pos.y - explosion_pos.y
             dz = obj.pos.z - explosion_pos.z
-            
             // Skip if outside explosion radius (64 = 8^2)
             if (dx*dx + dy*dy + dz*dz > 64) {
                 continue
             }
-            
             obj.apply_explosion_force(explosion_pos, FORCE)
         }
     }
@@ -382,21 +362,16 @@ while (!win.should_close()) {
     // This reduces computational load while maintaining realistic physics
     if (frame_count % 6 == 0) {
         object_count = objects.length()  // Cache length to avoid issues during iteration
-        
         for (i = 0; i < object_count; i = i + 1) {
-            // Bounds check to prevent index out of range
-            
             obj1 = objects[i]
-            // Skip exploded objects early
             if (obj1.is_exploded) {
                 continue
             }
             
-            for (j = i + 1; j < object_count; j = j + 1) {
-                
+            for (j = 0; j < object_count; j = j + 1) {
                 obj2 = objects[j]
-                // Skip exploded objects early
-                if (obj2.is_exploded) {
+                // Skip exploded objects early, dont check self-collision
+                if (i==j or obj2.is_exploded) {
                     continue
                 }
                 
@@ -405,12 +380,12 @@ while (!win.should_close()) {
                 dy = obj1.pos.y - obj2.pos.y
                 dz = obj1.pos.z - obj2.pos.z
                 
-                // Skip objects too far apart horizontally (16 units squared = 4 unit radius)
-                if (dx*dx + dz*dz > 16) {
+                // Skip objects too far apart horizontally  
+                if (dx*dx + dz*dz > 9) {
                     continue
                 }
-                // Skip objects too far apart vertically (25 units squared = 5 unit radius)
-                if (dy*dy > 25) {
+                // Skip objects too far apart vertically  
+                if (dy*dy > 9) {
                     continue
                 }
                 
@@ -464,8 +439,18 @@ while (!win.should_close()) {
     // ===== OBJECT RENDERING PASS =====
     // Render all physics objects with their assigned shader effects
     foreach (obj in objects) {
-        obj.draw(win)
+        obj.draw(win,NORMAL)
     }
+    win.begin_shader_mode(rainbow_shader)
+    foreach (obj in objects) {
+        obj.draw(win,RAINBOW)
+    }
+    win.end_shader_mode()
+    win.begin_shader_mode(pulse_shader)
+    foreach (obj in objects) {
+        obj.draw(win,PULSE)
+    }
+    win.end_shader_mode()
 
     // ===== EXIT 3D RENDERING =====
     win.end_3d()  // Return to 2D coordinate system
