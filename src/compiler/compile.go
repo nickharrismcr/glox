@@ -884,14 +884,14 @@ func (p *Parser) whileStatement() {
 	p.emitByte(core.OP_POP)
 	p.statement()
 	p.emitLoop(core.OP_LOOP, p.currentCompiler.loop.start)
+
+	p.patchJump(exitJump)
+	p.emitByte(core.OP_POP)
 	if len(p.currentCompiler.loop.breaks) != 0 {
 		for _, jump := range p.currentCompiler.loop.breaks {
 			p.patchJump(jump)
 		}
 	}
-	p.patchJump(exitJump)
-	p.emitByte(core.OP_POP)
-
 	p.currentCompiler.loop = p.currentCompiler.loop.previous
 }
 
