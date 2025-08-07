@@ -1,11 +1,10 @@
-package lox
+package vm
 
 import (
 	"bytes"
 	bin "encoding/binary"
 	"fmt"
 	"glox/src/core"
-
 	"glox/src/util"
 	"io"
 	"os"
@@ -13,10 +12,9 @@ import (
 	"strings"
 )
 
-//functions for cacheing and retrieval of compiled bytecode in .lxc files
+// functions for caching and retrieval of compiled bytecode in .lxc files
 
 func writeToLxc(vm *VM, serialised *bytes.Buffer) {
-
 	dir := filepath.Dir(vm.script)
 
 	// Create the cache subdirectory
@@ -39,7 +37,6 @@ func writeToLxc(vm *VM, serialised *bytes.Buffer) {
 }
 
 func loadLxc(scriptPath string) (*core.Chunk, *core.Environment, bool) {
-
 	if core.ForceModuleCompile {
 		return nil, nil, false
 	}
@@ -77,7 +74,6 @@ func loadLxc(scriptPath string) (*core.Chunk, *core.Environment, bool) {
 }
 
 func readChunk(reader io.Reader, env *core.Environment) *core.Chunk {
-
 	var codeLen uint32
 	util.ReadMarker(reader)
 	bin.Read(reader, bin.LittleEndian, &codeLen)

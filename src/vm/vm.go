@@ -1,4 +1,4 @@
-package lox
+package vm
 
 import (
 	"bytes"
@@ -39,7 +39,7 @@ type VM struct {
 	source         string
 	stack          [STACK_MAX]core.Value
 	stackTop       int
-	frames         [FRAMES_MAX]*core.CallFrame
+	Frames         [FRAMES_MAX]*core.CallFrame
 	frameCount     int
 	currCode       []uint8 // current code being executed
 	Starttime      time.Time
@@ -49,8 +49,8 @@ type VM struct {
 	ErrorMsg       string
 	stackTrace     []string
 	ModuleImport   bool
-	builtIns       map[int]core.Value         // global built-in functions
-	builtInModules map[int]*core.ModuleObject // global built-in modules - need to be imported before use
+	BuiltIns       map[int]core.Value         // global built-in functions
+	BuiltInModules map[int]*core.ModuleObject // global built-in modules - need to be imported before use
 
 	// Debug hook: called with (vm, event, data) at opcode, call, return
 	// opcode events will have data as the opcode byte,
@@ -85,8 +85,8 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 		args:           []string{},
 		ErrorMsg:       "",
 		stackTrace:     []string{},
-		builtIns:       make(map[int]core.Value),
-		builtInModules: make(map[int]*core.ModuleObject),
+		BuiltIns:       make(map[int]core.Value),
+		BuiltInModules: make(map[int]*core.ModuleObject),
 	}
 	vm.resetStack()
 	if defineBuiltIns && !core.DebugCompileOnly {
@@ -194,7 +194,7 @@ func (vm *VM) Peek(dist int) core.Value {
 // Frame returns the current call frame (the topmost frame on the call stack).
 // Exported Frame method
 func (vm *VM) Frame() *core.CallFrame {
-	return vm.frames[vm.frameCount-1]
+	return vm.Frames[vm.frameCount-1]
 }
 
 // FrameCount returns the number of active call frames on the call stack.
@@ -210,7 +210,7 @@ func (vm *VM) FrameAt(index int) *core.CallFrame {
 	if index < 0 || index >= vm.frameCount {
 		return nil
 	}
-	return vm.frames[index]
+	return vm.Frames[index]
 }
 
 //------------------------------------------------------------------------------------------
@@ -290,7 +290,7 @@ func (vm *VM) GetGlobals() *core.Environment {
 // This is the private version of Frame() for internal VM use.
 func (vm *VM) frame() *core.CallFrame {
 
-	return vm.frames[vm.frameCount-1]
+	return vm.Frames[vm.frameCount-1]
 }
 
 //------------------------------------------------------------------------------------------
@@ -486,7 +486,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			value, ok := function.Environment.GetVar(id)
 			//DumpValue("Get global", value)
 			if !ok {
-				value, ok = vm.builtIns[id]
+				value, ok = vm.BuiltIns[id]
 				if !ok {
 					name := core.GetStringValue(constants[idx])
 					vm.RunTimeError("Undefined variable %s", name)
@@ -694,7 +694,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		case core.OP_ADD_II:
 			// optimised x=x+y for local ints: byte 1, byte 2, numbers to add
 
-			frm := vm.frames[vm.frameCount-1]
+			frm := vm.Frames[vm.frameCount-1]
 			frm.Ip += 2
 			slotDest := vm.currCode[frm.Ip-2]
 			slotInc := vm.currCode[frm.Ip-1]
@@ -709,7 +709,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_ADD_FF:
 			// optimised x=x+y for local floats: byte 1, byte 2, numbers to add
-			frm := vm.frames[vm.frameCount-1]
+			frm := vm.Frames[vm.frameCount-1]
 			frm.Ip += 2
 			slotDest := vm.currCode[frm.Ip-2]
 			slotInc := vm.currCode[frm.Ip-1]
@@ -755,7 +755,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_INCR_CONST_I:
 			// optimised x=x+c for local ints: byte 1 local, byte 2 constant, numbers to add
-			frm := vm.frames[vm.frameCount-1]
+			frm := vm.Frames[vm.frameCount-1]
 			frm.Ip += 2
 			slotVar := vm.currCode[frm.Ip-2]
 			constIndex := vm.currCode[frm.Ip-1]
@@ -773,7 +773,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_INCR_CONST_F:
 			// optimised x=x+c for local ints: byte 1 local, byte 2 constant, numbers to add
-			frm := vm.frames[vm.frameCount-1]
+			frm := vm.Frames[vm.frameCount-1]
 			frm.Ip += 2
 			slotVar := vm.currCode[frm.Ip-2]
 			constIndex := vm.currCode[frm.Ip-1]
@@ -1331,7 +1331,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 			sID := core.InternName(module)
 			// check if module is in builtins
-			moduleObj, ok := vm.builtInModules[sID]
+			moduleObj, ok := vm.BuiltInModules[sID]
 			if ok {
 				// copy built-in module to the current environment
 				vm.frame().Closure.Function.Environment.SetVar(sID, core.MakeObjectValue(moduleObj, false))
@@ -1970,7 +1970,7 @@ func (vm *VM) call(closure *core.ClosureObject, argCount int) bool {
 		Handlers: nil,
 		Depth:    vm.frameCount + 1,
 	}
-	vm.frames[vm.frameCount] = frame
+	vm.Frames[vm.frameCount] = frame
 	vm.frameCount++
 	if vm.frameCount == FRAMES_MAX {
 		vm.RunTimeError("Stack overflow.")
@@ -1996,7 +1996,7 @@ func (vm *VM) readShort() uint16 {
 // readByte reads a single byte from the current instruction stream and advances the instruction pointer.
 func (vm *VM) readByte() uint8 {
 
-	frame := vm.frames[vm.frameCount-1]
+	frame := vm.Frames[vm.frameCount-1]
 	frame.Ip += 1
 	return vm.currCode[frame.Ip-1]
 }
@@ -2028,7 +2028,7 @@ func (vm *VM) isFalsey(v core.Value) bool {
 // RaiseExceptionByName creates and raises an exception with the specified name and message.
 func (vm *VM) RaiseExceptionByName(name string, msg string) bool {
 
-	classVal := vm.builtIns[core.InternName(name)]
+	classVal := vm.BuiltIns[core.InternName(name)]
 	classObj := classVal.Obj
 	instance := core.MakeInstanceObject(classObj.(*core.ClassObject))
 	instance.Fields[core.MSG] = core.MakeStringObjectValue(msg, false)
@@ -2059,7 +2059,7 @@ func (vm *VM) raiseException(err core.Value) bool {
 				id := function.Chunk.Constants[idx].InternedId
 				v, ok := function.Environment.GetVar(id)
 				if !ok {
-					v, ok = vm.builtIns[id]
+					v, ok = vm.BuiltIns[id]
 					if !ok {
 						name := core.GetStringValue(function.Chunk.Constants[idx])
 						vm.RunTimeError("Undefined exception handler '%s'.", name)
@@ -2121,7 +2121,7 @@ func (vm *VM) popFrame() bool {
 		return false
 	}
 	vm.frameCount--
-	vm.stackTop = vm.frames[vm.frameCount].Slots
+	vm.stackTop = vm.Frames[vm.frameCount].Slots
 	return true
 }
 
@@ -2197,8 +2197,8 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 	}
 	globalModuleSource[moduleName] = string(bytes)
 	subvm := NewVM(searchPath, false)
-	subvm.builtIns = vm.builtIns
-	subvm.builtInModules = vm.builtInModules
+	subvm.BuiltIns = vm.BuiltIns
+	subvm.BuiltInModules = vm.BuiltInModules
 	subvm.SetArgs(vm.Args())
 	subvm.ModuleImport = true
 	// see if we can load lxc bytecode file for the module.
@@ -2218,7 +2218,7 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 		core.LogFmtLn(core.DEBUG, "Completed compile/run of module %s.\n", moduleName)
 	}
 	core.LogFmtLn(core.DEBUG, "Created module object for %s.\n", moduleName)
-	subfn := subvm.frames[0].Closure.Function
+	subfn := subvm.Frames[0].Closure.Function
 	mo := core.MakeModuleObject(moduleName, *subfn.Environment)
 
 	globalModules[moduleName] = mo

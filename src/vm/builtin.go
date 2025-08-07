@@ -1,4 +1,4 @@
-package lox
+package vm
 
 import (
 	"glox/src/builtin"
@@ -11,7 +11,7 @@ func defineBuiltIn(vm *VM, module string, name string, fn core.BuiltInFn) {
 	if module != "" {
 		addBuiltInModuleFunction(vm, module, name, fn)
 	} else {
-		vm.builtIns[core.InternName(name)] = core.MakeObjectValue(core.MakeBuiltInObject(fn), false)
+		vm.BuiltIns[core.InternName(name)] = core.MakeObjectValue(core.MakeBuiltInObject(fn), false)
 	}
 
 }
@@ -102,14 +102,14 @@ func makeBuiltInModule(vm *VM, moduleName string) {
 
 	env := core.NewEnvironment(moduleName)
 	module := core.MakeModuleObject(moduleName, *env)
-	vm.builtInModules[core.InternName(moduleName)] = module
+	vm.BuiltInModules[core.InternName(moduleName)] = module
 	core.LogFmtLn(core.INFO, "Created built-in module %s", moduleName)
 
 }
 
 func addBuiltInModuleFunction(vm *VM, moduleName string, name string, fn core.BuiltInFn) {
 	// Add a function to a built-in module
-	module := vm.builtInModules[core.InternName(moduleName)]
+	module := vm.BuiltInModules[core.InternName(moduleName)]
 	fo := core.MakeBuiltInObject(fn)
 	module.Environment.Vars[core.InternName(name)] = core.MakeObjectValue(fo, false)
 }
@@ -120,8 +120,8 @@ func loadBuiltInFromSource(vm *VM, source string, moduleName string) {
 	subvm := NewVM("", false)
 	//	DebugSuppress = true
 	_, _ = subvm.Interpret(source, moduleName)
-	for k, v := range subvm.frames[0].Closure.Function.Environment.Vars {
-		vm.builtIns[k] = v
+	for k, v := range subvm.Frames[0].Closure.Function.Environment.Vars {
+		vm.BuiltIns[k] = v
 	}
 
 	core.DebugSuppress = false
