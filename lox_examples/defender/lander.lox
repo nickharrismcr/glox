@@ -74,7 +74,7 @@ func materialize(e, width, height) {
 }
 
 func descend(e, width, height) {
-    e.pos = e.pos + e.dp
+    e.pos = e.pos ++ e.dp
 
     mh = e.mgr.mountains.get(e.pos.x)
     msh = e.mgr.height - mh
@@ -90,7 +90,7 @@ func descend(e, width, height) {
 }
 
 func search(e, width, height) {
-    e.pos = e.pos + e.dp
+    e.pos = e.pos ++ e.dp
     mh = e.mgr.mountains.get(e.pos.x)
     msh = e.mgr.height - mh
     e.pos.y = msh - 200
@@ -107,7 +107,7 @@ func search(e, width, height) {
 } 
 
 func grab(e,width, height) {
-    e.pos = e.pos + e.dp
+    e.pos = e.pos ++ e.dp
     if (e.pos.y > e.human.pos.y  ) {
         e.update_func = abduct 
         e.pos.y = e.human.pos.y - 50
@@ -145,7 +145,7 @@ func mutate(e) {
 
 func mutated(e,width, height) {
     e.radar = random.choice([e.r,e.g,e.b,e.m])
-    e.pos = e.pos + e.dp
+    e.pos = e.pos ++ e.dp
     if (e.counter%20 == 0) {
         e.dp.y = random.choice((-5,5))
     }
