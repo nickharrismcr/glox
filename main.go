@@ -3,10 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
-	lox "glox/src"
 	"glox/src/compiler"
 	"glox/src/core"
 	dbg "glox/src/debug"
+	"glox/src/vm"
 	"os"
 	"runtime/debug"
 	"time"
@@ -23,8 +23,8 @@ func main() {
 
 	if opts.doRepl {
 		fmt.Println("GLOX:")
-		vm := lox.NewVM("repl", true)
-		repl(vm)
+		vmInstance := vm.NewVM("repl", true)
+		repl(vmInstance)
 		return
 	}
 
@@ -76,7 +76,7 @@ func parseArgs() *Options {
 	return opts
 }
 
-func repl(vm *lox.VM) {
+func repl(vmInstance *vm.VM) {
 	inp := bufio.NewScanner(os.Stdin)
 	for {
 		fmt.Printf("> ")
@@ -85,8 +85,8 @@ func repl(vm *lox.VM) {
 			if len(s) == 0 {
 				return
 			}
-			status, result := vm.Interpret(s, "__repl__")
-			if status == lox.INTERPRET_OK {
+			status, result := vmInstance.Interpret(s, "__repl__")
+			if status == vm.INTERPRET_OK {
 				if result != "nil" {
 					fmt.Println(result)
 				}
@@ -120,28 +120,28 @@ func runFile(opts *Options) {
 	}
 
 	defineBuiltins := !core.DebugSkipBuiltins
-	vm := lox.NewVM(path, defineBuiltins)
-	vm.SetArgs(args)
+	vmInstance := vm.NewVM(path, defineBuiltins)
+	vmInstance.SetArgs(args)
 
 	if core.DebugTraceExecution {
-		vm.DebugHook = dbg.TraceHook
+		vmInstance.DebugHook = dbg.TraceHook
 	}
 	if core.DebugInstrument {
-		vm.DebugHook = dbg.InstrumentHook
+		vmInstance.DebugHook = dbg.InstrumentHook
 	}
-	status, result := vm.Interpret(source, "__main__")
-	if status == lox.INTERPRET_COMPILE_ERROR {
+	status, result := vmInstance.Interpret(source, "__main__")
+	if status == vm.INTERPRET_COMPILE_ERROR {
 		os.Exit(65)
 	}
-	if status == lox.INTERPRET_RUNTIME_ERROR {
-		fmt.Println(vm.ErrorMsg)
-		vm.PrintStackTrace()
+	if status == vm.INTERPRET_RUNTIME_ERROR {
+		fmt.Println(vmInstance.ErrorMsg)
+		vmInstance.PrintStackTrace()
 		os.Exit(70)
 	}
 	fmt.Println(result)
 	if core.DebugInstrument {
 		endTime := time.Now()
-		runtime := endTime.Sub(vm.Starttime)
+		runtime := endTime.Sub(vmInstance.Starttime)
 		fmt.Printf("Execution time: %s\n", runtime)
 		fmt.Printf("Executed %d instructions\n", dbg.InstructionCount)
 		fmt.Printf("Average instructions per second: %.2f\n", float64(dbg.InstructionCount)/runtime.Seconds())
