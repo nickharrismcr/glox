@@ -31,22 +31,27 @@ out vec4 fragColor;
 out vec3 fragPosition;
 out vec3 fragNormal;
 void main() {
-    // Apply manual rotation around X and Y axes
-    // First rotate around X-axis
-    float cosX = sin(rotation.x);
+    // Apply manual rotation around X, Y, and Z axes (fixed trigonometry)
+    vec3 pos = vertexPosition;
+    vec3 norm = vertexNormal;
+    
+    // Rotate around X-axis
+    float cosX = cos(rotation.x);
     float sinX = sin(rotation.x);
-    vec3 rotatedX = vec3(vertexPosition.x, vertexPosition.y * cosX - vertexPosition.z * sinX, vertexPosition.y * sinX + vertexPosition.z * cosX);
+    vec3 rotatedX = vec3(pos.x, pos.y * cosX - pos.z * sinX, pos.y * sinX + pos.z * cosX);
+    vec3 normalRotatedX = vec3(norm.x, norm.y * cosX - norm.z * sinX, norm.y * sinX + norm.z * cosX);
     
-    // Rotate normals with same X-axis rotation
-    vec3 normalRotatedX = vec3(vertexNormal.x, vertexNormal.y * cosX - vertexNormal.z * sinX, vertexNormal.y * sinX + vertexNormal.z * cosX);
-    
-    // Then rotate around Y-axis
-    float cosY = sin(rotation.y);
+    // Rotate around Y-axis
+    float cosY = cos(rotation.y);
     float sinY = sin(rotation.y);
-    vec3 rotatedPos = vec3(rotatedX.x * cosY - rotatedX.z * sinY, rotatedX.y, rotatedX.x * sinY + rotatedX.z * cosY);
+    vec3 rotatedXY = vec3(rotatedX.x * cosY + rotatedX.z * sinY, rotatedX.y, -rotatedX.x * sinY + rotatedX.z * cosY);
+    vec3 normalRotatedXY = vec3(normalRotatedX.x * cosY + normalRotatedX.z * sinY, normalRotatedX.y, -normalRotatedX.x * sinY + normalRotatedX.z * cosY);
     
-    // Rotate normals with same Y-axis rotation
-    vec3 rotatedNormal = vec3(normalRotatedX.x * cosY - normalRotatedX.z * sinY, normalRotatedX.y, normalRotatedX.x * sinY + normalRotatedX.z * cosY);
+    // Rotate around Z-axis
+    float cosZ = cos(rotation.z);
+    float sinZ = sin(rotation.z);
+    vec3 rotatedPos = vec3(rotatedXY.x * cosZ - rotatedXY.y * sinZ, rotatedXY.x * sinZ + rotatedXY.y * cosZ, rotatedXY.z);
+    vec3 rotatedNormal = vec3(normalRotatedXY.x * cosZ - normalRotatedXY.y * sinZ, normalRotatedXY.x * sinZ + normalRotatedXY.y * cosZ, normalRotatedXY.z);
     
     // Apply translation
     vec3 transformedPos = rotatedPos + translation;
@@ -57,6 +62,8 @@ void main() {
     fragNormal = normalize(vec3(matNormal * vec4(rotatedNormal, 0.0)));
     gl_Position = mvp * vec4(transformedPos, 1.0);
 }"
+
+ 
 
 fragment_code = "#version 330
 in vec2 fragTexCoord;

@@ -358,7 +358,7 @@ while (!win.should_close()) {
     
     
     // ===== COLLISION DETECTION AND RESOLUTION =====
-    if (frame_count % 10 == 0) {
+    if (frame_count % 2 == 0) {
         object_count = objects.length()  // Cache length to avoid issues during iteration
         for (i = 0; i < object_count; i = i + 1) {
             
