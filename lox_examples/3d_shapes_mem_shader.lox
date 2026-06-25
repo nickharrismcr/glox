@@ -133,7 +133,7 @@ light_speed_y = random.float(0.012, 0.035)
 light_speed_z = random.float(0.006, 0.02)
 
 class BrightObject {
-    init(pos, vel, size, color) {
+    init(size, color) {
         this.size = size
         this.color = color
         this.rotation_x = 0.0
@@ -182,7 +182,7 @@ class BrightObject {
         }
         
         // Draw shape at origin since translation is handled by shader
-        win.cylinder(vec3(0, 0, 0), this.size*0.5, 0.1, 0.5, this.color)
+        win.cylinder(vec3(0, 0, 0), this.size*0.5,this.size*0.5, 0.5, this.color)
         
         if (memory_shader.is_valid()) {
             win.end_shader_mode()
@@ -195,7 +195,7 @@ objects = []
 for (i = 0; i < SHAPES; i = i + 1) {
     size = random.float(1, 2.0)
     color = colour_utils.random()  
-    objects.append(BrightObject(vec3(0, 0, 0), vec3(0, 0, 0), size, color))
+    objects.append(BrightObject(size, color))
 }
 
 while (!win.should_close()) {

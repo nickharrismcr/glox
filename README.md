@@ -483,6 +483,43 @@ inspect.dump_frame()
 `prev_frame` - calling frame dict (or nil) 
 
 
+## Testing
+
+The project has two test suites under `tests/`:
+
+### Assert-based suite (recommended)
+
+```bash
+# from repo root, after building
+. ./setenv
+bash bin/run_tests.sh          # run all tests
+bash bin/run_tests.sh -v       # verbose
+bash bin/run_tests.sh -k fibo  # run a single test by keyword
+```
+
+Or run directly with pytest:
+
+```bash
+. ./setenv
+cd tests
+python -m pytest new_tests/ -v
+```
+
+Tests live in `tests/new_tests/` — one Python module per language feature, each running a `.lox` script and making semantic assertions on the output. Large-output tests (Mandelbrot, sine table, mapfilter) use structural assertions rather than exact line-by-line comparison.
+
+The `.lox` scripts used by the tests are in `tests/new_tests/lox/`.
+
+### Regression suite (legacy)
+
+```bash
+. ./setenv
+bash bin/run_tests.old.sh
+```
+
+The legacy runner (`tests/old/test.py`) does exact byte comparison against stored output files in `tests/old/output/`. Use `python test.py lox/foo.lox --write` to record expected output for a new script.
+
+---
+
 ## Performance Notes:
 
 My implementation is slow compared to CLox. Fibonacci benchmark averages 1s, CLox is around 0.5.  Python3 averages around half that.

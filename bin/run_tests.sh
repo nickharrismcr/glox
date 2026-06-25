@@ -1,4 +1,4 @@
 #! /usr/bin/env bash
 . ./setenv
-cd tests 
-python test.py $*
+cd tests
+python -m pytest new_tests/ $*
