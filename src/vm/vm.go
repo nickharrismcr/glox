@@ -39,7 +39,7 @@ type VM struct {
 	source         string
 	stack          [STACK_MAX]core.Value
 	stackTop       int
-	Frames         [FRAMES_MAX]*core.CallFrame
+	Frames         [FRAMES_MAX]core.CallFrame
 	frameCount     int
 	currCode       []uint8 // current code being executed
 	Starttime      time.Time
@@ -194,7 +194,7 @@ func (vm *VM) Peek(dist int) core.Value {
 // Frame returns the current call frame (the topmost frame on the call stack).
 // Exported Frame method
 func (vm *VM) Frame() *core.CallFrame {
-	return vm.Frames[vm.frameCount-1]
+	return &vm.Frames[vm.frameCount-1]
 }
 
 // FrameCount returns the number of active call frames on the call stack.
@@ -210,7 +210,7 @@ func (vm *VM) FrameAt(index int) *core.CallFrame {
 	if index < 0 || index >= vm.frameCount {
 		return nil
 	}
-	return vm.Frames[index]
+	return &vm.Frames[index]
 }
 
 //------------------------------------------------------------------------------------------
@@ -290,7 +290,7 @@ func (vm *VM) GetGlobals() *core.Environment {
 // This is the private version of Frame() for internal VM use.
 func (vm *VM) frame() *core.CallFrame {
 
-	return vm.Frames[vm.frameCount-1]
+	return &vm.Frames[vm.frameCount-1]
 }
 
 //------------------------------------------------------------------------------------------
@@ -694,7 +694,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		case core.OP_ADD_II:
 			// optimised x=x+y for local ints: byte 1, byte 2, numbers to add
 
-			frm := vm.Frames[vm.frameCount-1]
+			frm := &vm.Frames[vm.frameCount-1]
 			frm.Ip += 2
 			slotDest := vm.currCode[frm.Ip-2]
 			slotInc := vm.currCode[frm.Ip-1]
@@ -709,7 +709,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_ADD_FF:
 			// optimised x=x+y for local floats: byte 1, byte 2, numbers to add
-			frm := vm.Frames[vm.frameCount-1]
+			frm := &vm.Frames[vm.frameCount-1]
 			frm.Ip += 2
 			slotDest := vm.currCode[frm.Ip-2]
 			slotInc := vm.currCode[frm.Ip-1]
@@ -755,7 +755,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_INCR_CONST_I:
 			// optimised x=x+c for local ints: byte 1 local, byte 2 constant, numbers to add
-			frm := vm.Frames[vm.frameCount-1]
+			frm := &vm.Frames[vm.frameCount-1]
 			frm.Ip += 2
 			slotVar := vm.currCode[frm.Ip-2]
 			constIndex := vm.currCode[frm.Ip-1]
@@ -773,7 +773,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_INCR_CONST_F:
 			// optimised x=x+c for local ints: byte 1 local, byte 2 constant, numbers to add
-			frm := vm.Frames[vm.frameCount-1]
+			frm := &vm.Frames[vm.frameCount-1]
 			frm.Ip += 2
 			slotVar := vm.currCode[frm.Ip-2]
 			constIndex := vm.currCode[frm.Ip-1]
@@ -1963,14 +1963,11 @@ func (vm *VM) call(closure *core.ClosureObject, argCount int) bool {
 		vm.RunTimeError("Expected %d arguments but got %d.", closure.Function.Arity, argCount)
 		return false
 	}
-	frame := &core.CallFrame{
-		Closure:  closure,
-		Ip:       0,
-		Slots:    vm.stackTop - argCount - 1,
-		Handlers: nil,
-		Depth:    vm.frameCount + 1,
+	vm.Frames[vm.frameCount] = core.CallFrame{
+		Closure: closure,
+		Slots:   vm.stackTop - argCount - 1,
+		Depth:   vm.frameCount + 1,
 	}
-	vm.Frames[vm.frameCount] = frame
 	vm.frameCount++
 	if vm.frameCount == FRAMES_MAX {
 		vm.RunTimeError("Stack overflow.")
@@ -1996,7 +1993,7 @@ func (vm *VM) readShort() uint16 {
 // readByte reads a single byte from the current instruction stream and advances the instruction pointer.
 func (vm *VM) readByte() uint8 {
 
-	frame := vm.Frames[vm.frameCount-1]
+	frame := &vm.Frames[vm.frameCount-1]
 	frame.Ip += 1
 	return vm.currCode[frame.Ip-1]
 }
