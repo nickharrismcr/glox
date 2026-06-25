@@ -522,28 +522,25 @@ The legacy runner (`tests/old/test.py`) does exact byte comparison against store
 
 ## Performance Notes:
 
-Benchmark: `fib(39)` via `bin/fibo_benchmark.sh`. clox/jlox numbers from [loxcraft](https://github.com/abesto/loxcraft).
+Benchmark: `fib(39)` via `bin/fibo_benchmark.sh`. clox number from loxcraft browser interpreter.
 
 | Implementation | fib(39) |
 |---|---|
 | clox | 11.6s |
-| jlox | 22s |
 | CPython 3 | 9s |
-| glox | 50s |
+| glox | 30s |
 
-glox is currently ~4× slower than clox and slower than the Java tree-walking interpreter.
+glox is currently ~2.6× slower than clox.
 
-The VM :
-- does a lot of function calls in place of C macros, not all of which get inlined
-    - TODO : manual inlining of calls.
-- has a large switch/case inner loop which Go compiler doesn't optimise at all well ( no computed goto ) 
-- uses slow map for globals - function code runs much quicker 
-- uses interface{} for objects ( values are tagged union structs for speed but contain a pointer for objects ) 
-- GC is handled by the Go runtime. 
+Known costs:
+- **`Value` struct is 64 bytes** — clox's is ~16 bytes. Every stack push/pop copies 64 bytes. The struct carries fields for all numeric types plus an `Object` interface (16 bytes) plus vec2/3/4 inline fields even though most values are plain ints or floats.
+- **Frame context re-derived on every opcode** — `frame`, `function`, `chunk`, `constants` are all re-fetched at the top of the main loop on every instruction, even though they only change on call/return. TODO: cache and refresh only on frame changes.
+- **No computed goto** — Go's `switch` dispatch is slower than clox's `COMPUTED_GOTO` threaded dispatch, which jumps directly to the next handler without re-entering the switch.
+- **Map for globals** — Go's `map` has significant per-lookup overhead. Function-local code (stack slots) is much faster.
 
- 
-  
-There are some optimisations such as string interning to allow integer hash keys for method lookup, singleton NIL_VALUE, inlined functions in the main run loop. 
-A peephole optimiser compile step replaces two get locals and a numeric add with a single superinstruction OP_ADD_NN working directly on the stack, with a further runtime specialisation opcode rewrite to int+int or float+float if possible. This is good for for loops. A similar optimisation is done for local = local + constant.  
+Optimisations in place:
+- String interning with integer IDs for fast method and global lookup
+- Peephole pass replaces `OP_GET_LOCAL, OP_GET_LOCAL, OP_ADD` with a single `OP_ADD_NN` superinstruction, with runtime specialisation to `OP_ADD_II` / `OP_ADD_FF` on first execution. A similar optimisation handles `local = local + constant`.
+- Call frames stored inline in the VM struct (not heap-allocated) to avoid per-call GC pressure.
 
  
