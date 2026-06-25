@@ -6,3 +6,6 @@ glox.exe
 *__loxcache__
 *.exe
 *dll
+__pycache__/
+.pytest_cache/
+*.pyc
