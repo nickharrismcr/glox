@@ -522,7 +522,16 @@ The legacy runner (`tests/old/test.py`) does exact byte comparison against store
 
 ## Performance Notes:
 
-My implementation is slow compared to CLox. Fibonacci benchmark averages 1s, CLox is around 0.5.  Python3 averages around half that.
+Benchmark: `fib(39)` via `bin/fibo_benchmark.sh`. clox/jlox numbers from [loxcraft](https://github.com/abesto/loxcraft).
+
+| Implementation | fib(39) |
+|---|---|
+| clox | 11.6s |
+| jlox | 22s |
+| CPython 3 | 9s |
+| glox | 50s |
+
+glox is currently ~4× slower than clox and slower than the Java tree-walking interpreter.
 
 The VM :
 - does a lot of function calls in place of C macros, not all of which get inlined
