@@ -522,15 +522,23 @@ The legacy runner (`tests/old/test.py`) does exact byte comparison against store
 
 ## Performance Notes:
 
-Benchmark: `fib(39)` via `bin/fibo_benchmark.sh`. clox number from loxcraft browser interpreter.
+Benchmarks run via `bin/benchmarks.sh` (loxcraft suite). clox `fib(39)` reference from loxcraft browser interpreter (11.6s).
 
-| Implementation | fib(39) |
-|---|---|
-| clox | 11.6s |
-| CPython 3 | 9s |
-| glox | 30s |
+| benchmark | glox | CPython 3 | ratio |
+|---|---|---|---|
+| binary_trees | 26.2s | 7.6s | 3.4× |
+| equality | 80.9s | 20.3s | 4.0× |
+| fib | 30.4s | 9.3s | 3.3× |
+| instantiation | 47.6s | 21.9s | 2.2× |
+| invocation | 22.4s | 10.7s | 2.1× |
+| method_call | 33.3s | 9.2s | 3.6× |
+| properties | 23.6s | 7.5s | 3.1× |
+| string_equality | 51.8s | 17.5s | 3.0× |
+| trees | 34.1s | 6.8s | 5.0× |
+| zoo | 23.8s | 9.8s | 2.4× |
+| zoo_batch | 10.0s | 10.0s | 1.0× |
 
-glox is currently ~2.6× slower than clox.
+glox is currently 2–5× slower than CPython across the suite.
 
 Known costs:
 - **`Value` struct is 64 bytes** — clox's is ~16 bytes. Every stack push/pop copies 64 bytes. The struct carries fields for all numeric types plus an `Object` interface (16 bytes) plus vec2/3/4 inline fields even though most values are plain ints or floats.
