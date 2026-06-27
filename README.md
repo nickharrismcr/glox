@@ -522,7 +522,7 @@ The legacy runner (`tests/old/test.py`) does exact byte comparison against store
 
 ## Performance Notes:
 
-Benchmarks run via `bin/benchmarks.sh` (loxcraft suite). clox `fib(39)` reference from loxcraft browser interpreter (11.6s).
+Benchmarks run via `bin/benchmarks.sh` (loxcraft suite).  
 
 | benchmark | glox | CPython 3 | ratio |
 |---|---|---|---|
@@ -536,7 +536,7 @@ Benchmarks run via `bin/benchmarks.sh` (loxcraft suite). clox `fib(39)` referenc
 | string_equality | 51.8s | 17.5s | 3.0× |
 | trees | 34.1s | 6.8s | 5.0× |
 | zoo | 23.8s | 9.8s | 2.4× |
-| zoo_batch | 10.0s | 10.0s | 1.0× |
+ 
 
 glox is currently 2–5× slower than CPython across the suite.
 
