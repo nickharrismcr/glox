@@ -82,10 +82,8 @@ func Mutable(v Value) Value {
 
 func ValuesEqual(a, b Value, typesMustMatch bool) bool {
 
-	if a.InternedId != 0 && b.InternedId != 0 && a.InternedId != b.InternedId {
-		// if the interned ids are different, we can immediately return false
-		// as its either two different value types, or two different strings
-		return false
+	if a.InternedId != 0 && b.InternedId != 0 {
+		return a.InternedId == b.InternedId
 	}
 
 	switch a.Type {
