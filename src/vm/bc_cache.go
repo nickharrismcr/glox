@@ -109,6 +109,17 @@ func readChunk(reader io.Reader, env *core.Environment) *core.Chunk {
 	//Debugf("String %s ", string(filename))
 	util.ReadMarker(reader)
 	chunk := core.MakeChunk(string(filename), code, constants, lines)
+
+	var globalCount uint32
+	bin.Read(reader, bin.LittleEndian, &globalCount)
+	chunk.GlobalCount = int(globalCount)
+	var nameCount uint32
+	bin.Read(reader, bin.LittleEndian, &nameCount)
+	chunk.GlobalNames = make([]string, nameCount)
+	for i := range chunk.GlobalNames {
+		chunk.GlobalNames[i] = util.ReadString(reader)
+	}
+	util.ReadMarker(reader)
 	return chunk
 }
 

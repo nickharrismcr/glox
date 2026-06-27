@@ -137,7 +137,8 @@ type Parser struct {
 	rules               map[TokenType]ParseRule
 	currentCompiler     *Compiler
 	currentClass        *ClassCompiler
-	globals             map[string]bool
+	globals             map[string]int // name → compiler-assigned slot index
+	globalCount         int
 }
 
 // NewParser creates and initializes a new parser instance for parsing Lox source code.
@@ -147,9 +148,9 @@ type Parser struct {
 func NewParser() *Parser {
 
 	p := &Parser{
-		hadError:  false,
+		hadError: false,
 		panicMode: false,
-		globals:   map[string]bool{},
+		globals:  map[string]int{},
 	}
 	p.setRules()
 	return p
@@ -589,11 +590,12 @@ func (p *Parser) classDeclaration() {
 
 	p.consume(TOKEN_IDENTIFIER, "Expect class name.")
 	className := p.previous
-	nameConstant := p.identifierConstant(p.previous)
+	nameConstant := p.identifierConstant(p.previous) // constant table index for OP_CLASS (needs the string)
+	classSlot := uint8(p.globalSlot(className.Lexeme()))
 	p.declareVariable()
 
 	p.emitBytes(core.OP_CLASS, nameConstant)
-	p.defineVariable(nameConstant)
+	p.defineVariable(classSlot)
 
 	cc := &ClassCompiler{
 		enclosing:     p.currentClass,
@@ -733,7 +735,7 @@ func (p *Parser) handleImplicitDeclaration() bool {
 				p.varDeclaration(false)
 			} else {
 				// core.LogFmtLn(core.DEBUG, "Implicitly declaring global variable %s\n", l)
-				p.globals[l] = true
+				p.globalSlot(l) // ensure slot is assigned before varDeclaration emits OP_DEFINE_GLOBAL
 				p.varDeclaration(false)
 			}
 			return true
@@ -789,10 +791,9 @@ func (p *Parser) handleUnpackingAssignment() bool {
 				name := names[i]
 				if !p.isVariableDefined(name.Token, name.Str) {
 					//core.LogFmtLn(core.DEBUG, "Implicitly declaring global variable %s\n", name.Str)
-					p.globals[name.Str] = true
-					arg := int(p.identifierConstant(name.Token))
-					p.emitBytes(core.OP_SET_GLOBAL, uint8(arg))
-					p.emitByte(core.OP_POP) // Pop the value off the stack after assignment
+					arg := p.globalSlot(name.Str)
+					// OP_DEFINE_GLOBAL pops the value, so no separate OP_POP needed.
+					p.emitBytes(core.OP_DEFINE_GLOBAL, uint8(arg))
 				}
 			}
 		}
@@ -1223,6 +1224,16 @@ func (p *Parser) endCompiler() *core.FunctionObject {
 		}
 	}
 
+	// For the top-level script function, record the global slot table in the chunk.
+	// Inner function chunks don't own globals — they're all in the script's environment.
+	if p.currentCompiler.enclosing == nil {
+		function.Chunk.GlobalCount = p.globalCount
+		function.Chunk.GlobalNames = make([]string, p.globalCount)
+		for name, slot := range p.globals {
+			function.Chunk.GlobalNames[slot] = name
+		}
+	}
+
 	p.currentCompiler = p.currentCompiler.enclosing
 	return function
 }
@@ -1400,11 +1411,11 @@ func (p *Parser) parseVariable(errorMsg string) uint8 {
 
 	p.consume(TOKEN_IDENTIFIER, errorMsg)
 	p.declareVariable()
-	// if local, don't add to constant table
+	// if local, don't assign a global slot
 	if p.currentCompiler.scopeDepth > 0 {
 		return 0
 	}
-	return p.identifierConstant(p.previous)
+	return uint8(p.globalSlot(p.previous.Lexeme()))
 }
 
 // markInitialised marks the most recently declared local variable as initialized.
@@ -1439,9 +1450,7 @@ func (p *Parser) defineVariable(global uint8) {
 		p.markInitialised()
 		return
 	}
-	x := p.currentChunk().Constants[global].AsString().Get()
-	// core.LogFmtLn(core.DEBUG, "Adding global identifier '%s'\n", x)
-	p.globals[x] = true
+	// global is a compiler-assigned slot index (not a constant table index)
 	p.emitBytes(core.OP_DEFINE_GLOBAL, global)
 }
 
@@ -1568,6 +1577,17 @@ func (p *Parser) checkGlobals(name string) bool {
 	return ok
 }
 
+// globalSlot returns the compiler-assigned global slot index for name, allocating one if needed.
+func (p *Parser) globalSlot(name string) int {
+	if idx, ok := p.globals[name]; ok {
+		return idx
+	}
+	idx := p.globalCount
+	p.globals[name] = idx
+	p.globalCount++
+	return idx
+}
+
 // resolveVariable determines the scope and access method for a named variable.
 // Returns the variable's index/slot and the appropriate get/set opcodes.
 // Checks local scope first, then upvalues, finally global scope.
@@ -1589,7 +1609,7 @@ func (p *Parser) resolveVariable(name Token) (int, uint8, uint8) {
 		// core.LogFmtLn(core.DEBUG, "Upvalue %s found at index %d\n", name.Lexeme(), arg)
 
 	} else {
-		arg = int(p.identifierConstant(name))
+		arg = p.globalSlot(name.Lexeme())
 		getOp = core.OP_GET_GLOBAL
 		setOp = core.OP_SET_GLOBAL
 		// core.LogFmtLn(core.DEBUG, "Global variable %s found at index %d\n", name.Lexeme(), arg)

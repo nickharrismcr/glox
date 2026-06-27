@@ -1,11 +1,13 @@
 package core
 
 type Chunk struct {
-	Code      []uint8
-	Constants []Value
-	Lines     []int
-	Filename  string         // for debugging purposes
-	LocalVars []LocalVarInfo // for debugging purposes
+	Code        []uint8
+	Constants   []Value
+	Lines       []int
+	Filename    string         // for debugging purposes
+	LocalVars   []LocalVarInfo // for debugging purposes
+	GlobalCount int            // number of global slots needed by the top-level script
+	GlobalNames []string       // slot → name, for error messages and built-in pre-population
 }
 
 type CallFrame struct {

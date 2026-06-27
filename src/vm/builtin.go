@@ -118,12 +118,15 @@ func addBuiltInModuleFunction(vm *VM, moduleName string, name string, fn core.Bu
 func loadBuiltInFromSource(vm *VM, source string, moduleName string) {
 	core.Log(core.INFO, "Loading built-in module ")
 	subvm := NewVM("", false)
-	//	DebugSuppress = true
 	_, _ = subvm.Interpret(source, moduleName)
-	for k, v := range subvm.Frames[0].Closure.Function.Environment.Vars {
-		vm.BuiltIns[k] = v
+	fn := subvm.Frames[0].Closure.Function
+	// Read from the globals slice (indexed by slot) rather than Vars map,
+	// since OP_DEFINE_GLOBAL now only writes to the fast Globals slice.
+	for slot, name := range fn.Chunk.GlobalNames {
+		if fn.Environment.Defined[slot] {
+			vm.BuiltIns[core.InternName(name)] = fn.Environment.Globals[slot]
+		}
 	}
-
 	core.DebugSuppress = false
 }
 

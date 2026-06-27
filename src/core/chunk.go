@@ -86,12 +86,23 @@ const (
 func NewChunk(filename string) *Chunk {
 
 	return &Chunk{
-		Code:      []uint8{},
-		Constants: []Value{},
-		Lines:     []int{},
-		Filename:  filename,
-		LocalVars: []LocalVarInfo{},
+		Code:        []uint8{},
+		Constants:   []Value{},
+		Lines:       []int{},
+		Filename:    filename,
+		LocalVars:   []LocalVarInfo{},
+		GlobalNames: []string{},
 	}
+}
+
+// SlotForName returns the global slot index for the given name, or -1 if not found.
+func (c *Chunk) SlotForName(name string) int {
+	for i, n := range c.GlobalNames {
+		if n == name {
+			return i
+		}
+	}
+	return -1
 }
 
 func MakeChunk(filename string, code []uint8, constants []Value, lines []int) *Chunk {
@@ -155,5 +166,11 @@ func (c *Chunk) Serialise(b *bytes.Buffer) {
 	util.WriteMarker(b)
 	bin.Write(b, bin.LittleEndian, uint32(len(c.Filename)))
 	b.Write([]byte(c.Filename))
+	util.WriteMarker(b)
+	bin.Write(b, bin.LittleEndian, uint32(c.GlobalCount))
+	bin.Write(b, bin.LittleEndian, uint32(len(c.GlobalNames)))
+	for _, name := range c.GlobalNames {
+		util.WriteString(b, name)
+	}
 	util.WriteMarker(b)
 }

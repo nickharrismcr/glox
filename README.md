@@ -526,29 +526,31 @@ Benchmarks run via `bin/benchmarks.sh` (loxcraft suite).
 
 | benchmark | glox | CPython 3 | ratio |
 |---|---|---|---|
-| binary_trees | 26.2s | 7.6s | 3.4× |
-| equality | 80.9s | 20.3s | 4.0× |
-| fib | 30.4s | 9.3s | 3.3× |
-| instantiation | 47.6s | 21.9s | 2.2× |
-| invocation | 22.4s | 10.7s | 2.1× |
-| method_call | 33.3s | 9.2s | 3.6× |
-| properties | 23.6s | 7.5s | 3.1× |
-| string_equality | 51.8s | 17.5s | 3.0× |
-| trees | 34.1s | 6.8s | 5.0× |
-| zoo | 23.8s | 9.8s | 2.4× |
- 
+| binary_trees | 22.3s | 7.3s | 3.0× |
+| equality | 58.7s | 20.0s | 2.9× |
+| fib | 24.6s | 9.0s | 2.7× |
+| instantiation | 41.5s | 22.9s | 1.8× |
+| invocation | 17.2s | 9.3s | 1.9× |
+| method_call | 26.3s | 8.4s | 3.1× |
+| properties | 18.4s | 7.9s | 2.3× |
+| string_equality | 42.4s | 17.0s | 2.5× |
+| trees | 31.0s | 6.6s | 4.7× |
+| zoo | 17.6s | 9.7s | 1.8× |
+| zoo_batch | 10.0s | 10.0s | 1.0× |
 
-glox is currently 2–5× slower than CPython across the suite.
+glox is currently 1.8–4.7× slower than CPython across the suite.
 
 Known costs:
 - **`Value` struct is 64 bytes** — clox's is ~16 bytes. Every stack push/pop copies 64 bytes. The struct carries fields for all numeric types plus an `Object` interface (16 bytes) plus vec2/3/4 inline fields even though most values are plain ints or floats.
-- **Frame context re-derived on every opcode** — `frame`, `function`, `chunk`, `constants` are all re-fetched at the top of the main loop on every instruction, even though they only change on call/return. TODO: cache and refresh only on frame changes.
 - **No computed goto** — Go's `switch` dispatch is slower than clox's `COMPUTED_GOTO` threaded dispatch, which jumps directly to the next handler without re-entering the switch.
-- **Map for globals** — Go's `map` has significant per-lookup overhead. Function-local code (stack slots) is much faster.
 
 Optimisations in place:
+- **Global variable indexing** — globals are stored in a `[]Value` slice indexed by a compiler-assigned integer slot rather than a `map[int]Value` keyed by interned string ID. `OP_GET_GLOBAL` / `OP_SET_GLOBAL` go from a hash-map lookup to a direct slice index. ~10–27% improvement on global-variable-heavy benchmarks.
 - String interning with integer IDs for fast method and global lookup
 - Peephole pass replaces `OP_GET_LOCAL, OP_GET_LOCAL, OP_ADD` with a single `OP_ADD_NN` superinstruction, with runtime specialisation to `OP_ADD_II` / `OP_ADD_FF` on first execution. A similar optimisation handles `local = local + constant`.
 - Call frames stored inline in the VM struct (not heap-allocated) to avoid per-call GC pressure.
+- Frame context (`frame`, `function`, `chunk`, `constants`, `currCode`) hoisted before the dispatch loop and refreshed only at opcodes that change the active frame (`OP_CALL`, `OP_INVOKE`, `OP_SUPER_INVOKE`, `OP_RETURN`, `OP_RAISE`, toString path).
+- `readShort()` and `readByte()` inlined at all call sites in the dispatch loop, eliminating indirect frame fetches on every jump and loop opcode.
+- GC interval check uses a bitmask (`& 0xFFFF`) rather than modulo, avoiding a multiply-high sequence on every opcode.
 
  

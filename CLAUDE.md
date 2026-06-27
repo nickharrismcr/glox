@@ -74,7 +74,9 @@ The compiler does a single-pass Pratt parser; there is no AST. Closures, upvalue
 
 ### Value representation
 
-`Value` (in `src/core/value.go`) is a tagged union struct with fields for `Int`, `Float`, `Bool`, and `Obj` (an `Object` interface). Vec2/3/4 are also inlined as struct fields on `Value` to avoid heap allocation. All strings are **interned** — the VM works with integer IDs for string keys (method lookup, globals) to avoid repeated hashing.
+`Value` (in `src/core/value.go`) is a tagged union struct with fields for `Int`, `Float`, `Bool`, and `Obj` (an `Object` interface). Vec2/3/4 are also inlined as struct fields on `Value` to avoid heap allocation. All strings are **interned** — the VM works with integer IDs for string keys (method lookup, globals) to avoid repeated hashing. `Value.InternedId` caches the interned ID directly on the value so the VM doesn't need to cast `Obj` to `StringObject` on every global/method lookup.
+
+The struct is currently **64 bytes** (vs clox's ~16 bytes) — a known performance cost. A reduction plan exists in `C:\Users\User\.claude\plans\glox-performance-optimisations.md`.
 
 ### Object types
 
@@ -91,6 +93,29 @@ All heap objects implement the `Object` interface in `src/core/object.go`. Concr
 ### Peephole optimiser
 
 After compilation, a peephole pass (`src/vm/vm.go`) replaces common patterns (two `OP_GET_LOCAL` + `OP_ADD_NUMERIC`) with superinstructions (`OP_ADD_NN`, `OP_ADD_II`, `OP_ADD_FF`, `OP_INCR_CONST_*`). This is especially effective for numeric for-loops.
+
+### VM dispatch loop internals
+
+The `run()` function in `src/vm/vm.go` is the hot path. Key invariants to preserve:
+
+- Five locals are hoisted **before** the `for` loop: `frame *core.CallFrame`, `function *core.FunctionObject`, `chunk *core.Chunk`, `constants []core.Value`, `vm.currCode []uint8`. These are kept in sync by a `refreshFrame()` closure.
+- `refreshFrame()` **must** be called after any opcode that changes `vm.frameCount`: `OP_CALL`, `OP_INVOKE`, `OP_SUPER_INVOKE`, `OP_RETURN` (loop-continue path only), `OP_RAISE`, `OP_STR` (toString path), and after `RaiseExceptionByName` succeeds at the `End:` label. Also after `vm.run(RUN_CURRENT_FUNCTION)` returns in `OP_FOREACH`/`OP_NEXT`.
+- `readShort()` and `readByte()` helpers have been **deleted** — their logic is inlined at call sites. Do not re-introduce calls to them; inline directly using `vm.currCode[frame.Ip]` and `frame.Ip++`.
+- The specialised peephole opcodes (`OP_ADD_II`, `OP_ADD_FF`, `OP_INCR_CONST_I`, `OP_INCR_CONST_F`) use the hoisted `frame` and `constants` locals directly — keep them consistent if refactoring.
+
+### Tests
+
+The active test suite is `tests/new_tests/` (pytest). The old `tests/test.py` is legacy. Run tests with:
+
+```powershell
+$env:LOX_PATH = "d:\go\glox"
+$env:PATH = "d:\go\glox\bin;" + $env:PATH
+python -m pytest tests/new_tests/ -x -q
+```
+
+### Benchmarks
+
+`bin/benchmarks.sh [N]` runs the full loxcraft suite (11 benchmarks) against CPython and prints a comparison table. Results are recorded in the README Performance Notes section. Run with `N=1` for a quick pass, `N=3` or more for stable numbers.
 
 ## Raylib / graphics
 

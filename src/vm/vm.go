@@ -106,6 +106,27 @@ func (vm *VM) SetArgs(args []string) {
 
 // Interpret compiles and executes the given Lox source code, returning the result and any output.
 // It handles the full lifecycle from compilation through execution, including module import preparation.
+// initGlobals allocates the globals slice and pre-populates slots that match built-in
+// functions or modules, so OP_GET_GLOBAL can use a direct slice lookup with no map fallback.
+func (vm *VM) initGlobals(fn *core.FunctionObject) {
+	env := fn.Environment
+	env.InitGlobals(fn.Chunk.GlobalCount)
+	for slot, name := range fn.Chunk.GlobalNames {
+		id := core.InternName(name)
+		if bv, ok := vm.BuiltIns[id]; ok {
+			env.Globals[slot] = bv
+			env.Defined[slot] = true
+			env.Vars[id] = bv
+		}
+		if bm, ok := vm.BuiltInModules[id]; ok {
+			v := core.MakeObjectValue(bm, false)
+			env.Globals[slot] = v
+			env.Defined[slot] = true
+			env.Vars[id] = v
+		}
+	}
+}
+
 func (vm *VM) Interpret(source string, module string) (InterpretResult, string) {
 
 	core.LogFmtLn(core.INFO, "VM %s starting execution\n", vm.script)
@@ -123,6 +144,7 @@ func (vm *VM) Interpret(source string, module string) (InterpretResult, string) 
 		function.Chunk.Serialise(b)
 		writeToLxc(vm, b)
 	}
+	vm.initGlobals(function)
 	closure := core.MakeClosureObject(function)
 	vm.stack[vm.stackTop] = core.MakeObjectValue(closure, false)
 	vm.stackTop++
@@ -322,12 +344,8 @@ func (vm *VM) push(v core.Value) {
 //------------------------------------------------------------------------------------------
 
 // pop removes and returns the value from the top of the VM's execution stack.
-// Returns NIL_VALUE if the stack is empty.
 func (vm *VM) pop() core.Value {
 
-	if vm.stackTop == 0 {
-		return core.NIL_VALUE
-	}
 	vm.stackTop--
 	return vm.stack[vm.stackTop]
 }
@@ -342,15 +360,27 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 	vm.ErrorMsg = ""
 	startFrame := vm.frameCount
 
-	for {
-		frame := vm.frame()
-		function := frame.Closure.Function
-		chunk := function.Chunk
-		constants := chunk.Constants
-		vm.currCode = chunk.Code
+	frame := vm.frame()
+	function := frame.Closure.Function
+	chunk := function.Chunk
+	constants := chunk.Constants
+	vm.currCode = chunk.Code
+	globals := function.Environment.Globals
+	defined := function.Environment.Defined
 
+	refreshFrame := func() {
+		frame = &vm.Frames[vm.frameCount-1]
+		function = frame.Closure.Function
+		chunk = function.Chunk
+		constants = chunk.Constants
+		vm.currCode = chunk.Code
+		globals = function.Environment.Globals
+		defined = function.Environment.Defined
+	}
+
+	for {
 		counter++
-		if counter%100000 == 0 {
+		if counter&0xFFFF == 0 {
 			elapsed := time.Since(vm.lastGC).Seconds()
 			if elapsed > GC_COLLECT_INTERVAL {
 				runtime.GC()
@@ -452,65 +482,47 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			_ = vm.pop()
 
 		case core.OP_DEFINE_GLOBAL:
-			// Define a new global variable with name from constants and value from stack
-			// name = constant at operand index
+			// Define a new global variable; operand is the compiler-assigned slot index.
 
-			idx := vm.currCode[frame.Ip]
+			slot := vm.currCode[frame.Ip]
 			frame.Ip++
-
-			value := vm.Peek(0)
-			//DumpValue("Define global", value)
-			function.Environment.SetVar(constants[idx].InternedId, core.Mutable(value)) // make sure variable is mutable
-			vm.pop()
+			globals[slot] = core.Mutable(vm.pop())
+			defined[slot] = true
 
 		case core.OP_DEFINE_GLOBAL_CONST:
-			// Define a new global constant with name from constants and value from stack
-			// name = constant at operand index
+			// Define a new global constant; operand is the compiler-assigned slot index.
 
-			idx := vm.currCode[frame.Ip]
+			slot := vm.currCode[frame.Ip]
 			frame.Ip++
-			id := constants[idx].InternedId
-			function.Environment.SetVar(id, vm.Peek(0))
-			v, _ := function.Environment.GetVar(id)
-			function.Environment.SetVar(id, core.Immutable(v))
-			vm.pop()
+			globals[slot] = core.Immutable(vm.pop())
+			defined[slot] = true
 
 		case core.OP_GET_GLOBAL:
-			// Look up global variable by name from constants and push its value onto stack
-			// name = constant at operand index
+			// Load a global variable onto the stack; operand is the slot index.
 
-			idx := vm.currCode[frame.Ip]
+			slot := vm.currCode[frame.Ip]
 			frame.Ip++
-			id := constants[idx].InternedId
-
-			value, ok := function.Environment.GetVar(id)
-			//DumpValue("Get global", value)
-			if !ok {
-				value, ok = vm.BuiltIns[id]
-				if !ok {
-					name := core.GetStringValue(constants[idx])
-					vm.RunTimeError("Undefined variable %s", name)
-					goto End
-				}
+			if !defined[slot] {
+				vm.RunTimeError("Undefined variable '%s'", chunk.GlobalNames[slot])
+				goto End
 			}
-			vm.stack[vm.stackTop] = value
+			vm.stack[vm.stackTop] = globals[slot]
 			vm.stackTop++
 
 		case core.OP_SET_GLOBAL:
-			// Assign value from stack top to existing global variable (must exist and be mutable)
-			// name = constant at operand index
+			// Assign stack-top to an existing global variable; operand is the slot index.
 
-			idx := vm.currCode[frame.Ip]
+			slot := vm.currCode[frame.Ip]
 			frame.Ip++
-			id := constants[idx].InternedId
-
-			v, _ := function.Environment.GetVar(id)
-			if v.Immutable() {
-				name := core.GetStringValue(constants[idx])
-				vm.RunTimeError("Cannot assign to const %s", name)
+			if !defined[slot] {
+				vm.RunTimeError("Undefined variable '%s'", chunk.GlobalNames[slot])
 				goto End
 			}
-			function.Environment.SetVar(id, core.Mutable(vm.Peek(0))) // in case of assignment of const
+			if globals[slot].Immutable() {
+				vm.RunTimeError("Cannot assign to const '%s'", chunk.GlobalNames[slot])
+				goto End
+			}
+			globals[slot] = core.Mutable(vm.Peek(0))
 
 		case core.OP_GET_LOCAL:
 			// Get local variable from stack at specified slot and push onto stack top
@@ -535,7 +547,8 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		case core.OP_JUMP_IF_FALSE:
 			// Conditional jump: if stack top is falsy, jump forward by offset amount
 
-			offset := vm.readShort()
+			offset := uint16(vm.currCode[frame.Ip])<<8 | uint16(vm.currCode[frame.Ip+1])
+			frame.Ip += 2
 			if vm.isFalsey(vm.Peek(0)) {
 				frame.Ip += int(offset)
 			}
@@ -543,7 +556,8 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		case core.OP_JUMP:
 			// Unconditional jump forward by offset amount (used for control flow)
 
-			offset := vm.readShort()
+			offset := uint16(vm.currCode[frame.Ip])<<8 | uint16(vm.currCode[frame.Ip+1])
+			frame.Ip += 2
 			core.LogFmtLn(core.DEBUG, "Jumping %d from %d to %d\n", offset, frame.Ip, frame.Ip+int(offset))
 			frame.Ip += int(offset)
 
@@ -583,6 +597,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			if !vm.callValue(vm.Peek(int(argCount)), int(argCount)) {
 				goto End
 			}
+			refreshFrame()
 
 		case core.OP_ADD_NUMERIC:
 			// Pop two values from stack, add them (handles int, float), push result
@@ -663,8 +678,10 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_ADD_NN:
 			// optimised x = x + y for numbers: byte 1, byte 2, numbers to add
-			slotDest := vm.readByte()
-			slotInc := vm.readByte()
+			slotDest := vm.currCode[frame.Ip]
+			frame.Ip++
+			slotInc := vm.currCode[frame.Ip]
+			frame.Ip++
 			base := frame.Slots
 			valA := vm.stack[base+int(slotDest)]
 			valB := vm.stack[base+int(slotInc)]
@@ -693,13 +710,11 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_ADD_II:
 			// optimised x=x+y for local ints: byte 1, byte 2, numbers to add
+			slotDest := vm.currCode[frame.Ip]
+			slotInc := vm.currCode[frame.Ip+1]
+			frame.Ip += 2
 
-			frm := &vm.Frames[vm.frameCount-1]
-			frm.Ip += 2
-			slotDest := vm.currCode[frm.Ip-2]
-			slotInc := vm.currCode[frm.Ip-1]
-
-			base := frm.Slots
+			base := frame.Slots
 			vm.stack[base+int(slotDest)] = core.Value{
 				Type:  core.VAL_INT,
 				Int:   vm.stack[base+int(slotDest)].Int + vm.stack[base+int(slotInc)].Int,
@@ -709,12 +724,11 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_ADD_FF:
 			// optimised x=x+y for local floats: byte 1, byte 2, numbers to add
-			frm := &vm.Frames[vm.frameCount-1]
-			frm.Ip += 2
-			slotDest := vm.currCode[frm.Ip-2]
-			slotInc := vm.currCode[frm.Ip-1]
+			slotDest := vm.currCode[frame.Ip]
+			slotInc := vm.currCode[frame.Ip+1]
+			frame.Ip += 2
 
-			base := frm.Slots
+			base := frame.Slots
 			vm.stack[base+int(slotDest)] = core.Value{
 				Type:  core.VAL_FLOAT,
 				Float: vm.stack[base+int(slotDest)].Float + vm.stack[base+int(slotInc)].Float,
@@ -724,11 +738,13 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_INCR_CONST_N:
 			// optimised x = x + c for numbers: byte 1 local, byte 2 constant, numbers to add
-			slotDest := vm.readByte()
-			slotIncIndex := vm.readByte()
+			slotDest := vm.currCode[frame.Ip]
+			frame.Ip++
+			slotIncIndex := vm.currCode[frame.Ip]
+			frame.Ip++
 			base := frame.Slots
 			valDest := vm.stack[base+int(slotDest)]
-			constVal := frame.Closure.Function.Chunk.Constants[slotIncIndex]
+			constVal := constants[slotIncIndex]
 
 			core.LogFmtLn(core.DEBUG, "incr_const_n: dest tpe %d, const type %d\n", valDest.Type, constVal.Type)
 			// Immediate specializations for common cases
@@ -755,13 +771,12 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_INCR_CONST_I:
 			// optimised x=x+c for local ints: byte 1 local, byte 2 constant, numbers to add
-			frm := &vm.Frames[vm.frameCount-1]
-			frm.Ip += 2
-			slotVar := vm.currCode[frm.Ip-2]
-			constIndex := vm.currCode[frm.Ip-1]
+			slotVar := vm.currCode[frame.Ip]
+			constIndex := vm.currCode[frame.Ip+1]
+			frame.Ip += 2
 
-			base := frm.Slots
-			constVal := frm.Closure.Function.Chunk.Constants[constIndex].Int
+			base := frame.Slots
+			constVal := constants[constIndex].Int
 
 			// Direct integer increment
 			vm.stack[base+int(slotVar)] = core.Value{
@@ -772,16 +787,15 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			continue
 
 		case core.OP_INCR_CONST_F:
-			// optimised x=x+c for local ints: byte 1 local, byte 2 constant, numbers to add
-			frm := &vm.Frames[vm.frameCount-1]
-			frm.Ip += 2
-			slotVar := vm.currCode[frm.Ip-2]
-			constIndex := vm.currCode[frm.Ip-1]
+			// optimised x=x+c for local floats: byte 1 local, byte 2 constant, numbers to add
+			slotVar := vm.currCode[frame.Ip]
+			constIndex := vm.currCode[frame.Ip+1]
+			frame.Ip += 2
 
-			base := frm.Slots
-			constVal := frm.Closure.Function.Chunk.Constants[constIndex].Float
+			base := frame.Slots
+			constVal := constants[constIndex].Float
 
-			// Direct integer increment
+			// Direct float increment
 			vm.stack[base+int(slotVar)] = core.Value{
 				Type:  core.VAL_FLOAT,
 				Float: vm.stack[base+int(slotVar)].Float + constVal,
@@ -893,7 +907,8 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		case core.OP_LOOP:
 			// Jump backward by offset amount (used for loop constructs)
 
-			offset := vm.readShort()
+			offset := uint16(vm.currCode[frame.Ip])<<8 | uint16(vm.currCode[frame.Ip+1])
+			frame.Ip += 2
 			frame.Ip -= int(offset)
 
 		case core.OP_INVOKE:
@@ -906,6 +921,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			if !vm.invoke(method, int(argCount)) {
 				goto End
 			}
+			refreshFrame()
 
 		case core.OP_CLOSURE:
 			// Create closure from function constant, capturing upvalues as specified
@@ -954,6 +970,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.stackTop = frame.Slots
 			vm.stack[vm.stackTop] = result
 			vm.stackTop++
+			refreshFrame()
 
 		case core.OP_METHOD:
 			// Define method on a class using name from constants
@@ -1230,7 +1247,8 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		// push an exception handler storing that info
 		case core.OP_TRY:
 			// Begin try block: push exception handler with address of except block
-			exceptIP := vm.readShort()
+			exceptIP := uint16(vm.currCode[frame.Ip])<<8 | uint16(vm.currCode[frame.Ip+1])
+			frame.Ip += 2
 			frame.Handlers = &core.ExceptionHandler{
 				ExceptIP: exceptIP,
 				StackTop: vm.stackTop,
@@ -1263,6 +1281,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			if !vm.raiseException(err) {
 				return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 			}
+			refreshFrame()
 
 		case core.OP_CLASS:
 			// Create new class object using name from constants and push onto stack
@@ -1315,6 +1334,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			if !vm.invokeFromClass(superclass, method, int(argCount), false) {
 				return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 			}
+			refreshFrame()
 
 		case core.OP_IMPORT:
 			// Import module: load and register module by name with optional alias
@@ -1334,7 +1354,13 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			moduleObj, ok := vm.BuiltInModules[sID]
 			if ok {
 				// copy built-in module to the current environment
-				vm.frame().Closure.Function.Environment.SetVar(sID, core.MakeObjectValue(moduleObj, false))
+				moduleVal := core.MakeObjectValue(moduleObj, false)
+				frame.Closure.Function.Environment.SetVar(sID, moduleVal)
+				// also write to the fast globals slot (keyed by alias name)
+				if slot := chunk.SlotForName(alias); slot >= 0 {
+					globals[slot] = moduleVal
+					defined[slot] = true
+				}
 				continue
 			}
 
@@ -1401,6 +1427,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 					ot := ov.(*core.InstanceObject)
 					if toString, ok := ot.Class.Methods[core.TO_STRING]; ok {
 						vm.call(toString.AsClosure(), 0)
+						refreshFrame()
 						continue
 					}
 					s = v.String()
@@ -1459,9 +1486,12 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 		case core.OP_FOREACH:
 			// Begin foreach loop: set up iteration over iterable object (list, string, or custom iterator)
-			slot := vm.readByte()
-			iterableSlot := vm.readByte()
-			jumpToEnd := vm.readShort()
+			slot := vm.currCode[frame.Ip]
+			frame.Ip++
+			iterableSlot := vm.currCode[frame.Ip]
+			frame.Ip++
+			jumpToEnd := uint16(vm.currCode[frame.Ip])<<8 | uint16(vm.currCode[frame.Ip+1])
+			frame.Ip += 2
 			iterable := vm.stack[frame.Slots+int(iterableSlot)]
 			if iterable.Type != core.VAL_OBJ {
 				vm.RunTimeError("Foreach requires an iterable object, got %s", iterable.String())
@@ -1505,7 +1535,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 					if iok != INTERPRET_OK {
 						goto End
 					}
-					frame = vm.frame()
+					refreshFrame()
 					core.Log(core.DEBUG, "iter pop")
 					vm.pop()
 
@@ -1544,7 +1574,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 					if iok != INTERPRET_OK {
 						goto End
 					}
-					frame = vm.frame()
+					refreshFrame()
 					core.Log(core.DEBUG, "next pop in foreach")
 					vm.pop()
 
@@ -1569,8 +1599,10 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		case core.OP_NEXT:
 			// Continue foreach loop: get next item from iterator, jump back if more items available
 
-			jumpToStart := vm.readShort()
-			iterSlot := frame.Slots + int(vm.readByte())
+			jumpToStart := uint16(vm.currCode[frame.Ip])<<8 | uint16(vm.currCode[frame.Ip+1])
+			frame.Ip += 2
+			iterSlot := frame.Slots + int(vm.currCode[frame.Ip])
+			frame.Ip++
 			iterVal := vm.stack[iterSlot]
 			if iterVal.Obj.GetType() != core.OBJECT_INSTANCE {
 				val := iterVal.AsIterator().Next()
@@ -1607,7 +1639,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 					core.LogFmtLn(core.ERROR, "ASSERTION FAILED: Stack top incorrect after next pop (OP_NEXT). Expected=%d, Actual=%d", expectedStackTop3-1, vm.stackTop)
 				}
 
-				frame = vm.frame()
+				refreshFrame()
 				if rv.Type != core.VAL_NIL {
 					vm.stack[iterSlot-1] = rv
 					frame.Ip -= int(jumpToStart + 1)
@@ -1654,7 +1686,8 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 		// byte will be the number of items to unpack
 		case core.OP_UNPACK:
 
-			count := int(vm.readByte())
+			count := int(vm.currCode[frame.Ip])
+			frame.Ip++
 			if count == 0 {
 				vm.RunTimeError("Unpack count cannot be zero.")
 				goto End
@@ -1693,6 +1726,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			if !vm.RaiseExceptionByName("RunTimeError", vm.ErrorMsg) {
 				return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 			}
+			refreshFrame()
 		}
 	}
 
@@ -1703,6 +1737,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 // callValue attempts to call a value with the specified number of arguments.
 // Handles closures, built-in functions, classes (constructors), and bound methods.
+//go:noinline
 func (vm *VM) callValue(callee core.Value, argCount int) bool {
 
 	//core.LogFmtLn(core.DEBUG, "Calling value %s with %d args", callee.String(), argCount)
@@ -1747,6 +1782,7 @@ func (vm *VM) callValue(callee core.Value, argCount int) bool {
 
 // invoke performs optimized method calls and module access without separate property lookup.
 // optimised method call/module access
+//go:noinline
 func (vm *VM) invoke(name core.Value, argCount int) bool {
 	receiver := vm.Peek(argCount)
 
@@ -1787,6 +1823,7 @@ func (vm *VM) invoke(name core.Value, argCount int) bool {
 //------------------------------------------------------------------------------------------
 
 // invokeFromClass calls a method from a specific class, handling both static and instance methods.
+//go:noinline
 func (vm *VM) invokeFromClass(class *core.ClassObject, name core.Value, argCount int, isStatic bool) bool {
 	i := name.InternedId
 	if isStatic {
@@ -1979,27 +2016,6 @@ func (vm *VM) call(closure *core.ClosureObject, argCount int) bool {
 
 //------------------------------------------------------------------------------------------
 
-// readShort reads a 16-bit value from the current instruction stream (big-endian format).
-func (vm *VM) readShort() uint16 {
-
-	vm.frame().Ip += 2
-	b1 := uint16(vm.currCode[vm.frame().Ip-2])
-	b2 := uint16(vm.currCode[vm.frame().Ip-1])
-	return uint16(b1<<8 | b2)
-}
-
-//------------------------------------------------------------------------------------------
-
-// readByte reads a single byte from the current instruction stream and advances the instruction pointer.
-func (vm *VM) readByte() uint8 {
-
-	frame := &vm.Frames[vm.frameCount-1]
-	frame.Ip += 1
-	return vm.currCode[frame.Ip-1]
-}
-
-//------------------------------------------------------------------------------------------
-
 // isFalsey determines if a value should be considered false in a boolean context.
 // Only nil and false are falsy in Lox.
 func (vm *VM) isFalsey(v core.Value) bool {
@@ -2035,6 +2051,7 @@ func (vm *VM) RaiseExceptionByName(name string, msg string) bool {
 //------------------------------------------------------------------------------------------
 
 // raiseException handles exception propagation through the call stack and exception handlers.
+//go:noinline
 func (vm *VM) raiseException(err core.Value) bool {
 
 	for {
@@ -2057,11 +2074,18 @@ func (vm *VM) raiseException(err core.Value) bool {
 				v, ok := function.Environment.GetVar(id)
 				if !ok {
 					v, ok = vm.BuiltIns[id]
-					if !ok {
-						name := core.GetStringValue(function.Chunk.Constants[idx])
-						vm.RunTimeError("Undefined exception handler '%s'.", name)
-						return false
+				}
+				if !ok {
+					// also check the fast globals slice (user-defined exception classes)
+					handlerName := core.GetStringValue(function.Chunk.Constants[idx])
+					if slot := function.Chunk.SlotForName(handlerName); slot >= 0 && function.Environment.Defined[slot] {
+						v, ok = function.Environment.Globals[slot], true
 					}
+				}
+				if !ok {
+					handlerName := core.GetStringValue(function.Chunk.Constants[idx])
+					vm.RunTimeError("Undefined exception handler '%s'.", handlerName)
+					return false
 				}
 				handler_class := v.AsClass()
 				err_class := core.GetInstanceObjectValue(err).Class
@@ -2175,6 +2199,7 @@ func (vm *VM) sourceLine(script string, line int) string {
 //------------------------------------------------------------------------------------------
 
 // importModule loads and executes a Lox module, adding it to the current environment.
+//go:noinline
 func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 
 	core.LogFmtLn(core.DEBUG, "Importing module %s as %s\n", moduleName, alias)
@@ -2190,6 +2215,10 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 		core.LogFmtLn(core.DEBUG, "Module %s already loaded, adding to current environment.\n", moduleName)
 		v := core.MakeObjectValue(module, false)
 		vm.frame().Closure.Function.Environment.SetVar(core.InternName(alias), v)
+		env := vm.frame().Closure.Function.Environment
+		if slot := vm.frame().Closure.Function.Chunk.SlotForName(alias); slot >= 0 {
+			env.SetGlobal(slot, v)
+		}
 		return INTERPRET_OK
 	}
 	globalModuleSource[moduleName] = string(bytes)
@@ -2216,12 +2245,21 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 	}
 	core.LogFmtLn(core.DEBUG, "Created module object for %s.\n", moduleName)
 	subfn := subvm.Frames[0].Closure.Function
+	// Sync final global values into the Vars map so importFunctionFromModule can find them.
+	for slot, name := range subfn.Chunk.GlobalNames {
+		if subfn.Environment.Defined[slot] {
+			subfn.Environment.Vars[core.InternName(name)] = subfn.Environment.Globals[slot]
+		}
+	}
 	mo := core.MakeModuleObject(moduleName, *subfn.Environment)
 
 	globalModules[moduleName] = mo
 	v := core.MakeObjectValue(mo, false)
 	debug.TraceDumpValue("Dump:", v)
 	vm.frame().Closure.Function.Environment.SetVar(core.InternName(alias), v)
+	if slot := vm.frame().Closure.Function.Chunk.SlotForName(alias); slot >= 0 {
+		vm.frame().Closure.Function.Environment.SetGlobal(slot, v)
+	}
 	core.LogFmtLn(core.DEBUG, "ImportModule %s as %s return\n", moduleName, alias)
 	return INTERPRET_OK
 }
@@ -2234,6 +2272,7 @@ func (subvm *VM) callLoadedChunk(name string, newEnv *core.Environment, chunk *c
 	function := core.MakeFunctionObject(name, newEnv)
 	function.Chunk = chunk
 	function.Name = core.MakeStringObject(name)
+	subvm.initGlobals(function)
 	closure := core.MakeClosureObject(function)
 	subvm.push(core.MakeObjectValue(closure, false))
 	subvm.call(closure, 0)
@@ -2253,12 +2292,21 @@ func (vm *VM) importFunctionFromModule(module string, name string) bool {
 		vm.RunTimeError("Module '%s' is not imported.", module)
 		return false
 	}
+	currentEnv := vm.frame().Closure.Function.Environment
+	currentChunk := vm.frame().Closure.Function.Chunk
 	if name == "__all__" {
 		// import all functions from the module
 		moduleObj := moduleVal.AsModule()
 		for k, v := range moduleObj.Environment.Vars {
 			if v.Type == core.VAL_OBJ && v.Obj.GetType() == core.OBJECT_CLOSURE {
-				vm.frame().Closure.Function.Environment.SetVar(k, v)
+				currentEnv.SetVar(k, v)
+				// also write to the fast globals slot using a name-based lookup
+				for slot, gname := range currentChunk.GlobalNames {
+					if core.InternName(gname) == k {
+						currentEnv.SetGlobal(slot, v)
+						break
+					}
+				}
 			}
 		}
 		return true
@@ -2276,7 +2324,10 @@ func (vm *VM) importFunctionFromModule(module string, name string) bool {
 			return false
 		}
 
-		vm.frame().Closure.Function.Environment.SetVar(nameId, fn)
+		currentEnv.SetVar(nameId, fn)
+		if slot := currentChunk.SlotForName(name); slot >= 0 {
+			currentEnv.SetGlobal(slot, fn)
+		}
 		return true
 	}
 
