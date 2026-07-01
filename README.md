@@ -531,6 +531,7 @@ Benchmarks run via `bin/benchmarks.sh` (loxcraft suite).
 | fib | 24.6s | 9.0s | 2.7× |
 | instantiation | 41.5s | 22.9s | 1.8× |
 | invocation | 17.2s | 9.3s | 1.9× |
+| loop | 9.1s | 3.6s | 2.5× |
 | method_call | 26.3s | 8.4s | 3.1× |
 | properties | 18.4s | 7.9s | 2.3× |
 | string_equality | 42.4s | 17.0s | 2.5× |
