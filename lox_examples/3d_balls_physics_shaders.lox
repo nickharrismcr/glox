@@ -49,12 +49,31 @@ pulse_center = vec3(0, 5, 0)   // Moving center point for pulse shader effect
 // ========== PHYSICS SIMULATION CONSTANTS ==========
 const GRID_SIZE = 30.0         // Half-size of simulation boundary (60x60x60 total space)
 const BOUNCE_DAMPING = 0.5     // Energy loss factor on boundary collisions (0.9 = 10% loss)
-const SHAPES = 120              
-const FORCE = 3.99              // Explosion force multiplier (affects blast radius impact)
+const SHAPES = 480
+const SPAWN_PER_FRAME = 10     // How many balls to add per frame while ramping up to SHAPES
+const FORCE = 0.5             // Explosion force multiplier (affects blast radius impact)
 const DISTANCE = 40.0          // Camera orbital distance from center
 const NORMAL=0
 const RAINBOW=1
 const PULSE=2
+const EXP_MIN=400                // Minimum frames before explosion
+const EXP_MAX=2000                // Maximum frames before explosion
+
+// Precomputed cos/sin for a regular hexagon (0/60/120/180/240/300 degrees),
+// used by MovingObject.add_shadow(). Static angles, so these are computed
+// once instead of calling math.cos/math.sin 12 times per ball per frame.
+const HEX_C0 = 1.0
+const HEX_S0 = 0.0
+const HEX_C1 = 0.5
+const HEX_S1 = 0.8660254037844387
+const HEX_C2 = -0.5
+const HEX_S2 = 0.8660254037844387
+const HEX_C3 = -1.0
+const HEX_S3 = 0.0
+const HEX_C4 = -0.5
+const HEX_S4 = -0.8660254037844387
+const HEX_C5 = 0.5
+const HEX_S5 = -0.8660254037844387
 
 // ========== MOVING OBJECT CLASS ==========
 // Represents a physics object with collision, explosion, and shader rendering capabilities
@@ -66,7 +85,7 @@ class MovingObject {
         this.color = color                                  // RGBA color (vec4)
         this.shape_type = shape_type                        // Shape identifier (currently "sphere")
         this.radius = this.get_collision_radius()          // Collision radius for physics
-        this.explosion_timer = random.float(200,7000)    // Random countdown to explosion 
+        this.explosion_timer = random.float(EXP_MIN, EXP_MAX)    // Random countdown to explosion 
         this.is_exploded = false                            // Explosion state flag
         this.shader_type = random.choice((NORMAL, RAINBOW, PULSE))         
     }
@@ -243,57 +262,89 @@ class MovingObject {
         this.vel.z = this.vel.z + nz * force_strength
     }
     
-    // Render object with appropriate shader effect
-    draw(win,shader_type) {
-        // Don't render exploded objects
-        if (this.is_exploded) {
-            return
-        }
-
-        // Pre-explosion visual warning: flash white and expand size
-        if (this.explosion_timer > 0 and this.explosion_timer < 5) {
-            expanded_size = this.size.x * 3.0  // Triple size for dramatic effect
-            win.sphere(this.pos, expanded_size, col.WHITE)  // Flash white warning
-        } else {
-            if (this.shader_type == shader_type ){
-                win.sphere(this.pos, this.size.x, this.color)
-            }
-        }
-             
-    }
-    
-    // Render fake shadow as ellipse projected on ground plane
-    draw_shadow(win) {
+    // Add a flat hexagon (6 triangles, fanned from the center) shadow into
+    // the given batch, instead of drawing an individual win.ellipse3() per
+    // ball. Approximates the original circular shadow far better than a
+    // quad while still rendering as one native batch.
+    add_shadow(shadow_batch) {
         // Don't render shadows for exploded objects
         if (this.is_exploded) {
             return
         }
-        
-        // Calculate shadow position (directly below object on ground)
-        shadow_pos = vec3(this.pos.x, 0.01, this.pos.z)  // Slightly above ground to avoid z-fighting
-        
+
         // Shadow size decreases with height (perspective effect simulation)
         height_factor = math.max(0.2, 1.0 - (this.pos.y / 7.0))  // Smaller shadow when higher up
-        shadow_radius_x = this.radius * height_factor  
-        shadow_radius_z = this.radius * height_factor  
-        
+        r = this.radius * height_factor
+
+        // Slightly above ground to avoid z-fighting
+        x = this.pos.x
+        y = 0.01
+        z = this.pos.z
+
         // Gray shadow color with fixed transparency
         shadow_color = vec4(100, 100, 100, 255)
-        win.ellipse3(shadow_pos, shadow_radius_x, shadow_radius_z, shadow_color)
+
+        center = vec3(x, y, z)
+        p0 = vec3(x + r * HEX_C0, y, z + r * HEX_S0)
+        p1 = vec3(x + r * HEX_C1, y, z + r * HEX_S1)
+        p2 = vec3(x + r * HEX_C2, y, z + r * HEX_S2)
+        p3 = vec3(x + r * HEX_C3, y, z + r * HEX_S3)
+        p4 = vec3(x + r * HEX_C4, y, z + r * HEX_S4)
+        p5 = vec3(x + r * HEX_C5, y, z + r * HEX_S5)
+
+        // Wound so each triangle's face normal points +Y (upward, toward the
+        // elevated camera) -- see the quad-shadow winding note this replaced.
+        shadow_batch.add_triangle3(center, p1, p0, shadow_color)
+        shadow_batch.add_triangle3(center, p2, p1, shadow_color)
+        shadow_batch.add_triangle3(center, p3, p2, shadow_color)
+        shadow_batch.add_triangle3(center, p4, p3, shadow_color)
+        shadow_batch.add_triangle3(center, p5, p4, shadow_color)
+        shadow_batch.add_triangle3(center, p0, p5, shadow_color)
     }
 }
 
  
 objects = []
-added = 0  
- 
+added = 0
+
+// ===== SPATIAL HASH SETUP =====
+// Flat 3D grid for O(n) broad-phase collision culling.
+// Cell size must exceed max ball diameter (0.7 * 2 = 1.4); 2.0 gives clear margin.
+// X/Z are offset by GRID_SIZE so all coords are positive before dividing.
+CELL_SIZE = 2.0
+SH_CX = 32          // cells along X: (pos.x + 30) / 2 -> 0..30, need 31; 32 is safe
+SH_CY = 20          // cells along Y: pos.y / 2 -> covers 0..38 (very high balls skipped)
+SH_CZ = 32          // cells along Z: same as X
+SH_YZ = SH_CY * SH_CZ  // 640 — precomputed stride for flat indexing
+SH_TOTAL = SH_CX * SH_YZ  // 20480 total cells
+
+// Pre-allocate once: each slot is nil (unused) or a list of object indices.
+sh_grid = []
+foreach (sh_init in range(SH_TOTAL)) {
+    sh_grid.append(nil)
+}
+sh_used = []  // indices of cells populated this frame (for fast clearing)
+
+// ===== BATCH RENDERING SETUP =====
+// One sphere batch per shader pass. Populating a batch is still a per-ball
+// Lox-level call, but batch.draw() then renders every entry in a single
+// native Go loop -- replacing 3 full Lox-level foreach passes (one per
+// shader type, each doing a method call + shader-type check per ball) with
+// exactly one sort-and-fill pass plus three native draw calls.
+normal_batch = batch(win.BATCH_SPHERE)
+rainbow_batch = batch(win.BATCH_SPHERE)
+pulse_batch = batch(win.BATCH_SPHERE)
+// Shadows are flat quads (2 triangles each), batched natively the same way.
+shadow_batch = batch(win.BATCH_TRIANGLE3)
+
 while (!win.should_close()) {
 
-    if ( added < SHAPES ) {
+    foreach (spawn_i in range(SPAWN_PER_FRAME)) {
+        if (added >= SHAPES) break
         pos = vec3(random.float(-5, 5), random.float(10, 18), random.float(-5, 5))
         vel = vec3(random.float(-0.15, 0.15), random.float(-0.05, 0.05), random.float(-0.15, 0.15))
         s = random.float(0.3,0.7)
-        size = vec3(s, s, s)   
+        size = vec3(s, s, s)
         objects.append(MovingObject(pos, vel, size, col.random_rgb(), "sphere"))
         added+=1
     }
@@ -313,13 +364,11 @@ while (!win.should_close()) {
     foreach (obj in objects) {
         obj.update()
     }
-    
+
     // ===== EXPLOSION MECHANICS =====
     // Check for objects whose explosion timers have expired
     explosions = []
-    object_count = objects.length()  // Cache length to avoid issues during iteration
-    for (i = 0; i < object_count; i = i + 1) {
-        obj = objects[i]
+    foreach (obj in objects) {
         if (obj.should_explode()) {
             // Record explosion position for force propagation
             explosions.append(vec3(obj.pos.x, obj.pos.y, obj.pos.z))
@@ -355,54 +404,71 @@ while (!win.should_close()) {
             obj.apply_explosion_force(explosion_pos, FORCE)
         }
     }
-    
-    
-    // ===== COLLISION DETECTION AND RESOLUTION =====
-    if (frame_count % 2 == 0) {
-        object_count = objects.length()  // Cache length to avoid issues during iteration
-        for (i = 0; i < object_count; i = i + 1) {
-            
-            obj1 = objects[i]
-            if (obj1.is_exploded  ) {
-                continue
+
+    // ===== COLLISION DETECTION AND RESOLUTION (SPATIAL HASH) =====
+    // Broad phase: O(n) grid build + O(n * 27) neighbor lookups instead of O(n^2).
+    // Each ball is inserted into one cell; pairs are only tested when they share a cell
+    // or occupy adjacent cells. j > i guard ensures each pair is tested exactly once.
+    if (frame_count % 3 == 0) {
+        object_count = objects.length()
+
+        // Clear cells populated last frame
+        foreach (sh_c in sh_used) {
+            sh_grid[sh_c] = nil
+        }
+        sh_used = []
+
+        // Insert each live object into its grid cell
+        foreach (i in range(object_count)) {
+            obj = objects[i]
+            if (obj.is_exploded) continue
+            cx = int((obj.pos.x + GRID_SIZE) / CELL_SIZE)
+            cy = int(obj.pos.y / CELL_SIZE)
+            cz = int((obj.pos.z + GRID_SIZE) / CELL_SIZE)
+            if (cx < 0 or cx >= SH_CX or cy < 0 or cy >= SH_CY or cz < 0 or cz >= SH_CZ) continue
+            sh_i = cx * SH_YZ + cy * SH_CZ + cz
+            if (sh_grid[sh_i] == nil) {
+                sh_grid[sh_i] = []
+                sh_used.append(sh_i)
             }
-            
-            for (j = 0; j < object_count; j = j + 1) {
-                obj2 = objects[j]
-                // Skip exploded objects early, dont check self-collision
-                if (i==j or obj2.is_exploded) {
-                    continue
-                }
-                
-                // Pre-collision spatial culling (early exit optimizations)
-                dx = obj1.pos.x - obj2.pos.x
-                dy = obj1.pos.y - obj2.pos.y
-                dz = obj1.pos.z - obj2.pos.z
-                
-                // Skip objects too far apart horizontally  
-                if (dx*dx + dz*dz > 9) {
-                    continue
-                }
-                // Skip objects too far apart vertically  
-                if (dy*dy > 9) {
-                    continue
-                }
-                
-                // Fast squared distance check before expensive collision calculation
-                dist_sq = dx*dx + dy*dy + dz*dz
-                max_dist = obj1.radius + obj2.radius + 0.1  // Small buffer
-                if (dist_sq > max_dist * max_dist) {
-                    continue
-                }
-                
-                // Perform detailed collision check and resolution
-                if (obj1.check_collision(obj2)) {
-                    obj1.resolve_collision(obj2)
+            sh_grid[sh_i].append(i)
+        }
+
+        // Narrow phase: for each object, check its 3x3x3 cell neighborhood
+        foreach (i in range(object_count)) {
+            obj1 = objects[i]
+            if (obj1.is_exploded) continue
+
+            cx = int((obj1.pos.x + GRID_SIZE) / CELL_SIZE)
+            cy = int(obj1.pos.y / CELL_SIZE)
+            cz = int((obj1.pos.z + GRID_SIZE) / CELL_SIZE)
+
+            foreach (ddx in range(-1, 2)) {
+                ncx = cx + ddx
+                if (ncx < 0 or ncx >= SH_CX) continue
+                foreach (ddy in range(-1, 2)) {
+                    ncy = cy + ddy
+                    if (ncy < 0 or ncy >= SH_CY) continue
+                    foreach (ddz in range(-1, 2)) {
+                        ncz = cz + ddz
+                        if (ncz < 0 or ncz >= SH_CZ) continue
+                        sh_ni = ncx * SH_YZ + ncy * SH_CZ + ncz
+                        cell_list = sh_grid[sh_ni]
+                        if (cell_list == nil) continue
+                        foreach (j in cell_list) {
+                            if (j <= i) continue
+                            obj2 = objects[j]
+                            if (obj2.is_exploded) continue
+                            if (obj1.check_collision(obj2)) {
+                                obj1.resolve_collision(obj2)
+                            }
+                        }
+                    }
                 }
             }
         }
     }
-    
+
     // ===== RENDERING PHASE =====
     win.begin()
     win.begin_blend_mode(win.BLEND_ALPHA)  // Enable alpha blending for transparency effects
@@ -424,36 +490,55 @@ while (!win.should_close()) {
         win.plane(vec3(0, 0, 0), vec2(GRID_SIZE*2, GRID_SIZE*2), vec4(150, 150, 150, 255))
     }
     
-    // ===== SHADOW PASS =====
-    // Render all object shadows first (depth layering)
+    // ===== SHADOW PASS (BATCHED) =====
+    // Render all object shadows first (depth layering). Each ball adds a flat
+    // quad (2 triangles) into shadow_batch; batch.draw() renders them all in
+    // one native loop instead of 500 individual win.ellipse3() Lox calls.
+    shadow_batch.clear()
     foreach (obj in objects) {
-        obj.draw_shadow(win)
+        obj.add_shadow(shadow_batch)
     }
-    
+    shadow_batch.draw()
+
     // ===== BOUNDARY VISUALIZATION =====
     // Draw wireframe boundary cube to show simulation limits
     win.cube_wires(vec3(0, 5, 0), vec3(GRID_SIZE*2, 10, GRID_SIZE*2), vec4(100, 100, 100, 100))
- 
-    
-    // ===== OBJECT RENDERING PASS =====
-    // Render all physics objects with their assigned shader effects
+
+
+    // ===== OBJECT RENDERING PASS (BATCHED) =====
+    // Single pass sorts each live ball into its shader's batch; batch.draw()
+    // then renders every entry natively in one loop (see BATCH RENDERING SETUP above).
+    normal_batch.clear()
+    rainbow_batch.clear()
+    pulse_batch.clear()
     foreach (obj in objects) {
-        obj.draw(win,NORMAL)
+        if (obj.is_exploded) continue
+        if (obj.explosion_timer > 0 and obj.explosion_timer < 5) {
+            // Pre-explosion visual warning: flash white and expand size
+            expanded_size = obj.size.x * 3.0
+            normal_batch.add(obj.pos, vec3(expanded_size, expanded_size, expanded_size), col.WHITE)
+            continue
+        }
+        if (obj.shader_type == NORMAL) {
+            normal_batch.add(obj.pos, obj.size, obj.color)
+        } else if (obj.shader_type == RAINBOW) {
+            rainbow_batch.add(obj.pos, obj.size, obj.color)
+        } else {
+            pulse_batch.add(obj.pos, obj.size, obj.color)
+        }
     }
+
+    normal_batch.draw()
     win.begin_shader_mode(rainbow_shader)
-    foreach (obj in objects) {
-        obj.draw(win,RAINBOW)
-    }
+    rainbow_batch.draw()
     win.end_shader_mode()
     win.begin_shader_mode(pulse_shader)
-    foreach (obj in objects) {
-        obj.draw(win,PULSE)
-    }
+    pulse_batch.draw()
     win.end_shader_mode()
 
     // ===== EXIT 3D RENDERING =====
     win.end_3d()  // Return to 2D coordinate system
-    
+
     win.end()  // Present frame to screen
 }
 
