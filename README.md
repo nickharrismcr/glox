@@ -526,17 +526,17 @@ Benchmarks run via `bin/benchmarks.sh` (loxcraft suite).
 
 | benchmark | glox | CPython 3 | ratio |
 |---|---|---|---|
-| binary_trees | 20.9s | 7.2s | 2.9× |
-| equality | 56.7s | 20.5s | 2.8× |
+| binary_trees | 21.3s | 7.3s | 2.9× |
+| equality | 57.1s | 20.7s | 2.8× |
 | fib | 23.4s | 8.9s | 2.6× |
-| instantiation | 42.2s | 21.2s | 2.0× |
-| invocation | 16.2s | 9.0s | 1.8× |
-| loop | 8.6s | 3.5s | 2.5× |
-| method_call | 25.0s | 8.4s | 3.0× |
-| properties | 17.9s | 7.3s | 2.4× |
-| string_equality | 41.2s | 17.0s | 2.4× |
-| trees | 28.7s | 6.6s | 4.4× |
-| zoo | 17.1s | 9.3s | 1.8× |
+| instantiation | 41.8s | 20.5s | 2.0× |
+| invocation | 16.3s | 8.9s | 1.8× |
+| loop | 8.6s | 3.4s | 2.5× |
+| method_call | 25.1s | 8.6s | 2.9× |
+| properties | 17.6s | 7.6s | 2.3× |
+| string_equality | 41.4s | 17.1s | 2.4× |
+| trees | 28.8s | 6.6s | 4.3× |
+| zoo | 17.2s | 9.3s | 1.8× |
 | zoo_batch | 10.0s | 10.0s | 1.0× |
 
 glox is currently 1.8–4.4× slower than CPython across the suite.
