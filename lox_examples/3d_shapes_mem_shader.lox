@@ -7,7 +7,7 @@ import colour_utils
 import random
 import math
 
-SHAPES=100
+SHAPES=500
 
 win = window(1,1)
 win.init()
@@ -122,6 +122,7 @@ if (memory_shader.is_valid()) {
 }
 
 angle = 0.0
+cam_angle = 0.0
 frame_count = 0
 brightness = 1.0  // Fixed brightness value
 // Dynamic light position - will move randomly
@@ -144,7 +145,7 @@ class BrightObject {
         this.rotation_speed_z = random.float(-0.05, 0.05)
         
         // Orbital parameters
-        this.orbit_radius = random.float(5, 25)
+        this.orbit_radius = random.float(5, 55)
         this.orbit_speed = random.float(0.005, 0.02) * (1.0 / this.orbit_radius)  // Closer objects orbit faster
         this.orbit_angle = random.float(0, 6.28)  // Random starting angle
         this.orbit_height = 10.0  // Fixed Y position for all  
@@ -193,17 +194,18 @@ class BrightObject {
 // Create objects
 objects = []
 for (i = 0; i < SHAPES; i = i + 1) {
-    size = random.float(1, 2.0)
+    size = random.float(0.3, 2.0)
     color = colour_utils.random()  
     objects.append(BrightObject(size, color))
 }
 
 while (!win.should_close()) {
     angle = angle + 0.01
+    cam_angle = cam_angle + 0.03
     x = math.cos(angle) * 30
     z = math.sin(angle) * 30
     // Add slow vertical camera movement - oscillate between y=5 and y=15
-    y = 10 + 50 * math.sin(angle * 0.3)
+    y = 10 + 50 * math.sin(cam_angle * 0.3)
     cam.set_position(vec3(x, y, z))
     // Keep camera pointed at center of action
     cam.set_target(vec3(0, 10, 0))
