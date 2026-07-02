@@ -40,11 +40,12 @@ type Local struct {
 }
 
 type Loop struct {
-	start     int
-	breaks    []int
-	foreach   bool
-	continues []int
-	previous  *Loop
+	start      int
+	breaks     []int
+	foreach    bool
+	continues  []int
+	previous   *Loop
+	scopeDepth int // scope depth owned by the loop itself (e.g. the for/foreach control variable's scope); continue must not pop below this
 }
 
 type Upvalue struct {
@@ -879,6 +880,7 @@ func (p *Parser) whileStatement() {
 
 	loopSave := p.currentCompiler.loop
 	p.currentCompiler.loop = NewLoop(loopSave)
+	p.currentCompiler.loop.scopeDepth = p.currentCompiler.scopeDepth // while owns no scope of its own
 
 	p.currentCompiler.loop.start = len(p.currentChunk().Code)
 	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after while.")
@@ -910,6 +912,7 @@ func (p *Parser) forStatement() {
 	p.currentCompiler.loop = NewLoop(loopSave)
 
 	p.beginScope()
+	p.currentCompiler.loop.scopeDepth = p.currentCompiler.scopeDepth // the loop's own control-variable scope
 	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after for.")
 	// initialiser
 	if p.match(TOKEN_SEMICOLON) {
@@ -941,16 +944,20 @@ func (p *Parser) forStatement() {
 	}
 	p.match(TOKEN_EOL)
 	p.statement()
-	if len(p.currentCompiler.loop.breaks) != 0 {
-		for _, jump := range p.currentCompiler.loop.breaks {
-			p.patchJump(jump)
-		}
-	}
 	p.emitLoop(core.OP_LOOP, p.currentCompiler.loop.start)
 
 	if exitJump != -1 {
 		p.patchJump(exitJump)
 		p.emitByte(core.OP_POP)
+	}
+	// Patch break jumps here: right before endScope()'s cleanup of the loop's
+	// own control-variable scope, so break lands on that shared cleanup path
+	// instead of on the OP_LOOP back-edge above (which would just continue
+	// the loop instead of exiting it).
+	if len(p.currentCompiler.loop.breaks) != 0 {
+		for _, jump := range p.currentCompiler.loop.breaks {
+			p.patchJump(jump)
+		}
 	}
 	p.endScope()
 	p.currentCompiler.loop = p.currentCompiler.loop.previous
@@ -967,11 +974,15 @@ func (p *Parser) breakStatement() {
 		p.errorAtCurrent("Cannot use break outside loop.")
 	}
 
-	// drop local vars on stack
+	// drop local vars on stack, but not the loop's own control-variable scope --
+	// break's jump target lands on the same shared cleanup path (endScope(),
+	// or equivalent) that normal loop exit uses, which pops that scope for us.
+	// Only pop locals declared strictly inside the loop body. Same reasoning
+	// as continueStatement() above.
 	c := p.currentCompiler
-
+	loopScopeDepth := c.loop.scopeDepth
 	for i := 0; i < c.localCount; i += 1 {
-		if c.locals[i].depth >= c.scopeDepth-1 {
+		if c.locals[i].depth > loopScopeDepth {
 			p.emitByte(core.OP_POP)
 		}
 	}
@@ -998,10 +1009,13 @@ func (p *Parser) continueStatement() {
 		p.errorAtCurrent("Cannot use continue outside loop.")
 	}
 
-	// drop local vars on stack
+	// drop local vars on stack, but preserve the loop's own control-variable scope
+	// (e.g. the for/foreach loop variable) since continue jumps back into that same
+	// scope rather than exiting it. Only pop locals declared strictly inside the loop body.
 	c := p.currentCompiler
+	loopScopeDepth := c.loop.scopeDepth
 	for i := 0; i < c.localCount; i += 1 {
-		if c.locals[i].depth >= c.scopeDepth-1 {
+		if c.locals[i].depth > loopScopeDepth {
 			p.emitByte(core.OP_POP)
 		}
 	}
@@ -1028,6 +1042,7 @@ func (p *Parser) foreachStatement() {
 	p.currentCompiler.loop.foreach = true // so continue knows to jump to next
 
 	p.beginScope()
+	p.currentCompiler.loop.scopeDepth = p.currentCompiler.scopeDepth // the loop's own control-variable/iterator scope
 	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after for.")
 	p.match(TOKEN_VAR)
 	p.varDeclaration(true)
