@@ -11,22 +11,22 @@ import particle_sys;
 func move(particle) {
     var dpos = particle.dpos;
     dpos.x = dpos.x * 0.98;  
-    dpos.y = dpos.y + 0.2;  //gravity
-    particle.size = particle.size * 0.95; // Gradually reduce size
+    dpos.y = dpos.y + 0.1;  //gravity
+    particle.size = particle.size * 0.97; // Gradually reduce size
 }
 
 // return a particle initialisation closure 
 func init(col1,col2) {
 
-    var lifemax=random.integer(20,500);
-    var speedmax=random.integer(1,10);
+    var lifemax=random.integer(20,1000);
+    var speedmax=random.integer(1,7);
     var sizemax=random.integer(5,10);
 
     func _init(particle) {
         particle.dpos = vec2(1,1); // Initial velocity
         var angle = random.float(0, 2 * math.PI); // Random angle 
         particle.dpos = rotate2d(particle.dpos, angle); // Rotate the initial velocity
-        particle.dpos = scale2(particle.dpos, random.float(0.1, speedmax)); // Scale the velocity
+        particle.dpos = scale2(particle.dpos, random.float(0.01, speedmax)); // Scale the velocity
  
         particle.life = random.integer(1, lifemax); // Random life  
         particle.size = random.float(1, sizemax); 
@@ -45,7 +45,7 @@ func queue_random_emitter(width,height,delay){
     var ecol1 = pcols[random.choice(pcols.keys())];
     var ecol2 = pcols[random.choice(pcols.keys())];
     
-    emitters.queue(particle_sys.Emitter(pos, init(ecol1,ecol2), move), random.integer(10, 500), delay); 
+    emitters.queue(particle_sys.Emitter(pos, init(ecol1,ecol2), move), random.integer(10, 200), delay); 
 }
 STARS=300 
 func make_stars(){
@@ -62,7 +62,7 @@ func make_stars(){
 func update_stars(stars) {
     foreach (var s in stars) {
 
-        if (random.integer(0,1000) < 5) {
+        if (random.integer(0,1000) < 4) {
             s[2] = random.integer(1, 255); // Randomly change alpha
         }
         pos,size,a = s
@@ -85,7 +85,7 @@ while (!win.should_close()) {
     win.begin();
     win.begin_blend_mode("BLEND_ADD");
     win.clear(colour.BLACK); // Clear the window with black
-    if (!emitters.update() and emitters.queue_length() < 2 ) {
+    if (!emitters.update() and emitters.queue_length() < 3 ) {
         queue_random_emitter(width,height,random.integer(10,50));
     }  
     foreach ( var e in emitters.get()) {
