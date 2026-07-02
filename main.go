@@ -8,9 +8,20 @@ import (
 	dbg "glox/src/debug"
 	"glox/src/vm"
 	"os"
+	"runtime"
 	"runtime/debug"
 	"time"
 )
+
+// raylib/GLFW requires every call to happen on the OS thread that created the
+// window. Without pinning the main goroutine, the Go scheduler is free to
+// migrate it to a different OS thread after any blocking point (e.g. the
+// worker-goroutine wg.Wait() in the Julia/Mandelbrot array builtins), which
+// silently corrupts the GL command stream -- observed as intermittent
+// flickering/corrupted pixels in graphics examples.
+func init() {
+	runtime.LockOSThread()
+}
 
 type Options struct {
 	doRepl      bool

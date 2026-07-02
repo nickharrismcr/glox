@@ -3,6 +3,7 @@ package builtin
 import (
 	"glox/src/core"
 	"glox/src/util"
+	"image/color"
 	"unsafe"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -390,34 +391,39 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 			// Create RGBA pixel data in memory
 			width := arr.Width
 			height := arr.Height
-			pixelData := make([]uint8, width*height*4) // RGBA format
+			pixelData := make([]color.RGBA, width*height)
 
 			// Convert float array to RGBA pixels in memory
 			for i, f := range arr.Data {
 				r, g, b := util.DecodeRGB(f)
-				pixelData[i*4] = r     // R
-				pixelData[i*4+1] = g   // G
-				pixelData[i*4+2] = b   // B
-				pixelData[i*4+3] = 255 // A
+				pixelData[i] = color.RGBA{R: r, G: g, B: b, A: 255}
 			}
 
-			// Create image from pixel data and upload as texture
-			img := rl.Image{
-				Data:    unsafe.Pointer(&pixelData[0]),
-				Width:   int32(width),
-				Height:  int32(height),
-				Mipmaps: 1,
-				Format:  rl.UncompressedR8g8b8a8,
+			// Reuse a persistent GPU texture across frames instead of loading/unloading
+			// a new one every call.
+			if !o.arrayTextureValid || o.arrayTextureW != width || o.arrayTextureH != height {
+				if o.arrayTextureValid {
+					rl.UnloadTexture(o.arrayTexture)
+				}
+				img := rl.Image{
+					Data:    unsafe.Pointer(&pixelData[0]),
+					Width:   int32(width),
+					Height:  int32(height),
+					Mipmaps: 1,
+					Format:  rl.UncompressedR8g8b8a8,
+				}
+				o.arrayTexture = rl.LoadTextureFromImage(&img)
+				o.arrayTextureW = width
+				o.arrayTextureH = height
+				o.arrayTextureValid = true
+			} else {
+				rl.UpdateTexture(o.arrayTexture, pixelData)
 			}
-			texture := rl.LoadTextureFromImage(&img)
 
 			// Draw the texture to render target
 			rl.BeginTextureMode(o.Data.RenderTexture)
-			rl.DrawTexture(texture, 0, 0, rl.White)
+			rl.DrawTexture(o.arrayTexture, 0, 0, rl.White)
 			rl.EndTextureMode()
-
-			// Clean up texture only
-			rl.UnloadTexture(texture)
 
 			return core.NIL_VALUE
 		},

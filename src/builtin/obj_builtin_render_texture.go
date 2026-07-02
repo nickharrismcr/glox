@@ -38,6 +38,17 @@ type RenderTextureObject struct {
 	core.BuiltInObject
 	Data    RenderTexture
 	Methods map[int]*core.BuiltInObject
+
+	// arrayTexture is a persistent GPU texture reused by draw_array_fast across
+	// calls. Recreating (Load/Unload) a texture every frame races with the
+	// driver's double-buffered GPU pipeline -- the new texture can reuse an ID
+	// still referenced by an in-flight draw from the previous frame, producing
+	// stray stale-colour pixels. Updating one long-lived texture in place avoids
+	// that.
+	arrayTexture      rl.Texture2D
+	arrayTextureW     int
+	arrayTextureH     int
+	arrayTextureValid bool
 }
 
 func MakeRenderTextureObject(width int, height int) *RenderTextureObject {
