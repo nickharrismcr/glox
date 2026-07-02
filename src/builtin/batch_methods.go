@@ -479,6 +479,71 @@ func RegisterAllBatchMethods(o *BatchObject) {
 			return core.NIL_VALUE
 		},
 	})
+	// Combined position+color update taking raw floats instead of vec3/vec4 points,
+	// so callers doing per-frame animation avoid allocating throwaway vec3 objects.
+	o.RegisterMethod("set_triangle3_full", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 11 {
+				vm.RunTimeError("set_triangle3_full() expects 11 arguments (index, x1, y1, z1, x2, y2, z2, x3, y3, z3, color)")
+				return core.NIL_VALUE
+			}
+
+			// Only allow this method for BATCH_TRIANGLE3 type
+			if o.Value.BatchType != BATCH_TRIANGLE3 {
+				vm.RunTimeError("set_triangle3_full() can only be used with BATCH_TRIANGLE3 batch type")
+				return core.NIL_VALUE
+			}
+
+			indexVal := vm.Stack(arg_stackptr)
+			x1Val := vm.Stack(arg_stackptr + 1)
+			y1Val := vm.Stack(arg_stackptr + 2)
+			z1Val := vm.Stack(arg_stackptr + 3)
+			x2Val := vm.Stack(arg_stackptr + 4)
+			y2Val := vm.Stack(arg_stackptr + 5)
+			z2Val := vm.Stack(arg_stackptr + 6)
+			x3Val := vm.Stack(arg_stackptr + 7)
+			y3Val := vm.Stack(arg_stackptr + 8)
+			z3Val := vm.Stack(arg_stackptr + 9)
+			colorVal := vm.Stack(arg_stackptr + 10)
+
+			if !indexVal.IsInt() {
+				vm.RunTimeError("set_triangle3_full() first argument must be an integer (index)")
+				return core.NIL_VALUE
+			}
+			if !x1Val.IsNumber() || !y1Val.IsNumber() || !z1Val.IsNumber() {
+				vm.RunTimeError("set_triangle3_full() point1 coordinates must be numbers")
+				return core.NIL_VALUE
+			}
+			if !x2Val.IsNumber() || !y2Val.IsNumber() || !z2Val.IsNumber() {
+				vm.RunTimeError("set_triangle3_full() point2 coordinates must be numbers")
+				return core.NIL_VALUE
+			}
+			if !x3Val.IsNumber() || !y3Val.IsNumber() || !z3Val.IsNumber() {
+				vm.RunTimeError("set_triangle3_full() point3 coordinates must be numbers")
+				return core.NIL_VALUE
+			}
+			if colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("set_triangle3_full() last argument must be a vec4 (color)")
+				return core.NIL_VALUE
+			}
+
+			index := indexVal.AsInt()
+			color := colorVal.Obj.(*core.Vec4Object)
+
+			err := o.Value.SetTriangle3Full(index,
+				x1Val.AsFloat(), y1Val.AsFloat(), z1Val.AsFloat(),
+				x2Val.AsFloat(), y2Val.AsFloat(), z2Val.AsFloat(),
+				x3Val.AsFloat(), y3Val.AsFloat(), z3Val.AsFloat(),
+				color)
+			if err != nil {
+				vm.RunTimeError(err.Error())
+				return core.NIL_VALUE
+			}
+
+			return core.NIL_VALUE
+		},
+	})
+
 	o.RegisterMethod("set_triangle3_color", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 2 {

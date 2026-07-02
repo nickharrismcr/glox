@@ -481,6 +481,25 @@ func (batch *DrawBatch) SetTriangle3Color(index int, color *core.Vec4Object) err
 	return nil
 }
 
+// Set points (as raw floats, avoiding vec3 allocation) and color of a triangle in one call
+func (batch *DrawBatch) SetTriangle3Full(index int, x1, y1, z1, x2, y2, z2, x3, y3, z3 float64, color *core.Vec4Object) error {
+	if index < 0 || index >= len(batch.TrianglePoints) {
+		return fmt.Errorf("index out of range: %d", index)
+	}
+	batch.TrianglePoints[index] = TriangleBatchEntry{
+		Point1: rl.Vector3{X: float32(x1), Y: float32(y1), Z: float32(z1)},
+		Point2: rl.Vector3{X: float32(x2), Y: float32(y2), Z: float32(z2)},
+		Point3: rl.Vector3{X: float32(x3), Y: float32(y3), Z: float32(z3)},
+		Color: rl.Color{
+			R: uint8(color.X),
+			G: uint8(color.Y),
+			B: uint8(color.Z),
+			A: uint8(color.W),
+		},
+	}
+	return nil
+}
+
 // Get the color of a triangle in a BATCH_TRIANGLE3 batch
 func (batch *DrawBatch) GetTriangle3Color(index int) (*core.Vec4Object, error) {
 	if index < 0 || index >= len(batch.TrianglePoints) {
