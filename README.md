@@ -526,27 +526,31 @@ Benchmarks run via `bin/benchmarks.sh` (loxcraft suite).
 
 | benchmark | glox | CPython 3 | ratio |
 |---|---|---|---|
-| binary_trees | 21.3s | 7.3s | 2.9× |
-| equality | 57.1s | 20.7s | 2.8× |
-| fib | 23.4s | 8.9s | 2.6× |
-| instantiation | 41.8s | 20.5s | 2.0× |
-| invocation | 16.3s | 8.9s | 1.8× |
-| loop | 8.6s | 3.4s | 2.5× |
-| method_call | 25.1s | 8.6s | 2.9× |
-| properties | 17.6s | 7.6s | 2.3× |
-| string_equality | 41.4s | 17.1s | 2.4× |
-| trees | 28.8s | 6.6s | 4.3× |
-| zoo | 17.2s | 9.3s | 1.8× |
+| binary_trees | 18.8s | 7.5s | 2.5× |
+| equality | 52.3s | 20.1s | 2.6× |
+| fib | 20.6s | 9.3s | 2.2× |
+| instantiation | 39.7s | 22.5s | 1.8× |
+| invocation | 14.9s | 9.2s | 1.6× |
+| loop | 8.0s | 3.6s | 2.2× |
+| method_call | 22.4s | 8.9s | 2.5× |
+| properties | 16.2s | 7.5s | 2.2× |
+| string_equality | 36.9s | 17.4s | 2.1× |
+| trees | 24.5s | 6.8s | 3.6× |
+| zoo | 15.1s | 10.4s | 1.5× |
 | zoo_batch | 10.0s | 10.0s | 1.0× |
 
-glox is currently 1.8–4.4× slower than CPython across the suite.
+glox is currently 1.5–3.6× slower than CPython across the suite.
 
 Known costs:
-- **`Value` struct is 48 bytes** — clox's is ~16 bytes. Every stack push/pop copies 48 bytes. The struct carries fields for numeric data, an `Object` interface (16 bytes), vec2/3/4 inline fields, and an interned-string ID cache even when most values are plain ints or floats.
+- **`Value` struct is 32 bytes** — clox's is ~16 bytes. Every stack push/pop copies 32 bytes.
 - **No computed goto** — Go's `switch` dispatch is slower than clox's `COMPUTED_GOTO` threaded dispatch, which jumps directly to the next handler without re-entering the switch.
 
 Optimisations in place:
-- **`Value` struct reduced 64→48 bytes** — removed `Bool bool` (booleans stored as `Data` 0/1) and merged `Int int` + `Float float64` into a single `Data uint64` field. `math.Float64bits`/`math.Float64frombits` are amd64 intrinsics (single `MOVQ`). Saves 16 bytes per value vs original; 2–11% improvement across benchmarks.
+- **`Value` struct reduced 64→32 bytes** in three steps:
+  - Removed `Bool bool` — booleans stored as `Data` 0/1, saving 8 bytes (padding).
+  - Merged `Int int` + `Float float64` into `Data uint64` — `math.Float64bits`/`math.Float64frombits` are amd64 intrinsics (single `MOVQ`), saving 8 bytes.
+  - Shrunk `Type ValueType` from `int` (8 bytes) to `uint8` (1 byte) and `InternedId` from `int` (8 bytes) to `int32` (4 bytes); reordered fields to pack the small fields into the tail of the struct, saving 12 bytes.
+  - Total: 5–15% improvement across benchmarks.
 - **Global variable indexing** — globals are stored in a `[]Value` slice indexed by a compiler-assigned integer slot rather than a `map[int]Value` keyed by interned string ID. `OP_GET_GLOBAL` / `OP_SET_GLOBAL` go from a hash-map lookup to a direct slice index. ~10–27% improvement on global-variable-heavy benchmarks.
 - String interning with integer IDs for fast method and global lookup
 - Peephole pass replaces `OP_GET_LOCAL, OP_GET_LOCAL, OP_ADD` with a single `OP_ADD_NN` superinstruction, with runtime specialisation to `OP_ADD_II` / `OP_ADD_FF` on first execution. A similar optimisation handles `local = local + constant`.

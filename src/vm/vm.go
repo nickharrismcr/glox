@@ -974,14 +974,14 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			name := constants[idx]
-			vm.defineMethod(name.InternedId, false)
+			vm.defineMethod(int(name.InternedId), false)
 
 		case core.OP_STATIC_METHOD:
 			// Define static method on a class using name from constants
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			name := constants[idx]
-			vm.defineMethod(name.InternedId, true)
+			vm.defineMethod(int(name.InternedId), true)
 
 		case core.OP_NEGATE:
 			// Pop numeric value from stack, negate it, push result (handles int and float)
@@ -1014,7 +1014,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			nv := constants[idx]
-			stringId := nv.InternedId
+			stringId := int(nv.InternedId)
 
 			switch v.Obj.GetType() {
 			case core.OBJECT_VEC2:
@@ -1104,7 +1104,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			case core.OBJECT_MODULE:
 				ot := v.AsModule()
 
-				if val, ok := ot.Environment.GetVar(nv.InternedId); ok {
+				if val, ok := ot.Environment.GetVar(int(nv.InternedId)); ok {
 					vm.pop()
 					vm.stack[vm.stackTop] = val
 					vm.stackTop++
@@ -1132,7 +1132,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			}
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
-			stringId := constants[idx].InternedId
+			stringId := int(constants[idx].InternedId)
 			switch v.Obj.GetType() {
 			case core.OBJECT_VEC2:
 				// special case for Vec2, which has x and y properties
@@ -1230,7 +1230,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 				vm.stackTop++
 			case core.OBJECT_MODULE:
 				ot := v.AsModule()
-				ot.Environment.SetVar(constants[idx].InternedId, val)
+				ot.Environment.SetVar(int(constants[idx].InternedId), val)
 				tmp := vm.pop()
 				vm.pop()
 				vm.stack[vm.stackTop] = tmp
@@ -1822,7 +1822,7 @@ func (vm *VM) invoke(name core.Value, argCount int) bool {
 // invokeFromClass calls a method from a specific class, handling both static and instance methods.
 //go:noinline
 func (vm *VM) invokeFromClass(class *core.ClassObject, name core.Value, argCount int, isStatic bool) bool {
-	i := name.InternedId
+	i := int(name.InternedId)
 	if isStatic {
 		method, ok := class.StaticMethods[i]
 		if !ok {
@@ -1844,7 +1844,7 @@ func (vm *VM) invokeFromClass(class *core.ClassObject, name core.Value, argCount
 // invokeFromModule calls a function from a loaded module by name.
 func (vm *VM) invokeFromModule(module *core.ModuleObject, name core.Value, argCount int) bool {
 
-	fn, ok := module.Environment.GetVar(name.InternedId)
+	fn, ok := module.Environment.GetVar(int(name.InternedId))
 	if !ok {
 		n := core.GetStringValue(name)
 		vm.RunTimeError("Undefined module property '%s'.", n)
@@ -1861,7 +1861,7 @@ func (vm *VM) invokeFromBuiltin(obj core.Object, name core.Value, argCount int) 
 	n := core.GetStringValue(name)
 	bobj, ok := obj.(core.HasMethods)
 	if ok {
-		method := bobj.GetMethod(name.InternedId)
+		method := bobj.GetMethod(int(name.InternedId))
 		if method != nil {
 			builtin := method.Function
 			res := builtin(argCount, vm.stackTop-argCount, vm)
@@ -1882,7 +1882,7 @@ func (vm *VM) invokeFromBuiltin(obj core.Object, name core.Value, argCount int) 
 func (vm *VM) VectorMethodCall(receiver core.Value, name core.Value, argCount int) bool {
 	switch receiver.Type {
 	case core.VAL_VEC2:
-		if name.InternedId == core.ADD && argCount == 1 {
+		if int(name.InternedId) == core.ADD && argCount == 1 {
 			// special case for Vec2 addition
 			other := vm.Peek(0)
 			if other.Obj.GetType() == core.OBJECT_VEC2 {
@@ -1893,7 +1893,7 @@ func (vm *VM) VectorMethodCall(receiver core.Value, name core.Value, argCount in
 			}
 		}
 	case core.VAL_VEC3:
-		if name.InternedId == core.ADD && argCount == 1 {
+		if int(name.InternedId) == core.ADD && argCount == 1 {
 			// special case for Vec3 addition
 			other := vm.Peek(0)
 			if other.Obj.GetType() == core.OBJECT_VEC3 {
@@ -1904,7 +1904,7 @@ func (vm *VM) VectorMethodCall(receiver core.Value, name core.Value, argCount in
 			}
 		}
 	case core.VAL_VEC4:
-		if name.InternedId == core.ADD && argCount == 1 {
+		if int(name.InternedId) == core.ADD && argCount == 1 {
 			// special case for Vec4 addition
 			other := vm.Peek(0)
 			if other.Obj.GetType() == core.OBJECT_VEC4 {
@@ -2067,7 +2067,7 @@ func (vm *VM) raiseException(err core.Value) bool {
 				vm.frame().Ip += 2
 				idx := vm.getCode()[vm.frame().Ip-1]
 				function := vm.frame().Closure.Function
-				id := function.Chunk.Constants[idx].InternedId
+				id := int(function.Chunk.Constants[idx].InternedId)
 				v, ok := function.Environment.GetVar(id)
 				if !ok {
 					v, ok = vm.BuiltIns[id]

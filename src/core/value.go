@@ -10,7 +10,7 @@ import (
 
 var NIL_VALUE = Value{Type: VAL_NIL}
 
-type ValueType int
+type ValueType uint8
 
 const (
 	VAL_NIL ValueType = iota
@@ -24,11 +24,12 @@ const (
 )
 
 type Value struct {
-	Type       ValueType
-	Data       uint64  // holds int (cast), float64 bits, or bool (0/1)
-	Obj        Object
-	Immut      bool
-	InternedId int // for string objects, caches the interned id to avoid casting
+	Obj        Object  // 16 bytes (largest alignment first)
+	Data       uint64  // 8 bytes — holds int (cast), float64 bits, or bool (0/1)
+	InternedId int32   // 4 bytes — string intern ID cache; int32 is sufficient (max ~2B unique strings)
+	Type       ValueType // 1 byte
+	Immut      bool    // 1 byte
+	_          [2]byte // 2 bytes padding (keeps struct size a multiple of 8)
 }
 
 func boolToUint64(b bool) uint64 {
@@ -256,7 +257,7 @@ func MakeBooleanValue(b bool, immut bool) Value {
 
 func MakeStringObjectValue(s string, immut bool) Value {
 	so := MakeStringObject(s)
-	return Value{Type: VAL_OBJ, Obj: so, Immut: immut, InternedId: so.InternedId}
+	return Value{Type: VAL_OBJ, Obj: so, Immut: immut, InternedId: int32(so.InternedId)}
 }
 
 func MakeObjectValue(obj Object, immut bool) Value {
