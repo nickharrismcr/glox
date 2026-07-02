@@ -29,17 +29,17 @@ func TextureBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 		vm.RunTimeError("texture argument must be an image object")
 		return core.NIL_VALUE
 	}
-	frames := framesVal.Int
+	frames := framesVal.AsInt()
 	if frames < 1 {
 		vm.RunTimeError("texture frames must be at least 1")
 		return core.NIL_VALUE
 	}
-	startFrame := startFrameVal.Int
+	startFrame := startFrameVal.AsInt()
 	if startFrame < 1 || startFrame > frames {
 		vm.RunTimeError("texture start_frame must be between 1 and frames")
 		return core.NIL_VALUE
 	}
-	endFrame := endFrameVal.Int
+	endFrame := endFrameVal.AsInt()
 	if endFrame < 1 || endFrame > frames {
 		vm.RunTimeError("texture end_frame must be between 1 and frames")
 		return core.NIL_VALUE

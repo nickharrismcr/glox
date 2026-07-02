@@ -34,7 +34,7 @@ func RegisterAllTextureMethods(o *TextureObject) {
 				vm.RunTimeError("animate requires a number argument for ticks per frame")
 				return core.NIL_VALUE
 			}
-			o.Data.TicksPerFrame = ticksVal.Int
+			o.Data.TicksPerFrame = ticksVal.AsInt()
 			return core.NIL_VALUE
 		},
 	})
@@ -56,7 +56,7 @@ func RegisterAllTextureMethods(o *TextureObject) {
 				vm.RunTimeError("set_wrap_mode requires a number argument for wrap mode")
 				return core.NIL_VALUE
 			}
-			wrapMode := rl.TextureWrapMode(wrapModeVal.Int)
+			wrapMode := rl.TextureWrapMode(wrapModeVal.AsInt())
 			rl.SetTextureWrap(o.Data.Texture, wrapMode)
 			return core.NIL_VALUE
 		},

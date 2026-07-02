@@ -118,9 +118,9 @@ func EncodeRGBABuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.V
 		vm.RunTimeError("encode_rgb arguments must be integers")
 		return core.NIL_VALUE
 	}
-	r := rVal.Int
-	g := gVal.Int
-	b := bVal.Int
+	r := rVal.AsInt()
+	g := gVal.AsInt()
+	b := bVal.AsInt()
 	color := util.EncodeRGB(r, g, b)
 	return core.MakeFloatValue(color, false)
 }
@@ -136,7 +136,7 @@ func DecodeRGBABuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.V
 		vm.RunTimeError("decode_rgb argument must be a float")
 		return core.NIL_VALUE
 	}
-	f := fVal.Float
+	f := fVal.AsFloat()
 	r, g, b := util.DecodeRGB(f)
 	rVal := core.MakeIntValue(int(r), false)
 	gVal := core.MakeIntValue(int(g), false)

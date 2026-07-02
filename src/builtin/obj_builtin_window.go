@@ -21,7 +21,7 @@ func WindowBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value
 		vm.RunTimeError("window arguments must be integers")
 		return core.NIL_VALUE
 	}
-	o := MakeWindowObject(wVal.Int, hVal.Int)
+	o := MakeWindowObject(wVal.AsInt(), hVal.AsInt())
 	RegisterAllWindowMethods(o)
 	RegisterAllWindowConstants(o)
 	windowCreated = true

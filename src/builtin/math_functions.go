@@ -18,7 +18,7 @@ func SinBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 		vm.RunTimeError("Invalid argument type to sin.")
 		return core.NIL_VALUE
 	}
-	n := vnum.Float
+	n := vnum.AsFloat()
 	return core.MakeFloatValue(math.Sin(n), false)
 }
 
@@ -33,7 +33,7 @@ func CosBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 		vm.RunTimeError("Invalid argument type to cos.")
 		return core.NIL_VALUE
 	}
-	n := vnum.Float
+	n := vnum.AsFloat()
 	return core.MakeFloatValue(math.Cos(n), false)
 }
 
@@ -48,7 +48,7 @@ func TanBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 		vm.RunTimeError("Invalid argument type to tan.")
 		return core.NIL_VALUE
 	}
-	n := vnum.Float
+	n := vnum.AsFloat()
 	return core.MakeFloatValue(math.Tan(n), false)
 }
 
@@ -63,7 +63,7 @@ func SqrtBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 		vm.RunTimeError("Invalid argument type to sqrt.")
 		return core.NIL_VALUE
 	}
-	n := vnum.Float
+	n := vnum.AsFloat()
 	return core.MakeFloatValue(math.Sqrt(n), false)
 }
 
@@ -79,8 +79,8 @@ func PowBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 		vm.RunTimeError("Invalid argument type to pow.")
 		return core.NIL_VALUE
 	}
-	n := vbase.Float
-	return core.MakeFloatValue(math.Pow(n, vexp.Float), false)
+	n := vbase.AsFloat()
+	return core.MakeFloatValue(math.Pow(n, vexp.AsFloat()), false)
 }
 
 func Atan2BuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
@@ -95,7 +95,7 @@ func Atan2BuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 		vm.RunTimeError("Invalid argument type to atan2.")
 		return core.NIL_VALUE
 	}
-	n1 := vnum1.Float
-	n2 := vnum2.Float
+	n1 := vnum1.AsFloat()
+	n2 := vnum2.AsFloat()
 	return core.MakeFloatValue(math.Atan2(n1, n2), false)
 }

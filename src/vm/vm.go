@@ -6,6 +6,7 @@ import (
 	"glox/src/compiler"
 	"glox/src/core"
 	"glox/src/debug"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -608,11 +609,11 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			case core.VAL_INT:
 				switch v1.Type {
 				case core.VAL_INT:
-					vm.stack[vm.stackTop] = core.MakeIntValue(v1.Int+v2.Int, false)
+					vm.stack[vm.stackTop] = core.MakeIntValue(int(v1.Data)+int(v2.Data), false)
 					vm.stackTop++
 					continue
 				case core.VAL_FLOAT:
-					vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float+float64(v2.Int), false)
+					vm.stack[vm.stackTop] = core.MakeFloatValue(math.Float64frombits(v1.Data)+float64(int(v2.Data)), false)
 					vm.stackTop++
 					continue
 				}
@@ -622,11 +623,11 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			case core.VAL_FLOAT:
 				switch v1.Type {
 				case core.VAL_INT:
-					vm.stack[vm.stackTop] = core.MakeFloatValue(float64(v1.Int)+v2.Float, false)
+					vm.stack[vm.stackTop] = core.MakeFloatValue(float64(int(v1.Data))+math.Float64frombits(v2.Data), false)
 					vm.stackTop++
 					continue
 				case core.VAL_FLOAT:
-					vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float+v2.Float, false)
+					vm.stack[vm.stackTop] = core.MakeFloatValue(math.Float64frombits(v1.Data)+math.Float64frombits(v2.Data), false)
 					vm.stackTop++
 					continue
 				}
@@ -690,22 +691,22 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			if valA.Type == core.VAL_INT && valB.Type == core.VAL_INT {
 				// Patch and execute specialized version immediately
 				vm.patchInstruction(frame.Ip-3, core.OP_ADD_II)
-				vm.stack[base+int(slotDest)] = core.MakeIntValue(valA.Int+valB.Int, false)
+				vm.stack[base+int(slotDest)] = core.MakeIntValue(int(valA.Data)+int(valB.Data), false)
 				continue
 			}
 			if valA.Type == core.VAL_FLOAT && valB.Type == core.VAL_FLOAT {
 				// Patch and execute specialized version immediately
 				vm.patchInstruction(frame.Ip-3, core.OP_ADD_FF)
-				vm.stack[base+int(slotDest)] = core.MakeFloatValue(valA.Float+valB.Float, false)
+				vm.stack[base+int(slotDest)] = core.MakeFloatValue(math.Float64frombits(valA.Data)+math.Float64frombits(valB.Data), false)
 				continue
 			}
 
 			switch valB.Type {
 			case core.VAL_INT:
-				vm.stack[base+int(slotDest)] = core.MakeFloatValue(valA.Float+float64(valB.Int), false)
+				vm.stack[base+int(slotDest)] = core.MakeFloatValue(math.Float64frombits(valA.Data)+float64(int(valB.Data)), false)
 
 			case core.VAL_FLOAT:
-				vm.stack[base+int(slotDest)] = core.MakeFloatValue(float64(valA.Int)+valB.Float, false)
+				vm.stack[base+int(slotDest)] = core.MakeFloatValue(float64(int(valA.Data))+math.Float64frombits(valB.Data), false)
 			}
 
 		case core.OP_ADD_II:
@@ -716,9 +717,8 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 			base := frame.Slots
 			vm.stack[base+int(slotDest)] = core.Value{
-				Type:  core.VAL_INT,
-				Int:   vm.stack[base+int(slotDest)].Int + vm.stack[base+int(slotInc)].Int,
-				Immut: false,
+				Type: core.VAL_INT,
+				Data: vm.stack[base+int(slotDest)].Data + vm.stack[base+int(slotInc)].Data,
 			}
 			continue
 
@@ -730,9 +730,8 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 			base := frame.Slots
 			vm.stack[base+int(slotDest)] = core.Value{
-				Type:  core.VAL_FLOAT,
-				Float: vm.stack[base+int(slotDest)].Float + vm.stack[base+int(slotInc)].Float,
-				Immut: false,
+				Type: core.VAL_FLOAT,
+				Data: math.Float64bits(math.Float64frombits(vm.stack[base+int(slotDest)].Data) + math.Float64frombits(vm.stack[base+int(slotInc)].Data)),
 			}
 			continue
 
@@ -751,22 +750,22 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			if valDest.Type == core.VAL_INT && constVal.Type == core.VAL_INT {
 				// Patch and execute specialized version immediately
 				vm.patchInstruction(frame.Ip-3, core.OP_INCR_CONST_I)
-				vm.stack[base+int(slotDest)] = core.MakeIntValue(valDest.Int+constVal.Int, false)
+				vm.stack[base+int(slotDest)] = core.MakeIntValue(int(valDest.Data)+int(constVal.Data), false)
 				continue
 			}
 			if valDest.Type == core.VAL_FLOAT && constVal.Type == core.VAL_FLOAT {
 				// Patch and execute specialized version immediately
 				vm.patchInstruction(frame.Ip-3, core.OP_INCR_CONST_F)
-				vm.stack[base+int(slotDest)] = core.MakeFloatValue(valDest.Float+constVal.Float, false)
+				vm.stack[base+int(slotDest)] = core.MakeFloatValue(math.Float64frombits(valDest.Data)+math.Float64frombits(constVal.Data), false)
 				continue
 			}
 
 			switch constVal.Type {
 			case core.VAL_INT:
-				vm.stack[base+int(slotDest)] = core.MakeFloatValue(valDest.Float+float64(constVal.Int), false)
+				vm.stack[base+int(slotDest)] = core.MakeFloatValue(math.Float64frombits(valDest.Data)+float64(int(constVal.Data)), false)
 
 			case core.VAL_FLOAT:
-				vm.stack[base+int(slotDest)] = core.MakeFloatValue(float64(valDest.Int)+constVal.Float, false)
+				vm.stack[base+int(slotDest)] = core.MakeFloatValue(float64(int(valDest.Data))+math.Float64frombits(constVal.Data), false)
 			}
 
 		case core.OP_INCR_CONST_I:
@@ -776,13 +775,12 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			frame.Ip += 2
 
 			base := frame.Slots
-			constVal := constants[constIndex].Int
+			constVal := constants[constIndex].Data
 
 			// Direct integer increment
 			vm.stack[base+int(slotVar)] = core.Value{
-				Type:  core.VAL_INT,
-				Int:   vm.stack[base+int(slotVar)].Int + constVal,
-				Immut: false,
+				Type: core.VAL_INT,
+				Data: vm.stack[base+int(slotVar)].Data + constVal,
 			}
 			continue
 
@@ -793,13 +791,12 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			frame.Ip += 2
 
 			base := frame.Slots
-			constVal := constants[constIndex].Float
+			constVal := math.Float64frombits(constants[constIndex].Data)
 
 			// Direct float increment
 			vm.stack[base+int(slotVar)] = core.Value{
-				Type:  core.VAL_FLOAT,
-				Float: vm.stack[base+int(slotVar)].Float + constVal,
-				Immut: false,
+				Type: core.VAL_FLOAT,
+				Data: math.Float64bits(math.Float64frombits(vm.stack[base+int(slotVar)].Data) + constVal),
 			}
 			continue
 
@@ -992,12 +989,12 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			v := vm.pop()
 			switch v.Type {
 			case core.VAL_FLOAT:
-				f := v.Float
+				f := math.Float64frombits(v.Data)
 				vm.stack[vm.stackTop] = core.MakeFloatValue(-f, false)
 				vm.stackTop++
 				continue
 			case core.VAL_INT:
-				f := v.Int
+				f := int(v.Data)
 				vm.stack[vm.stackTop] = core.MakeIntValue(-f, false)
 				vm.stackTop++
 				continue
@@ -2022,11 +2019,11 @@ func (vm *VM) isFalsey(v core.Value) bool {
 
 	switch v.Type {
 	case core.VAL_FLOAT:
-		return v.Float == 0
+		return math.Float64frombits(v.Data) == 0
 	case core.VAL_NIL:
 		return true
 	case core.VAL_BOOL:
-		return v.Int == 0
+		return v.Data == 0
 	}
 	return true
 }
@@ -2410,7 +2407,7 @@ func (vm *VM) index() bool {
 				return false
 			}
 			t := sv.AsList()
-			idx := iv.Int
+			idx := int(iv.Data)
 			lo, err := t.Index(idx)
 			if err != nil {
 				vm.RunTimeError("%v", err)
@@ -2425,7 +2422,7 @@ func (vm *VM) index() bool {
 				vm.RunTimeError("Subscript must be an integer.")
 				return false
 			}
-			idx := iv.Int
+			idx := int(iv.Data)
 			t := sv.AsString()
 			so, err := t.Index(idx)
 			if err != nil {
@@ -2479,7 +2476,7 @@ func (vm *VM) indexAssign() bool {
 				return false
 			}
 			if index.Type == core.VAL_INT {
-				if err := t.AssignToIndex(index.Int, rhs); err != nil {
+				if err := t.AssignToIndex(int(index.Data), rhs); err != nil {
 					vm.RunTimeError("%v", err)
 					return false
 				} else {
@@ -2521,7 +2518,7 @@ func (vm *VM) slice() bool {
 		vm.RunTimeError("Invalid type in slice expression.")
 		return false
 	} else {
-		to_idx = v_to.Int
+		to_idx = int(v_to.Data)
 	}
 
 	v_from := vm.pop()
@@ -2531,7 +2528,7 @@ func (vm *VM) slice() bool {
 		vm.RunTimeError("Invalid type in slice expression.")
 		return false
 	} else {
-		from_idx = v_from.Int
+		from_idx = int(v_from.Data)
 	}
 
 	lv := vm.pop()
@@ -2577,7 +2574,7 @@ func (vm *VM) sliceAssign() bool {
 		vm.RunTimeError("Invalid type in slice expression.")
 		return false
 	} else {
-		to_idx = v_to.Int
+		to_idx = int(v_to.Data)
 	}
 
 	v_from := vm.pop()
@@ -2587,7 +2584,7 @@ func (vm *VM) sliceAssign() bool {
 		vm.RunTimeError("Invalid type in slice expression.")
 		return false
 	} else {
-		from_idx = v_from.Int
+		from_idx = int(v_from.Data)
 	}
 
 	lv := vm.Peek(0)
@@ -2623,11 +2620,11 @@ func (vm *VM) binarySubtract() bool {
 	case core.VAL_INT:
 		switch v1.Type {
 		case core.VAL_INT:
-			vm.stack[vm.stackTop] = core.MakeIntValue(v1.Int-v2.Int, false)
+			vm.stack[vm.stackTop] = core.MakeIntValue(int(v1.Data)-int(v2.Data), false)
 			vm.stackTop++
 			return true
 		case core.VAL_FLOAT:
-			vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float-float64(v2.Int), false)
+			vm.stack[vm.stackTop] = core.MakeFloatValue(math.Float64frombits(v1.Data)-float64(int(v2.Data)), false)
 			vm.stackTop++
 			return true
 		}
@@ -2635,11 +2632,11 @@ func (vm *VM) binarySubtract() bool {
 	case core.VAL_FLOAT:
 		switch v1.Type {
 		case core.VAL_INT:
-			vm.stack[vm.stackTop] = core.MakeFloatValue(float64(v1.Int)-v2.Float, false)
+			vm.stack[vm.stackTop] = core.MakeFloatValue(float64(int(v1.Data))-math.Float64frombits(v2.Data), false)
 			vm.stackTop++
 			return true
 		case core.VAL_FLOAT:
-			vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float-v2.Float, false)
+			vm.stack[vm.stackTop] = core.MakeFloatValue(math.Float64frombits(v1.Data)-math.Float64frombits(v2.Data), false)
 			vm.stackTop++
 			return true
 		}
@@ -2694,10 +2691,10 @@ func (vm *VM) binaryMultiply() bool {
 	case core.VAL_INT:
 		switch v1.Type {
 		case core.VAL_INT:
-			vm.stack[vm.stackTop] = core.MakeIntValue(v1.Int*v2.Int, false)
+			vm.stack[vm.stackTop] = core.MakeIntValue(int(v1.Data)*int(v2.Data), false)
 			vm.stackTop++
 		case core.VAL_FLOAT:
-			vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float*float64(v2.Int), false)
+			vm.stack[vm.stackTop] = core.MakeFloatValue(math.Float64frombits(v1.Data)*float64(int(v2.Data)), false)
 			vm.stackTop++
 		case core.VAL_OBJ:
 			if !v1.IsStringObject() {
@@ -2705,7 +2702,7 @@ func (vm *VM) binaryMultiply() bool {
 				return false
 			}
 			s := v1.AsString().Get()
-			vm.stack[vm.stackTop] = vm.stringMultiply(s, v2.Int)
+			vm.stack[vm.stackTop] = vm.stringMultiply(s, int(v2.Data))
 			vm.stackTop++
 		default:
 			vm.RunTimeError("Invalid operand for multiply.")
@@ -2714,10 +2711,10 @@ func (vm *VM) binaryMultiply() bool {
 	case core.VAL_FLOAT:
 		switch v1.Type {
 		case core.VAL_INT:
-			vm.stack[vm.stackTop] = core.MakeFloatValue(float64(v1.Int)*v2.Float, false)
+			vm.stack[vm.stackTop] = core.MakeFloatValue(float64(int(v1.Data))*math.Float64frombits(v2.Data), false)
 			vm.stackTop++
 		case core.VAL_FLOAT:
-			vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float*v2.Float, false)
+			vm.stack[vm.stackTop] = core.MakeFloatValue(math.Float64frombits(v1.Data)*math.Float64frombits(v2.Data), false)
 			vm.stackTop++
 		default:
 			vm.RunTimeError("Invalid operand for multiply.")
@@ -2731,7 +2728,7 @@ func (vm *VM) binaryMultiply() bool {
 		switch v1.Type {
 		case core.VAL_INT:
 			s := v2.AsString().Get()
-			vm.stack[vm.stackTop] = vm.stringMultiply(s, v1.Int)
+			vm.stack[vm.stackTop] = vm.stringMultiply(s, int(v1.Data))
 			vm.stackTop++
 		default:
 			vm.RunTimeError("Invalid operand for multiply.")
@@ -2758,19 +2755,19 @@ func (vm *VM) binaryDivide() bool {
 	case core.VAL_INT:
 		switch v1.Type {
 		case core.VAL_INT:
-			if v2.Int == 0 {
+			if v2.Data == 0 {
 				vm.RunTimeError("Division by zero")
 				return false
 			}
-			vm.stack[vm.stackTop] = core.MakeIntValue(v1.Int/v2.Int, false)
+			vm.stack[vm.stackTop] = core.MakeIntValue(int(v1.Data)/int(v2.Data), false)
 			vm.stackTop++
 			return true
 		case core.VAL_FLOAT:
-			if v2.Int == 0 {
+			if v2.Data == 0 {
 				vm.RunTimeError("Division by zero")
 				return false
 			}
-			vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float/float64(v2.Int), false)
+			vm.stack[vm.stackTop] = core.MakeFloatValue(math.Float64frombits(v1.Data)/float64(int(v2.Data)), false)
 			vm.stackTop++
 			return true
 		}
@@ -2778,19 +2775,19 @@ func (vm *VM) binaryDivide() bool {
 	case core.VAL_FLOAT:
 		switch v1.Type {
 		case core.VAL_INT:
-			if v2.Float == 0.0 {
+			if math.Float64frombits(v2.Data) == 0.0 {
 				vm.RunTimeError("Division by zero")
 				return false
 			}
-			vm.stack[vm.stackTop] = core.MakeFloatValue(float64(v1.Int)/v2.Float, false)
+			vm.stack[vm.stackTop] = core.MakeFloatValue(float64(int(v1.Data))/math.Float64frombits(v2.Data), false)
 			vm.stackTop++
 			return true
 		case core.VAL_FLOAT:
-			if v2.Float == 0.0 {
+			if math.Float64frombits(v2.Data) == 0.0 {
 				vm.RunTimeError("Division by zero")
 				return false
 			}
-			vm.stack[vm.stackTop] = core.MakeFloatValue(v1.Float/v2.Float, false)
+			vm.stack[vm.stackTop] = core.MakeFloatValue(math.Float64frombits(v1.Data)/math.Float64frombits(v2.Data), false)
 			vm.stackTop++
 			return true
 		}
@@ -2812,7 +2809,7 @@ func (vm *VM) binaryModulus() bool {
 		vm.RunTimeError("Operands must be integers")
 		return false
 	}
-	vm.stack[vm.stackTop] = core.MakeIntValue(v1.Int%v2.Int, false)
+	vm.stack[vm.stackTop] = core.MakeIntValue(int(v1.Data)%int(v2.Data), false)
 	vm.stackTop++
 
 	return true

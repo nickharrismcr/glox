@@ -70,14 +70,14 @@ func BatchInstancedBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) co
 		vm.RunTimeError("BatchInstancedBuiltIn: expected float for cubeSize, got %s", cubeSizeVal.String())
 		return core.NIL_VALUE
 	}
-	cubeSize := cubeSizeVal.Float
+	cubeSize := cubeSizeVal.AsFloat()
 
 	maxInstancesVal := vm.Stack(arg_stackptr + 2)
 	if !maxInstancesVal.IsInt() {
 		vm.RunTimeError("BatchInstancedBuiltIn: expected int for maxInstances, got %s", maxInstancesVal.String())
 		return core.NIL_VALUE
 	}
-	maxInstances := maxInstancesVal.Int
+	maxInstances := maxInstancesVal.AsInt()
 
 	batchObj := MakeInstancedBatchInstancedObject(to.Data.Texture, float32(cubeSize), maxInstances)
 	RegisterAllBatchInstancedMethods(batchObj)

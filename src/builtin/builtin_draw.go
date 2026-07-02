@@ -44,7 +44,7 @@ func DrawPNGBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 	width := fa.Value.Width
 	height := fa.Value.Height
 
-	if colourEncoded.Int == 0 {
+	if colourEncoded.AsInt() == 0 {
 		img := image.NewGray(image.Rect(0, 0, width, height))
 
 		var gray uint8
@@ -131,12 +131,12 @@ func MandelArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.
 	}
 
 	array := AsFloatArray(arrayVal)
-	height := hVal.Int
-	width := wVal.Int
-	maxIteration := maxIterVal.Int
-	xOffset := xoffsetVal.Float
-	yOffset := yoffsetVal.Float
-	scale := scaleVal.Float
+	height := hVal.AsInt()
+	width := wVal.AsInt()
+	maxIteration := maxIterVal.AsInt()
+	xOffset := xoffsetVal.AsFloat()
+	yOffset := yoffsetVal.AsFloat()
+	scale := scaleVal.AsFloat()
 
 	// Calculate optimal number of blocks based on image size and CPU cores
 	// For larger images, use smaller blocks for better parallelism
@@ -327,14 +327,14 @@ func JuliaArrayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.V
 	}
 
 	array := AsFloatArray(arrayVal)
-	height := hVal.Int
-	width := wVal.Int
-	maxIteration := maxIterVal.Int
-	cx := cxVal.Float
-	cy := cyVal.Float
-	scale := scaleVal.Float
-	xOffset := xoffsetVal.Float
-	yOffset := yoffsetVal.Float
+	height := hVal.AsInt()
+	width := wVal.AsInt()
+	maxIteration := maxIterVal.AsInt()
+	cx := cxVal.AsFloat()
+	cy := cyVal.AsFloat()
+	scale := scaleVal.AsFloat()
+	xOffset := xoffsetVal.AsFloat()
+	yOffset := yoffsetVal.AsFloat()
 
 	// Calculate optimal number of blocks based on image size and CPU cores
 	// For larger images, use smaller blocks for better parallelism

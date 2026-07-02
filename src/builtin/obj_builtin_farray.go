@@ -17,8 +17,8 @@ func FloatArrayBuiltin(argCount int, arg_stackptr int, vm core.VMContext) core.V
 		vm.RunTimeError("float_array arguments must be integers")
 		return core.NIL_VALUE
 	}
-	width := widthval.Int
-	height := heightval.Int
+	width := widthval.AsInt()
+	height := heightval.AsInt()
 	floatArrObj := MakeFloatArrayObject(width, height)
 	RegisterAllFloatArrayMethods(floatArrObj)
 	return core.MakeObjectValue(floatArrObj, false)

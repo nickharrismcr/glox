@@ -21,8 +21,8 @@ func RenderTextureBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) cor
 		return core.NIL_VALUE
 	}
 
-	width := widthVal.Int
-	height := heightVal.Int
+	width := widthVal.AsInt()
+	height := heightVal.AsInt()
 
 	o := MakeRenderTextureObject(width, height)
 	RegisterAllRenderTextureMethods(o)

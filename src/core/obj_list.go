@@ -61,7 +61,7 @@ func (o *ListObject) RegisterAllListMethods() {
 				return NIL_VALUE
 			}
 			val := vm.Peek(0)
-			idx := val.Int
+			idx := int(val.Data)
 			o.Remove(idx)
 			return NIL_VALUE
 		},

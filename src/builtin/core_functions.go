@@ -45,7 +45,7 @@ func FloatBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 	case core.VAL_FLOAT:
 		return arg
 	case core.VAL_INT:
-		return core.MakeFloatValue(float64(arg.Int), false)
+		return core.MakeFloatValue(float64(arg.AsInt()), false)
 	case core.VAL_OBJ:
 		if arg.Obj.GetType() == core.OBJECT_STRING {
 			f, ok := arg.AsString().ParseFloat()
@@ -71,7 +71,7 @@ func IntBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	case core.VAL_INT:
 		return arg
 	case core.VAL_FLOAT:
-		return core.MakeIntValue(int(arg.Float), false)
+		return core.MakeIntValue(int(arg.AsFloat()), false)
 	case core.VAL_OBJ:
 		if arg.Obj.GetType() == core.OBJECT_STRING {
 			i, ok := arg.AsString().ParseInt()
@@ -236,11 +236,11 @@ func RangeBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 func valueToGoInterface(val core.Value) interface{} {
 	switch val.Type {
 	case core.VAL_INT:
-		return val.Int
+		return val.AsInt()
 	case core.VAL_FLOAT:
-		return val.Float
+		return val.AsFloat()
 	case core.VAL_BOOL:
-		return val.Int != 0
+		return val.Data != 0
 	case core.VAL_NIL:
 		return nil
 	case core.VAL_OBJ:

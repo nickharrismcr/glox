@@ -32,7 +32,7 @@ func RegisterAllBatchInstancedMethods(o *BatchInstancedObject) {
 
 			pos := posVal.Obj.(*core.Vec3Object)
 			axis := axisVal.Obj.(*core.Vec3Object)
-			angle := angleVal.Float
+			angle := angleVal.AsFloat()
 
 			if !o.batch.AddInstance(pos.X, pos.Y, pos.Z, axis.X, axis.Y, axis.Z, angle) {
 				vm.RunTimeError("add() : max instances reached, cannot add more")

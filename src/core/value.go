@@ -4,6 +4,7 @@ import (
 	"bytes"
 	bin "encoding/binary"
 	"fmt"
+	"math"
 	"glox/src/util"
 )
 
@@ -24,14 +25,13 @@ const (
 
 type Value struct {
 	Type       ValueType
-	Int        int     // also stores bool: 0=false, 1=true
-	Float      float64
+	Data       uint64  // holds int (cast), float64 bits, or bool (0/1)
 	Obj        Object
 	Immut      bool
 	InternedId int // for string objects, caches the interned id to avoid casting
 }
 
-func boolToInt(b bool) int {
+func boolToUint64(b bool) uint64 {
 	if b {
 		return 1
 	}
@@ -42,11 +42,11 @@ func Immutable(v Value) Value {
 
 	switch v.Type {
 	case VAL_INT:
-		return MakeIntValue(v.Int, true)
+		return MakeIntValue(int(v.Data), true)
 	case VAL_FLOAT:
-		return MakeFloatValue(v.Float, true)
+		return MakeFloatValue(math.Float64frombits(v.Data), true)
 	case VAL_BOOL:
-		return MakeBooleanValue(v.Int != 0, true)
+		return MakeBooleanValue(v.Data != 0, true)
 	case VAL_OBJ:
 		return MakeObjectValue(v.Obj, true)
 	case VAL_VEC2:
@@ -66,11 +66,11 @@ func Immutable(v Value) Value {
 func Mutable(v Value) Value {
 	switch v.Type {
 	case VAL_INT:
-		return MakeIntValue(v.Int, false)
+		return MakeIntValue(int(v.Data), false)
 	case VAL_FLOAT:
-		return MakeFloatValue(v.Float, false)
+		return MakeFloatValue(math.Float64frombits(v.Data), false)
 	case VAL_BOOL:
-		return MakeBooleanValue(v.Int != 0, false)
+		return MakeBooleanValue(v.Data != 0, false)
 	case VAL_OBJ:
 		return MakeObjectValue(v.Obj, false)
 	case VAL_VEC2:
@@ -96,7 +96,7 @@ func ValuesEqual(a, b Value, typesMustMatch bool) bool {
 	case VAL_BOOL:
 		switch b.Type {
 		case VAL_BOOL:
-			return a.Int == b.Int
+			return a.Data == b.Data
 		default:
 			return false
 		}
@@ -104,12 +104,12 @@ func ValuesEqual(a, b Value, typesMustMatch bool) bool {
 	case VAL_INT:
 		switch b.Type {
 		case VAL_INT:
-			return a.Int == b.Int
+			return a.Data == b.Data
 		case VAL_FLOAT:
 			if typesMustMatch {
 				return false
 			}
-			return float64(a.Int) == b.Float
+			return float64(int(a.Data)) == math.Float64frombits(b.Data)
 		default:
 			return false
 		}
@@ -119,9 +119,9 @@ func ValuesEqual(a, b Value, typesMustMatch bool) bool {
 			if typesMustMatch {
 				return false
 			}
-			return a.Float == float64(b.Int)
+			return math.Float64frombits(a.Data) == float64(int(b.Data))
 		case VAL_FLOAT:
-			return a.Float == b.Float
+			return a.Data == b.Data
 		default:
 			return false
 		}
@@ -193,9 +193,9 @@ func (v Value) IsObj() bool { return v.Type == VAL_OBJ }
 func (v Value) AsFloat() float64 {
 	switch v.Type {
 	case VAL_INT:
-		return float64(v.Int)
+		return float64(int(v.Data))
 	case VAL_FLOAT:
-		return v.Float
+		return math.Float64frombits(v.Data)
 	default:
 		return 0.0
 	}
@@ -204,9 +204,9 @@ func (v Value) AsFloat() float64 {
 func (v Value) AsInt() int {
 	switch v.Type {
 	case VAL_INT:
-		return v.Int
+		return int(v.Data)
 	case VAL_FLOAT:
-		return int(v.Float)
+		return int(math.Float64frombits(v.Data))
 	default:
 		return 0
 	}
@@ -243,15 +243,15 @@ func GetInstanceObjectValue(v Value) *InstanceObject {
 
 // ================================================================================================
 func MakeIntValue(i int, immut bool) Value {
-	return Value{Type: VAL_INT, Int: i, Immut: immut}
+	return Value{Type: VAL_INT, Data: uint64(i), Immut: immut}
 }
 
 func MakeFloatValue(f float64, immut bool) Value {
-	return Value{Type: VAL_FLOAT, Float: f, Immut: immut}
+	return Value{Type: VAL_FLOAT, Data: math.Float64bits(f), Immut: immut}
 }
 
 func MakeBooleanValue(b bool, immut bool) Value {
-	return Value{Type: VAL_BOOL, Int: boolToInt(b), Immut: immut}
+	return Value{Type: VAL_BOOL, Data: boolToUint64(b), Immut: immut}
 }
 
 func MakeStringObjectValue(s string, immut bool) Value {
@@ -266,11 +266,11 @@ func MakeObjectValue(obj Object, immut bool) Value {
 func (v Value) String() string {
 	switch v.Type {
 	case VAL_INT:
-		return fmt.Sprintf("%d", v.Int)
+		return fmt.Sprintf("%d", int(v.Data))
 	case VAL_FLOAT:
-		return fmt.Sprintf("%g", v.Float)
+		return fmt.Sprintf("%g", math.Float64frombits(v.Data))
 	case VAL_BOOL:
-		if v.Int != 0 {
+		if v.Data != 0 {
 			return "true"
 		}
 		return "false"
@@ -408,10 +408,10 @@ func (v *Value) Serialise(buffer *bytes.Buffer) {
 	switch v.Type {
 	case VAL_FLOAT:
 		buffer.Write([]byte{0x01})
-		bin.Write(buffer, bin.LittleEndian, v.Float)
+		bin.Write(buffer, bin.LittleEndian, v.Data)
 	case VAL_INT:
 		buffer.Write([]byte{0x02})
-		bin.Write(buffer, bin.LittleEndian, uint32(v.Int))
+		bin.Write(buffer, bin.LittleEndian, uint32(int(v.Data)))
 	case VAL_OBJ:
 		switch v.Obj.GetType() {
 		case OBJECT_STRING:
@@ -433,7 +433,7 @@ func (v *Value) Serialise(buffer *bytes.Buffer) {
 	case VAL_BOOL:
 		buffer.Write([]byte{0x05})
 		b := byte(0)
-		if v.Int != 0 {
+		if v.Data != 0 {
 			b = byte(1)
 		}
 		buffer.Write([]byte{b})

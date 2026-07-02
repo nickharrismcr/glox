@@ -29,7 +29,7 @@ func RegisterAllWindowMethods(o *WindowObject) {
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 
 			modeVal := vm.Stack(arg_stackptr)
-			o.Value.SetBlendMode(modeVal.Int)
+			o.Value.SetBlendMode(modeVal.AsInt())
 			rl.BeginBlendMode(o.Value.Blend_mode)
 			return core.NIL_VALUE
 		},
@@ -397,7 +397,7 @@ func RegisterAllWindowMethods(o *WindowObject) {
 				vm.RunTimeError("set_target_fps argument must be an integer")
 				return core.NIL_VALUE
 			}
-			rl.SetTargetFPS(int32(fpsVal.Int))
+			rl.SetTargetFPS(int32(fpsVal.AsInt()))
 			return core.NIL_VALUE
 		},
 	})
@@ -643,7 +643,7 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			}
 			keyVal := vm.Stack(arg_stackptr)
 
-			isDown := rl.IsKeyDown(int32(keyVal.Int))
+			isDown := rl.IsKeyDown(int32(keyVal.AsInt()))
 			return core.MakeBooleanValue(isDown, true)
 		},
 	})
@@ -656,7 +656,7 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			}
 			keyVal := vm.Stack(arg_stackptr)
 
-			isPressed := rl.IsKeyPressed(int32(keyVal.Int))
+			isPressed := rl.IsKeyPressed(int32(keyVal.AsInt()))
 			return core.MakeBooleanValue(isPressed, true)
 		},
 	})

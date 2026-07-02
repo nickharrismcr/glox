@@ -161,7 +161,7 @@ func RegisterAllBatchMethods(o *BatchObject) {
 				return core.NIL_VALUE
 			}
 
-			index := indexVal.Int
+			index := indexVal.AsInt()
 			pos := posVal.Obj.(*core.Vec3Object)
 
 			if err := o.Value.SetPosition(index, pos); err != nil {
@@ -192,7 +192,7 @@ func RegisterAllBatchMethods(o *BatchObject) {
 				return core.NIL_VALUE
 			}
 
-			index := indexVal.Int
+			index := indexVal.AsInt()
 			color := colorVal.Obj.(*core.Vec4Object)
 
 			if err := o.Value.SetColor(index, color); err != nil {
@@ -223,7 +223,7 @@ func RegisterAllBatchMethods(o *BatchObject) {
 				return core.NIL_VALUE
 			}
 
-			index := indexVal.Int
+			index := indexVal.AsInt()
 			size := sizeVal.Obj.(*core.Vec3Object)
 
 			if err := o.Value.SetSize(index, size); err != nil {
@@ -248,7 +248,7 @@ func RegisterAllBatchMethods(o *BatchObject) {
 				return core.NIL_VALUE
 			}
 
-			index := indexVal.Int
+			index := indexVal.AsInt()
 			pos, err := o.Value.GetPosition(index)
 			if err != nil {
 				vm.RunTimeError(err.Error())
@@ -272,7 +272,7 @@ func RegisterAllBatchMethods(o *BatchObject) {
 				return core.NIL_VALUE
 			}
 
-			index := indexVal.Int
+			index := indexVal.AsInt()
 			color, err := o.Value.GetColor(index)
 			if err != nil {
 				vm.RunTimeError(err.Error())
@@ -296,7 +296,7 @@ func RegisterAllBatchMethods(o *BatchObject) {
 				return core.NIL_VALUE
 			}
 
-			index := indexVal.Int
+			index := indexVal.AsInt()
 			size, err := o.Value.GetSize(index)
 			if err != nil {
 				vm.RunTimeError(err.Error())
@@ -406,7 +406,7 @@ func RegisterAllBatchMethods(o *BatchObject) {
 				return core.NIL_VALUE
 			}
 
-			capacity := capacityVal.Int
+			capacity := capacityVal.AsInt()
 			o.Value.Reserve(capacity)
 			return core.NIL_VALUE
 		},
@@ -425,7 +425,7 @@ func RegisterAllBatchMethods(o *BatchObject) {
 				return core.NIL_VALUE
 			}
 
-			index := indexVal.Int
+			index := indexVal.AsInt()
 			valid := o.Value.IsValidIndex(index)
 			return core.MakeBooleanValue(valid, true)
 		},
@@ -466,7 +466,7 @@ func RegisterAllBatchMethods(o *BatchObject) {
 				return core.NIL_VALUE
 			}
 
-			index := indexVal.Int
+			index := indexVal.AsInt()
 			p1 := p1Val.AsVec3()
 			p2 := p2Val.AsVec3()
 			p3 := p3Val.AsVec3()
@@ -504,7 +504,7 @@ func RegisterAllBatchMethods(o *BatchObject) {
 				return core.NIL_VALUE
 			}
 
-			index := indexVal.Int
+			index := indexVal.AsInt()
 			color := colorVal.Obj.(*core.Vec4Object)
 
 			if err := o.Value.SetTriangle3Color(index, color); err != nil {
