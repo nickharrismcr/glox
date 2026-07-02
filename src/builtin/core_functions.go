@@ -240,7 +240,7 @@ func valueToGoInterface(val core.Value) interface{} {
 	case core.VAL_FLOAT:
 		return val.Float
 	case core.VAL_BOOL:
-		return val.Bool
+		return val.Int != 0
 	case core.VAL_NIL:
 		return nil
 	case core.VAL_OBJ:

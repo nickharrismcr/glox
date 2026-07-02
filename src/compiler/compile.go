@@ -137,7 +137,8 @@ type Parser struct {
 	rules               map[TokenType]ParseRule
 	currentCompiler     *Compiler
 	currentClass        *ClassCompiler
-	globals             map[string]int // name → compiler-assigned slot index
+	globals             map[string]int  // name → compiler-assigned slot index
+	globalsDeclared     map[string]bool // name → true if defined via var/const/implicit declaration (not just referenced)
 	globalCount         int
 }
 
@@ -148,9 +149,10 @@ type Parser struct {
 func NewParser() *Parser {
 
 	p := &Parser{
-		hadError: false,
-		panicMode: false,
-		globals:  map[string]int{},
+		hadError:        false,
+		panicMode:       false,
+		globals:         map[string]int{},
+		globalsDeclared: map[string]bool{},
 	}
 	p.setRules()
 	return p
@@ -592,6 +594,7 @@ func (p *Parser) classDeclaration() {
 	className := p.previous
 	nameConstant := p.identifierConstant(p.previous) // constant table index for OP_CLASS (needs the string)
 	classSlot := uint8(p.globalSlot(className.Lexeme()))
+	p.markGlobalDeclared(className.Lexeme())
 	p.declareVariable()
 
 	p.emitBytes(core.OP_CLASS, nameConstant)
@@ -792,6 +795,7 @@ func (p *Parser) handleUnpackingAssignment() bool {
 				if !p.isVariableDefined(name.Token, name.Str) {
 					//core.LogFmtLn(core.DEBUG, "Implicitly declaring global variable %s\n", name.Str)
 					arg := p.globalSlot(name.Str)
+					p.markGlobalDeclared(name.Str)
 					// OP_DEFINE_GLOBAL pops the value, so no separate OP_POP needed.
 					p.emitBytes(core.OP_DEFINE_GLOBAL, uint8(arg))
 				}
@@ -1415,7 +1419,9 @@ func (p *Parser) parseVariable(errorMsg string) uint8 {
 	if p.currentCompiler.scopeDepth > 0 {
 		return 0
 	}
-	return uint8(p.globalSlot(p.previous.Lexeme()))
+	name := p.previous.Lexeme()
+	p.markGlobalDeclared(name)
+	return uint8(p.globalSlot(name))
 }
 
 // markInitialised marks the most recently declared local variable as initialized.
@@ -1569,12 +1575,15 @@ func (p *Parser) declareVariable() {
 	p.addLocal(name)
 }
 
-// checkGlobals verifies if a variable name exists in the global scope.
-// Used for validating global variable references and preventing undefined access.
-// Returns true if the variable has been declared globally, false otherwise.
+// checkGlobals returns true only if the global was explicitly declared (var/const/implicit
+// first assignment), not merely referenced from inside a function.
 func (p *Parser) checkGlobals(name string) bool {
-	_, ok := p.globals[name]
-	return ok
+	return p.globalsDeclared[name]
+}
+
+// markGlobalDeclared records that a global was explicitly declared.
+func (p *Parser) markGlobalDeclared(name string) {
+	p.globalsDeclared[name] = true
 }
 
 // globalSlot returns the compiler-assigned global slot index for name, allocating one if needed.

@@ -2026,7 +2026,7 @@ func (vm *VM) isFalsey(v core.Value) bool {
 	case core.VAL_NIL:
 		return true
 	case core.VAL_BOOL:
-		return !v.Bool
+		return v.Int == 0
 	}
 	return true
 }

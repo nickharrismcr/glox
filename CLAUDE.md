@@ -29,6 +29,14 @@ Key flags:
 - `-i` / `--instrument` — print timing and instruction count
 - `-n` / `--no-peephole` — skip the peephole optimiser
 
+## Bytecode cache (.lxc files)
+
+Modules are cached as compiled bytecode in `__loxcache__/*.lxc` directories. Stale `.lxc` files (compiled with an older binary) cause hangs or out-of-memory panics when loaded by a newer binary. **Always run `bin/clear_lxc.sh` after any change that affects `.lxc` serialisation** — this includes changes to `Value`, `Chunk`, `bc_cache.go`, or any other type that is written/read by `src/vm/bc_cache.go`.
+
+```bash
+bash bin/clear_lxc.sh
+```
+
 ## Tests
 
 Tests are run via Python (requires `bin/glox` on PATH):

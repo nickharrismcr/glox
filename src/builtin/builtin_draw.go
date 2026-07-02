@@ -44,7 +44,7 @@ func DrawPNGBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 	width := fa.Value.Width
 	height := fa.Value.Height
 
-	if !colourEncoded.Bool {
+	if colourEncoded.Int == 0 {
 		img := image.NewGray(image.Rect(0, 0, width, height))
 
 		var gray uint8

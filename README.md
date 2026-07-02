@@ -526,26 +526,27 @@ Benchmarks run via `bin/benchmarks.sh` (loxcraft suite).
 
 | benchmark | glox | CPython 3 | ratio |
 |---|---|---|---|
-| binary_trees | 22.3s | 7.3s | 3.0× |
-| equality | 58.7s | 20.0s | 2.9× |
-| fib | 24.6s | 9.0s | 2.7× |
-| instantiation | 41.5s | 22.9s | 1.8× |
-| invocation | 17.2s | 9.3s | 1.9× |
-| loop | 9.1s | 3.6s | 2.5× |
-| method_call | 26.3s | 8.4s | 3.1× |
-| properties | 18.4s | 7.9s | 2.3× |
-| string_equality | 42.4s | 17.0s | 2.5× |
-| trees | 31.0s | 6.6s | 4.7× |
-| zoo | 17.6s | 9.7s | 1.8× |
+| binary_trees | 22.3s | 7.5s | 3.0× |
+| equality | 58.1s | 21.7s | 2.7× |
+| fib | 24.8s | 9.2s | 2.7× |
+| instantiation | 42.4s | 22.9s | 1.9× |
+| invocation | 16.8s | 9.5s | 1.8× |
+| loop | 8.6s | 3.6s | 2.4× |
+| method_call | 26.4s | 8.5s | 3.1× |
+| properties | 18.6s | 7.8s | 2.4× |
+| string_equality | 46.1s | 17.2s | 2.7× |
+| trees | 31.4s | 6.8s | 4.7× |
+| zoo | 18.4s | 9.6s | 1.9× |
 | zoo_batch | 10.0s | 10.0s | 1.0× |
 
 glox is currently 1.8–4.7× slower than CPython across the suite.
 
 Known costs:
-- **`Value` struct is 64 bytes** — clox's is ~16 bytes. Every stack push/pop copies 64 bytes. The struct carries fields for all numeric types plus an `Object` interface (16 bytes) plus vec2/3/4 inline fields even though most values are plain ints or floats.
+- **`Value` struct is 56 bytes** — clox's is ~16 bytes. Every stack push/pop copies 56 bytes. The struct carries fields for all numeric types plus an `Object` interface (16 bytes) plus vec2/3/4 inline fields even though most values are plain ints or floats.
 - **No computed goto** — Go's `switch` dispatch is slower than clox's `COMPUTED_GOTO` threaded dispatch, which jumps directly to the next handler without re-entering the switch.
 
 Optimisations in place:
+- **`Value` struct reduced 64→56 bytes** — removed the `Bool bool` field (booleans now stored as `Int` 0/1), saving 8 bytes per value via eliminated padding.
 - **Global variable indexing** — globals are stored in a `[]Value` slice indexed by a compiler-assigned integer slot rather than a `map[int]Value` keyed by interned string ID. `OP_GET_GLOBAL` / `OP_SET_GLOBAL` go from a hash-map lookup to a direct slice index. ~10–27% improvement on global-variable-heavy benchmarks.
 - String interning with integer IDs for fast method and global lookup
 - Peephole pass replaces `OP_GET_LOCAL, OP_GET_LOCAL, OP_ADD` with a single `OP_ADD_NN` superinstruction, with runtime specialisation to `OP_ADD_II` / `OP_ADD_FF` on first execution. A similar optimisation handles `local = local + constant`.

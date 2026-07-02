@@ -24,12 +24,18 @@ const (
 
 type Value struct {
 	Type       ValueType
-	Int        int
+	Int        int     // also stores bool: 0=false, 1=true
 	Float      float64
-	Bool       bool
-	Obj        Object // your Object interface stays polymorphic
+	Obj        Object
 	Immut      bool
-	InternedId int // for string objects, this is the interned id, saves an object cast
+	InternedId int // for string objects, caches the interned id to avoid casting
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 func Immutable(v Value) Value {
@@ -40,7 +46,7 @@ func Immutable(v Value) Value {
 	case VAL_FLOAT:
 		return MakeFloatValue(v.Float, true)
 	case VAL_BOOL:
-		return MakeBooleanValue(v.Bool, true)
+		return MakeBooleanValue(v.Int != 0, true)
 	case VAL_OBJ:
 		return MakeObjectValue(v.Obj, true)
 	case VAL_VEC2:
@@ -64,7 +70,7 @@ func Mutable(v Value) Value {
 	case VAL_FLOAT:
 		return MakeFloatValue(v.Float, false)
 	case VAL_BOOL:
-		return MakeBooleanValue(v.Bool, false)
+		return MakeBooleanValue(v.Int != 0, false)
 	case VAL_OBJ:
 		return MakeObjectValue(v.Obj, false)
 	case VAL_VEC2:
@@ -90,7 +96,7 @@ func ValuesEqual(a, b Value, typesMustMatch bool) bool {
 	case VAL_BOOL:
 		switch b.Type {
 		case VAL_BOOL:
-			return a.Bool == b.Bool
+			return a.Int == b.Int
 		default:
 			return false
 		}
@@ -245,7 +251,7 @@ func MakeFloatValue(f float64, immut bool) Value {
 }
 
 func MakeBooleanValue(b bool, immut bool) Value {
-	return Value{Type: VAL_BOOL, Bool: b, Immut: immut}
+	return Value{Type: VAL_BOOL, Int: boolToInt(b), Immut: immut}
 }
 
 func MakeStringObjectValue(s string, immut bool) Value {
@@ -264,7 +270,7 @@ func (v Value) String() string {
 	case VAL_FLOAT:
 		return fmt.Sprintf("%g", v.Float)
 	case VAL_BOOL:
-		if v.Bool {
+		if v.Int != 0 {
 			return "true"
 		}
 		return "false"
@@ -427,7 +433,7 @@ func (v *Value) Serialise(buffer *bytes.Buffer) {
 	case VAL_BOOL:
 		buffer.Write([]byte{0x05})
 		b := byte(0)
-		if v.Bool {
+		if v.Int != 0 {
 			b = byte(1)
 		}
 		buffer.Write([]byte{b})
