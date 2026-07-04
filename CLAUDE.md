@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **glox** is a bytecode interpreter for Lox (from Bob Nystrom's *Crafting Interpreters*), implemented in Go. It extends vanilla Lox with: lists, dicts, tuples, slices, exceptions, module imports with bytecode caching, `foreach`/`range`, integer arithmetic, `break`/`continue`, `const`, string interning, native vector types (`vec2`/`vec3`/`vec4`), a `float_array` type, and Raylib bindings for 2D/3D graphics.
 
+## Language reference
+
+`docs/language-reference.html` is the comprehensive, hyperlinked language reference (syntax, built-in types and functions, native objects, and library modules). **Consult it whenever writing `.lox` code** to get syntax and available functions/methods right rather than guessing.
+
+**Keep it in sync:** whenever you add or change a language feature — new syntax, keyword, built-in function, native object/method, or library module — update `docs/language-reference.html` in the same change. The topic Markdown docs it builds on live in `docs/md/`; update those too if the change touches their area.
+
 ## Build & run
 
 ```powershell
