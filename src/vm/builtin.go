@@ -59,6 +59,7 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "", "camera", builtin.CameraBuiltIn)
 	defineBuiltIn(vm, "", "batch", builtin.BatchBuiltIn)
 	defineBuiltIn(vm, "", "batch_instanced", builtin.BatchInstancedBuiltIn)
+	defineBuiltIn(vm, "", "physics_world", builtin.PhysicsWorldBuiltIn)
 	defineBuiltIn(vm, "", "float_array", builtin.FloatArrayBuiltin)
 	defineBuiltIn(vm, "inspect", "dump_frame", builtin.DumpFrameBuiltIn)
 	defineBuiltIn(vm, "inspect", "get_frame", builtin.GetFrameBuiltIn)

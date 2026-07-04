@@ -86,6 +86,130 @@ func RegisterAllBatchMethods(o *BatchObject) {
 		},
 	})
 
+	o.RegisterMethod("add_circle3", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 3 {
+				vm.RunTimeError("add_circle3() expects 3 arguments (center, radius, color)")
+				return core.NIL_VALUE
+			}
+
+			// Only allow this method for BATCH_CIRCLE3 type
+			if o.Value.BatchType != BATCH_CIRCLE3 {
+				vm.RunTimeError("add_circle3() can only be used with BATCH_CIRCLE3 batch type")
+				return core.NIL_VALUE
+			}
+
+			centerVal := vm.Stack(arg_stackptr)
+			radiusVal := vm.Stack(arg_stackptr + 1)
+			colorVal := vm.Stack(arg_stackptr + 2)
+
+			if centerVal.Type != core.VAL_VEC3 {
+				vm.RunTimeError("add_circle3() first argument must be a vec3 (center)")
+				return core.NIL_VALUE
+			}
+			if !radiusVal.IsNumber() {
+				vm.RunTimeError("add_circle3() second argument must be a number (radius)")
+				return core.NIL_VALUE
+			}
+			if colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("add_circle3() third argument must be a vec4 (color)")
+				return core.NIL_VALUE
+			}
+
+			center := centerVal.Obj.(*core.Vec3Object)
+			color := colorVal.Obj.(*core.Vec4Object)
+
+			index := o.Value.AddCircle3(center, radiusVal.AsFloat(), color)
+			return core.MakeIntValue(index, true)
+		},
+	})
+
+	// Combined center+radius+color update taking raw floats for the center
+	// instead of a vec3, so per-frame animation of a persistent index
+	// avoids allocating a throwaway vec3 object (mirrors set_triangle3_full).
+	o.RegisterMethod("set_circle3_full", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 6 {
+				vm.RunTimeError("set_circle3_full() expects 6 arguments (index, x, y, z, radius, color)")
+				return core.NIL_VALUE
+			}
+
+			// Only allow this method for BATCH_CIRCLE3 type
+			if o.Value.BatchType != BATCH_CIRCLE3 {
+				vm.RunTimeError("set_circle3_full() can only be used with BATCH_CIRCLE3 batch type")
+				return core.NIL_VALUE
+			}
+
+			indexVal := vm.Stack(arg_stackptr)
+			xVal := vm.Stack(arg_stackptr + 1)
+			yVal := vm.Stack(arg_stackptr + 2)
+			zVal := vm.Stack(arg_stackptr + 3)
+			radiusVal := vm.Stack(arg_stackptr + 4)
+			colorVal := vm.Stack(arg_stackptr + 5)
+
+			if !indexVal.IsInt() {
+				vm.RunTimeError("set_circle3_full() first argument must be an integer (index)")
+				return core.NIL_VALUE
+			}
+			if !xVal.IsNumber() || !yVal.IsNumber() || !zVal.IsNumber() {
+				vm.RunTimeError("set_circle3_full() center coordinates must be numbers")
+				return core.NIL_VALUE
+			}
+			if !radiusVal.IsNumber() {
+				vm.RunTimeError("set_circle3_full() radius must be a number")
+				return core.NIL_VALUE
+			}
+			if colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("set_circle3_full() last argument must be a vec4 (color)")
+				return core.NIL_VALUE
+			}
+
+			color := colorVal.Obj.(*core.Vec4Object)
+			err := o.Value.SetCircle3Full(indexVal.AsInt(),
+				xVal.AsFloat(), yVal.AsFloat(), zVal.AsFloat(),
+				radiusVal.AsFloat(), color)
+			if err != nil {
+				vm.RunTimeError(err.Error())
+				return core.NIL_VALUE
+			}
+			return core.NIL_VALUE
+		},
+	})
+
+	o.RegisterMethod("set_circle3_color", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 2 {
+				vm.RunTimeError("set_circle3_color() expects 2 arguments (index, color)")
+				return core.NIL_VALUE
+			}
+
+			// Only allow this method for BATCH_CIRCLE3 type
+			if o.Value.BatchType != BATCH_CIRCLE3 {
+				vm.RunTimeError("set_circle3_color() can only be used with BATCH_CIRCLE3 batch type")
+				return core.NIL_VALUE
+			}
+
+			indexVal := vm.Stack(arg_stackptr)
+			colorVal := vm.Stack(arg_stackptr + 1)
+
+			if !indexVal.IsInt() {
+				vm.RunTimeError("set_circle3_color() first argument must be an integer (index)")
+				return core.NIL_VALUE
+			}
+			if colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("set_circle3_color() second argument must be a vec4 (color)")
+				return core.NIL_VALUE
+			}
+
+			color := colorVal.Obj.(*core.Vec4Object)
+			if err := o.Value.SetCircle3Color(indexVal.AsInt(), color); err != nil {
+				vm.RunTimeError(err.Error())
+				return core.NIL_VALUE
+			}
+			return core.NIL_VALUE
+		},
+	})
+
 	/* 	o.RegisterMethod("add_textured_cube", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 4 {

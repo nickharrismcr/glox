@@ -47,183 +47,70 @@ time_value = 0.0               // Time in seconds (for shader uniforms)
 pulse_center = vec3(0, 5, 0)   // Moving center point for pulse shader effect
 
 // ========== PHYSICS SIMULATION CONSTANTS ==========
-const GRID_SIZE = 30.0         // Half-size of simulation boundary (60x60x60 total space)
-const BOUNCE_DAMPING = 0.5     // Energy loss factor on boundary collisions (0.9 = 10% loss)
-const SHAPES = 450
-const SPAWN_PER_FRAME = 5     // How many balls to add per frame while ramping up to SHAPES
-const FORCE = 0.5             // Explosion force multiplier (affects blast radius impact)
+const GRID_SIZE = 20.0         // Half-size of simulation boundary (60x60x60 total space)
+const WORLD_TOP = 1000.0       // Upper Y bound for physics_world -- far above anything
+                                // reachable, so balls never hit a "ceiling" (matches the
+                                // original script, which only ever bounced off the ground).
+const PHYS_CELL_SIZE = 2.0     // physics_world broad-phase grid cell size; must exceed
+                                // max ball diameter (0.7 * 2 = 1.4), 2.0 gives clear margin.
+const BOUNCE_DAMPING = 0.5     // Energy loss factor on boundary collisions (0.9 = 10% loss).
+                                // physics_world uses one restitution value for both wall
+                                // bounces and ball-ball collisions (combined via sqrt), so
+                                // ball-ball impacts are now ~50% restitution instead of the
+                                // original script's separate 70% -- a minor visual difference.
+const AIR_DAMPING = 0.99       // Per-step velocity multiplier (air resistance). Originally
+                                // applied to horizontal velocity only; physics_world applies
+                                // it uniformly to all three axes each step.
+const SHAPES = 550
+const SPAWN_PER_FRAME = 20     // How many balls to add per frame while ramping up to SHAPES
+const FORCE = 0.6             // Explosion force multiplier (affects blast radius impact)
 const DISTANCE = 40.0          // Camera orbital distance from center
 const NORMAL=0
 const RAINBOW=1
 const PULSE=2
 const EXP_MIN=400                // Minimum frames before explosion
-const EXP_MAX=2000                // Maximum frames before explosion
-
-// Precomputed cos/sin for a regular hexagon (0/60/120/180/240/300 degrees),
-// used by MovingObject.add_shadow(). Static angles, so these are computed
-// once instead of calling math.cos/math.sin 12 times per ball per frame.
-const HEX_C0 = 1.0
-const HEX_S0 = 0.0
-const HEX_C1 = 0.5
-const HEX_S1 = 0.8660254037844387
-const HEX_C2 = -0.5
-const HEX_S2 = 0.8660254037844387
-const HEX_C3 = -1.0
-const HEX_S3 = 0.0
-const HEX_C4 = -0.5
-const HEX_S4 = -0.8660254037844387
-const HEX_C5 = 0.5
-const HEX_S5 = -0.8660254037844387
+const EXP_MAX=6000                // Maximum frames before explosion
 
 // ========== MOVING OBJECT CLASS ==========
-// Represents a physics object with collision, explosion, and shader rendering capabilities
+// Represents a rendering/gameplay wrapper around one physics_world body.
+// Integration, boundary bounce, and ball-ball collision now happen natively
+// inside physics_world (see world.step() in the main loop below); this class
+// only tracks what physics_world doesn't: rendering data (size/color/shader),
+// explosion timer/state, and the position synced from the world each frame.
 class MovingObject {
-    init(pos, vel, size, color, shape_type) {
-        this.pos = pos                                      // 3D position (vec3)
-        this.vel = vel                                      // 3D velocity (vec3)
+    init(id, size, color, shape_type) {
+        this.id = id                                        // Handle into physics_world
+        this.pos = vec3(0, 0, 0)                            // Synced from world each frame
         this.size = size                                    // Size dimensions (vec3, but we use .x for radius)
         this.color = color                                  // RGBA color (vec4)
         this.shape_type = shape_type                        // Shape identifier (currently "sphere")
-        this.radius = this.get_collision_radius()          // Collision radius for physics
-        this.explosion_timer = random.float(EXP_MIN, EXP_MAX)    // Random countdown to explosion 
+        this.radius = this.get_collision_radius()          // Collision radius, mirrors what was passed to world.add()
+        this.explosion_timer = random.float(EXP_MIN, EXP_MAX)    // Random countdown to explosion
         this.is_exploded = false                            // Explosion state flag
-        this.shader_type = random.choice((NORMAL, RAINBOW, PULSE))         
+        this.shader_type = random.choice((NORMAL, RAINBOW, PULSE))
     }
-    
+
     // Calculate collision radius from size
     get_collision_radius() {
         return this.size.x
     }
-    
-    // Fast distance calculation without square root (for performance)
-    distance_squared_to(other) {
-        dx = this.pos.x - other.pos.x
-        dy = this.pos.y - other.pos.y
-        dz = this.pos.z - other.pos.z
-        return dx*dx + dy*dy + dz*dz
-    }
-    
-    // Check if two objects are colliding using squared distance
-    check_collision(other) {
-        radiusSum = this.radius + other.radius
-        return this.distance_squared_to(other) < (radiusSum * radiusSum)
-    }
-    
-    // Resolve collision between two objects using elastic collision physics
-    resolve_collision(other) {
-        // Calculate collision direction vector
-        dx = this.pos.x - other.pos.x
-        dy = this.pos.y - other.pos.y
-        dz = this.pos.z - other.pos.z
-        dist = math.sqrt(dx*dx + dy*dy + dz*dz)
-        
-        // Handle edge case where objects are at exact same position
-        if (dist == 0) {
-            dx = random.float(-1, 1)
-            dy = random.float(-1, 1)
-            dz = random.float(-1, 1)
-            dist = math.sqrt(dx*dx + dy*dy + dz*dz)
-        }
-        
-        // Normalize collision direction vector
-        nx = dx / dist
-        ny = dy / dist
-        nz = dz / dist
-        
-        // Separate overlapping objects by moving them apart
-        overlap = (this.radius + other.radius) - dist
-        separation = overlap / 2
-        
-        this.pos.x = this.pos.x + nx * separation
-        this.pos.y = this.pos.y + ny * separation
-        this.pos.z = this.pos.z + nz * separation
-        
-        other.pos.x = other.pos.x - nx * separation
-        other.pos.y = other.pos.y - ny * separation
-        other.pos.z = other.pos.z - nz * separation
-        
-        // Calculate relative velocity between objects
-        rel_vel_x = this.vel.x - other.vel.x
-        rel_vel_y = this.vel.y - other.vel.y
-        rel_vel_z = this.vel.z - other.vel.z
-        
-        // Calculate velocity component along collision normal
-        vel_along_normal = rel_vel_x * nx + rel_vel_y * ny + rel_vel_z * nz
-        
-        // Don't resolve if velocities are separating (objects moving apart)
-        if (vel_along_normal > 0) {
-            return
-        }
-        
-        // Apply elastic collision with restitution (bounciness factor)
-        restitution = 0.7  // 70% energy retention on collision
-        impulse = -(1 + restitution) * vel_along_normal / 2  // Divide by 2 for equal mass assumption
-        
-        // Update velocities based on collision impulse
-        this.vel.x = this.vel.x + impulse * nx
-        this.vel.y = this.vel.y + impulse * ny
-        this.vel.z = this.vel.z + impulse * nz
-        
-        other.vel.x = other.vel.x - impulse * nx
-        other.vel.y = other.vel.y - impulse * ny
-        other.vel.z = other.vel.z - impulse * nz
-    }
-    
-    // Update object physics each frame
-    update() {
-        // Skip physics updates for exploded objects
-        if (this.is_exploded) {
-            return
-        }
-        
-        // Countdown to explosion (decrements each frame)
-        this.explosion_timer = this.explosion_timer - 1
-        
-        // Apply velocity to position (Euler integration)
-        this.pos.x = this.pos.x + this.vel.x
-        this.pos.y = this.pos.y + this.vel.y
-        this.pos.z = this.pos.z + this.vel.z
-        
-        // Boundary collision detection and response (X-axis)
-        if (this.pos.x > GRID_SIZE or this.pos.x < -GRID_SIZE) {
-            this.vel.x = -this.vel.x * BOUNCE_DAMPING  // Reverse and dampen velocity
-            // Clamp position to boundary to prevent object escape
-            if (this.pos.x > GRID_SIZE) this.pos.x = GRID_SIZE
-            if (this.pos.x < -GRID_SIZE) this.pos.x = -GRID_SIZE
-        }
-        
-        // Boundary collision detection and response (Z-axis)
-        if (this.pos.z > GRID_SIZE or this.pos.z < -GRID_SIZE) {
-            this.vel.z = -this.vel.z * BOUNCE_DAMPING
-            if (this.pos.z > GRID_SIZE) this.pos.z = GRID_SIZE
-            if (this.pos.z < -GRID_SIZE) this.pos.z = -GRID_SIZE
-        }
-        
-        // Ground collision detection and response (Y-axis)
-        ground_level = 0.0
-        if (this.pos.y - this.radius < ground_level) {
-            this.pos.y = ground_level + this.radius  // Place sphere bottom at ground level
-            this.vel.y = -this.vel.y * BOUNCE_DAMPING  // Bounce with energy loss
-        }
-        this.vel.x = this.vel.x * 0.99  // Apply slight air resistance (friction)
-        this.vel.z = this.vel.z * 0.99  // Apply slight air resistance
-        
-        // Apply gravity acceleration (constant downward force)
-        this.vel.y = this.vel.y - 0.01  // Gravity strength: -0.01 units/frame^2
-    }
-    
+
     // Check if object should explode (timer reached zero)
     should_explode() {
         return this.explosion_timer <= 0 and !this.is_exploded
     }
-    
-    // Mark object as exploded (removes from physics simulation)
-    explode() {
+
+    // Mark object as exploded and remove it from the physics simulation
+    explode(world) {
         this.is_exploded = true
+        world.remove(this.id)
     }
-    
-    // Apply explosion force from a blast at explosion_pos
-    apply_explosion_force(explosion_pos, explosion_force) {
+
+    // Apply explosion force from a blast at explosion_pos. The distance
+    // check/falloff curve stay here in Lox (gameplay policy); only the
+    // resulting velocity nudge goes through physics_world's add_impulse,
+    // since velocities now live in the native SoA simulation.
+    apply_explosion_force(world, explosion_pos, explosion_force) {
         // Skip force application for already exploded objects
         if (this.is_exploded) {
             return
@@ -241,31 +128,28 @@ class MovingObject {
         dy = this.pos.y - explosion_pos.y
         dz = this.pos.z - explosion_pos.z
         dist = math.sqrt(dx*dx + dy*dy + dz*dz)
-        
+
         // Define explosion radius and check if object is within range
         explosion_radius = 8.0
         if (dist > explosion_radius or dist < 0.1) {
             return  // Too far away or too close (avoid division by zero)
         }
-        
+
         // Normalize direction vector (from explosion to object)
         nx = dx / dist
         ny = dy / dist
         nz = dz / dist
-        
+
         // Calculate force strength based on distance (inverse relationship)
         force_strength = explosion_force * (1.0 - (dist / explosion_radius))
-        
-        // Apply force to object velocity (impulse-based physics)
-        this.vel.x = this.vel.x + nx * force_strength
-        this.vel.y = this.vel.y + ny * force_strength
-        this.vel.z = this.vel.z + nz * force_strength
+
+        // Apply the resulting impulse via physics_world
+        world.add_impulse(this.id, vec3(nx * force_strength, ny * force_strength, nz * force_strength))
     }
-    
-    // Add a flat hexagon (6 triangles, fanned from the center) shadow into
-    // the given batch, instead of drawing an individual win.ellipse3() per
-    // ball. Approximates the original circular shadow far better than a
-    // quad while still rendering as one native batch.
+
+    // Add a flat ground shadow in a single native call using BATCH_CIRCLE3
+    // (the fan of triangles that approximates the circle is now built
+    // natively in Go's batch.draw(), not assembled by hand in Lox).
     add_shadow(shadow_batch) {
         // Don't render shadows for exploded objects
         if (this.is_exploded) {
@@ -277,53 +161,32 @@ class MovingObject {
         r = this.radius * height_factor
 
         // Slightly above ground to avoid z-fighting
-        x = this.pos.x
-        y = 0.01
-        z = this.pos.z
+        center = vec3(this.pos.x, 0.01, this.pos.z)
 
         // Gray shadow color with fixed transparency
-        shadow_color = vec4(100, 100, 100, 255)
+        shadow_color = vec4(50, 50, 50, 255)
 
-        center = vec3(x, y, z)
-        p0 = vec3(x + r * HEX_C0, y, z + r * HEX_S0)
-        p1 = vec3(x + r * HEX_C1, y, z + r * HEX_S1)
-        p2 = vec3(x + r * HEX_C2, y, z + r * HEX_S2)
-        p3 = vec3(x + r * HEX_C3, y, z + r * HEX_S3)
-        p4 = vec3(x + r * HEX_C4, y, z + r * HEX_S4)
-        p5 = vec3(x + r * HEX_C5, y, z + r * HEX_S5)
-
-        // Wound so each triangle's face normal points +Y (upward, toward the
-        // elevated camera) -- see the quad-shadow winding note this replaced.
-        shadow_batch.add_triangle3(center, p1, p0, shadow_color)
-        shadow_batch.add_triangle3(center, p2, p1, shadow_color)
-        shadow_batch.add_triangle3(center, p3, p2, shadow_color)
-        shadow_batch.add_triangle3(center, p4, p3, shadow_color)
-        shadow_batch.add_triangle3(center, p5, p4, shadow_color)
-        shadow_batch.add_triangle3(center, p0, p5, shadow_color)
+        shadow_batch.add_circle3(center, r, shadow_color)
     }
 }
 
- 
+
 objects = []
 added = 0
 
-// ===== SPATIAL HASH SETUP =====
-// Flat 3D grid for O(n) broad-phase collision culling.
-// Cell size must exceed max ball diameter (0.7 * 2 = 1.4); 2.0 gives clear margin.
-// X/Z are offset by GRID_SIZE so all coords are positive before dividing.
-CELL_SIZE = 2.0
-SH_CX = 32          // cells along X: (pos.x + 30) / 2 -> 0..30, need 31; 32 is safe
-SH_CY = 20          // cells along Y: pos.y / 2 -> covers 0..38 (very high balls skipped)
-SH_CZ = 32          // cells along Z: same as X
-SH_YZ = SH_CY * SH_CZ  // 640 — precomputed stride for flat indexing
-SH_TOTAL = SH_CX * SH_YZ  // 20480 total cells
-
-// Pre-allocate once: each slot is nil (unused) or a list of object indices.
-sh_grid = []
-foreach (sh_init in range(SH_TOTAL)) {
-    sh_grid.append(nil)
-}
-sh_used = []  // indices of cells populated this frame (for fast clearing)
+// ===== PHYSICS WORLD SETUP =====
+// Native simulation: body storage, gravity integration, boundary bounce,
+// broad-phase grid, and impulse-based collision resolution all happen in
+// Go now (see docs/PLAN_physics_world.md) -- this replaces the old
+// per-object MovingObject.update() plus the hand-rolled spatial hash that
+// used to live in this script.
+world = physics_world(
+    vec3(-GRID_SIZE, 0, -GRID_SIZE),
+    vec3(GRID_SIZE, WORLD_TOP, GRID_SIZE),
+    PHYS_CELL_SIZE,
+    vec3(0, -0.01, 0)  // Gravity: matches the original -0.01 units/frame^2
+)
+mat_id = world.add_material(BOUNCE_DAMPING, 0.3, AIR_DAMPING)  // restitution, friction (unused for now), damping
 
 // ===== BATCH RENDERING SETUP =====
 // One sphere batch per shader pass. Populating a batch is still a per-ball
@@ -334,8 +197,8 @@ sh_used = []  // indices of cells populated this frame (for fast clearing)
 normal_batch = batch(win.BATCH_SPHERE)
 rainbow_batch = batch(win.BATCH_SPHERE)
 pulse_batch = batch(win.BATCH_SPHERE)
-// Shadows are flat quads (2 triangles each), batched natively the same way.
-shadow_batch = batch(win.BATCH_TRIANGLE3)
+// Shadows are flat circles, batched natively the same way.
+shadow_batch = batch(win.BATCH_CIRCLE3)
 
 while (!win.should_close()) {
 
@@ -345,7 +208,8 @@ while (!win.should_close()) {
         vel = vec3(random.float(-0.15, 0.15), random.float(-0.05, 0.05), random.float(-0.15, 0.15))
         s = random.float(0.3,0.7)
         size = vec3(s, s, s)
-        objects.append(MovingObject(pos, vel, size, col.random_rgb(), "sphere"))
+        id = world.add(pos, vel, s, mat_id)
+        objects.append(MovingObject(id, size, col.random_rgb(), "sphere"))
         added+=1
     }
 
@@ -354,38 +218,52 @@ while (!win.should_close()) {
     x = math.cos(angle) * DISTANCE  // Calculate X position on circle
     z = math.sin(angle) * DISTANCE  // Calculate Z position on circle
     cam.set_position(vec3(x, 10, z))  // Update camera position (Y=10 for elevated view)
-    
+
     // ===== TIMING AND ANIMATION =====
     frame_count = frame_count + 1
     time_value = frame_count * 0.016  // Convert frames to seconds (assuming 60 FPS)
     rainbow_shader.set_value_float(time_location, time_value)
-    
-    // Update all moving objects
+
+    // ===== PHYSICS STEP =====
+    // Single native call replaces the old per-object update() loop and the
+    // hand-rolled spatial-hash collision pass entirely.
+    world.step(1.0)
+
+    // Sync rendered/gameplay position from the physics world. Skipping
+    // exploded objects is safe -- their bodies were already removed from
+    // world when they exploded.
     foreach (obj in objects) {
-        obj.update()
+        if (obj.is_exploded) continue
+        obj.pos = world.get_position(obj.id)
     }
 
     // ===== EXPLOSION MECHANICS =====
+    // Countdown to explosion (decrements each frame)
+    foreach (obj in objects) {
+        if (obj.is_exploded) continue
+        obj.explosion_timer = obj.explosion_timer - 1
+    }
+
     // Check for objects whose explosion timers have expired
     explosions = []
     foreach (obj in objects) {
         if (obj.should_explode()) {
             // Record explosion position for force propagation
             explosions.append(vec3(obj.pos.x, obj.pos.y, obj.pos.z))
-            obj.explode()  // Mark object as exploded (removes from physics)
+            obj.explode(world)  // Mark object as exploded and remove from physics
         }
     }
-    
+
     // Trigger floor flash effect when any explosions occur
     if (explosions.length() > 0) {
-        floor_flash_timer = 10  // Flash duration in frames
+        floor_flash_timer = 5 // Flash duration in frames
     }
-    
+
     // Countdown floor flash timer
     if (floor_flash_timer > 0) {
         floor_flash_timer = floor_flash_timer - 1
     }
-    
+
     // Apply explosion forces to all nearby objects (optimized)
     foreach (explosion_pos in explosions) {
         foreach (obj in objects) {
@@ -401,71 +279,7 @@ while (!win.should_close()) {
             if (dx*dx + dy*dy + dz*dz > 64) {
                 continue
             }
-            obj.apply_explosion_force(explosion_pos, FORCE)
-        }
-    }
-
-    // ===== COLLISION DETECTION AND RESOLUTION (SPATIAL HASH) =====
-    // Broad phase: O(n) grid build + O(n * 27) neighbor lookups instead of O(n^2).
-    // Each ball is inserted into one cell; pairs are only tested when they share a cell
-    // or occupy adjacent cells. j > i guard ensures each pair is tested exactly once.
-    if (frame_count % 3 == 0) {
-        object_count = objects.length()
-
-        // Clear cells populated last frame
-        foreach (sh_c in sh_used) {
-            sh_grid[sh_c] = nil
-        }
-        sh_used = []
-
-        // Insert each live object into its grid cell
-        foreach (i in range(object_count)) {
-            obj = objects[i]
-            if (obj.is_exploded) continue
-            cx = int((obj.pos.x + GRID_SIZE) / CELL_SIZE)
-            cy = int(obj.pos.y / CELL_SIZE)
-            cz = int((obj.pos.z + GRID_SIZE) / CELL_SIZE)
-            if (cx < 0 or cx >= SH_CX or cy < 0 or cy >= SH_CY or cz < 0 or cz >= SH_CZ) continue
-            sh_i = cx * SH_YZ + cy * SH_CZ + cz
-            if (sh_grid[sh_i] == nil) {
-                sh_grid[sh_i] = []
-                sh_used.append(sh_i)
-            }
-            sh_grid[sh_i].append(i)
-        }
-
-        // Narrow phase: for each object, check its 3x3x3 cell neighborhood
-        foreach (i in range(object_count)) {
-            obj1 = objects[i]
-            if (obj1.is_exploded) continue
-
-            cx = int((obj1.pos.x + GRID_SIZE) / CELL_SIZE)
-            cy = int(obj1.pos.y / CELL_SIZE)
-            cz = int((obj1.pos.z + GRID_SIZE) / CELL_SIZE)
-
-            foreach (ddx in range(-1, 2)) {
-                ncx = cx + ddx
-                if (ncx < 0 or ncx >= SH_CX) continue
-                foreach (ddy in range(-1, 2)) {
-                    ncy = cy + ddy
-                    if (ncy < 0 or ncy >= SH_CY) continue
-                    foreach (ddz in range(-1, 2)) {
-                        ncz = cz + ddz
-                        if (ncz < 0 or ncz >= SH_CZ) continue
-                        sh_ni = ncx * SH_YZ + ncy * SH_CZ + ncz
-                        cell_list = sh_grid[sh_ni]
-                        if (cell_list == nil) continue
-                        foreach (j in cell_list) {
-                            if (j <= i) continue
-                            obj2 = objects[j]
-                            if (obj2.is_exploded) continue
-                            if (obj1.check_collision(obj2)) {
-                                obj1.resolve_collision(obj2)
-                            }
-                        }
-                    }
-                }
-            }
+            obj.apply_explosion_force(world, explosion_pos, FORCE)
         }
     }
 
@@ -476,7 +290,7 @@ while (!win.should_close()) {
 
     // ===== 3D SCENE RENDERING =====
     win.begin_3d(cam)  // Enter 3D coordinate system with camera transformation
-    
+
     // ===== ENVIRONMENT RENDERING =====
     // Draw floor plane with explosion flash effect
     if (floor_flash_timer > 0) {
@@ -487,13 +301,15 @@ while (!win.should_close()) {
         win.plane(vec3(0, 0, 0), vec2(GRID_SIZE*2, GRID_SIZE*2), floor_color)
     } else {
         // Normal gray floor when no explosions are occurring
-        win.plane(vec3(0, 0, 0), vec2(GRID_SIZE*2, GRID_SIZE*2), vec4(150, 150, 150, 255))
+        win.plane(vec3(0, 0, 0), vec2(GRID_SIZE*2, GRID_SIZE*2), vec4(100, 100, 100, 255))
     }
-    
+
     // ===== SHADOW PASS (BATCHED) =====
-    // Render all object shadows first (depth layering). Each ball adds a flat
-    // quad (2 triangles) into shadow_batch; batch.draw() renders them all in
-    // one native loop instead of 500 individual win.ellipse3() Lox calls.
+    // Render all object shadows first (depth layering). Each ball adds one
+    // flat circle into shadow_batch via a single add_circle3() call;
+    // batch.draw() then builds and renders every circle's triangle fan
+    // natively in Go, instead of each ball adding 6 hand-built triangles
+    // from Lox (or 500 individual win.ellipse3() calls, as in the original).
     shadow_batch.clear()
     foreach (obj in objects) {
         obj.add_shadow(shadow_batch)

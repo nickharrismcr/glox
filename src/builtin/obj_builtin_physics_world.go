@@ -92,21 +92,34 @@ type PhysicsWorld struct {
 	bounds   Bounds
 	gravity  PVec3
 	cellSize float64
-	grid     map[cellKey][]int
 
-	collisions   []CollisionPair
-	prevContacts map[pairKey]bool
-	currContacts map[pairKey]bool
+	// grid buckets by cell; usedCells lists the keys populated during the
+	// last rebuildGrid() so the next call can clear just those (re-slicing
+	// each bucket to length 0, keeping its backing array) instead of
+	// deleting every map entry and reallocating a fresh slice on next use.
+	grid      map[cellKey][]int
+	usedCells []cellKey
+
+	collisions []CollisionPair
+
+	// contactSets is a ping-pong pair of persistent maps: each Step(), the
+	// buffer that was "prev" two frames ago becomes this frame's "curr"
+	// (cleared in place via the builtin clear(), not reallocated). This
+	// avoids the fresh make(map[pairKey]bool) that used to run every step.
+	contactSets [2]map[pairKey]bool
+	currIdx     int
 }
 
 func NewPhysicsWorld(min, max PVec3, cellSize float64, gravity PVec3) *PhysicsWorld {
 	return &PhysicsWorld{
-		bounds:       Bounds{min, max},
-		gravity:      gravity,
-		cellSize:     cellSize,
-		grid:         make(map[cellKey][]int),
-		prevContacts: make(map[pairKey]bool),
-		currContacts: make(map[pairKey]bool),
+		bounds:   Bounds{min, max},
+		gravity:  gravity,
+		cellSize: cellSize,
+		grid:     make(map[cellKey][]int),
+		contactSets: [2]map[pairKey]bool{
+			make(map[pairKey]bool),
+			make(map[pairKey]bool),
+		},
 	}
 }
 
@@ -146,6 +159,22 @@ func (w *PhysicsWorld) GetPosition(id int) (PVec3, error) {
 	return PVec3{w.posX[id], w.posY[id], w.posZ[id]}, nil
 }
 
+// AddImpulse applies an instantaneous velocity change to a single body.
+// This is the primitive Lox uses for explosion forces: the distance
+// check, falloff curve, and "which bodies are nearby" loop all stay in
+// Lox, which computes one impulse vector per affected body and calls
+// this once per body. No mass division — matches the equal-mass
+// assumption used in checkAndResolve.
+func (w *PhysicsWorld) AddImpulse(id int, impulse PVec3) error {
+	if id < 0 || id >= len(w.posX) || !w.active[id] {
+		return fmt.Errorf("index out of range or inactive: %d", id)
+	}
+	w.velX[id] += impulse.X
+	w.velY[id] += impulse.Y
+	w.velZ[id] += impulse.Z
+	return nil
+}
+
 func (w *PhysicsWorld) Count() int {
 	n := 0
 	for _, a := range w.active {
@@ -168,11 +197,13 @@ func (w *PhysicsWorld) Step(dt float64) {
 	w.rebuildGrid()
 
 	w.collisions = w.collisions[:0]
-	w.currContacts = make(map[pairKey]bool, len(w.currContacts))
+
+	// Swap ping-pong buffers: the map that was "prev" becomes this frame's
+	// "curr", cleared in place instead of allocated fresh.
+	w.currIdx = 1 - w.currIdx
+	clear(w.contactSets[w.currIdx])
 
 	w.narrowPhase()
-
-	w.prevContacts = w.currContacts
 }
 
 func (w *PhysicsWorld) integrate(dt float64) {
@@ -229,21 +260,35 @@ func (w *PhysicsWorld) cellOf(i int) cellKey {
 }
 
 func (w *PhysicsWorld) rebuildGrid() {
-	for k := range w.grid {
-		delete(w.grid, k)
+	// Clear only the cells touched last frame, re-slicing each bucket to
+	// length 0 so its backing array is kept (and reused below) instead of
+	// deleting the map entry and forcing a fresh slice allocation on the
+	// next insert.
+	for _, k := range w.usedCells {
+		w.grid[k] = w.grid[k][:0]
 	}
+	w.usedCells = w.usedCells[:0]
+
 	for i := range w.posX {
 		if !w.active[i] {
 			continue
 		}
 		k := w.cellOf(i)
+		if len(w.grid[k]) == 0 {
+			w.usedCells = append(w.usedCells, k)
+		}
 		w.grid[k] = append(w.grid[k], i)
 	}
 }
 
+// narrowPhase visits, for each body i, the 27 cells around i's own cell.
+// Those 27 (dx,dy,dz) offsets are all distinct absolute cell coordinates,
+// so a given neighbor cell is visited at most once per i -- no pair can be
+// found twice within one i's scan. Combined with the `j <= i` guard (which
+// only ever looks for the higher-indexed half of a pair), every unordered
+// pair {a,b} is discovered exactly once overall, so no separate `checked`
+// dedup set is needed here.
 func (w *PhysicsWorld) narrowPhase() {
-	checked := make(map[pairKey]bool)
-
 	for i := range w.posX {
 		if !w.active[i] {
 			continue
@@ -258,12 +303,7 @@ func (w *PhysicsWorld) narrowPhase() {
 						if j <= i || !w.active[j] {
 							continue
 						}
-						pk := pairKey{i, j}
-						if checked[pk] {
-							continue
-						}
-						checked[pk] = true
-						w.checkAndResolve(i, j, pk)
+						w.checkAndResolve(i, j, pairKey{i, j})
 					}
 				}
 			}
@@ -300,6 +340,9 @@ func (w *PhysicsWorld) checkAndResolve(i, j int, pk pairKey) {
 
 	restitution, _ := combineMaterials(w.materials[w.materialID[i]], w.materials[w.materialID[j]])
 
+	curr := w.contactSets[w.currIdx]
+	prev := w.contactSets[1-w.currIdx]
+
 	if velAlongNormal < 0 {
 		impulse := -(1 + restitution) * velAlongNormal * 0.5
 		w.velX[i] -= impulse * nx
@@ -309,8 +352,8 @@ func (w *PhysicsWorld) checkAndResolve(i, j int, pk pairKey) {
 		w.velY[j] += impulse * ny
 		w.velZ[j] += impulse * nz
 
-		w.currContacts[pk] = true
-		if !w.prevContacts[pk] {
+		curr[pk] = true
+		if !prev[pk] {
 			w.collisions = append(w.collisions, CollisionPair{
 				A: i, B: j,
 				Normal:  PVec3{nx, ny, nz},
@@ -318,7 +361,7 @@ func (w *PhysicsWorld) checkAndResolve(i, j int, pk pairKey) {
 			})
 		}
 	} else {
-		w.currContacts[pk] = true
+		curr[pk] = true
 	}
 }
 

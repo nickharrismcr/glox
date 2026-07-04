@@ -36,7 +36,26 @@ const (
 	BATCH_CUBE BatchPrimitive = iota
 	BATCH_SPHERE
 	BATCH_TRIANGLE3
+	BATCH_CIRCLE3
 )
+
+// Number of triangle-fan segments used to draw each BATCH_CIRCLE3 entry.
+// The fan is built natively in Draw() (see drawCircle3 below), so raising
+// this only costs Go-side work, not additional Lox-level calls.
+const circle3Segments = 10
+
+// Unit-circle direction cosines/sines for the flat (XZ-plane) disc, shared
+// by every BATCH_CIRCLE3 entry so Draw() never calls math.Cos/Sin per
+// segment per entry per frame.
+var circle3UnitX, circle3UnitZ [circle3Segments]float32
+
+func init() {
+	for i := 0; i < circle3Segments; i++ {
+		angle := 2 * math.Pi * float64(i) / float64(circle3Segments)
+		circle3UnitX[i] = float32(math.Cos(angle))
+		circle3UnitZ[i] = float32(math.Sin(angle))
+	}
+}
 
 // Internal data structures
 type BatchEntry struct {
@@ -54,10 +73,19 @@ type TriangleBatchEntry struct {
 	Color  rl.Color
 }
 
+// A flat, filled, horizontal (XZ-plane) circle -- e.g. a ground shadow.
+// Center.Y is the height at which the disc lies; it always faces +Y.
+type CircleBatchEntry struct {
+	Center rl.Vector3
+	Radius float32
+	Color  rl.Color
+}
+
 type DrawBatch struct {
 	BatchType      BatchPrimitive
 	Entries        []BatchEntry
 	TrianglePoints []TriangleBatchEntry // For BATCH_TRIANGLE3 type
+	Circles        []CircleBatchEntry   // For BATCH_CIRCLE3 type
 	Capacity       int
 }
 
@@ -74,6 +102,7 @@ func MakeBatchObject(batchType BatchPrimitive) *BatchObject {
 		BatchType:      batchType,
 		Entries:        make([]BatchEntry, 0), // Pre-allocate capacity
 		TrianglePoints: make([]TriangleBatchEntry, 0),
+		Circles:        make([]CircleBatchEntry, 0),
 		Capacity:       0,
 	}
 
@@ -99,6 +128,9 @@ func (o *BatchObject) String() string {
 	case BATCH_TRIANGLE3:
 		typeName = "TRIANGLE3"
 		entryCount = len(o.Value.TrianglePoints)
+	case BATCH_CIRCLE3:
+		typeName = "CIRCLE3"
+		entryCount = len(o.Value.Circles)
 	default:
 		typeName = "UNKNOWN"
 		entryCount = len(o.Value.Entries)
@@ -191,6 +223,61 @@ func (batch *DrawBatch) AddTriangle3(p1 *core.Vec3Object, p2 *core.Vec3Object, p
 	}
 	batch.TrianglePoints = append(batch.TrianglePoints, entry)
 	return len(batch.TrianglePoints) - 1
+}
+
+// Add a flat, filled circle (e.g. a ground shadow) in one call, instead of
+// building a triangle fan by hand and calling AddTriangle3 per segment.
+func (batch *DrawBatch) AddCircle3(center *core.Vec3Object, radius float64, color *core.Vec4Object) int {
+	entry := CircleBatchEntry{
+		Center: rl.Vector3{
+			X: float32(center.X),
+			Y: float32(center.Y),
+			Z: float32(center.Z),
+		},
+		Radius: float32(radius),
+		Color: rl.Color{
+			R: uint8(color.X),
+			G: uint8(color.Y),
+			B: uint8(color.Z),
+			A: uint8(color.W),
+		},
+	}
+	batch.Circles = append(batch.Circles, entry)
+	return len(batch.Circles) - 1
+}
+
+// Update center/radius/color of a circle in one call, taking raw floats
+// for the center to avoid a throwaway vec3 allocation (mirrors
+// SetTriangle3Full) -- useful when animating a persistent index instead of
+// clearing and re-adding every frame.
+func (batch *DrawBatch) SetCircle3Full(index int, x, y, z, radius float64, color *core.Vec4Object) error {
+	if index < 0 || index >= len(batch.Circles) {
+		return fmt.Errorf("index out of range: %d", index)
+	}
+	batch.Circles[index] = CircleBatchEntry{
+		Center: rl.Vector3{X: float32(x), Y: float32(y), Z: float32(z)},
+		Radius: float32(radius),
+		Color: rl.Color{
+			R: uint8(color.X),
+			G: uint8(color.Y),
+			B: uint8(color.Z),
+			A: uint8(color.W),
+		},
+	}
+	return nil
+}
+
+func (batch *DrawBatch) SetCircle3Color(index int, color *core.Vec4Object) error {
+	if index < 0 || index >= len(batch.Circles) {
+		return fmt.Errorf("index out of range: %d", index)
+	}
+	batch.Circles[index].Color = rl.Color{
+		R: uint8(color.X),
+		G: uint8(color.Y),
+		B: uint8(color.Z),
+		A: uint8(color.W),
+	}
+	return nil
 }
 
 func (batch *DrawBatch) SetPosition(index int, pos *core.Vec3Object) error {
@@ -288,6 +375,7 @@ func (batch *DrawBatch) IsValidIndex(index int) bool {
 func (batch *DrawBatch) Clear() {
 	batch.Entries = batch.Entries[:0]               // Keep capacity, reset length
 	batch.TrianglePoints = batch.TrianglePoints[:0] // Clear triangle points too
+	batch.Circles = batch.Circles[:0]               // Clear circles too
 
 }
 
@@ -301,11 +389,28 @@ func (batch *DrawBatch) Reserve(capacity int) {
 }
 
 func (batch *DrawBatch) Count() int {
-	if batch.BatchType == BATCH_TRIANGLE3 {
+	switch batch.BatchType {
+	case BATCH_TRIANGLE3:
 		return len(batch.TrianglePoints)
+	case BATCH_CIRCLE3:
+		return len(batch.Circles)
 	}
 
 	return len(batch.Entries)
+}
+
+// drawCircle3 renders one flat, filled circle as a native triangle fan.
+// Winding matches the hexagon-shadow code this replaces: each segment is
+// (center, next, current), giving a face normal that points +Y.
+func drawCircle3(entry CircleBatchEntry) {
+	cx, cy, cz := entry.Center.X, entry.Center.Y, entry.Center.Z
+	r := entry.Radius
+	for i := 0; i < circle3Segments; i++ {
+		j := (i + 1) % circle3Segments
+		p1 := rl.Vector3{X: cx + r*circle3UnitX[i], Y: cy, Z: cz + r*circle3UnitZ[i]}
+		p2 := rl.Vector3{X: cx + r*circle3UnitX[j], Y: cy, Z: cz + r*circle3UnitZ[j]}
+		rl.DrawTriangle3D(entry.Center, p2, p1, entry.Color)
+	}
 }
 
 // Render all entries in the batch
@@ -326,6 +431,11 @@ func (batch *DrawBatch) Draw() {
 		// Draw 3-point triangles
 		for _, entry := range batch.TrianglePoints {
 			rl.DrawTriangle3D(entry.Point1, entry.Point2, entry.Point3, entry.Color)
+		}
+
+	case BATCH_CIRCLE3:
+		for _, entry := range batch.Circles {
+			drawCircle3(entry)
 		}
 	}
 }
@@ -460,6 +570,34 @@ func (batch *DrawBatch) DrawWithDirectionalCulling(cameraPos rl.Vector3, cameraF
 				// Check if triangle is within FOV cone
 				if dotProduct >= adjustedMinDot {
 					rl.DrawTriangle3D(entry.Point1, entry.Point2, entry.Point3, entry.Color)
+				}
+			}
+		}
+
+	case BATCH_CIRCLE3:
+		for _, entry := range batch.Circles {
+			dx := entry.Center.X - cameraPos.X
+			dy := entry.Center.Y - cameraPos.Y
+			dz := entry.Center.Z - cameraPos.Z
+			distanceSq := dx*dx + dy*dy + dz*dz
+
+			if distanceSq > maxDistanceSq {
+				continue
+			}
+
+			distance := float32(math.Sqrt(float64(distanceSq)))
+			if distance > 0.001 {
+				objDirX := dx / distance
+				objDirY := dy / distance
+				objDirZ := dz / distance
+
+				dotProduct := objDirX*cameraForward.X + objDirY*cameraForward.Y + objDirZ*cameraForward.Z
+
+				sizeAngleOffset := float32(math.Atan(float64(entry.Radius / distance)))
+				adjustedMinDot := float32(math.Cos(float64(fovRadians/2.0 + sizeAngleOffset)))
+
+				if dotProduct >= adjustedMinDot {
+					drawCircle3(entry)
 				}
 			}
 		}

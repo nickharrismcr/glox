@@ -113,7 +113,34 @@ func RegisterAllPhysicsWorldMethods(o *PhysicsWorldObject) {
 				return core.NIL_VALUE
 			}
 
-			return core.MakeObjectValue(core.MakeVec3Object(pos.X, pos.Y, pos.Z), false)
+			return core.MakeVec3Value(pos.X, pos.Y, pos.Z, false)
+		},
+	})
+
+	o.RegisterMethod("add_impulse", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 2 {
+				vm.RunTimeError("add_impulse() expects 2 arguments (id, impulse)")
+				return core.NIL_VALUE
+			}
+
+			idVal := vm.Stack(arg_stackptr)
+			impulseVal := vm.Stack(arg_stackptr + 1)
+
+			if !idVal.IsInt() {
+				vm.RunTimeError("add_impulse() first argument must be an integer (id)")
+				return core.NIL_VALUE
+			}
+			if impulseVal.Type != core.VAL_VEC3 {
+				vm.RunTimeError("add_impulse() second argument must be a vec3 (impulse)")
+				return core.NIL_VALUE
+			}
+
+			impulse := impulseVal.Obj.(*core.Vec3Object)
+			if err := o.Value.AddImpulse(idVal.AsInt(), PVec3{impulse.X, impulse.Y, impulse.Z}); err != nil {
+				vm.RunTimeError(err.Error())
+			}
+			return core.NIL_VALUE
 		},
 	})
 
@@ -151,7 +178,7 @@ func RegisterAllPhysicsWorldMethods(o *PhysicsWorldObject) {
 				tupleItems := []core.Value{
 					core.MakeIntValue(p.A, true),
 					core.MakeIntValue(p.B, true),
-					core.MakeObjectValue(core.MakeVec3Object(p.Normal.X, p.Normal.Y, p.Normal.Z), true),
+					core.MakeVec3Value(p.Normal.X, p.Normal.Y, p.Normal.Z, true),
 					core.MakeFloatValue(p.Impulse, true),
 				}
 				items[i] = core.MakeObjectValue(core.MakeListObject(tupleItems, true), true)
