@@ -18,6 +18,7 @@ const MAX_CAMERA_SPEED = 0.1
 const CAMERA_ACCELERATION = MAX_CAMERA_SPEED / 30.0  // Much gentler acceleration
 const ROTATION_SPEED = 0.01  // Much slower rotation for smoothness
 const MAX_COLOURS = 50
+const TEXTURE_GRID_SIZE = 20  // NxN grid of coloured rectangles per cube texture
 
 // Direction constants
 const NORTH = 0
@@ -68,14 +69,14 @@ func createColoredTextures(count) {
         // Clear with dark background
         texture.clear(colour.BLACK)
         
-        // Create sixteen smaller rectangles in a 4x4 grid with different hues
-        rectSize = 4  // Smaller size for 4x4 grid
-        spacing = 2   // Smaller space between rectangles
-        
-        // Calculate positions for 4x4 grid of rectangles
+        // Create a TEXTURE_GRID_SIZE x TEXTURE_GRID_SIZE grid of rectangles with different hues
+        rectSize = 2  // Smaller size for larger grids
+        spacing = 1   // Smaller space between rectangles
+
+        // Calculate positions for the grid of rectangles
         positions = []
-        for (row = 0; row < 4; row = row + 1) {
-            for (col = 0; col < 4; col = col + 1) {
+        for (row = 0; row < TEXTURE_GRID_SIZE; row = row + 1) {
+            for (col = 0; col < TEXTURE_GRID_SIZE; col = col + 1) {
                 x = spacing + col * (rectSize + spacing)
                 y = spacing + row * (rectSize + spacing)
                 positions.append(vec2(x, y))
@@ -120,7 +121,7 @@ class Batches {
         this.sizes = []
         this.textures = createColoredTextures(MAX_COLOURS)  // Create textures for cubes
         foreach (i in range(0,MAX_COLOURS)){
-            size = BASE_CUBE_SIZE * random.float(0.5, 1.5)  // Randomize size slightly
+            size = BASE_CUBE_SIZE * random.float(0.85, 1.15)  // Randomize size slightly
             batch = batch_instanced(this.textures[i].get_texture(),size,10000)  // Create batch for each texture
             this.batches.append(batch)
             this.sizes.append(size)  // Store size for each batch
@@ -434,7 +435,7 @@ fb.clear(colour.BLACK)
 // Load shader after window initialization (OpenGL context must exist)
 rainbow_shader = shader("lox_examples/shaders/rainbow.vs", "lox_examples/shaders/rainbow.fs")
 time_location = rainbow_shader.get_location("time")
-  
+
 cubeBatch = Batches() 
 // Create grid and populate with stacks
 grid = Grid(CITY_SIZE,cubeBatch)   
