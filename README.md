@@ -7,6 +7,8 @@
 The aim of this project is to learn more deeply about programming in Go and the crafting of interpreters by way of implementing Bobs CLox interpreter in Go, adding Python-inspired extensions to Lox along the way.
 The extensions to the language include enhanced string operations, lists, dictionaries, exception handling, module imports with bytecode caching, string and list iteration, Raylib bindings for graphics, and I/O.  
 
+📖 **[Full language reference: `docs/language-reference.html`](docs/language-reference.html)** — a comprehensive, hyperlinked guide to the syntax, built-in types and functions, native objects, and library modules. Open it in a browser. The summary below covers the main additions to vanilla Lox.
+
 
 ### Additions to vanilla Lox:
 
@@ -218,6 +220,39 @@ cube_batch.draw();  // Replaces 1000 individual draw calls
 win.end_3d();
 ```
  
+
+##### Native Physics Simulation
+
+`physics_world()` is a native 3D rigid-body simulation for spheres. Each body has a
+position, velocity, radius and material; a single `step()` call applies gravity, bounces
+bodies off the boundary box, and resolves body-to-body collisions natively in Go — far
+faster than driving per-object physics from Lox.
+
+```lox
+import random
+
+// world(min, max, cell_size, gravity)
+world = physics_world(vec3(-10, 0, -10), vec3(10, 100, 10), 2.0, vec3(0, -0.01, 0))
+mat = world.add_material(0.5, 0.3, 0.99)   // restitution, friction, damping
+
+ids = []
+foreach (i in range(50)) {
+    pos = vec3(random.float(-5, 5), random.float(5, 20), random.float(-5, 5))
+    ids.append(world.add(pos, vec3(0, 0, 0), 0.5, mat))
+}
+
+while (!win.should_close()) {
+    world.step(1.0)                      // advance the whole simulation
+    foreach (id in ids) {
+        p = world.get_position(id)       // read a body's position back
+        // ...draw a sphere at p...
+    }
+}
+```
+- `add(pos, vel, radius, material_id)` returns a stable id used by every other method.
+- `add_impulse(id, vec3)` applies an instantaneous velocity change to one body.
+- `collisions()` reports pairs `(a, b, normal, impulse)` that newly touched during the last `step()`.
+- See the [language reference](docs/language-reference.html#physics-world) for the full method list.
 
 ---
 
