@@ -821,6 +821,7 @@ win.end_3d()</code></pre>
 <p><code>batch_instanced()</code> uses GPU mesh instancing to draw very large numbers of textured cubes (100k+) in a single call. It is specialised for textured-cube instancing where hardware instancing gives the biggest win.</p>
 <div class="sig"><span class="nm">batch_instanced</span>(<em>…</em>) <span class="pill">→ batch_instanced</span></div>
 <p>Like <a href="#batch"><code>batch</code></a>, entries are added and then drawn in one call, but the render path uses hardware instancing. Use this when you need an order of magnitude more objects than a regular batch can sustain.</p>
+<div class="note"><strong>Not customisable with <code>shader()</code></strong>Every <code>batch_instanced</code> renders with the same built-in lighting shader (ambient light only, one shared texture per batch); <code>win.begin_shader_mode()</code> has no effect on it, and instances carry only a transform — no per-instance colour or custom data. There is currently no way to give a <code>batch_instanced</code> a custom look from a <code>.lox</code> script. Use plain <a href="#batch"><code>batch</code></a> if you need per-object shader effects.</div>
 
 <!-- ==================== TEXTURE ==================== -->
 <h2 class="section" id="texture">texture <span class="pill">native object</span></h2>
@@ -905,6 +906,7 @@ win.end_shader_mode()</code></pre>
 </tbody>
 </table>
 <div class="note"><strong>Failure handling</strong>Always check <code>is_valid()</code> after loading. Invalid shaders fall back gracefully to default rendering rather than crashing.</div>
+<div class="note"><strong>Instanced batches don't respect this</strong><code>begin_shader_mode</code> only affects draws that use raylib's currently-bound shader — plain <a href="#batch"><code>batch</code></a> draws, <code>win.plane()</code>/sphere/cube/etc., and <code>win.draw_render_texture()</code> all qualify. <a href="#batch-instanced"><code>batch_instanced</code></a> does not: it always renders with its own fixed lighting shader regardless of what's currently bound, so wrapping <code>my_batch_instanced.draw()</code> in <code>begin_shader_mode</code> has no effect. See <a href="#batch-instanced"><code>batch_instanced</code></a> below.</div>
 
 <!-- ==================== FLOAT ARRAY ==================== -->
 <h2 class="section" id="float-array">float_array <span class="pill">native object</span></h2>

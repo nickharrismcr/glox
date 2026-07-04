@@ -114,6 +114,75 @@ Multi-light Blinn-Phong lighting model with up to 4 light sources.
 - Type checking for uniform value types
 - Descriptive error messages for debugging
 
+## Rendering Pipeline: What `begin_shader_mode` Actually Affects
+
+`begin_shader_mode(shader)` / `end_shader_mode()` binds the shader raylib's `rlgl`
+layer currently has active. Whether a given draw call is affected depends on
+*how* that call renders under the hood:
+
+- **Immediate-mode primitives respect it.** `win.plane(...)`, sphere/cube/line/
+  rectangle draws, and `win.draw_render_texture(...)` are all implemented in
+  raylib as direct `rlBegin`/`rlVertex3f`/`rlEnd` calls with no `Material` of
+  their own, so they render with whatever shader is currently bound.
+- **Plain `batch` (non-instanced) also respects it.** `DrawBatch.Draw()`
+  (`src/builtin/obj_builtin_batch.go`) draws each entry with `rl.DrawCube`,
+  `rl.DrawSphere`, or `rl.DrawTriangle3D` — again all immediate-mode, no
+  per-entry `Material` — so wrapping `my_batch.draw()` in `begin_shader_mode`
+  works exactly like the reference docs' example shows. This is the key
+  distinction from `batch_instanced` below: same-sounding name, very
+  different render path and shader support.
+- **`batch_instanced` draws do not respect it.** `cubeBatch.draw(cam)` calls
+  `BatchInstancedObject.Draw` (`src/builtin/obj_builtin_batch_instanced.go`),
+  which renders via `rl.DrawMeshInstanced(mesh, material, transforms, count)`.
+  raylib's `DrawMesh`/`DrawMeshInstanced` always render with the mesh's own
+  `Material.Shader` field, ignoring whatever shader `begin_shader_mode` has
+  currently bound. Wrapping a `batch.draw(cam)` call in
+  `win.begin_shader_mode(my_shader)` has **no visible effect**.
+
+### The instanced-batch shader is a fixed, shared singleton
+
+Every `batch_instanced(...)` object gets its `Material.Shader` set in
+`MakeModel()` to a package-level singleton, `shaderInstanced`
+(`src/builtin/obj_builtin_batch_instanced.go`). It is loaded once, lazily, from
+`src/shaders/instanced/base_lighting_instanced.vs` and
+`src/shaders/instanced/lighting.fs` — a basic per-instance-transform,
+ambient-plus-up-to-4-lights Blinn-Phong shader (in practice, only `ambient` is
+ever set by `InitShader()`, so cubes render as flat-lit textured geometry with
+no directional/point lights active). Consequences:
+
+- **No per-script customisation.** A `.lox` script cannot swap in a different
+  GLSL shader for its cube batches — `shader()` + `begin_shader_mode` only
+  reaches immediate-mode draws, not the batch's mesh material.
+- **No per-batch customisation either.** All `BatchInstancedObject`s in the
+  same process — even ones created from different textures/sizes — literally
+  share the one `*rl.Shader` instance. Two batches cannot have two different
+  looks at the Go level without changing this singleton pattern.
+- **No per-instance colour/uniform data.** Instances only carry a transform
+  matrix (`translation`/`rotation`); there's no per-instance colour or custom
+  attribute channel, so effects that vary per-cube (e.g. tinting by distance,
+  by stack, or by height) aren't expressible even by editing the shared
+  shader — every instance in a batch is shaded identically aside from its
+  transform and the (single, per-texture) diffuse texture.
+
+To give instanced batches real custom-shader or per-instance-uniform support
+would require an engine change: e.g. a `batch.set_shader(shader)` method that
+overrides `Model.material.Shader` per `BatchInstancedObject` (replacing the
+shared singleton), plus replicating the `instanceTransform`/`viewPos`/`mvp`
+wiring `InitShader()` currently does by hand.
+
+### No depth texture — true distance/depth effects aren't reachable from `.lox`
+
+`render_texture(...)` (`RenderTextureObject`) exposes only its colour
+`get_texture()`; there is no accessor for a sampleable depth attachment. That
+means a post-process fragment shader bound via `begin_shader_mode` +
+`win.draw_render_texture(fb, ...)` has no way to know true per-pixel scene
+depth — it only ever sees the already-flattened colour image. Real
+distance-based effects on either primitives or instanced batches need either
+a depth-texture-capable render target exposed to `.lox`, or per-vertex
+world-position/distance computed directly in a custom vertex shader bound to
+the actual draw call (which, per above, is only possible today for
+immediate-mode primitives, not `batch_instanced`).
+
 ## Future Enhancements
 
 Potential areas for expansion:
