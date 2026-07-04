@@ -169,6 +169,14 @@ func InitShader() *rl.Shader {
 }
 
 func MakeModel(mesh rl.Mesh, texture rl.Texture2D) *Model {
+	// Defensive backstop: GenMeshCube's internal upload can occasionally
+	// race and leave VaoID unset. Retrying the upload explicitly recovers
+	// from it (see get_texture()'s sync for the primary fix to the timing
+	// race this and the render-texture content corruption share).
+	if mesh.VaoID == 0 {
+		core.LogFmtLn(core.WARN, "GenMeshCube upload failed (VaoID=0), retrying UploadMesh")
+		rl.UploadMesh(&mesh, false)
+	}
 	rv := &Model{
 		mesh:     mesh,
 		material: rl.LoadMaterialDefault(),

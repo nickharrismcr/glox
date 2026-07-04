@@ -25,6 +25,18 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 	// method to get the texture from the render texture
 	o.RegisterMethod("get_texture", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			// Force a GPU sync before handing the texture off: the clear()/
+			// rectangle() etc. calls used to draw into this render texture
+			// each open and close their own texture-mode context, and
+			// without an explicit sync point the GPU can still be mid-flight
+			// on those writes when this texture starts getting sampled
+			// elsewhere (e.g. baked into a batch_instanced material). A
+			// pixel readback forces the driver to wait for all prior writes
+			// to this texture to complete before returning.
+			img := rl.LoadImageFromTexture(o.Data.RenderTexture.Texture)
+			if img != nil {
+				rl.UnloadImage(img)
+			}
 			return core.MakeObjectValue(MakeTextureObjectFromTexture2D(o.Data.RenderTexture.Texture), true)
 		},
 	})
