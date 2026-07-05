@@ -432,7 +432,7 @@ func (p *Parser) tryExceptStatement() {
 func (p *Parser) raiseStatement() {
 
 	p.expression() // this includes constructor calls
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after throw expression.")
+	p.consumeStatementEnd("Expect ';' after throw expression.")
 	p.emitByte(core.OP_RAISE)
 }
 
@@ -462,7 +462,7 @@ func (p *Parser) importStatement() {
 			break
 		}
 	}
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after import list.")
+	p.consumeStatementEnd("Expect ';' after import list.")
 }
 
 // importFromStatement parses import statements of the form:
@@ -478,7 +478,7 @@ func (p *Parser) importFromStatement() {
 	p.consume(TOKEN_IMPORT, "Expect 'import' after module name.")
 	if p.match(TOKEN_STAR) {
 		p.emitByte(0) // 0 means import all names
-		p.consume(TOKEN_SEMICOLON, "Expect ';' after import list.")
+		p.consumeStatementEnd("Expect ';' after import list.")
 		return
 	}
 	var names []Token
@@ -497,7 +497,7 @@ func (p *Parser) importFromStatement() {
 		constant := p.identifierConstant(name)
 		p.emitByte(constant) // emit the constant for each name
 	}
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after import list.")
+	p.consumeStatementEnd("Expect ';' after import list.")
 }
 
 // expression parses and compiles expressions starting with assignment precedence.
@@ -682,7 +682,7 @@ func (p *Parser) varDeclaration(in_foreach bool) {
 		p.emitByte(core.OP_NIL) // empty local slot
 	}
 	if !in_foreach {
-		p.consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration")
+		p.consumeStatementEnd("Expect ';' after variable declaration")
 	}
 
 	p.defineVariable(variable)
@@ -700,7 +700,7 @@ func (p *Parser) constDeclaration() {
 	} else {
 		p.error("Constants must be initialised.")
 	}
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration")
+	p.consumeStatementEnd("Expect ';' after variable declaration")
 
 	p.defineConstVariable(v)
 }
@@ -803,7 +803,7 @@ func (p *Parser) handleUnpackingAssignment() bool {
 			}
 		}
 
-		p.consume(TOKEN_SEMICOLON, "Expect ';' after unpacking assignment.")
+		p.consumeStatementEnd("Expect ';' after unpacking assignment.")
 		return true
 	}
 	return false
@@ -822,7 +822,7 @@ func (p *Parser) expressionStatement() {
 		return
 	}
 	p.expression()
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after expression.")
+	p.consumeStatementEnd("Expect ';' after expression.")
 	p.emitByte(core.OP_POP)
 }
 
@@ -858,14 +858,15 @@ func (p *Parser) returnStatement() {
 	if p.currentCompiler.type_ == TYPE_SCRIPT {
 		p.error("Can't return from top-level code.")
 	}
-	if p.match(TOKEN_SEMICOLON) {
+	if p.checkStatementEnd() {
+		p.consumeStatementEnd("Expect ';' after return value.") // consumes ; / EOL, leaves } / EOF
 		p.emitReturn()
 	} else {
 		if p.currentCompiler.type_ == TYPE_INITIALIZER {
 			p.error("Can't return from an initializer.")
 		}
 		p.expression()
-		p.consume(TOKEN_SEMICOLON, "Expect ';' after return value.")
+		p.consumeStatementEnd("Expect ';' after return value.")
 		op := core.OP_RETURN
 
 		p.emitByte(op)
@@ -969,7 +970,7 @@ func (p *Parser) forStatement() {
 // Records the jump location for later patching when the loop end is known.
 func (p *Parser) breakStatement() {
 
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after statement.")
+	p.consumeStatementEnd("Expect ';' after statement.")
 	if p.currentCompiler.loop == nil {
 		p.errorAtCurrent("Cannot use break outside loop.")
 	}
@@ -994,7 +995,7 @@ func (p *Parser) breakStatement() {
 // to pause execution at specific points in the code for inspection.
 func (p *Parser) breakpointStatement() {
 
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after statement.")
+	p.consumeStatementEnd("Expect ';' after statement.")
 	p.emitByte(core.OP_BREAKPOINT)
 }
 
@@ -1004,7 +1005,7 @@ func (p *Parser) breakpointStatement() {
 // For foreach loops, uses a forward jump; for regular loops, jumps back to loop start.
 func (p *Parser) continueStatement() {
 
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after statement.")
+	p.consumeStatementEnd("Expect ';' after statement.")
 	if p.currentCompiler.loop == nil {
 		p.errorAtCurrent("Cannot use continue outside loop.")
 	}
@@ -1090,7 +1091,7 @@ func (p *Parser) foreachStatement() {
 func (p *Parser) printStatement() {
 
 	p.expression()
-	p.consume(TOKEN_SEMICOLON, "Expect ';' after value.")
+	p.consumeStatementEnd("Expect ';' after value.")
 	p.emitByte(core.OP_STR)
 	p.emitByte(core.OP_PRINT)
 }
@@ -1125,6 +1126,35 @@ func (p *Parser) synchronize() {
 			return
 		}
 		p.advance()
+	}
+}
+
+// checkStatementEnd reports whether the current token can terminate a
+// statement: an explicit ';', an implicit end-of-line, or the boundary of an
+// enclosing block ('}') or file (EOF). '}' / EOF are terminators but are NOT
+// consumed here -- the enclosing block() (or the top-level loop) owns them.
+// This is what lets one-line braced blocks like `if (x) { print 1 }` parse.
+func (p *Parser) checkStatementEnd() bool {
+
+	switch p.current.Tokentype {
+	case TOKEN_SEMICOLON, TOKEN_EOL, TOKEN_RIGHT_BRACE, TOKEN_EOF:
+		return true
+	}
+	return false
+}
+
+// consumeStatementEnd requires a statement terminator. A ';' or EOL is
+// consumed; a '}' or EOF is accepted and left in place for the caller
+// (block()/script end) to consume.
+func (p *Parser) consumeStatementEnd(msg string) {
+
+	switch p.current.Tokentype {
+	case TOKEN_SEMICOLON, TOKEN_EOL:
+		p.advance()
+	case TOKEN_RIGHT_BRACE, TOKEN_EOF:
+		// terminator implied; leave the token for block()/script end.
+	default:
+		p.errorAtCurrent(msg)
 	}
 }
 

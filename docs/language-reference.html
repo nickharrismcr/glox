@@ -262,6 +262,8 @@ const MAX_ENTITIES = 500</code></pre>
 x, y, z = (10, 20, 30)</code></pre>
 <h3>Statement terminators</h3>
 <p>Statements may be terminated with a semicolon <code>;</code> or simply a newline — both are accepted, so semicolons are optional.</p>
+<p>A closing brace <code>}</code> also terminates the statement immediately before it, so braced blocks may be written on a single line: <code>if (x) { print 1 }</code> and <code>if (x) { a() } else { b() }</code> are valid.</p>
+<div class="note"><strong>Use <code>;</code> to split statements on one line</strong>Because a newline is the usual statement terminator, two statements sharing a single line must be separated with a semicolon <code>;</code> — otherwise the parser cannot tell where one ends and the next begins. This applies inside single-line blocks: <code>while (i &lt; 3) { print i; i = i + 1 }</code> and <code>{ const c = 7; print c }</code>. The semicolon is only needed <em>between</em> statements; the last one before <code>}</code> needs none, since the brace terminates it.</div>
 
 <!-- ==================== TYPES ==================== -->
 <h2 class="section" id="types">Values &amp; types</h2>
