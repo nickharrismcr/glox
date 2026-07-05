@@ -74,6 +74,93 @@ func RegisterAllPhysicsWorldMethods(o *PhysicsWorldObject) {
 		},
 	})
 
+	o.RegisterMethod("add_static_box", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 5 {
+				vm.RunTimeError("add_static_box() expects 5 arguments (position, half_extents, axis, angle, material_id)")
+				return core.NIL_VALUE
+			}
+
+			posVal := vm.Stack(arg_stackptr)
+			extentVal := vm.Stack(arg_stackptr + 1)
+			axisVal := vm.Stack(arg_stackptr + 2)
+			angleVal := vm.Stack(arg_stackptr + 3)
+			matVal := vm.Stack(arg_stackptr + 4)
+
+			if posVal.Type != core.VAL_VEC3 {
+				vm.RunTimeError("add_static_box() first argument must be a vec3 (position)")
+				return core.NIL_VALUE
+			}
+			if extentVal.Type != core.VAL_VEC3 {
+				vm.RunTimeError("add_static_box() second argument must be a vec3 (half_extents)")
+				return core.NIL_VALUE
+			}
+			if axisVal.Type != core.VAL_VEC3 {
+				vm.RunTimeError("add_static_box() third argument must be a vec3 (axis)")
+				return core.NIL_VALUE
+			}
+			if !angleVal.IsNumber() {
+				vm.RunTimeError("add_static_box() fourth argument must be a number (angle in degrees)")
+				return core.NIL_VALUE
+			}
+			if !matVal.IsInt() {
+				vm.RunTimeError("add_static_box() fifth argument must be an integer (material_id)")
+				return core.NIL_VALUE
+			}
+
+			pos := posVal.Obj.(*core.Vec3Object)
+			extent := extentVal.Obj.(*core.Vec3Object)
+			axis := axisVal.Obj.(*core.Vec3Object)
+
+			id, err := o.Value.AddStaticBox(
+				PVec3{pos.X, pos.Y, pos.Z},
+				PVec3{extent.X, extent.Y, extent.Z},
+				PVec3{axis.X, axis.Y, axis.Z},
+				angleVal.AsFloat(),
+				matVal.AsInt(),
+			)
+			if err != nil {
+				vm.RunTimeError(err.Error())
+				return core.NIL_VALUE
+			}
+
+			return core.MakeIntValue(id, true)
+		},
+	})
+
+	// Returns (position, half_extents, axis, angle) as a small list, mirroring
+	// the "tuple" convention used by collisions(). This is the single place
+	// a script reads box orientation back from, so drawing (win.cube_rotated)
+	// always matches exactly what physics collided against.
+	o.RegisterMethod("get_box_transform", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 1 {
+				vm.RunTimeError("get_box_transform() expects 1 argument (id)")
+				return core.NIL_VALUE
+			}
+
+			idVal := vm.Stack(arg_stackptr)
+			if !idVal.IsInt() {
+				vm.RunTimeError("get_box_transform() argument must be an integer (id)")
+				return core.NIL_VALUE
+			}
+
+			bt, err := o.Value.GetBoxTransform(idVal.AsInt())
+			if err != nil {
+				vm.RunTimeError(err.Error())
+				return core.NIL_VALUE
+			}
+
+			items := []core.Value{
+				core.MakeVec3Value(bt.Pos.X, bt.Pos.Y, bt.Pos.Z, false),
+				core.MakeVec3Value(bt.HalfExtents.X, bt.HalfExtents.Y, bt.HalfExtents.Z, false),
+				core.MakeVec3Value(bt.Axis.X, bt.Axis.Y, bt.Axis.Z, false),
+				core.MakeFloatValue(bt.Angle, false),
+			}
+			return core.MakeObjectValue(core.MakeListObject(items, true), true)
+		},
+	})
+
 	o.RegisterMethod("remove", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 1 {

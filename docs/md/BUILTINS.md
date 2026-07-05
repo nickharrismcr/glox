@@ -523,15 +523,20 @@ var arr = float_array(width, height);
 
 ## PhysicsWorld Object
 
-`physics_world` is a native 3D rigid-body simulation for spheres: body storage,
-gravity integration, boundary bounce, broad-phase collision culling (uniform
-grid), and impulse-based collision resolution all run natively in Go instead
-of per-object Lox method calls. It's a good fit for scenes with many
-identical, roughly-equal-mass moving bodies (particle bursts, ball pits,
-debris) where the Lox-level cost of a class + per-object `update()` call
-becomes the hot path. See `lox_examples/3d_balls_physics_shaders.lox` for a
-full example (spawning, rendering, and explosion forces on top of a
+`physics_world` is a native 3D rigid-body simulation for spheres: body
+storage, gravity integration, boundary bounce, broad-phase collision culling
+(uniform grid), and impulse-based collision resolution all run natively in
+Go instead of per-object Lox method calls. It's a good fit for scenes with
+many identical, roughly-equal-mass moving bodies (particle bursts, ball
+pits, debris) where the Lox-level cost of a class + per-object `update()`
+call becomes the hot path. See `lox_examples/3d_balls_physics_shaders.lox`
+for a full example (spawning, rendering, and explosion forces on top of a
 `physics_world`), and `docs/PLAN_physics_world.md` for the design rationale.
+
+Fixed level geometry (floors, shelves, ramps) can be added as static boxes
+with `add_static_box` — optionally tilted, never moving — for dynamic
+spheres to bounce off. See `docs/md/plans/NOTES_box_physics.md` for the
+design rationale behind the shape/static/rotation split.
 
 Gameplay policy — deciding *when* something explodes, *where* the blast
 center is, and the distance/falloff curve — stays in Lox; only the low-level
@@ -551,13 +556,22 @@ var world = physics_world(min_vec3, max_vec3, cell_size, gravity_vec3);
 ### PhysicsWorld Methods
 
 - **`add_material(restitution, friction, damping)`** - Register a material and return its integer id. `restitution` controls bounciness (both boundary bounces and body-body collisions, combined via `sqrt(a * b)` when two different materials collide); `damping` is a per-step velocity multiplier (air resistance); `friction` is accepted but not yet applied to collision response.
-- **`add(pos_vec3, vel_vec3, radius, material_id)`** - Add a sphere body and return its integer id (a stable handle used by every other method).
+- **`add(pos_vec3, vel_vec3, radius, material_id)`** - Add a dynamic sphere body and return its integer id (a stable handle used by every other method).
+- **`add_static_box(pos_vec3, half_extents_vec3, axis_vec3, angle, material_id)`** - Add a fixed box that never moves, optionally tilted `angle` degrees around `axis` (`angle = 0` for axis-aligned). No velocity argument — fixed-ness is unconditional. For floors, shelves, ramps.
+- **`get_box_transform(id)`** - For a static box body, returns `(position, half_extents, axis, angle)` as a list. Feed straight into `win.cube_rotated()` so drawing always matches exactly what physics collided against.
 - **`remove(id)`** - Remove a body from the simulation. Ids are tombstoned, not reused.
 - **`get_position(id)`** - Get a body's current position as a vec3.
 - **`add_impulse(id, impulse_vec3)`** - Add an instantaneous velocity change (`vel += impulse_vec3`) to a body. This is the primitive for one-off forces such as explosions — compute the direction/falloff in Lox, then call this once per affected body.
 - **`step(dt)`** - Advance the simulation: gravity integration, boundary bounce, and collision resolution, all in one native call.
 - **`collisions()`** - Returns a list of tuples `(a_id, b_id, normal_vec3, impulse)`, one per body pair that **newly** started touching during the last `step()` call. Pairs that are still resting/touching from a previous frame are not repeated.
 - **`count()`** - Returns the number of currently active (non-removed) bodies.
+
+Static bodies bypass the broad-phase grid entirely instead of being inserted
+into it — a single grid cell can't represent a large platform's true extent,
+so static bodies are checked directly against every dynamic sphere each
+`step()` instead. This means `cell_size` only needs to exceed the largest
+*dynamic* sphere's diameter; static geometry can be arbitrarily large. Two
+static bodies never collide with each other.
 
 ### PhysicsWorld Example
 

@@ -925,7 +925,7 @@ win.end_shader_mode()</code></pre>
 
 <!-- ==================== PHYSICS WORLD ==================== -->
 <h2 class="section" id="physics-world">physics_world <span class="pill">native object</span></h2>
-<p><code>physics_world</code> is a native 3D rigid-body simulation for spheres. Each body has a position, velocity, radius and material; <code>step()</code> advances them all — applying gravity, bouncing off the boundary box, and resolving body-to-body collisions — in a single native call.</p>
+<p><code>physics_world</code> is a native 3D rigid-body simulation for spheres. Each body has a position, velocity, radius and material; <code>step()</code> advances them all — applying gravity, bouncing off the boundary box, and resolving body-to-body collisions — in a single native call. Fixed level geometry (floors, shelves, ramps) can be added as static boxes with <code>add_static_box</code> — optionally tilted, never moving — for dynamic spheres to bounce off.</p>
 <h3>Creating a world</h3>
 <div class="sig"><span class="nm">physics_world</span>(<em>min_vec3</em>, <em>max_vec3</em>, <em>cell_size</em>, <em>gravity_vec3</em>) <span class="pill">→ physics_world</span></div>
 <ul>
@@ -956,7 +956,9 @@ while (!win.should_close()) {
 <thead><tr><th>Method</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><code>add_material(restitution, friction, damping)</code></td><td>Register a material, returns an integer id. <code>restitution</code> = bounciness (0–1); <code>damping</code> = per-step velocity multiplier (air resistance, ~0.99); <code>friction</code> is accepted but not yet applied.</td></tr>
-<tr><td><code>add(pos_vec3, vel_vec3, radius, material_id)</code></td><td>Add a sphere body; returns a stable integer id used by every other method</td></tr>
+<tr><td><code>add(pos_vec3, vel_vec3, radius, material_id)</code></td><td>Add a dynamic sphere body; returns a stable integer id used by every other method</td></tr>
+<tr><td><code>add_static_box(pos_vec3, half_extents_vec3, axis_vec3, angle, material_id)</code></td><td>Add a fixed box that never moves, optionally tilted <code>angle</code> degrees around <code>axis</code> (0 = axis-aligned) — for floors, shelves, ramps</td></tr>
+<tr><td><code>get_box_transform(id)</code></td><td>For a static box body, returns <code>(position, half_extents, axis, angle)</code> — feed straight into <a href="#window"><code>win.cube_rotated()</code></a> so drawing always matches exactly what physics collided against</td></tr>
 <tr><td><code>remove(id)</code></td><td>Remove a body from the simulation</td></tr>
 <tr><td><code>get_position(id)</code></td><td>Current position of a body as a <code>vec3</code></td></tr>
 <tr><td><code>add_impulse(id, impulse_vec3)</code></td><td>Add an instantaneous velocity change (<code>vel += impulse</code>) to one body</td></tr>
@@ -965,6 +967,7 @@ while (!win.should_close()) {
 <tr><td><code>count()</code></td><td>Number of active bodies</td></tr>
 </tbody>
 </table>
+<div class="note"><strong>Static bodies bypass the broad-phase grid</strong>Dynamic spheres from <code>add</code> still use the collision grid, so <code>cell_size</code> should exceed the largest sphere's diameter as before. Static boxes from <code>add_static_box</code> are checked directly against every dynamic sphere instead, since a single grid cell can't represent a large platform's true extent — so static geometry can be arbitrarily large regardless of <code>cell_size</code>. Two static bodies never collide with each other.</div>
 
 <!-- ==================== MODULE: MATH ==================== -->
 <h2 class="section" id="mod-math">math <span class="pill">module</span></h2>

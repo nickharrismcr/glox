@@ -6,10 +6,27 @@ yet reduced to concrete Go code or verified against the repo (the base
 plan's two files were compile-checked; this addendum is design notes to
 implement against that foundation).
 
+**Status: implemented, with dynamic boxes descoped.** Sections 2–4
+(static bodies, tilted static boxes, and `win.cube_rotated()` drawing)
+are implemented as designed. The *dynamic* half of section 1 — an
+`add_box()` constructor for axis-aligned boxes that fall/move under
+gravity — was built, then removed at the user's request (not something
+they'd asked for). `Shape`/`ShapeType` and the box-box/sphere-box
+collision math from section 1 below are still accurate as *design*
+background, but in the shipped code `ShapeBox` is only ever created by
+`add_static_box` — there is no dynamic box constructor, and the box-box
+collision path was deleted as dead code (two static bodies never
+collide with each other, so it was never reachable). Read section 1 as
+history/rationale, not as a description of what `add_box()` does today,
+because `add_box()` doesn't exist.
+
 ## 1. Axis-aligned boxes (no rotation)
 
 Two decision points on any "add a shape" extension: rotating or not,
 static or dynamic. Start here (no rotation) before adding tilt.
+
+**(Historical — the dynamic-box half of this section was removed after
+implementation; see the Status note above.)**
 
 **Per-body shape data**
 
@@ -266,11 +283,16 @@ through `batch`, but don't assume that field does anything today.
 
 ## Decisions
 
-- **Rotation scope: static only.** Dynamic boxes (section 1) stay
-  axis-aligned. Rotated boxes (section 3) are always static. This rules
-  out OBB-OBB (SAT) and angular-velocity integration entirely — the only
-  rotated collision test needed is sphere-vs-OBB (section 3), and box-box
-  (section 1) only ever runs AABB-vs-AABB.
+- **Rotation scope: static only.** Rotated boxes (section 3) are always
+  static. This rules out OBB-OBB (SAT) and angular-velocity integration
+  entirely — the only rotated collision test needed is sphere-vs-OBB
+  (section 3).
+- **No dynamic boxes.** `add_box()` (section 1) was implemented, then
+  removed — it wasn't something the user had asked for. Every `ShapeBox`
+  in the shipped code comes from `add_static_box`, so box-box collision
+  is unreachable (two statics never collide) and was deleted along with
+  it. The `Shape`/`ShapeType` split and the box-box AABB math in section
+  1 remain here as design background only.
 - **Static bodies bypass the grid** (see section 2) rather than being
   grid-inserted via multi-cell coverage — a direct dynamic × static pass
   after `narrowPhase()`, using a cached `staticIDs []int`.
@@ -289,10 +311,6 @@ through `batch`, but don't assume that field does anything today.
 
 ## Still open
 
-- Whether `add_box` (dynamic, axis-aligned, section 1) and
-  `add_static_box` (fixed, rotatable, sections 2–3) should be separate
-  methods, as sketched throughout, or unified with a `static bool` +
-  optional axis/angle args. Leaning **separate** — matches the existing
-  convention of type-specific constructors (`batch(BATCH_CUBE)`), keeps
-  each method's arg validation simple, and avoids a method whose
-  argument list changes meaning based on an earlier argument's value.
+- Nothing outstanding. The `add_box` vs. `add_static_box` unification
+  question this section used to raise is moot now that `add_box` doesn't
+  exist — `add_static_box` is the only box constructor.
