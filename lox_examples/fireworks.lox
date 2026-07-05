@@ -21,8 +21,9 @@ func init(col1,col2) {
     var lifemax=random.integer(20,1000);
     var speedmax=random.integer(1,7);
     var sizemax=random.integer(5,10);
+    var cols=[col1,col2]; // built once per emitter, captured by the closure
 
-    // anonymous closure over lifemax/speedmax/sizemax/col1/col2
+    // anonymous closure over lifemax/speedmax/sizemax/cols
     return func(particle) {
         particle.dpos = vec2(1,1); // Initial velocity
         var angle = random.float(0, 2 * math.PI); // Random angle
@@ -31,7 +32,7 @@ func init(col1,col2) {
 
         particle.life = random.integer(1, lifemax); // Random life
         particle.size = random.float(1, sizemax);
-        particle.col = random.choice([col1,col2]);
+        particle.col = random.choice(cols);
     };
 }
 

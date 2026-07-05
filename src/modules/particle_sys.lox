@@ -23,8 +23,34 @@ import random;
 import math; 
 
 
+// Module-level free list of dead Particle instances, shared across all
+// emitters. Particles are recycled (see _acquire/_release) rather than
+// reallocated every emit, so a steady-state fountain does no per-frame
+// Particle allocation.
+var _pool = [];
+
+func _acquire(pos, init_function, update_function) {
+    if (len(_pool) > 0) {
+        var p = _pool[len(_pool) - 1];
+        _pool.remove(len(_pool) - 1);   // pop last: O(1), no shift
+        p.reset(pos, init_function, update_function);
+        return p;
+    }
+    return Particle(pos, init_function, update_function);
+}
+
+func _release(p) {
+    _pool.append(p);
+}
+
 class Particle {
     init(pos,init_function, update_function) {
+        this.reset(pos, init_function, update_function);
+    }
+    // reset re-initialises a (possibly recycled) particle in place. Every field
+    // is overwritten here or by init_function, so a pooled particle carries no
+    // stale state.
+    reset(pos,init_function, update_function) {
         this.pos = pos; // Position of the particle
         this.dpos = vec2(0, 0); // Change in position
         init_function(this);
@@ -65,20 +91,27 @@ class Emitter {
         }
     }
     emit_particle() {
-        var particle = Particle(vec2(this.pos.x, this.pos.y),this.init_function, this.update_function);
+        var particle = _acquire(vec2(this.pos.x, this.pos.y),this.init_function, this.update_function);
         this.particles.append(particle);
     }
     update() {
-        for (var i = 0; i < len(this.particles); i=i+1) {
-            if (!this.particles[i].next()) {
-                this.particles.remove(i);
-                i = i - 1; // Adjust index after removal
+        // Swap-with-last removal keeps this O(n) instead of O(n^2): remove(i) in
+        // the middle shifts every following element, whereas removing the last
+        // index is a no-shift pop. Reordering is safe under additive blending.
+        var i = 0;
+        var n = len(this.particles);
+        while (i < n) {
+            var p = this.particles[i];
+            if (!p.next()) {
+                _release(p);              // return dead particle to the pool
+                n = n - 1;
+                this.particles[i] = this.particles[n];
+                this.particles.remove(n); // pop last: O(1)
+            } else {
+                i = i + 1;
             }
         }
-        if (len(this.particles) < 1) {
-            return false;  
-        } 
-        return true;  
+        return len(this.particles) >= 1;
     }
     get_particles() {
         return this.particles;
@@ -104,27 +137,37 @@ class Emitters {
     
     }
     update_queue() {
-        for (var i = 0; i < len(this.queue); i = i + 1) {
+        var i = 0;
+        var n = len(this.queue);
+        while (i < n) {
             var q = this.queue[i];
-            var e = q[0];
             q[2] = q[2] - 1; // Decrease delay
             if (q[2] <= 0) {
-                e.emit(q[1]);
-                this.emitters.append(e); // Add emitter to the list
-                this.queue.remove(i); // Remove from queue
+                q[0].emit(q[1]);
+                this.emitters.append(q[0]); // Add emitter to the list
+                n = n - 1;                  // swap-with-last removal
+                this.queue[i] = this.queue[n];
+                this.queue.remove(n);
+            } else {
+                i = i + 1;
             }
         }
     }
     update_emitters() {
-        for (var i = 0; i < len(this.emitters); i = i + 1) {
+        var i = 0;
+        var n = len(this.emitters);
+        while (i < n) {
             var e = this.emitters[i];
             if (!e.update()) {
-                this.emitters.remove(i); // Remove emitter if it has no particles
-                i = i - 1; // Adjust index after removal
+                n = n - 1;                      // swap-with-last removal
+                this.emitters[i] = this.emitters[n];
+                this.emitters.remove(n);
+            } else {
+                i = i + 1;
             }
         }
         return len(this.emitters) > 0;
-    }        
+    }
     get() {
         return this.emitters;
     }

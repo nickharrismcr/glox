@@ -1,0 +1,24 @@
+// Headless logic test for particle_sys: verifies the O(1) swap-remove removal
+// and the particle pool. No graphics — particle_sys only imports random/math.
+import particle_sys;
+
+// init sets a fixed lifetime of 2; a life-2 particle survives one update()
+// (age 1 < 2) and dies on the second (age 2 >= 2). update is a no-op.
+var init_fn = func (p) { p.life = 2; };
+var upd_fn  = func (p) { };
+
+var e = particle_sys.Emitter(vec2(0, 0), init_fn, upd_fn);
+e.emit(3);
+print len(e.get_particles());   // 3 emitted
+
+print e.update();               // true  — all age 1, still alive
+print len(e.get_particles());   // 3
+print e.update();               // false — all age 2, removed
+print len(e.get_particles());   // 0
+
+// Emit again: these should be recycled from the pool, and behave identically.
+e.emit(2);
+print len(e.get_particles());   // 2
+print e.update();               // true
+print e.update();               // false
+print len(e.get_particles());   // 0
