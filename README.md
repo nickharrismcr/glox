@@ -2,8 +2,6 @@
 
 **Bob Nystroms CLox bytecode interpreter implemented in Go**
 
-> **Note for AI/Copilot**: Read `.copilot-instructions.md` and `TERMINAL_INSTRUCTIONS.md` before assisting with this project.
-
 The aim of this project is to learn more deeply about programming in Go and the crafting of interpreters by way of implementing Bobs CLox interpreter in Go, adding Python-inspired extensions to Lox along the way.
 The extensions to the language include enhanced string operations, lists, dictionaries, exception handling, module imports with bytecode caching, string and list iteration, Raylib bindings for graphics, and I/O.  
 
