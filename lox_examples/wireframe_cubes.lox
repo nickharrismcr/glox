@@ -11,14 +11,19 @@ import colour as col
 import random
 import math
 
-win = window(900, 650)
+const WIDTH = 1000
+const HEIGHT = 700
+
+win = window(WIDTH, HEIGHT)
+
 win.init()
+win.toggle_fullscreen()
 
 const DISTANCE = 40.0   // Camera orbital distance from arena center
-const ARENA_SIZE = 15.0 // Arena half-extent (30x30x30 total space)
-const CUBE_COUNT = 100
+const ARENA_SIZE = 35.0 // Arena half-extent (30x30x30 total space)
+const CUBE_COUNT = 200
 const MIN_SIZE = 0.5
-const MAX_SIZE = 2.5
+const MAX_SIZE = 5.5
 const MIN_SPEED = -0.15
 const MAX_SPEED = 0.15
 const MIN_SPIN = 0.5     // degrees/frame magnitude -- biased away from

@@ -8,17 +8,17 @@ import colour
 const FULLSCREEN = true 
 
 // Configuration constants
-const CITY_SIZE = 105    // Reduced from 45 for better performance
-const STACK_SPACING = 3.5
+const CITY_SIZE = 305    // Reduced from 45 for better performance
+const STACK_SPACING = 10
 const MIN_STACK_HEIGHT = 3
-const MAX_STACK_HEIGHT = 20
-const BASE_CUBE_SIZE = 2
+const MAX_STACK_HEIGHT = 30
+const BASE_CUBE_SIZE = 10
 const CAMERA_HEIGHT = 2.0
 const MAX_CAMERA_SPEED = 0.1  
 const CAMERA_ACCELERATION = MAX_CAMERA_SPEED / 30.0  // Much gentler acceleration
 const ROTATION_SPEED = 0.01  // Much slower rotation for smoothness
 const MAX_COLOURS = 50
-const TEXTURE_GRID_SIZE = 20  // NxN grid of coloured rectangles per cube texture
+const TEXTURE_GRID_SIZE = 6 // NxN grid of coloured rectangles per cube texture
 
 // Direction constants
 const NORTH = 0
@@ -63,15 +63,19 @@ func createColoredTextures(count) {
     textures = []
     
     for (i = 0; i < count; i = i + 1) {
+        // Create a TEXTURE_GRID_SIZE x TEXTURE_GRID_SIZE grid of rectangles with different hues
+        rectSize = 2  // Fixed per-window pixel size
+        spacing = 1   // Fixed pixel gap between windows
+
+        // Texture resolution scales with the grid size, so window size stays
+        // consistent regardless of how many are packed in
+        textureSize = TEXTURE_GRID_SIZE * (rectSize + spacing) + spacing
+
         // Create render texture
-        texture = render_texture(32, 32)
-      
+        texture = render_texture(textureSize, textureSize)
+
         // Clear with dark background
         texture.clear(colour.BLACK)
-        
-        // Create a TEXTURE_GRID_SIZE x TEXTURE_GRID_SIZE grid of rectangles with different hues
-        rectSize = 2  // Smaller size for larger grids
-        spacing = 1   // Smaller space between rectangles
 
         // Calculate positions for the grid of rectangles
         positions = []
@@ -177,11 +181,12 @@ class Stack {
         currentY = 0.0        // Create stack of composite cubes
         for (i = 0; i < height; i = i + 1) {
             
-            batch,cubeSize=cubeBatches.get_random_batch()  // Get a random batch from the cubeBatches 
+            batch,cubeSize=cubeBatches.get_random_batch()  // Get a random batch from the cubeBatches
             position = vec3(worldX, currentY + cubeSize/2, worldZ)  // Center cube at currentY + half size
+            nextY = currentY + cubeSize  // Capture increment before any call reuses cubeSize's slot
             cube = Cube(position)
             cube.add_to_batch(batch)  // Add cube to batch and get size
-            currentY = currentY + cubeSize  // Use actual cube size to eliminate gaps
+            currentY = nextY  // Use actual cube size to eliminate gaps
         }
     }
     
@@ -196,12 +201,12 @@ class Grid {
           // Create stacks only at odd grid positions (leaving even positions as streets)
         for (x = 1; x < size; x = x + 2) {  // Odd positions only
             for (z = 1; z < size; z = z + 2) {  // Odd positions only
-               
+
                 stackHeight = random.integer(MIN_STACK_HEIGHT, MAX_STACK_HEIGHT + 1)
                 stack = Stack(x, z, stackHeight,cubeBatch)  // Create stack at (x, z) with random height
                 this.stacks.append(stack)
             }
-        }        
+        }
         stackCount = len(this.stacks)
     }
     
@@ -463,7 +468,7 @@ while (!win.should_close()) {
     cam = controller.getCamera()
     
     win.begin_3d(cam)
-    win.plane(vec3(0, -1, 0), vec2(groundSize, groundSize), vec4(15, 15, 15, 255))
+    win.plane(vec3(0, -1, 0), vec2(groundSize, groundSize), vec4(5, 5, 5, 255))
     
     cubeBatch.draw(cam)
     win.end_3d()
