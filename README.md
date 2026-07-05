@@ -2,6 +2,16 @@
 
 **Bob Nystroms CLox bytecode interpreter implemented in Go**
 
+## Authorship
+
+The port of Bob Nystrom's clox bytecode interpreter to Go was done **by hand**, along with the language extensions up to and including exception handling. The Raylib graphics bindings and the core VM optimisations — superinstructions, native vector types, and similar — were assisted by **GitHub Copilot**. More recent work was co-authored with **Claude Code** (Anthropic); the changes it co-authored are summarised below.
+
+### Changes co-authored with Claude Code
+
+38 commits (2026-06-25 – 2026-07-05) spanning language features (lambdas, one-line braced blocks, loop-scope and compiler fixes), VM performance (`Value`-struct shrink, faster global lookup, per-call allocation removal), benchmarking, Raylib/physics additions and demos, and tooling, tests, and the HTML language reference.
+
+---
+
 The aim of this project is to learn more deeply about programming in Go and the crafting of interpreters by way of implementing Bobs CLox interpreter in Go, adding Python-inspired extensions to Lox along the way.
 The extensions to the language include enhanced string operations, lists, dictionaries, exception handling, module imports with bytecode caching, string and list iteration, Raylib bindings for graphics, and I/O.  
 
