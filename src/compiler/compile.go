@@ -236,7 +236,7 @@ func (p *Parser) setRules() {
 		TOKEN_FALSE:         {prefix: literal, infix: nil, prec: PREC_NONE},
 		TOKEN_FOR:           {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_FOREACH:       {prefix: nil, infix: nil, prec: PREC_NONE},
-		TOKEN_FUNC:          {prefix: nil, infix: nil, prec: PREC_NONE},
+		TOKEN_FUNC:          {prefix: lambda, infix: nil, prec: PREC_NONE},
 		TOKEN_IF:            {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_TRY:           {prefix: nil, infix: nil, prec: PREC_NONE},
 		TOKEN_EXCEPT:        {prefix: nil, infix: nil, prec: PREC_NONE},
@@ -514,12 +514,21 @@ func (p *Parser) expression() {
 // Allows optional end-of-line tokens after the closing brace.
 func (p *Parser) block() {
 
+	p.blockBody()
+	p.match(TOKEN_EOL) // allow EOL after block (statement-position blocks)
+
+}
+
+// blockBody parses declarations up to and including the closing '}', but does
+// NOT consume any trailing end-of-line. Used for function/lambda bodies where a
+// lambda appears inside an expression: consuming the newline after '}' would
+// swallow the terminator of the enclosing statement (e.g. `var f = func(){...}`).
+func (p *Parser) blockBody() {
+
 	for !p.check(TOKEN_RIGHT_BRACE) && !p.check(TOKEN_EOF) {
 		p.declaration()
 	}
 	p.consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.")
-	p.match(TOKEN_EOL) // allow EOL after block
-
 }
 
 // funcDeclaration parses and compiles function declarations.
@@ -528,8 +537,9 @@ func (p *Parser) block() {
 func (p *Parser) funcDeclaration() {
 
 	global := p.parseVariable("Expect function name.")
+	name := p.previous.Lexeme()
 	p.markInitialised()
-	p.function(TYPE_FUNCTION)
+	p.function(TYPE_FUNCTION, name, false)
 	p.defineVariable(global)
 }
 
@@ -541,13 +551,12 @@ func (p *Parser) funcDeclaration() {
 // Creates a new compiler context for the function scope, parses parameters,
 // compiles the function body, and generates a closure object with upvalue bindings.
 // Handles parameter limits, nested scopes, and proper closure variable capture.
-func (p *Parser) function(type_ FunctionType) {
+func (p *Parser) function(type_ FunctionType, name string, isExpr bool) {
 
 	compiler := NewCompiler(type_, p.currentCompiler.scriptName, p.currentCompiler, p.currentCompiler.environment)
 	p.currentCompiler = compiler
-	funcname := p.previous.Lexeme()
 
-	compiler.function.Name = core.MakeStringObject(funcname)
+	compiler.function.Name = core.MakeStringObject(name)
 
 	p.beginScope()
 
@@ -569,7 +578,13 @@ func (p *Parser) function(type_ FunctionType) {
 	p.consume(TOKEN_RIGHT_PAREN, "Expect ')' after function parameters.")
 	p.match(TOKEN_EOL) // allow EOL after parameters
 	p.consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.")
-	p.block()
+	if isExpr {
+		// Lambda: don't consume the trailing EOL after '}' — it belongs to the
+		// enclosing statement (e.g. `var f = func(){...}`).
+		p.blockBody()
+	} else {
+		p.block()
+	}
 
 	function := p.endCompiler()
 	p.emitBytes(core.OP_CLOSURE, p.MakeConstant(core.MakeObjectValue(function, false)))
@@ -652,6 +667,7 @@ func (p *Parser) method() {
 
 	p.consume(TOKEN_IDENTIFIER, "Expect method name.")
 	constant := p.identifierConstant(p.previous)
+	name := p.previous.Lexeme()
 	_type := TYPE_METHOD
 
 	if p.previous.Lexeme() == "init" {
@@ -660,7 +676,7 @@ func (p *Parser) method() {
 		}
 		_type = TYPE_INITIALIZER
 	}
-	p.function(_type)
+	p.function(_type, name, false)
 	if static {
 		p.emitBytes(core.OP_STATIC_METHOD, constant)
 		return
@@ -1986,6 +2002,15 @@ func binary(p *Parser, canAssign bool) {
 	case TOKEN_IN:
 		p.emitByte(core.OP_IN)
 	}
+}
+
+// lambda parses an anonymous function expression: func (params) { body }.
+// The leading `func` has already been consumed by parsePrecedence, so the
+// current token is `(`. function() consumes the parameter list and body and
+// emits OP_CLOSURE, leaving the closure value on the stack.
+func lambda(p *Parser, canAssign bool) {
+
+	p.function(TYPE_FUNCTION, "<lambda>", true)
 }
 
 // grouping handles parenthesized expressions and tuple literals.

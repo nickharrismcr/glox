@@ -387,6 +387,20 @@ print c()   // 1
 print c()   // 2</code></pre>
 <p>A function with no <code>return</code> returns <code>nil</code>. Functions can be passed as arguments and stored in variables, lists and dicts — see <a href="#mod-functools">functools</a> for <code>map</code>/<code>filter</code>/<code>reduce</code>.</p>
 
+<h3>Anonymous functions (lambdas)</h3>
+<p>Omit the name to write a function as an expression. Anonymous functions are ordinary closures — they capture surrounding variables (and <code>this</code> inside a method) just like named ones — and are handy as inline callbacks:</p>
+<pre><code class="lox">var add = func (a, b) { return a + b }
+print add(2, 3)                       // 5
+
+// inline callbacks for higher-order functions
+print functools.map([1, 2, 3], func (x) { return x * x })     // [ 1 , 4 , 9 ]
+print functools.filter(xs, func (x) { return x &gt; 0 })
+
+// immediately-invoked
+print (func () { return 7 })()        // 7</code></pre>
+<p>The body is a normal braced block with an explicit <code>return</code> (there is no expression-body shorthand). Since an anonymous function has no name, it cannot refer to itself for recursion — assign it to a variable first and call through that.</p>
+<div class="note"><strong>func in statement position is a declaration</strong>A statement that begins with <code>func</code> is always parsed as a named declaration, so write lambdas where an expression is expected (after <code>=</code>, as a call argument, inside a list/dict, after <code>return</code>). To invoke one immediately, wrap it in parentheses: <code>(func () { … })()</code>.</div>
+
 <!-- ==================== CLASSES ==================== -->
 <h2 class="section" id="classes">Classes</h2>
 <p>Classes support single inheritance, an <code>init</code> constructor, instance methods, <code>this</code>, <code>super</code>, and <code>static</code> methods.</p>
