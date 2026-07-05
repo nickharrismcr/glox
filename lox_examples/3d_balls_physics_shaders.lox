@@ -82,12 +82,11 @@ const RAMP_HALF = RAMP_SIZE / 2.0
 // only tracks what physics_world doesn't: rendering data (size/color/shader),
 // explosion timer/state, and the position synced from the world each frame.
 class MovingObject {
-    init(id, size, color, shape_type) {
+    init(id, size, color) {
         this.id = id                                        // Handle into physics_world
         this.pos = vec3(0, 0, 0)                            // Synced from world each frame
         this.size = size                                    // Size dimensions (vec3, but we use .x for radius)
         this.color = color                                  // RGBA color (vec4)
-        this.shape_type = shape_type                        // Shape identifier (currently "sphere")
         this.radius = this.get_collision_radius()          // Collision radius, mirrors what was passed to world.add()
         this.explosion_timer = random.float(EXP_MIN, EXP_MAX)    // Random countdown to explosion
         this.is_exploded = false                            // Explosion state flag
@@ -313,7 +312,7 @@ foreach (spawn_i in range(SHAPES)) {
     s = random.float(0.3,0.7)
     size = vec3(s, s, s)
     id = world.add(pos, vel, s, mat_id)
-    objects.append(MovingObject(id, size, col.random_rgb(), "sphere"))
+    objects.append(MovingObject(id, size, col.random_rgb()))
 }
 
 while (!win.should_close()) {
