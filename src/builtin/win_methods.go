@@ -861,6 +861,73 @@ func RegisterAllWindowMethods(o *WindowObject) {
 		},
 	})
 
+	o.RegisterMethod("cube_wires_rotated", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 5 {
+				vm.RunTimeError("cube_wires_rotated expects 5 arguments: position(vec3), size(vec3), axis(vec3), angle(number), color(vec4)")
+				return core.NIL_VALUE
+			}
+
+			posVal := vm.Stack(arg_stackptr)
+			sizeVal := vm.Stack(arg_stackptr + 1)
+			axisVal := vm.Stack(arg_stackptr + 2)
+			angleVal := vm.Stack(arg_stackptr + 3)
+			colorVal := vm.Stack(arg_stackptr + 4)
+
+			if posVal.Type != core.VAL_VEC3 || sizeVal.Type != core.VAL_VEC3 || axisVal.Type != core.VAL_VEC3 || colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("cube_wires_rotated arguments must be vec3, vec3, vec3, number, vec4")
+				return core.NIL_VALUE
+			}
+			if !angleVal.IsNumber() {
+				vm.RunTimeError("cube_wires_rotated arguments must be vec3, vec3, vec3, number, vec4")
+				return core.NIL_VALUE
+			}
+
+			posObj := posVal.Obj.(*core.Vec3Object)
+			sizeObj := sizeVal.Obj.(*core.Vec3Object)
+			axisObj := axisVal.Obj.(*core.Vec3Object)
+			colorObj := colorVal.Obj.(*core.Vec4Object)
+
+			// Same transform composition as cube_rotated, but rather than
+			// drawing the shared solid-cube mesh, transform a unit cube's 8
+			// corners and draw its 12 edges directly -- rl.DrawCubeWires
+			// has no rotation parameter, and rendering the solid mesh in
+			// wireframe polygon mode would also show its internal triangle
+			// diagonals, not clean cube edges.
+			scale := rl.MatrixScale(float32(sizeObj.X), float32(sizeObj.Y), float32(sizeObj.Z))
+			axis := rl.Vector3Normalize(rl.NewVector3(float32(axisObj.X), float32(axisObj.Y), float32(axisObj.Z)))
+			rotation := rl.MatrixRotate(axis, float32(angleVal.AsFloat())*rl.Deg2rad)
+			translation := rl.MatrixTranslate(float32(posObj.X), float32(posObj.Y), float32(posObj.Z))
+			transform := rl.MatrixMultiply(rl.MatrixMultiply(scale, rotation), translation)
+
+			color := rl.NewColor(uint8(colorObj.X), uint8(colorObj.Y), uint8(colorObj.Z), uint8(colorObj.W))
+
+			corners := [8]rl.Vector3{
+				{X: -0.5, Y: -0.5, Z: -0.5},
+				{X: 0.5, Y: -0.5, Z: -0.5},
+				{X: 0.5, Y: 0.5, Z: -0.5},
+				{X: -0.5, Y: 0.5, Z: -0.5},
+				{X: -0.5, Y: -0.5, Z: 0.5},
+				{X: 0.5, Y: -0.5, Z: 0.5},
+				{X: 0.5, Y: 0.5, Z: 0.5},
+				{X: -0.5, Y: 0.5, Z: 0.5},
+			}
+			for i := range corners {
+				corners[i] = rl.Vector3Transform(corners[i], transform)
+			}
+
+			edges := [12][2]int{
+				{0, 1}, {1, 2}, {2, 3}, {3, 0}, // back face
+				{4, 5}, {5, 6}, {6, 7}, {7, 4}, // front face
+				{0, 4}, {1, 5}, {2, 6}, {3, 7}, // connecting edges
+			}
+			for _, e := range edges {
+				rl.DrawLine3D(corners[e[0]], corners[e[1]], color)
+			}
+			return core.NIL_VALUE
+		},
+	})
+
 	o.RegisterMethod("sphere", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 3 {

@@ -61,8 +61,7 @@ const BOUNCE_DAMPING = 0.5     // Energy loss factor on boundary collisions (0.9
 const AIR_DAMPING = 0.9999       // Per-step velocity multiplier (air resistance). Originally
                                 // applied to horizontal velocity only; physics_world applies
                                 // it uniformly to all three axes each step.
-const SHAPES = 500            // Total number of balls to spawn in the simulation - 500 is max to get 60fps on my machine. 
-const SPAWN_PER_FRAME = 20     // How many balls to add per frame while ramping up to SHAPES
+const SHAPES = 500            // Total number of balls to spawn in the simulation - 500 is max to get 60fps on my machine.
 const FORCE = 0.6             // Explosion force multiplier (affects blast radius impact)
 const DISTANCE = 40.0          // Camera orbital distance from center
 const NORMAL=0
@@ -168,8 +167,11 @@ class MovingObject {
         ground_axis = ground[1]
         ground_angle = ground[2]
 
-        // Shadow size decreases with height above whatever it's resting on
-        height_factor = math.max(0.2, 1.0 - ((this.pos.y - ground_y) / 7.0))
+        // Shadow grows with height above whatever it's resting on, simulating
+        // an overhead point light source: the higher the ball, the closer it
+        // is to the light and the more its shadow spreads out below -- capped
+        // at 2x so it doesn't grow unboundedly for balls high above the arena.
+        height_factor = math.min(2.0, 1.0 + (this.pos.y - ground_y) / 14.0)
         r = this.radius * height_factor
 
         // Slightly above the surface to avoid z-fighting
@@ -184,7 +186,6 @@ class MovingObject {
 
 
 objects = []
-added = 0
 
 // ===== PHYSICS WORLD SETUP =====
 // Native simulation: body storage, gravity integration, boundary bounce,
@@ -305,18 +306,17 @@ shadow_rt.clear(vec4(0, 0, 0, 0))
 shadow_rt.circle_fill(32, 32, 30, vec4(255, 255, 255, 255))
 shadow_batch.set_circle_texture(shadow_rt.get_texture())
 
-while (!win.should_close()) {
+// ===== SPAWN ALL BALLS AT ONCE =====
+foreach (spawn_i in range(SHAPES)) {
+    pos = vec3(random.float(-GRID_SIZE, GRID_SIZE), random.float(10, 18), random.float(-GRID_SIZE, GRID_SIZE))
+    vel = vec3(random.float(-0.15, 0.15), random.float(-0.05, 0.05), random.float(-0.15, 0.15))
+    s = random.float(0.3,0.7)
+    size = vec3(s, s, s)
+    id = world.add(pos, vel, s, mat_id)
+    objects.append(MovingObject(id, size, col.random_rgb(), "sphere"))
+}
 
-    foreach (spawn_i in range(SPAWN_PER_FRAME)) {
-        if (added >= SHAPES) break
-        pos = vec3(random.float(-GRID_SIZE, GRID_SIZE), random.float(10, 18), random.float(-GRID_SIZE, GRID_SIZE))
-        vel = vec3(random.float(-0.15, 0.15), random.float(-0.05, 0.05), random.float(-0.15, 0.15))
-        s = random.float(0.3,0.7)
-        size = vec3(s, s, s)
-        id = world.add(pos, vel, s, mat_id)
-        objects.append(MovingObject(id, size, col.random_rgb(), "sphere"))
-        added+=1
-    }
+while (!win.should_close()) {
 
     // ===== CAMERA CONTROL =====
     angle = angle + 0.005  // Rotation speed (radians per frame)
@@ -412,6 +412,10 @@ while (!win.should_close()) {
     // Static ramps -- see STATIC RAMPS setup above for how their transforms were derived
     foreach (rd in ramp_draws) {
         win.cube_rotated(rd[0], rd[1], rd[2], rd[3], ramp_color)
+        // Just a hair larger than the ramp itself so the wireframe is
+        // visible rather than z-fighting with the solid cube's own faces.
+        wire_size = vec3(rd[1].x + 0.02, rd[1].y + 0.02, rd[1].z + 0.02)
+        win.cube_wires_rotated(rd[0], wire_size, rd[2], rd[3], vec4(0, 0, 0, 255))
     }
 
     // ===== SHADOW PASS (BATCHED) =====

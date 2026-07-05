@@ -132,6 +132,7 @@ Key constants are available as `win.KEY_*` (e.g., `win.KEY_SPACE`, `win.KEY_ESCA
 - **`cube(x, y, z, width, height, length, color)`** - Draw a 3D cube
 - **`cube_wires(x, y, z, width, height, length, color)`** - Draw a 3D cube wireframe
 - **`cube_rotated(position, size, axis, angle, color)`** - Draw a solid 3D cube rotated `angle` degrees around `axis` (position/size/axis are vec3, angle is a number in degrees, color is vec4)
+- **`cube_wires_rotated(position, size, axis, angle, color)`** - Draw a 3D cube wireframe rotated `angle` degrees around `axis` - the rotated counterpart of `cube_wires`
 - **`textured_cube(texture, position, size, base_color)`** - Draw a 3D cube with base color and texture overlay (supports both texture and render_texture objects)
 - **`sphere(x, y, z, radius, color_vec4)`** - Draw a 3D sphere
 - **`cylinder(x, y, z, radius_top, radius_bottom, height, slices, color)`** - Draw a 3D cylinder
