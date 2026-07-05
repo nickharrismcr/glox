@@ -420,8 +420,35 @@ if "bc" in a {
 
 ---
 
- 
+#### Anonymous Functions (Lambdas)
 
+##### Syntax
+```lox
+var add = func (a, b) { return a + b }
+print add(2, 3)   // 5
+```
+- Omit the name to use a function as an expression (block body, explicit `return`).
+- `fun` is accepted as an alias for `func`.
+
+##### Closures
+```lox
+func make_scaler(factor) {
+    return func (x) { return x * factor }   // captures `factor`
+}
+var double = make_scaler(2)
+print double(21)   // 42
+```
+- Anonymous functions are ordinary closures — they capture surrounding variables, and `this` inside a method.
+
+##### Inline callbacks
+```lox
+import functools
+print functools.map([1, 2, 3], func (x) { return x * x })       // [ 1 , 4 , 9 ]
+print functools.filter(xs, func (x) { return x > 0 })
+print (func () { return 7 })()                                  // immediately-invoked
+```
+- A statement that begins with `func` is always parsed as a *named declaration*, so write lambdas where an expression is expected (after `=`, as an argument, in a list/dict, after `return`). Wrap in parentheses to invoke one immediately.
+- Having no name, a lambda cannot recurse by name — assign it to a variable first.
 
 ---
 
