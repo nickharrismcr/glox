@@ -15,24 +15,24 @@ func move(particle) {
     particle.size = particle.size * 0.97; // Gradually reduce size
 }
 
-// return a particle initialisation closure 
+// return a particle initialisation closure
 func init(col1,col2) {
 
     var lifemax=random.integer(20,1000);
     var speedmax=random.integer(1,7);
     var sizemax=random.integer(5,10);
 
-    func _init(particle) {
+    // anonymous closure over lifemax/speedmax/sizemax/col1/col2
+    return func(particle) {
         particle.dpos = vec2(1,1); // Initial velocity
-        var angle = random.float(0, 2 * math.PI); // Random angle 
+        var angle = random.float(0, 2 * math.PI); // Random angle
         particle.dpos = rotate2d(particle.dpos, angle); // Rotate the initial velocity
         particle.dpos = scale2(particle.dpos, random.float(0.01, speedmax)); // Scale the velocity
- 
-        particle.life = random.integer(1, lifemax); // Random life  
-        particle.size = random.float(1, sizemax); 
-        particle.col = random.choice([col1,col2]); 
-    }
-    return _init; 
+
+        particle.life = random.integer(1, lifemax); // Random life
+        particle.size = random.float(1, sizemax);
+        particle.col = random.choice([col1,col2]);
+    };
 }
 
 func random_vec_2D(xmin,xmax,ymin,ymax) {
