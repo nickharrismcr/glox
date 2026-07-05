@@ -819,6 +819,48 @@ func RegisterAllWindowMethods(o *WindowObject) {
 		},
 	})
 
+	o.RegisterMethod("cube_rotated", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 5 {
+				vm.RunTimeError("cube_rotated expects 5 arguments: position(vec3), size(vec3), axis(vec3), angle(number), color(vec4)")
+				return core.NIL_VALUE
+			}
+
+			posVal := vm.Stack(arg_stackptr)
+			sizeVal := vm.Stack(arg_stackptr + 1)
+			axisVal := vm.Stack(arg_stackptr + 2)
+			angleVal := vm.Stack(arg_stackptr + 3)
+			colorVal := vm.Stack(arg_stackptr + 4)
+
+			if posVal.Type != core.VAL_VEC3 || sizeVal.Type != core.VAL_VEC3 || axisVal.Type != core.VAL_VEC3 || colorVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("cube_rotated arguments must be vec3, vec3, vec3, number, vec4")
+				return core.NIL_VALUE
+			}
+			if !angleVal.IsNumber() {
+				vm.RunTimeError("cube_rotated arguments must be vec3, vec3, vec3, number, vec4")
+				return core.NIL_VALUE
+			}
+
+			posObj := posVal.Obj.(*core.Vec3Object)
+			sizeObj := sizeVal.Obj.(*core.Vec3Object)
+			axisObj := axisVal.Obj.(*core.Vec3Object)
+			colorObj := colorVal.Obj.(*core.Vec4Object)
+
+			mesh, material := o.Value.CubeModel()
+
+			scale := rl.MatrixScale(float32(sizeObj.X), float32(sizeObj.Y), float32(sizeObj.Z))
+			axis := rl.Vector3Normalize(rl.NewVector3(float32(axisObj.X), float32(axisObj.Y), float32(axisObj.Z)))
+			rotation := rl.MatrixRotate(axis, float32(angleVal.AsFloat())*rl.Deg2rad)
+			translation := rl.MatrixTranslate(float32(posObj.X), float32(posObj.Y), float32(posObj.Z))
+			transform := rl.MatrixMultiply(rl.MatrixMultiply(scale, rotation), translation)
+
+			material.GetMap(rl.MapDiffuse).Color = rl.NewColor(uint8(colorObj.X), uint8(colorObj.Y), uint8(colorObj.Z), uint8(colorObj.W))
+
+			rl.DrawMesh(mesh, material, transform)
+			return core.NIL_VALUE
+		},
+	})
+
 	o.RegisterMethod("sphere", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 3 {

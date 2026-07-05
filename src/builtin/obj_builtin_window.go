@@ -31,11 +31,32 @@ func WindowBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value
 type Graphics struct {
 	Width, Height int32
 	Blend_mode    rl.BlendMode
+
+	cubeMesh      rl.Mesh
+	cubeMaterial  rl.Material
+	cubeMeshReady bool
 }
 
 func (g *Graphics) SetBlendMode(mode int) {
 	g.Blend_mode = (rl.BlendMode)(mode)
 
+}
+
+// CubeModel lazily creates and caches a shared unit cube mesh + default
+// material, used by cube_rotated() to draw arbitrarily rotated boxes via
+// DrawMesh (raylib has no DrawCube overload that takes a rotation). Scale
+// per box is applied via the transform matrix at draw time, not baked
+// into the mesh, so one unit cube serves every box regardless of size.
+func (g *Graphics) CubeModel() (rl.Mesh, rl.Material) {
+	if !g.cubeMeshReady {
+		g.cubeMesh = rl.GenMeshCube(1, 1, 1)
+		if g.cubeMesh.VaoID == 0 {
+			rl.UploadMesh(&g.cubeMesh, false)
+		}
+		g.cubeMaterial = rl.LoadMaterialDefault()
+		g.cubeMeshReady = true
+	}
+	return g.cubeMesh, g.cubeMaterial
 }
 
 type WindowObject struct {
