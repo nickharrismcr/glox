@@ -8,9 +8,10 @@ EXPECTED = [
     "11",         # ops[0](10)
     "20",         # ops[1](10)
     "81",         # dict-stored lambda d["sq"](9)
-    "99",         # method returning a lambda that captures `this`
-    "[ 2 , 4 ]",  # functools.filter with a lambda predicate
-    "10",         # functools.reduce with a lambda
+    "99",           # method returning a lambda that captures `this`
+    "[ 1 , 4 , 9 ]",  # functools.map with a lambda
+    "[ 2 , 4 ]",    # functools.filter with a lambda predicate
+    "10",           # functools.reduce with a lambda
     "1",          # named declaration still works
 ]
 

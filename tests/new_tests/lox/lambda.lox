@@ -32,6 +32,7 @@ print getv()                                 // 99
 
 // passed to functools higher-order helpers
 import functools
+print functools.map([1, 2, 3], func (x) { return x * x })           // [ 1 , 4 , 9 ]
 print functools.filter([-1, 2, -3, 4], func (x) { return x > 0 })   // [ 2 , 4 ]
 print functools.reduce([1, 2, 3, 4], func (a, b) { return a + b })  // 10
 
