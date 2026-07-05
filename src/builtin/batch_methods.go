@@ -88,8 +88,8 @@ func RegisterAllBatchMethods(o *BatchObject) {
 
 	o.RegisterMethod("add_circle3", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
-			if argCount != 3 {
-				vm.RunTimeError("add_circle3() expects 3 arguments (center, radius, color)")
+			if argCount != 5 {
+				vm.RunTimeError("add_circle3() expects 5 arguments (center, radius, axis, angle, color)")
 				return core.NIL_VALUE
 			}
 
@@ -101,7 +101,9 @@ func RegisterAllBatchMethods(o *BatchObject) {
 
 			centerVal := vm.Stack(arg_stackptr)
 			radiusVal := vm.Stack(arg_stackptr + 1)
-			colorVal := vm.Stack(arg_stackptr + 2)
+			axisVal := vm.Stack(arg_stackptr + 2)
+			angleVal := vm.Stack(arg_stackptr + 3)
+			colorVal := vm.Stack(arg_stackptr + 4)
 
 			if centerVal.Type != core.VAL_VEC3 {
 				vm.RunTimeError("add_circle3() first argument must be a vec3 (center)")
@@ -111,16 +113,53 @@ func RegisterAllBatchMethods(o *BatchObject) {
 				vm.RunTimeError("add_circle3() second argument must be a number (radius)")
 				return core.NIL_VALUE
 			}
+			if axisVal.Type != core.VAL_VEC3 {
+				vm.RunTimeError("add_circle3() third argument must be a vec3 (axis)")
+				return core.NIL_VALUE
+			}
+			if !angleVal.IsNumber() {
+				vm.RunTimeError("add_circle3() fourth argument must be a number (angle in degrees)")
+				return core.NIL_VALUE
+			}
 			if colorVal.Type != core.VAL_VEC4 {
-				vm.RunTimeError("add_circle3() third argument must be a vec4 (color)")
+				vm.RunTimeError("add_circle3() fifth argument must be a vec4 (color)")
 				return core.NIL_VALUE
 			}
 
 			center := centerVal.Obj.(*core.Vec3Object)
+			axis := axisVal.Obj.(*core.Vec3Object)
 			color := colorVal.Obj.(*core.Vec4Object)
 
-			index := o.Value.AddCircle3(center, radiusVal.AsFloat(), color)
+			index := o.Value.AddCircle3(center, radiusVal.AsFloat(), axis, angleVal.AsFloat(), color)
 			return core.MakeIntValue(index, true)
+		},
+	})
+
+	// Sets the texture sampled by every BATCH_CIRCLE3 entry -- without one,
+	// entries draw as flat-colored squares (the shared quad's plain shape).
+	// A typical texture is a filled circle pre-rendered into a
+	// render_texture (see render_texture's circle_fill()/get_texture()).
+	o.RegisterMethod("set_circle_texture", &core.BuiltInObject{
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 1 {
+				vm.RunTimeError("set_circle_texture() expects 1 argument (texture)")
+				return core.NIL_VALUE
+			}
+
+			if o.Value.BatchType != BATCH_CIRCLE3 {
+				vm.RunTimeError("set_circle_texture() can only be used with BATCH_CIRCLE3 batch type")
+				return core.NIL_VALUE
+			}
+
+			textureVal := vm.Stack(arg_stackptr)
+			to, ok := textureVal.Obj.(*TextureObject)
+			if !ok {
+				vm.RunTimeError("set_circle_texture() argument must be a texture")
+				return core.NIL_VALUE
+			}
+
+			o.Value.SetCircleTexture(to.Data.Texture)
+			return core.NIL_VALUE
 		},
 	})
 

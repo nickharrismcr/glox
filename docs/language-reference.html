@@ -782,7 +782,8 @@ win.end_3d()</code></pre>
 <tbody>
 <tr><td><code>add(position, size, color)</code></td><td>cube / sphere</td><td>Add a cube or sphere; returns its index</td></tr>
 <tr><td><code>add_triangle3(p1, p2, p3, color)</code></td><td>triangle3</td><td>Add a triangle from three <code>vec3</code> points; returns its index</td></tr>
-<tr><td><code>add_circle3(center, radius, color)</code></td><td>circle3</td><td>Add a flat horizontal disc (e.g. a shadow) in one call; returns its index</td></tr>
+<tr><td><code>add_circle3(center, radius, axis, angle, color)</code></td><td>circle3</td><td>Add a circle (e.g. a shadow) in one call, oriented by <code>axis</code>/<code>angle</code> degrees (<code>axis={0,1,0}</code>, <code>angle=0</code> for a flat, +Y-facing disc); returns its index. Drawn as a shared quad mesh -- see <code>set_circle_texture</code>.</td></tr>
+<tr><td><code>set_circle_texture(texture)</code></td><td>circle3</td><td>Sets the texture sampled by every entry in this batch -- typically a filled circle pre-rendered into a <a href="#render-texture">render_texture</a> (<code>circle_fill()</code> + <code>get_texture()</code>). Without one, entries draw as flat-colored squares (the shared quad's plain shape).</td></tr>
 </tbody>
 </table>
 

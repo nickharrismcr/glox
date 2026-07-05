@@ -39,24 +39,6 @@ const (
 	BATCH_CIRCLE3
 )
 
-// Number of triangle-fan segments used to draw each BATCH_CIRCLE3 entry.
-// The fan is built natively in Draw() (see drawCircle3 below), so raising
-// this only costs Go-side work, not additional Lox-level calls.
-const circle3Segments = 10
-
-// Unit-circle direction cosines/sines for the flat (XZ-plane) disc, shared
-// by every BATCH_CIRCLE3 entry so Draw() never calls math.Cos/Sin per
-// segment per entry per frame.
-var circle3UnitX, circle3UnitZ [circle3Segments]float32
-
-func init() {
-	for i := 0; i < circle3Segments; i++ {
-		angle := 2 * math.Pi * float64(i) / float64(circle3Segments)
-		circle3UnitX[i] = float32(math.Cos(angle))
-		circle3UnitZ[i] = float32(math.Sin(angle))
-	}
-}
-
 // Internal data structures
 type BatchEntry struct {
 	Position rl.Vector3
@@ -73,11 +55,14 @@ type TriangleBatchEntry struct {
 	Color  rl.Color
 }
 
-// A flat, filled, horizontal (XZ-plane) circle -- e.g. a ground shadow.
-// Center.Y is the height at which the disc lies; it always faces +Y.
+// A flat, filled circle -- e.g. a ground shadow. Faces +Y (Axis={0,1,0},
+// Angle=0) by default; Axis/Angle orient it otherwise (e.g. tilted flush
+// against a sloped surface), same axis-angle convention as cube_rotated.
 type CircleBatchEntry struct {
 	Center rl.Vector3
 	Radius float32
+	Axis   rl.Vector3
+	Angle  float32 // degrees
 	Color  rl.Color
 }
 
@@ -87,6 +72,17 @@ type DrawBatch struct {
 	TrianglePoints []TriangleBatchEntry // For BATCH_TRIANGLE3 type
 	Circles        []CircleBatchEntry   // For BATCH_CIRCLE3 type
 	Capacity       int
+
+	// circleMesh/circleMaterial back BATCH_CIRCLE3: a single shared unit
+	// quad (lazily created, cached per-batch) drawn once per entry via
+	// rl.DrawMesh with a per-entry scale/rotate/translate transform,
+	// instead of rebuilding a triangle-fan circle approximation from
+	// scratch every frame. The quad's own shape is a plain square --
+	// SetCircleTexture supplies a texture (e.g. a pre-rendered filled
+	// circle) so it reads as a circle; without one it draws as a square.
+	circleMesh      rl.Mesh
+	circleMaterial  rl.Material
+	circleMeshReady bool
 }
 
 // Main object (follows standard pattern)
@@ -227,7 +223,9 @@ func (batch *DrawBatch) AddTriangle3(p1 *core.Vec3Object, p2 *core.Vec3Object, p
 
 // Add a flat, filled circle (e.g. a ground shadow) in one call, instead of
 // building a triangle fan by hand and calling AddTriangle3 per segment.
-func (batch *DrawBatch) AddCircle3(center *core.Vec3Object, radius float64, color *core.Vec4Object) int {
+// axis/angle orient the circle (axis={0,1,0}, angle=0 for a flat, +Y-facing
+// disc, matching the previous fixed-orientation behavior).
+func (batch *DrawBatch) AddCircle3(center *core.Vec3Object, radius float64, axis *core.Vec3Object, angle float64, color *core.Vec4Object) int {
 	entry := CircleBatchEntry{
 		Center: rl.Vector3{
 			X: float32(center.X),
@@ -235,6 +233,12 @@ func (batch *DrawBatch) AddCircle3(center *core.Vec3Object, radius float64, colo
 			Z: float32(center.Z),
 		},
 		Radius: float32(radius),
+		Axis: rl.Vector3{
+			X: float32(axis.X),
+			Y: float32(axis.Y),
+			Z: float32(axis.Z),
+		},
+		Angle: float32(angle),
 		Color: rl.Color{
 			R: uint8(color.X),
 			G: uint8(color.Y),
@@ -399,18 +403,47 @@ func (batch *DrawBatch) Count() int {
 	return len(batch.Entries)
 }
 
-// drawCircle3 renders one flat, filled circle as a native triangle fan.
-// Winding matches the hexagon-shadow code this replaces: each segment is
-// (center, next, current), giving a face normal that points +Y.
-func drawCircle3(entry CircleBatchEntry) {
-	cx, cy, cz := entry.Center.X, entry.Center.Y, entry.Center.Z
-	r := entry.Radius
-	for i := 0; i < circle3Segments; i++ {
-		j := (i + 1) % circle3Segments
-		p1 := rl.Vector3{X: cx + r*circle3UnitX[i], Y: cy, Z: cz + r*circle3UnitZ[i]}
-		p2 := rl.Vector3{X: cx + r*circle3UnitX[j], Y: cy, Z: cz + r*circle3UnitZ[j]}
-		rl.DrawTriangle3D(entry.Center, p2, p1, entry.Color)
+// circleQuad lazily creates this batch's shared unit quad (XZ-plane,
+// +Y-facing, UV 0..1), reused by every BATCH_CIRCLE3 entry: drawCircle3()
+// scales/rotates/translates this single mesh per entry via rl.DrawMesh
+// instead of rebuilding a triangle-fan approximation of a circle from
+// scratch every frame. rl.DrawMesh always uses the material's own Shader
+// (it does not respect BeginShaderMode), so the circular shape comes from
+// whatever texture SetCircleTexture supplies -- a plain default material
+// with no texture set renders each entry as a flat-colored square.
+func (batch *DrawBatch) circleQuad() (rl.Mesh, rl.Material) {
+	if !batch.circleMeshReady {
+		batch.circleMesh = rl.GenMeshPlane(1, 1, 1, 1)
+		if batch.circleMesh.VaoID == 0 {
+			rl.UploadMesh(&batch.circleMesh, false)
+		}
+		batch.circleMaterial = rl.LoadMaterialDefault()
+		batch.circleMeshReady = true
 	}
+	return batch.circleMesh, batch.circleMaterial
+}
+
+// SetCircleTexture sets the texture sampled by every BATCH_CIRCLE3 entry
+// (e.g. a pre-rendered filled circle from a render_texture) -- this is
+// what makes entries read as circles rather than squares.
+func (batch *DrawBatch) SetCircleTexture(texture rl.Texture2D) {
+	_, material := batch.circleQuad()
+	material.GetMap(rl.MapDiffuse).Texture = texture
+}
+
+// drawCircle3 renders one circle as the batch's shared unit quad, scaled
+// to the entry's diameter and oriented by its axis/angle (identity =
+// flat, +Y-facing, matching the previous fixed-orientation behavior).
+func (batch *DrawBatch) drawCircle3(entry CircleBatchEntry) {
+	mesh, material := batch.circleQuad()
+
+	scale := rl.MatrixScale(entry.Radius*2, 1, entry.Radius*2)
+	rotation := rl.MatrixRotate(entry.Axis, entry.Angle*rl.Deg2rad)
+	translation := rl.MatrixTranslate(entry.Center.X, entry.Center.Y, entry.Center.Z)
+	transform := rl.MatrixMultiply(rl.MatrixMultiply(scale, rotation), translation)
+
+	material.GetMap(rl.MapDiffuse).Color = entry.Color
+	rl.DrawMesh(mesh, material, transform)
 }
 
 // Render all entries in the batch
@@ -434,9 +467,26 @@ func (batch *DrawBatch) Draw() {
 		}
 
 	case BATCH_CIRCLE3:
+		// Immediate-mode primitives drawn earlier in the frame (win.plane,
+		// win.cube, ...) go through rlBegin/rlVertex3f/rlEnd, which only
+		// queues vertices into rlgl's internal render batch -- they aren't
+		// actually sent to the GPU until something flushes it. rl.DrawMesh
+		// (used by drawCircle3 below, and by cube_rotated) does not flush
+		// that batch itself. Without an explicit flush here, a translucent
+		// shadow quad can be rasterized before, say, the floor it should
+		// sit on top of -- its "transparent" area then blends against
+		// whatever was there a moment earlier (e.g. the background clear
+		// color) instead of the floor. And since alpha=0 doesn't stop it
+		// writing to the depth buffer, that gap becomes permanent: the
+		// floor's already-queued draw later fails the depth test against
+		// it once it does flush. Flushing first, and not writing depth for
+		// these translucent quads, fixes both halves of that.
+		rl.DrawRenderBatchActive()
+		rl.DisableDepthMask()
 		for _, entry := range batch.Circles {
-			drawCircle3(entry)
+			batch.drawCircle3(entry)
 		}
+		rl.EnableDepthMask()
 	}
 }
 
@@ -575,6 +625,11 @@ func (batch *DrawBatch) DrawWithDirectionalCulling(cameraPos rl.Vector3, cameraF
 		}
 
 	case BATCH_CIRCLE3:
+		// See the matching comment in Draw() -- flush any pending
+		// immediate-mode geometry first and don't let these translucent
+		// quads write depth.
+		rl.DrawRenderBatchActive()
+		rl.DisableDepthMask()
 		for _, entry := range batch.Circles {
 			dx := entry.Center.X - cameraPos.X
 			dy := entry.Center.Y - cameraPos.Y
@@ -597,10 +652,11 @@ func (batch *DrawBatch) DrawWithDirectionalCulling(cameraPos rl.Vector3, cameraF
 				adjustedMinDot := float32(math.Cos(float64(fovRadians/2.0 + sizeAngleOffset)))
 
 				if dotProduct >= adjustedMinDot {
-					drawCircle3(entry)
+					batch.drawCircle3(entry)
 				}
 			}
 		}
+		rl.EnableDepthMask()
 
 	}
 }

@@ -152,26 +152,33 @@ class MovingObject {
         world.add_impulse(this.id, vec3(nx * force_strength, ny * force_strength, nz * force_strength))
     }
 
-    // Add a flat ground shadow in a single native call using BATCH_CIRCLE3
-    // (the fan of triangles that approximates the circle is now built
-    // natively in Go's batch.draw(), not assembled by hand in Lox).
+    // Add a ground shadow in a single native call using BATCH_CIRCLE3. The
+    // shadow is a shared quad mesh textured with a pre-rendered filled
+    // circle (see shadow_texture setup below), tilted and positioned to
+    // match whatever's directly below -- a ramp's sloped top face if the
+    // ball is over one (ground_at()), otherwise the flat floor.
     add_shadow(shadow_batch) {
         // Don't render shadows for exploded objects
         if (this.is_exploded) {
             return
         }
 
-        // Shadow size decreases with height (perspective effect simulation)
-        height_factor = math.max(0.2, 1.0 - (this.pos.y / 7.0))  // Smaller shadow when higher up
+        ground = ground_at(this.pos.x, this.pos.z)
+        ground_y = ground[0]
+        ground_axis = ground[1]
+        ground_angle = ground[2]
+
+        // Shadow size decreases with height above whatever it's resting on
+        height_factor = math.max(0.2, 1.0 - ((this.pos.y - ground_y) / 7.0))
         r = this.radius * height_factor
 
-        // Slightly above ground to avoid z-fighting
-        center = vec3(this.pos.x, 0.01, this.pos.z)
+        // Slightly above the surface to avoid z-fighting
+        center = vec3(this.pos.x, ground_y + 0.01, this.pos.z)
 
         // Gray shadow color with fixed transparency
         shadow_color = vec4(50, 50, 50, 255)
 
-        shadow_batch.add_circle3(center, r, shadow_color)
+        shadow_batch.add_circle3(center, r, ground_axis, ground_angle, shadow_color)
     }
 }
 
@@ -223,6 +230,63 @@ foreach (cfg in ramp_configs) {
     ramp_draws.append((t[0], vec3(t[1].x * 2, t[1].y * 2, t[1].z * 2), t[2], t[3]))
 }
 
+// Precompute per-ramp ground data once (static geometry never changes):
+// each ramp only rotates about one horizontal axis, so its top face's own
+// footprint (seen from directly above -- NOT the whole box's silhouette,
+// which is wider) is a plain rectangle, foreshortened *asymmetrically* on
+// the sloped axis. Height is a linear function of that same sloped axis.
+// Reused every frame by ground_at() instead of redoing trig per ball per
+// ramp. The two rotation axes foreshorten with opposite sign structure
+// (Z-axis rotation mixes X/Y with a "-sin" cross term, X-axis rotation
+// mixes Y/Z with a "+sin" cross term), so the offset formulas below are
+// deliberately different per branch, not just relabeled.
+ramp_ground = []
+foreach (cfg in ramp_configs) {
+    pos = cfg[0]
+    ax = cfg[1]
+    ang = cfg[2]
+    rad = math.radians(ang)
+    c = math.cos(rad)
+    s = math.sin(rad)
+    tilts_along_x = (ax.z == 1.0)  // Z-axis rotation tilts along X; X-axis rotation tilts along Z
+    p0y = pos.y + RAMP_HALF * c
+    if (tilts_along_x) {
+        offset_a = -RAMP_HALF * (c + s)
+        offset_b = RAMP_HALF * (c - s)
+        along_lo = math.min(offset_a, offset_b)
+        along_hi = math.max(offset_a, offset_b)
+        p0_along = pos.x - RAMP_HALF * s
+        ramp_ground.append((true, pos.x + along_lo, pos.x + along_hi, pos.z, RAMP_HALF, p0y, p0_along, s / c, ax, ang))
+    } else {
+        offset_a = -RAMP_HALF * (c - s)
+        offset_b = RAMP_HALF * (c + s)
+        along_lo = math.min(offset_a, offset_b)
+        along_hi = math.max(offset_a, offset_b)
+        p0_along = pos.z + RAMP_HALF * s
+        ramp_ground.append((false, pos.z + along_lo, pos.z + along_hi, pos.x, RAMP_HALF, p0y, p0_along, -(s / c), ax, ang))
+    }
+}
+
+// Returns (height, axis, angle) for the ground surface directly below
+// world (x, z): a ramp's tilted top face if (x, z) is within one of the
+// four ramps' footprints, otherwise the flat floor.
+fun ground_at(x, z) {
+    foreach (rg in ramp_ground) {
+        tilts_along_x = rg[0]
+        along = x
+        cross = z
+        if (!tilts_along_x) {
+            along = z
+            cross = x
+        }
+        if (along >= rg[1] and along <= rg[2] and math.abs(cross - rg[3]) <= rg[4]) {
+            height = rg[5] + rg[7] * (along - rg[6])
+            return (height, rg[8], rg[9])
+        }
+    }
+    return (0.0, vec3(0, 1, 0), 0.0)
+}
+
 // ===== BATCH RENDERING SETUP =====
 // One sphere batch per shader pass. Populating a batch is still a per-ball
 // Lox-level call, but batch.draw() then renders every entry in a single
@@ -232,8 +296,14 @@ foreach (cfg in ramp_configs) {
 normal_batch = batch(win.BATCH_SPHERE)
 rainbow_batch = batch(win.BATCH_SPHERE)
 pulse_batch = batch(win.BATCH_SPHERE)
-// Shadows are flat circles, batched natively the same way.
+// Shadows are flat circles, batched natively the same way. Each entry is a
+// shared quad textured with a filled circle rendered once here -- cheaper
+// than rebuilding a triangle-fan approximation of a circle every frame.
 shadow_batch = batch(win.BATCH_CIRCLE3)
+shadow_rt = render_texture(64, 64)
+shadow_rt.clear(vec4(0, 0, 0, 0))
+shadow_rt.circle_fill(32, 32, 30, vec4(255, 255, 255, 255))
+shadow_batch.set_circle_texture(shadow_rt.get_texture())
 
 while (!win.should_close()) {
 
@@ -346,10 +416,9 @@ while (!win.should_close()) {
 
     // ===== SHADOW PASS (BATCHED) =====
     // Render all object shadows first (depth layering). Each ball adds one
-    // flat circle into shadow_batch via a single add_circle3() call;
-    // batch.draw() then builds and renders every circle's triangle fan
-    // natively in Go, instead of each ball adding 6 hand-built triangles
-    // from Lox (or 500 individual win.ellipse3() calls, as in the original).
+    // shadow quad into shadow_batch via a single add_circle3() call; the
+    // circular shape comes from shadow_texture (a pre-rendered filled
+    // circle set on the batch once via set_circle_texture), not CPU geometry.
     shadow_batch.clear()
     foreach (obj in objects) {
         obj.add_shadow(shadow_batch)
