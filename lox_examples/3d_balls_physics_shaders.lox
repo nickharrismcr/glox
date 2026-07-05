@@ -47,7 +47,7 @@ time_value = 0.0               // Time in seconds (for shader uniforms)
 pulse_center = vec3(0, 5, 0)   // Moving center point for pulse shader effect
 
 // ========== PHYSICS SIMULATION CONSTANTS ==========
-const GRID_SIZE = 20.0         // Half-size of simulation boundary (60x60x60 total space)
+const GRID_SIZE = 30.0         // Half-size of simulation boundary (60x60x60 total space)
 const WORLD_TOP = 1000.0       // Upper Y bound for physics_world -- far above anything
                                 // reachable, so balls never hit a "ceiling" (matches the
                                 // original script, which only ever bounced off the ground).
@@ -58,10 +58,10 @@ const BOUNCE_DAMPING = 0.5     // Energy loss factor on boundary collisions (0.9
                                 // bounces and ball-ball collisions (combined via sqrt), so
                                 // ball-ball impacts are now ~50% restitution instead of the
                                 // original script's separate 70% -- a minor visual difference.
-const AIR_DAMPING = 0.99       // Per-step velocity multiplier (air resistance). Originally
+const AIR_DAMPING = 0.9999       // Per-step velocity multiplier (air resistance). Originally
                                 // applied to horizontal velocity only; physics_world applies
                                 // it uniformly to all three axes each step.
-const SHAPES = 550
+const SHAPES = 500            // Total number of balls to spawn in the simulation - 500 is max to get 60fps on my machine. 
 const SPAWN_PER_FRAME = 20     // How many balls to add per frame while ramping up to SHAPES
 const FORCE = 0.6             // Explosion force multiplier (affects blast radius impact)
 const DISTANCE = 40.0          // Camera orbital distance from center
@@ -70,6 +70,11 @@ const RAINBOW=1
 const PULSE=2
 const EXP_MIN=400                // Minimum frames before explosion
 const EXP_MAX=6000                // Maximum frames before explosion
+
+// Static edge ramps -- see STATIC RAMPS setup below.
+const RAMP_ANGLE = 15.0                  // Tilt in degrees
+const RAMP_SIZE = (GRID_SIZE * 2) * 0.2  // Cube side length: 20% of the floor square's side
+const RAMP_HALF = RAMP_SIZE / 2.0
 
 // ========== MOVING OBJECT CLASS ==========
 // Represents a rendering/gameplay wrapper around one physics_world body.
@@ -188,6 +193,36 @@ world = physics_world(
 )
 mat_id = world.add_material(BOUNCE_DAMPING, 0.3, AIR_DAMPING)  // restitution, friction (unused for now), damping
 
+// ===== STATIC RAMPS (one at each edge of the arena) =====
+// Four RAMP_SIZE cubes, one on each wall, tilted so their low edge (at
+// y=0) faces the arena's interior and their high edge meets the wall.
+// Rotation axis sets which way a ramp slopes (Z axis -> along X, X axis
+// -> along Z); the angle's sign picks which of the two symmetric top
+// edges ends up low vs. high. RAMP_Y sits the lower edge exactly at
+// floor level, burying the rest of each cube below ground.
+ramp_angle_rad = math.radians(RAMP_ANGLE)
+ramp_y = -RAMP_HALF * (math.cos(ramp_angle_rad) - math.sin(ramp_angle_rad))
+ramp_inset = GRID_SIZE - RAMP_HALF  // wall-side ramps sit flush with the arena boundary
+
+ramp_configs = [
+    (vec3(ramp_inset, ramp_y, 0), vec3(0, 0, 1), RAMP_ANGLE),    // +X wall, slopes along X
+    (vec3(-ramp_inset, ramp_y, 0), vec3(0, 0, 1), -RAMP_ANGLE),  // -X wall, slopes along X
+    (vec3(0, ramp_y, -ramp_inset), vec3(1, 0, 0), RAMP_ANGLE),   // -Z wall, slopes along Z
+    (vec3(0, ramp_y, ramp_inset), vec3(1, 0, 0), -RAMP_ANGLE)    // +Z wall, slopes along Z
+]
+
+ramp_color = vec4(20, 90, 40, 255)
+
+// Static geometry never moves, so each draw transform is fetched once
+// rather than every frame -- get_box_transform() is the single source of
+// truth (see docs/md/plans/NOTES_box_physics.md) shared by physics and drawing.
+ramp_draws = []
+foreach (cfg in ramp_configs) {
+    ramp_id = world.add_static_box(cfg[0], vec3(RAMP_HALF, RAMP_HALF, RAMP_HALF), cfg[1], cfg[2], mat_id)
+    t = world.get_box_transform(ramp_id)
+    ramp_draws.append((t[0], vec3(t[1].x * 2, t[1].y * 2, t[1].z * 2), t[2], t[3]))
+}
+
 // ===== BATCH RENDERING SETUP =====
 // One sphere batch per shader pass. Populating a batch is still a per-ball
 // Lox-level call, but batch.draw() then renders every entry in a single
@@ -204,7 +239,7 @@ while (!win.should_close()) {
 
     foreach (spawn_i in range(SPAWN_PER_FRAME)) {
         if (added >= SHAPES) break
-        pos = vec3(random.float(-5, 5), random.float(10, 18), random.float(-5, 5))
+        pos = vec3(random.float(-GRID_SIZE, GRID_SIZE), random.float(10, 18), random.float(-GRID_SIZE, GRID_SIZE))
         vel = vec3(random.float(-0.15, 0.15), random.float(-0.05, 0.05), random.float(-0.15, 0.15))
         s = random.float(0.3,0.7)
         size = vec3(s, s, s)
@@ -302,6 +337,11 @@ while (!win.should_close()) {
     } else {
         // Normal gray floor when no explosions are occurring
         win.plane(vec3(0, 0, 0), vec2(GRID_SIZE*2, GRID_SIZE*2), vec4(100, 100, 100, 255))
+    }
+
+    // Static ramps -- see STATIC RAMPS setup above for how their transforms were derived
+    foreach (rd in ramp_draws) {
+        win.cube_rotated(rd[0], rd[1], rd[2], rd[3], ramp_color)
     }
 
     // ===== SHADOW PASS (BATCHED) =====
