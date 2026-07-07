@@ -29,6 +29,7 @@ const (
 	TOKEN_SLASH
 	TOKEN_STAR
 	TOKEN_COLON
+	TOKEN_QUESTION
 	TOKEN_EOL
 	// One or two character tokens.
 	TOKEN_BANG
@@ -138,6 +139,7 @@ var repr = map[TokenType]string{
 	TOKEN_SLASH:         "TOKEN_SLASH",
 	TOKEN_STAR:          "TOKEN_STAR",
 	TOKEN_COLON:         "TOKEN_COLON",
+	TOKEN_QUESTION:      "TOKEN_QUESTION",
 	TOKEN_EOL:           "TOKEN_EOL",
 	TOKEN_BANG:          "TOKEN_BANG",
 	TOKEN_BANG_EQUAL:    "TOKEN_BANG_EQUAL",
@@ -310,6 +312,8 @@ func (s *Scanner) ScanToken() Token {
 			return s.MakeToken(TOKEN_SEMICOLON)
 		case ":":
 			return s.MakeToken(TOKEN_COLON)
+		case "?":
+			return s.MakeToken(TOKEN_QUESTION)
 		case ",":
 			return s.MakeToken(TOKEN_COMMA)
 		case ".":
@@ -467,6 +471,7 @@ func (s *Scanner) SkipEOL() bool {
 		prev == TOKEN_SEMICOLON ||
 		prev == TOKEN_COLON ||
 		prev == TOKEN_EOL ||
+		prev == TOKEN_QUESTION ||
 		prev == TOKEN_EQUAL ||
 		prev == TOKEN_MINUS ||
 		prev == TOKEN_PLUS ||

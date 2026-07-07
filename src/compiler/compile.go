@@ -11,16 +11,17 @@ import (
 type Precedence int
 
 const (
-	PREC_NONE       Precedence = iota
-	PREC_ASSIGNMENT            // =
-	PREC_OR                    // or
-	PREC_AND                   // and
-	PREC_EQUALITY              // == !=
-	PREC_COMPARISON            // < > <= >=
-	PREC_TERM                  // + -
-	PREC_FACTOR                // * / %
-	PREC_UNARY                 // ! -
-	PREC_CALL                  // . () []
+	PREC_NONE        Precedence = iota
+	PREC_ASSIGNMENT             // =
+	PREC_CONDITIONAL            // ?:
+	PREC_OR                     // or
+	PREC_AND                    // and
+	PREC_EQUALITY               // == !=
+	PREC_COMPARISON             // < > <= >=
+	PREC_TERM                   // + -
+	PREC_FACTOR                 // * / %
+	PREC_UNARY                  // ! -
+	PREC_CALL                   // . () []
 	PREC_PRIMARY
 )
 
@@ -217,6 +218,7 @@ func (p *Parser) setRules() {
 		TOKEN_SLASH:         {prefix: nil, infix: binary, prec: PREC_FACTOR},
 		TOKEN_STAR:          {prefix: nil, infix: binary, prec: PREC_FACTOR},
 		TOKEN_PERCENT:       {prefix: nil, infix: binary, prec: PREC_FACTOR},
+		TOKEN_QUESTION:      {prefix: nil, infix: conditional, prec: PREC_CONDITIONAL},
 		TOKEN_BANG:          {prefix: unary, infix: nil, prec: PREC_NONE},
 		TOKEN_BANG_EQUAL:    {prefix: nil, infix: binary, prec: PREC_EQUALITY},
 		TOKEN_EQUAL:         {prefix: nil, infix: nil, prec: PREC_ASSIGNMENT},
@@ -2139,6 +2141,26 @@ func or_(p *Parser, canAssign bool) {
 	p.emitByte(core.OP_POP)
 
 	p.parsePrecedence(PREC_OR)
+	p.patchJump(endJump)
+}
+
+// conditional handles the C-style ternary expression: cond ? thenExpr : elseExpr.
+// The condition is already on the stack (parsed as the left operand). Only the
+// selected branch is evaluated, mirroring the short-circuit shape of and_/or_.
+// OP_JUMP_IF_FALSE peeks (does not pop) the condition, so it is popped on both
+// paths. The else-branch parses at PREC_CONDITIONAL, giving right-associativity.
+func conditional(p *Parser, canAssign bool) {
+
+	elseJump := p.emitJump(core.OP_JUMP_IF_FALSE)
+	p.emitByte(core.OP_POP) // true path: discard condition
+	p.parsePrecedence(PREC_CONDITIONAL)
+	endJump := p.emitJump(core.OP_JUMP)
+
+	p.patchJump(elseJump)
+	p.emitByte(core.OP_POP) // false path: discard condition
+	p.consume(TOKEN_COLON, "Expect ':' in conditional expression.")
+	p.parsePrecedence(PREC_CONDITIONAL)
+
 	p.patchJump(endJump)
 }
 

@@ -13,6 +13,10 @@ in [`src/compiler/scanner.go`](../src/compiler/scanner.go), the run loop in
 > **Done:** Full compound-assignment set (`*=`, `/=`, `%=`) — shipped. Works on
 > variables and object properties, alongside the existing `+=` / `-=`. See the
 > Compound assignment section of the language reference.
+>
+> **Done:** Ternary / conditional expression (`cond ? a : b`) — shipped, C-style
+> and right-associative, only the selected branch is evaluated. See the
+> Conditional expression section of the language reference.
 
 ---
 
@@ -42,23 +46,30 @@ existing lack of `a[i] += x`.
 
 **Effort.** Low — mechanical, mirrored code that already existed.
 
-### 2. Ternary / conditional expression (`cond ? a : b`)
+### 2. Ternary / conditional expression (`cond ? a : b`) — *done*
 
-**Why.** There is no expression-level conditional — only the `if` *statement* —
-so choosing a value inline forces a temp variable and a 4-line block. `?`/`:`
-also composes with the new lambdas for compact callbacks.
+**Why.** There was no expression-level conditional — only the `if` *statement* —
+so choosing a value inline forced a temp variable and a 4-line block. `?`/`:`
+also composes with the lambdas for compact callbacks. Shipped as **C-style**
+`cond ? a : b` (not Python's `a if cond else b`): the condition is the left
+operand and compiles first, so only the selected branch is evaluated — no
+bytecode relocation needed.
 
 ```lox
 var label = n == 1 ? "item" : "items"
 ```
 
-**Hooks.** Add a `TOKEN_QUESTION` token (scanner); `:` already exists as
-`TOKEN_COLON`. Register a `conditional` infix rule on `TOKEN_QUESTION` at roughly
-`PREC_ASSIGNMENT`/`PREC_OR` in the rule table, emitting the same
-`OP_JUMP_IF_FALSE` / `OP_JUMP` / `OP_POP` shape as `ifStatement`.
+**Hooks.** Added a `TOKEN_QUESTION` token (scanner); `:` already existed as
+`TOKEN_COLON`. Inserted a `PREC_CONDITIONAL` precedence level (between
+`PREC_ASSIGNMENT` and `PREC_OR`) and registered a `conditional` infix rule on
+`TOKEN_QUESTION`, emitting the same `OP_JUMP_IF_FALSE` / `OP_JUMP` / `OP_POP`
+shape as `and_`/`or_`. Right-associative. Note `OP_JUMP_IF_FALSE` peeks (does
+not pop), so the condition is popped on both branches. Truthiness follows the
+VM's existing `isFalsey` — as elsewhere in glox, bare integers are falsey, so
+use boolean/comparison conditions.
 
-**Effort.** Moderate — one new token, one infix rule, reuse existing jump/patch
-helpers.
+**Effort.** Moderate — one new token, one precedence level, one infix rule,
+reused existing jump/patch helpers.
 
 ---
 
@@ -127,8 +138,8 @@ codegen, break semantics.
 
 ## Recommended order
 
-1. **Compound assignment** (`*=`/`/=`/`%=`) — quick, mechanical win.
-2. **Ternary** — small, high-use, composes with lambdas.
+1. ~~**Compound assignment** (`*=`/`/=`/`%=`)~~ — done.
+2. ~~**Ternary**~~ — done (C-style `cond ? a : b`).
 3. **String interpolation** — biggest day-to-day ergonomics improvement.
 4. **Default/variadic params** — rounds out the function model.
 5. Bitwise / `switch` as demand arises.

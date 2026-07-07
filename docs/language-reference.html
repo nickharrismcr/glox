@@ -330,6 +330,17 @@ p = vec2(1, 2)
 p.x += 1      // 2
 p.y *= 3      // 6</code></pre>
 
+<h3>Conditional expression (ternary)</h3>
+<p>The C-style ternary operator <code>cond ? a : b</code> evaluates <code>cond</code> and yields <code>a</code> if it is truthy, otherwise <code>b</code>. Only the selected branch is evaluated. It is an expression, so it can appear anywhere a value is expected. It is right-associative, so <code>c1 ? a : c2 ? b : c</code> groups as <code>c1 ? a : (c2 ? b : c)</code>.</p>
+<pre><code class="lox">n = 1
+var label = n == 1 ? "item" : "items"   // "item"
+
+// only the chosen branch runs
+x = ok ? compute() : fallback()          // fallback() not called when ok is truthy
+
+// right-associative chaining
+grade = s >= 90 ? "A" : s >= 80 ? "B" : "C"</code></pre>
+
 <!-- ==================== CONTROL FLOW ==================== -->
 <h2 class="section" id="control-flow">Control flow</h2>
 <h3>if / else</h3>
