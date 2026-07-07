@@ -163,7 +163,8 @@ footer{color:var(--muted); font-size:13px; border-top:1px solid var(--border); m
       <a href="#dicts">Dictionaries</a>
       <a href="#vectors">Vectors</a>
       <div class="group">Built-in Functions</div>
-      <a href="#builtins">Global functions</a>
+      <a href="#builtins">Built-in functions</a>
+      <a href="#mod-gfx">gfx &amp; physics</a>
       <div class="group">Native Objects</div>
       <a href="#window">window</a>
       <a href="#batch">batch</a>
@@ -552,7 +553,7 @@ print a % b     // 1   (modulus)
 print a / 3.0   // 3.3333333333333335  (float)
 print int(3.9)  // 3
 print float(3)  // 3.0</code></pre>
-<p>See the <a href="#mod-math">math module</a> for trigonometry, roots, rounding and vector maths, and <a href="#builtins">global functions</a> for <code>int()</code>, <code>float()</code>, and <code>rand()</code>.</p>
+<p>See the <a href="#mod-math">math module</a> for trigonometry, roots, rounding and vector maths, and <a href="#builtins">built-in functions</a> for <code>int()</code>, <code>float()</code>, and <code>rand()</code>.</p>
 
 <!-- ==================== STRINGS ==================== -->
 <h2 class="section" id="strings">Strings</h2>
@@ -572,7 +573,7 @@ foreach (c in s) { print c }   // iterate characters</code></pre>
 <p>Joins a list of strings using <code>s</code> as the separator. All list elements must be strings.</p>
 <pre><code class="lox">print "|".join(["a", "b", "c"])   // "a|b|c"
 print "xx".replace("x", "y")      // "yy"</code></pre>
-<h3>Related global functions</h3>
+<h3>Related built-in functions</h3>
 <ul>
 <li><a href="#builtins"><code>replace(s, old, new)</code></a> — free-function form of <code>.replace</code>.</li>
 <li><a href="#builtins"><code>format(fmt, args...)</code></a> — printf-style formatting (wraps Go <code>fmt.Sprintf</code>).</li>
@@ -608,7 +609,7 @@ a[2:5] = [7, 8, 9]   // slice assignment</code></pre>
 <p>Returns the index of the first element equal to <code>value</code>, or <code>nil</code> if not present.</p>
 <div class="sig"><span class="nm">list.length</span>() <span class="pill">→ int</span></div>
 <p>Returns the number of elements. Equivalent to <a href="#builtins"><code>len(list)</code></a>.</p>
-<div class="note"><strong>Also available</strong>The global <a href="#builtins"><code>append(list, value)</code></a> is the free-function form of <code>list.append</code>. Sorting and reversing live in <a href="#mod-itertools">itertools</a>; map/filter/reduce in <a href="#mod-functools">functools</a>.</div>
+<div class="note"><strong>Also available</strong>The built-in <a href="#builtins"><code>append(list, value)</code></a> is the free-function form of <code>list.append</code>. Sorting and reversing live in <a href="#mod-itertools">itertools</a>; map/filter/reduce in <a href="#mod-functools">functools</a>.</div>
 
 <!-- ==================== TUPLES ==================== -->
 <h2 class="section" id="tuples">Tuples</h2>
@@ -644,6 +645,7 @@ d.remove("a")</code></pre>
 <!-- ==================== VECTORS ==================== -->
 <h2 class="section" id="vectors">Vectors</h2>
 <p><code>vec2</code>, <code>vec3</code> and <code>vec4</code> are native fixed-size float vectors, inlined into the value representation to avoid heap allocation. They are used throughout the graphics API (positions, sizes, and RGBA colours as <code>vec4</code>).</p>
+<p>Unlike the <a href="#mod-gfx"><code>gfx</code></a> constructors (<code>window</code>, <code>batch</code>, …), the vector constructors <code>vec2()</code> / <code>vec3()</code> / <code>vec4()</code> are <strong>built-in</strong> — always available, no import needed — because vectors are core value types rather than graphics objects.</p>
 <pre><code class="lox">v2 = vec2(1, 2)
 v3 = vec3(1, 2, 3)
 v4 = vec4(255, 128, 0, 255)   // often an RGBA colour
@@ -666,7 +668,7 @@ sum = vec3(1, 2, 3) ++ vec3(10, 10, 10)   // vec3(11, 12, 13)</code></pre>
 <p>For vector length, normalisation, rotation and scaling helpers, see the <a href="#mod-math">math module</a>.</p>
 
 <!-- ==================== BUILT-IN FUNCTIONS ==================== -->
-<h2 class="section" id="builtins">Global functions</h2>
+<h2 class="section" id="builtins">Built-in functions</h2>
 <p>These functions are always available without importing anything.</p>
 
 <h3>Core &amp; type conversion</h3>
@@ -706,40 +708,49 @@ sum = vec3(1, 2, 3) ++ vec3(10, 10, 10)   // vec3(11, 12, 13)</code></pre>
 </tbody>
 </table>
 
-<h3>Colour encoding</h3>
-<div class="sig"><span class="nm">encode_rgba</span>(<em>r</em>, <em>g</em>, <em>b</em>, <em>a</em>) <span class="pill">→ int/float</span></div>
-<p>Packs RGBA components (0–255) into a single encoded value, e.g. for storing colours in a <a href="#float-array">float_array</a>.</p>
-<div class="sig"><span class="nm">decode_rgba</span>(<em>value</em>) <span class="pill">→ list</span></div>
-<p>Unpacks an encoded colour back into <code>[r, g, b, a]</code> components.</p>
+<div class="sig"><span class="nm">sleep</span>(<em>seconds</em>) <span class="pill">→ nil</span></div>
+<p>Pauses execution for the given number of seconds.</p>
 
-<h3>Graphics helpers</h3>
-<div class="sig"><span class="nm">draw_png</span>(<em>filename</em>, <em>width</em>, <em>height</em>, <em>float_array</em>) <span class="pill">→ nil</span></div>
-<p>Writes RGBA-encoded float-array data to a PNG file.</p>
-<div class="sig"><span class="nm">lox_mandel_array</span>(<em>width</em>, <em>height</em>, <em>zoom</em>, <em>cx</em>, <em>cy</em>, <em>max_iter</em>) <span class="pill">→ float_array</span></div>
-<p>Generates a Mandelbrot set as an RGBA-encoded <a href="#float-array">float_array</a>, ready for <a href="#window"><code>win.draw_array()</code></a>.</p>
-<div class="sig"><span class="nm">lox_julia_array</span>(<em>width</em>, <em>height</em>, <em>zoom</em>, <em>cx</em>, <em>cy</em>, <em>max_iter</em>) <span class="pill">→ float_array</span></div>
-<p>Generates a Julia set as an RGBA-encoded <a href="#float-array">float_array</a>.</p>
-
-<h3 id="mod-gfx">Constructors — the <code>gfx</code> and <code>physics</code> modules</h3>
-<p>These create native objects, each documented in its own section. <code>vec2</code>/<code>vec3</code>/<code>vec4</code> are <strong>global</strong> (core value types). The graphics constructors live in the built-in <code>gfx</code> module and the physics constructor in <code>physics</code> — import them before use:</p>
+<h2 class="section" id="mod-gfx">gfx &amp; physics modules</h2>
+<p>These create native objects, each documented in its own section. <code>vec2</code>/<code>vec3</code>/<code>vec4</code> are <strong>built-in</strong> (core value types, always available), but the graphics constructors and helpers live in the <code>gfx</code> module and the physics constructor in <code>physics</code> — import them before use:</p>
 <pre><code class="lox">from gfx import *              // window, batch, texture, shader, camera, ...
 from physics import physics_world
 // or keep them namespaced:
 import gfx
 win = gfx.window(800, 600)</code></pre>
 <ul>
-<li><strong>global:</strong> <a href="#vectors"><code>vec2</code>/<code>vec3</code>/<code>vec4</code></a></li>
-<li><strong>gfx:</strong> <a href="#window"><code>window</code></a>, <a href="#image"><code>image</code></a>, <a href="#texture"><code>texture</code></a>, <a href="#render-texture"><code>render_texture</code></a>, <a href="#camera"><code>camera</code></a>, <a href="#shader"><code>shader</code></a>, <a href="#batch"><code>batch</code></a>, <a href="#batch-instanced"><code>batch_instanced</code></a>, <a href="#float-array"><code>float_array</code></a>, and the image helpers <code>draw_png</code>, <code>lox_mandel_array</code>, <code>lox_julia_array</code>, <code>encode_rgba</code>, <code>decode_rgba</code></li>
+<li><strong>built-in:</strong> <a href="#vectors"><code>vec2</code>/<code>vec3</code>/<code>vec4</code></a></li>
+<li><strong>gfx:</strong> <a href="#window"><code>window</code></a>, <a href="#image"><code>image</code></a>, <a href="#texture"><code>texture</code></a>, <a href="#render-texture"><code>render_texture</code></a>, <a href="#camera"><code>camera</code></a>, <a href="#shader"><code>shader</code></a>, <a href="#batch"><code>batch</code></a>, <a href="#batch-instanced"><code>batch_instanced</code></a>, <a href="#float-array"><code>float_array</code></a>, plus the image/colour helpers below</li>
 <li><strong id="mod-physics">physics:</strong> <a href="#physics-world"><code>physics_world</code></a></li>
 </ul>
-<div class="sig"><span class="nm">sleep</span>(<em>seconds</em>) <span class="pill">→ nil</span></div>
-<p>Pauses execution for the given number of seconds.</p>
+
+<h3>Colour encoding <span class="pill">gfx</span></h3>
+<div class="sig"><span class="nm">encode_rgba</span>(<em>r</em>, <em>g</em>, <em>b</em>) <span class="pill">→ float</span></div>
+<p>Packs three RGB components (0–255 integers) into a single encoded float, e.g. for storing colours in a <a href="#float-array">float_array</a>. (Despite the name, no alpha channel is encoded.)</p>
+<div class="sig"><span class="nm">decode_rgba</span>(<em>value</em>) <span class="pill">→ tuple</span></div>
+<p>Unpacks an encoded colour float back into an <code>(r, g, b)</code> tuple.</p>
+<pre><code class="lox">from gfx import encode_rgba, decode_rgba
+c = encode_rgba(255, 128, 0)   // pack RGB into one float
+rgb = decode_rgba(c)           // (255, 128, 0)</code></pre>
+
+<h3>Image helpers <span class="pill">gfx</span></h3>
+<p>These fill a <a href="#float-array">float_array</a> that you allocate, then render it with <a href="#window"><code>win.draw_array()</code></a> (or a render texture's <code>draw_array_fast()</code>) or save it with <code>draw_png()</code>.</p>
+<div class="sig"><span class="nm">draw_png</span>(<em>filename</em>, <em>float_array</em>, <em>rgb_encoded</em>) <span class="pill">→ nil</span></div>
+<p>Writes a <a href="#float-array">float_array</a> to a PNG file. Pass <code>rgb_encoded = true</code> when cells hold <a href="#mod-gfx"><code>encode_rgba</code></a>-packed colours, or <code>false</code> for a grayscale array (values 0–1).</p>
+<div class="sig"><span class="nm">lox_mandel_array</span>(<em>array</em>, <em>height</em>, <em>width</em>, <em>max_iter</em>, <em>xoff</em>, <em>yoff</em>, <em>zoom</em>) <span class="pill">→ nil</span></div>
+<p>Fills <code>array</code> in place with an RGB-encoded Mandelbrot set.</p>
+<div class="sig"><span class="nm">lox_julia_array</span>(<em>array</em>, <em>width</em>, <em>height</em>, <em>max_iter</em>, <em>cx</em>, <em>cy</em>, <em>scale</em>, <em>xoff</em>, <em>yoff</em>) <span class="pill">→ nil</span></div>
+<p>Fills <code>array</code> in place with an RGB-encoded Julia set.</p>
+<pre><code class="lox">from gfx import float_array, lox_mandel_array, draw_png
+arr = float_array(800, 600)
+lox_mandel_array(arr, 600, 800, 100, 0.0, 0.0, 1.0)   // array, height, width, max_iter, xoff, yoff, zoom
+draw_png("mandelbrot.png", arr, true)                 // true: cells are RGB-encoded</code></pre>
 
 <!-- ==================== WINDOW ==================== -->
 <h2 class="section" id="window">window <span class="pill">native object</span></h2>
 <p>The <code>window</code> object is the main interface for graphics rendering and input. It wraps a Raylib window and requires a display; graphics scripts should not be run headless.</p>
 <div class="sig"><span class="nm">window</span>(<em>width</em>, <em>height</em>) <span class="pill">→ window</span></div>
-<pre><code class="lox">from gfx import *
+<pre><code class="lox">from gfx import window
 win = window(800, 600)
 win.init()
 while (!win.should_close()) {
@@ -792,13 +803,13 @@ win.close()</code></pre>
 <thead><tr><th>Method</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><code>begin_3d(camera)</code> / <code>end_3d()</code></td><td>Enter / leave 3D mode with a <a href="#camera">camera</a></td></tr>
-<tr><td><code>cube(x, y, z, w, h, l, color)</code></td><td>Draw a solid cube</td></tr>
-<tr><td><code>cube_wires(x, y, z, w, h, l, color)</code></td><td>Draw a cube wireframe</td></tr>
+<tr><td><code>cube(position, size, color)</code></td><td>Draw a solid cube (<code>position</code>/<code>size</code> <code>vec3</code>, <code>color</code> <code>vec4</code>)</td></tr>
+<tr><td><code>cube_wires(position, size, color)</code></td><td>Draw a cube wireframe (same args as <code>cube</code>)</td></tr>
 <tr><td><code>cube_rotated(position, size, axis, angle, color)</code></td><td>Draw a solid cube rotated by <code>angle</code> degrees around <code>axis</code> (all vec3 except angle)</td></tr>
 <tr><td><code>cube_wires_rotated(position, size, axis, angle, color)</code></td><td>Draw a cube wireframe rotated by <code>angle</code> degrees around <code>axis</code> — the rotated counterpart of <code>cube_wires</code></td></tr>
 <tr><td><code>textured_cube(texture, position, size, color)</code></td><td>Draw a cube with a texture overlay</td></tr>
-<tr><td><code>sphere(x, y, z, radius, color)</code></td><td>Draw a sphere</td></tr>
-<tr><td><code>cylinder(x, y, z, r_top, r_bottom, height, slices, color)</code></td><td>Draw a cylinder</td></tr>
+<tr><td><code>sphere(center, radius, color)</code></td><td>Draw a sphere (<code>center</code> <code>vec3</code>, <code>radius</code> number, <code>color</code> <code>vec4</code>)</td></tr>
+<tr><td><code>cylinder(position, radius_top, radius_bottom, height, color)</code></td><td>Draw a cylinder (<code>position</code> <code>vec3</code>)</td></tr>
 <tr><td><code>plane(position, size, color)</code></td><td>Draw a flat plane</td></tr>
 <tr><td><code>grid(slices, spacing)</code></td><td>Draw a reference grid</td></tr>
 <tr><td><code>ellipse3(cx, cy, cz, rx, rz, color)</code></td><td>Draw a flat 3D ellipse</td></tr>
@@ -834,7 +845,13 @@ win.close()</code></pre>
 <p>A <code>batch</code> accumulates many primitives of one type and renders them all in a single native draw call — dramatically faster than thousands of individual Lox-level draw calls. Ideal for particle systems, large scenes and real-time simulations.</p>
 <div class="sig"><span class="nm">batch</span>(<em>type</em>) <span class="pill">→ batch</span></div>
 <p><code>type</code> is one of the <code>win.BATCH_*</code> constants. Supported primitive types: cube, textured cube, sphere, triangle (3 points), and circle (flat 3D disc).</p>
-<pre><code class="lox">cube_batch = batch(win.BATCH_CUBE)
+<pre><code class="lox">from gfx import window, batch, camera
+import random
+win = window(800, 600)
+win.init()
+cam = camera(vec3(0, 50, 100), vec3(0, 0, 0), vec3(0, 1, 0))
+
+cube_batch = batch(win.BATCH_CUBE)
 foreach (i in range(1000)) {
     pos   = vec3(random.float(-50, 50), 0, random.float(-50, 50))
     size  = vec3(1, 1, 1)
@@ -890,16 +907,53 @@ win.end_3d()</code></pre>
 <!-- ==================== BATCH_INSTANCED ==================== -->
 <h2 class="section" id="batch-instanced">batch_instanced <span class="pill">native object</span></h2>
 <p><code>batch_instanced()</code> uses GPU mesh instancing to draw very large numbers of textured cubes (100k+) in a single call. It is specialised for textured-cube instancing where hardware instancing gives the biggest win.</p>
-<div class="sig"><span class="nm">batch_instanced</span>(<em>…</em>) <span class="pill">→ batch_instanced</span></div>
-<p>Like <a href="#batch"><code>batch</code></a>, entries are added and then drawn in one call, but the render path uses hardware instancing. Use this when you need an order of magnitude more objects than a regular batch can sustain.</p>
+<div class="sig"><span class="nm">batch_instanced</span>(<em>texture</em>, <em>cube_size</em>, <em>max_instances</em>) <span class="pill">→ batch_instanced</span></div>
+<ul>
+<li><code>texture</code> — the <a href="#texture">texture</a> applied to every cube (all instances share it); commonly a <a href="#render-texture">render_texture</a>'s <code>get_texture()</code>.</li>
+<li><code>cube_size</code> — edge length (float) of every cube.</li>
+<li><code>max_instances</code> — capacity (int); <code>add()</code> beyond this raises a runtime error.</li>
+</ul>
+<p>Like <a href="#batch"><code>batch</code></a>, entries are added then drawn in one call, but the render path uses hardware instancing. Unlike <code>batch</code>, instances carry only a transform (position + rotation) — the texture and size are fixed at construction. The workflow is: <code>add()</code> every instance, call <code>make_transforms()</code> once to build the transform matrices, then <code>draw(camera)</code> each frame.</p>
+<pre><code class="lox">from gfx import window, camera, render_texture, batch_instanced
+import random
+win = window(1200, 800)
+win.init()
+cam = camera(vec3(0, 20, 60), vec3(0, 0, 0), vec3(0, 1, 0))
+
+rt = render_texture(64, 64)                 // build a texture to sample
+rt.clear(vec4(0, 0, 0, 255))
+rt.circle_fill(32, 32, 30, vec4(255, 128, 0, 255))
+
+cubes = batch_instanced(rt.get_texture(), 2.0, 100000)
+foreach (i in range(50000)) {
+    pos = vec3(random.float(-50, 50), random.float(-50, 50), random.float(-50, 50))
+    cubes.add(pos, vec3(0, 1, 0), random.float(0, 360))   // position, rotation axis, angle°
+}
+cubes.make_transforms()                     // build matrices once, after adding
+
+// render loop:
+win.begin_3d(cam)
+cubes.draw(cam)                             // all 50k cubes in one instanced call
+win.end_3d()</code></pre>
+<table>
+<thead><tr><th>Method</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>add(position_vec3, axis_vec3, angle)</code></td><td>Add an instance at <code>position</code>, rotated <code>angle</code> degrees (float) around <code>axis</code>. Errors if <code>max_instances</code> is exceeded.</td></tr>
+<tr><td><code>make_transforms()</code></td><td>Build the instance transform matrices from the added instances. Call once after all <code>add()</code>s and before <code>draw()</code>.</td></tr>
+<tr><td><code>draw(camera)</code></td><td>Render every instance in a single hardware-instanced call.</td></tr>
+<tr><td><code>count()</code></td><td>Number of instances added.</td></tr>
+</tbody>
+</table>
 <div class="note"><strong>Not customisable with <code>shader()</code></strong>Every <code>batch_instanced</code> renders with the same built-in lighting shader (ambient light only, one shared texture per batch); <code>win.begin_shader_mode()</code> has no effect on it, and instances carry only a transform — no per-instance colour or custom data. There is currently no way to give a <code>batch_instanced</code> a custom look from a <code>.lox</code> script. Use plain <a href="#batch"><code>batch</code></a> if you need per-object shader effects.</div>
 
 <!-- ==================== TEXTURE ==================== -->
 <h2 class="section" id="texture">texture <span class="pill">native object</span></h2>
 <p>A texture is 2D image data uploaded to the GPU, with optional animation frames.</p>
 <div class="sig"><span class="nm">texture</span>(<em>image</em>, <em>frames</em>, <em>start_frame</em>, <em>end_frame</em>) <span class="pill">→ texture</span></div>
-<pre><code class="lox">img = image("sprite.png")
-tex = texture(img, 4, 0, 3)   // 4 animation frames, play 0..3</code></pre>
+<pre><code class="lox">from gfx import image, texture
+img = image("sprite.png")
+tex = texture(img, 4, 0, 3)   // 4 animation frames, play 0..3
+tex.animate(6)                // advance a frame every 6 ticks</code></pre>
 <table>
 <thead><tr><th>Method</th><th>Description</th></tr></thead>
 <tbody>
@@ -913,6 +967,16 @@ tex = texture(img, 4, 0, 3)   // 4 animation frames, play 0..3</code></pre>
 <h2 class="section" id="render-texture">render_texture <span class="pill">native object</span></h2>
 <p>A render texture is an off-screen buffer you can draw into and then use as a texture — useful for post-processing and dynamic textures.</p>
 <div class="sig"><span class="nm">render_texture</span>(<em>width</em>, <em>height</em>) <span class="pill">→ render_texture</span></div>
+<pre><code class="lox">from gfx import window, render_texture
+win = window(800, 600)
+win.init()
+rt = render_texture(128, 128)
+rt.clear(vec4(0, 0, 0, 255))
+rt.circle_fill(64, 64, 40, vec4(255, 128, 0, 255))   // draw into the off-screen buffer
+// later, blit it to the screen:
+win.begin()
+win.draw_render_texture(rt, 100, 100, vec4(255, 255, 255, 255))
+win.end()</code></pre>
 <table>
 <thead><tr><th>Method</th><th>Description</th></tr></thead>
 <tbody>
@@ -927,6 +991,10 @@ tex = texture(img, 4, 0, 3)   // 4 animation frames, play 0..3</code></pre>
 <h2 class="section" id="image">image <span class="pill">native object</span></h2>
 <p>An image holds raw pixel data loaded from a file, typically used to create a <a href="#texture">texture</a>.</p>
 <div class="sig"><span class="nm">image</span>(<em>filename</em>) <span class="pill">→ image</span></div>
+<pre><code class="lox">from gfx import image, texture
+img = image("player.png")
+print img.width()             // pixel dimensions
+tex = texture(img, 1, 0, 0)   // upload as a single-frame texture</code></pre>
 <table>
 <thead><tr><th>Method</th><th>Description</th></tr></thead>
 <tbody>
@@ -938,6 +1006,15 @@ tex = texture(img, 4, 0, 3)   // 4 animation frames, play 0..3</code></pre>
 <h2 class="section" id="camera">camera <span class="pill">native object</span></h2>
 <p>A camera defines the viewpoint for 3D rendering, passed to <a href="#window"><code>win.begin_3d()</code></a>.</p>
 <div class="sig"><span class="nm">camera</span>(<em>position_vec3</em>, <em>target_vec3</em>, <em>up_vec3</em>) <span class="pill">→ camera</span></div>
+<pre><code class="lox">from gfx import window, camera
+win = window(800, 600)
+win.init()
+cam = camera(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0))   // eye, look-at, up
+cam.set_fovy(60)
+// in the render loop:
+win.begin_3d(cam)
+win.cube(vec3(0, 0, 0), vec3(2, 2, 2), vec4(255, 0, 0, 255))   // position, size, colour
+win.end_3d()</code></pre>
 <table>
 <thead><tr><th>Method</th><th>Description</th></tr></thead>
 <tbody>
@@ -953,15 +1030,18 @@ tex = texture(img, 4, 0, 3)   // 4 animation frames, play 0..3</code></pre>
 <h2 class="section" id="shader">shader <span class="pill">native object</span></h2>
 <p>Shaders load custom GLSL programs for GPU rendering effects. Create from files, or construct empty and load from source strings.</p>
 <div class="sig"><span class="nm">shader</span>(<em>vertex_file</em>, <em>fragment_file</em>) &nbsp;·&nbsp; <span class="nm">shader</span>() <span class="pill">→ shader</span></div>
-<pre><code class="lox">sh = shader("rainbow.vs", "rainbow.fs")
+<pre><code class="lox">from gfx import window, shader
+win = window(800, 600)
+win.init()
+sh = shader("rainbow.vs", "rainbow.fs")
 if (sh.is_valid()) {
     time_loc = sh.get_location("time")
 }
 
-// In the render loop:
+// In the render loop (cube_batch built earlier, elapsed = seconds since start):
 sh.set_value_float(time_loc, elapsed)
 win.begin_shader_mode(sh)
-batch.draw()
+cube_batch.draw()
 win.end_shader_mode()</code></pre>
 <table>
 <thead><tr><th>Method</th><th>Description</th></tr></thead>
@@ -981,8 +1061,20 @@ win.end_shader_mode()</code></pre>
 
 <!-- ==================== FLOAT ARRAY ==================== -->
 <h2 class="section" id="float-array">float_array <span class="pill">native object</span></h2>
-<p>A dense 2D array of floats, useful for numeric computation and image/data generation. Colours can be RGBA-encoded into cells with <a href="#builtins"><code>encode_rgba()</code></a> and rendered with <a href="#window"><code>win.draw_array()</code></a> or saved with <a href="#builtins"><code>draw_png()</code></a>.</p>
+<p>A dense 2D array of floats, useful for numeric computation and image/data generation. Colours can be RGBA-encoded into cells with <a href="#mod-gfx"><code>encode_rgba()</code></a> and rendered with <a href="#window"><code>win.draw_array()</code></a> or saved with <a href="#mod-gfx"><code>draw_png()</code></a>.</p>
 <div class="sig"><span class="nm">float_array</span>(<em>width</em>, <em>height</em>) <span class="pill">→ float_array</span></div>
+<pre><code class="lox">from gfx import float_array, window, encode_rgba
+win = window(256, 256)
+win.init()
+grid = float_array(256, 256)
+foreach (y in range(256)) {
+    foreach (x in range(256)) {
+        grid.set(x, y, encode_rgba(x, y, 128))   // a colour gradient
+    }
+}
+win.begin()
+win.draw_array(grid)          // render the RGBA-encoded array
+win.end()</code></pre>
 <table>
 <thead><tr><th>Method</th><th>Description</th></tr></thead>
 <tbody>
@@ -1006,6 +1098,9 @@ win.end_shader_mode()</code></pre>
 <h3>Basic usage</h3>
 <p>Register a material, add bodies to get their ids, then call <code>step()</code> each frame and read positions back with <code>get_position()</code>:</p>
 <pre><code class="lox">from physics import physics_world
+from gfx import window, camera
+import random
+import colour as col
 world = physics_world(vec3(-10, 0, -10), vec3(10, 100, 10), 2.0, vec3(0, -0.01, 0))
 mat = world.add_material(0.5, 0.3, 0.99)     // restitution, friction, damping
 
@@ -1015,12 +1110,20 @@ foreach (i in range(20)) {
     ids.append(world.add(pos, vec3(0, 0, 0), 0.5, mat))
 }
 
+win = window(800, 600)
+win.init()
+cam = camera(vec3(0, 20, 40), vec3(0, 0, 0), vec3(0, 1, 0))
 while (!win.should_close()) {
     world.step(1.0)
+    win.begin()
+    win.clear(vec4(30, 30, 40, 255))
+    win.begin_3d(cam)
     foreach (id in ids) {
         p = world.get_position(id)
-        win.sphere(p.x, p.y, p.z, 0.5, col.WHITE)
+        win.sphere(p, 0.5, col.WHITE)
     }
+    win.end_3d()
+    win.end()
 }</code></pre>
 <h3>Methods</h3>
 <table>
@@ -1265,7 +1368,7 @@ try {
 <tr><td><code>sys.clock()</code></td><td>Current time in seconds (for timing / animation)</td></tr>
 </tbody>
 </table>
-<div class="note"><strong>Note</strong>File I/O lives in the <a href="#mod-os"><code>os</code></a> module (not <code>sys</code>), and <a href="#builtins"><code>sleep()</code></a> is a global function. <code>sys</code> must be imported before use — it is not injected globally.</div>
+<div class="note"><strong>Note</strong>File I/O lives in the <a href="#mod-os"><code>os</code></a> module (not <code>sys</code>), and <a href="#builtins"><code>sleep()</code></a> is a built-in function. <code>sys</code> must be imported before use — it is not injected as a built-in.</div>
 
 <!-- ==================== MODULE: INSPECT ==================== -->
 <h2 class="section" id="mod-inspect">inspect <span class="pill">module</span></h2>
