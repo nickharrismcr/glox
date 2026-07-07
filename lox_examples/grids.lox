@@ -105,7 +105,7 @@ class Grid {
         this.cy = y
         this.size = size
     }
-    draw(win,alpha,scale) {
+    draw(win,alpha=255,scale=1.0) {
         n = this.cells 
         sz=this.size*scale 
         a=this.angle
@@ -175,7 +175,7 @@ while (!win.should_close()) {
     grids[0].update(x.get(), y.get(), size.get())
     shift.update()
     grids[0].col = shift.get()
-    grids[0].draw(win,255,1.0)
+    grids[0].draw(win)
 
     
     for (var i = len(grids) - 1; i > 0; i = i - 1) {

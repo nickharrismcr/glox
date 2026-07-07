@@ -113,10 +113,7 @@ func createColoredTextures(count) {
 func even(value) {
     value = int(value)
     // Ensure value is even
-    if (value % 2 == 1) {
-        return value - 1
-    }
-    return value
+    return value % 2 == 1 ? value - 1 : value
 }
 
 class Batches {
@@ -360,11 +357,7 @@ class Controller {
     updateCameraPosition() {
         // Smooth speed interpolation
         speedDiff = this.targetSpeed - this.speed
-        if (math.abs(speedDiff) > 0.001) {
-            this.speed += speedDiff * 0.1  // Smooth speed interpolation
-        } else {
-            this.speed = this.targetSpeed
-        }
+        this.speed = math.abs(speedDiff) > 0.001 ? this.speed + speedDiff * 0.1 : this.targetSpeed
 
         // Smooth angle interpolation with gradual acceleration
         angleDiff = this.targetAngle - this.currentAngle

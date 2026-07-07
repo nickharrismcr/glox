@@ -5,19 +5,13 @@ import inspect
 
 func ceil(x) {
     var ix = int(x)
-    if (x > float(ix)) {
-        return ix + 1
-    }
-    return ix
+    return x > float(ix) ? ix + 1 : ix
 }
 
 func floor(x) {
     var ix = int(x)
-    if (x < float(ix)) {
-        return ix - 1
-    }
-    return ix
-}   
+    return x < float(ix) ? ix - 1 : ix
+}
 
 class Line {
     init(pos, col, width, height, angle, margin) {
