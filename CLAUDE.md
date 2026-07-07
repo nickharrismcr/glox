@@ -88,9 +88,9 @@ The compiler does a single-pass Pratt parser; there is no AST. Closures, upvalue
 
 ### Value representation
 
-`Value` (in `src/core/value.go`) is a tagged union struct with fields for `Int`, `Float`, `Bool`, and `Obj` (an `Object` interface). Vec2/3/4 are also inlined as struct fields on `Value` to avoid heap allocation. All strings are **interned** — the VM works with integer IDs for string keys (method lookup, globals) to avoid repeated hashing. `Value.InternedId` caches the interned ID directly on the value so the VM doesn't need to cast `Obj` to `StringObject` on every global/method lookup.
+`Value` (in `src/core/value.go`) is a tagged union struct with a `Data uint64` field (holding an int cast, float64 bits, or bool 0/1), an `Obj` (`Object` interface) field, plus `InternedId`, `Type`, and `Immut`. All strings are **interned** — the VM works with integer IDs for string keys (method lookup, globals) to avoid repeated hashing. `Value.InternedId` caches the interned ID directly on the value so the VM doesn't need to cast `Obj` to `StringObject` on every global/method lookup.
 
-The struct is currently **64 bytes** (vs clox's ~16 bytes) — a known performance cost. A reduction plan exists in `C:\Users\User\.claude\plans\glox-performance-optimisations.md`.
+The struct is currently **32 bytes** (vs clox's ~16 bytes) — a known performance cost, reduced from an earlier 64 bytes. See `docs/performance-roadmap.md` for the remaining performance gap and optimisation plan.
 
 ### Object types
 

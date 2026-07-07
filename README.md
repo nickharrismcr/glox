@@ -111,9 +111,9 @@ Benchmarks run via `bin/benchmarks.sh` (loxcraft suite).
 
 glox is currently 1.5–3.6× slower than CPython across the suite.
 
-Known costs:
-- **`Value` struct is 32 bytes** — clox's is ~16 bytes. Every stack push/pop copies 32 bytes.
-- **No computed goto** — Go's `switch` dispatch is slower than clox's `COMPUTED_GOTO` threaded dispatch, which jumps directly to the next handler without re-entering the switch.
+**Why a C VM (clox) is faster.** The gap is structural, not a handful of missing tricks. clox is a tagged-union value in ~16 bytes with `ip`/stack pointers pinned in registers, raw pointer arithmetic (no bounds checks), object type dispatched by a single tag byte, instance fields and methods in a purpose-built open-addressing hash table, and no garbage collector on the hot path. glox pays Go's costs for the same work: a 32-byte `Value`, an `Object` **interface** (virtual dispatch) for every heap type, **Go `map`-backed** instance fields and method tables, bounds-checked slice indexing, a pointer-bearing value stack that the **garbage collector must scan** (with write barriers), and per-object allocation for collection method tables and bound methods. The allocation-free numeric benchmarks (`fib`, `loop`) sit near the ~2.2× floor that dispatch and copy overhead impose; the object-heavy ones (`trees`, `method_call`) run wider because of the map lookups and GC pressure on top.
+
+A prioritised plan to close the gap — profiling steps, cheap wins, and the larger structural changes (slot-based instance fields, cached method tables) — is in **[docs/performance-roadmap.md](docs/performance-roadmap.md)**.
 
 Optimisations in place:
 - **`Value` struct reduced 64→32 bytes** in three steps:
