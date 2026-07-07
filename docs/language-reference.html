@@ -747,7 +747,7 @@ lox_mandel_array(arr, 600, 800, 100, 0.0, 0.0, 1.0)   // array, height, width, m
 draw_png("mandelbrot.png", arr, true)                 // true: cells are RGB-encoded</code></pre>
 
 <!-- ==================== WINDOW ==================== -->
-<h2 class="section" id="window">window <span class="pill">native object</span></h2>
+<h2 class="section" id="window">window <span class="pill">gfx</span></h2>
 <p>The <code>window</code> object is the main interface for graphics rendering and input. It wraps a Raylib window and requires a display; graphics scripts should not be run headless.</p>
 <div class="sig"><span class="nm">window</span>(<em>width</em>, <em>height</em>) <span class="pill">→ window</span></div>
 <pre><code class="lox">from gfx import window
@@ -841,7 +841,7 @@ win.close()</code></pre>
 <p>Passed to <a href="#batch"><code>batch()</code></a>: <code>win.BATCH_CUBE</code>, <code>win.BATCH_TEXTURED_CUBE</code>, <code>win.BATCH_SPHERE</code>, <code>win.BATCH_TRIANGLE3</code>, <code>win.BATCH_CIRCLE3</code>.</p>
 
 <!-- ==================== BATCH ==================== -->
-<h2 class="section" id="batch">batch <span class="pill">native object</span></h2>
+<h2 class="section" id="batch">batch <span class="pill">gfx</span></h2>
 <p>A <code>batch</code> accumulates many primitives of one type and renders them all in a single native draw call — dramatically faster than thousands of individual Lox-level draw calls. Ideal for particle systems, large scenes and real-time simulations.</p>
 <div class="sig"><span class="nm">batch</span>(<em>type</em>) <span class="pill">→ batch</span></div>
 <p><code>type</code> is one of the <code>win.BATCH_*</code> constants. Supported primitive types: cube, textured cube, sphere, triangle (3 points), and circle (flat 3D disc).</p>
@@ -905,7 +905,7 @@ win.end_3d()</code></pre>
 <div class="tip"><strong>Batching tips</strong>Use batching for any scene with more than ~50 similar objects. Pre-allocate with <code>reserve()</code>. Reusing a batch across frames (updating by index) is cheaper than clearing and rebuilding. For flat shadows, <code>BATCH_CIRCLE3</code> + <code>add_circle3()</code> replaces a hand-built triangle fan with a single call.</div>
 
 <!-- ==================== BATCH_INSTANCED ==================== -->
-<h2 class="section" id="batch-instanced">batch_instanced <span class="pill">native object</span></h2>
+<h2 class="section" id="batch-instanced">batch_instanced <span class="pill">gfx</span></h2>
 <p><code>batch_instanced()</code> uses GPU mesh instancing to draw very large numbers of textured cubes (100k+) in a single call. It is specialised for textured-cube instancing where hardware instancing gives the biggest win.</p>
 <div class="sig"><span class="nm">batch_instanced</span>(<em>texture</em>, <em>cube_size</em>, <em>max_instances</em>) <span class="pill">→ batch_instanced</span></div>
 <ul>
@@ -947,7 +947,7 @@ win.end_3d()</code></pre>
 <div class="note"><strong>Not customisable with <code>shader()</code></strong>Every <code>batch_instanced</code> renders with the same built-in lighting shader (ambient light only, one shared texture per batch); <code>win.begin_shader_mode()</code> has no effect on it, and instances carry only a transform — no per-instance colour or custom data. There is currently no way to give a <code>batch_instanced</code> a custom look from a <code>.lox</code> script. Use plain <a href="#batch"><code>batch</code></a> if you need per-object shader effects.</div>
 
 <!-- ==================== TEXTURE ==================== -->
-<h2 class="section" id="texture">texture <span class="pill">native object</span></h2>
+<h2 class="section" id="texture">texture <span class="pill">gfx</span></h2>
 <p>A texture is 2D image data uploaded to the GPU, with optional animation frames.</p>
 <div class="sig"><span class="nm">texture</span>(<em>image</em>, <em>frames</em>, <em>start_frame</em>, <em>end_frame</em>) <span class="pill">→ texture</span></div>
 <pre><code class="lox">from gfx import image, texture
@@ -964,7 +964,7 @@ tex.animate(6)                // advance a frame every 6 ticks</code></pre>
 </table>
 
 <!-- ==================== RENDER TEXTURE ==================== -->
-<h2 class="section" id="render-texture">render_texture <span class="pill">native object</span></h2>
+<h2 class="section" id="render-texture">render_texture <span class="pill">gfx</span></h2>
 <p>A render texture is an off-screen buffer you can draw into and then use as a texture — useful for post-processing and dynamic textures.</p>
 <div class="sig"><span class="nm">render_texture</span>(<em>width</em>, <em>height</em>) <span class="pill">→ render_texture</span></div>
 <pre><code class="lox">from gfx import window, render_texture
@@ -988,7 +988,7 @@ win.end()</code></pre>
 <p>Draw a render texture to the screen with <a href="#window"><code>win.draw_render_texture()</code></a> / <code>draw_render_texture_ex()</code>.</p>
 
 <!-- ==================== IMAGE ==================== -->
-<h2 class="section" id="image">image <span class="pill">native object</span></h2>
+<h2 class="section" id="image">image <span class="pill">gfx</span></h2>
 <p>An image holds raw pixel data loaded from a file, typically used to create a <a href="#texture">texture</a>.</p>
 <div class="sig"><span class="nm">image</span>(<em>filename</em>) <span class="pill">→ image</span></div>
 <pre><code class="lox">from gfx import image, texture
@@ -1003,7 +1003,7 @@ tex = texture(img, 1, 0, 0)   // upload as a single-frame texture</code></pre>
 </table>
 
 <!-- ==================== CAMERA ==================== -->
-<h2 class="section" id="camera">camera <span class="pill">native object</span></h2>
+<h2 class="section" id="camera">camera <span class="pill">gfx</span></h2>
 <p>A camera defines the viewpoint for 3D rendering, passed to <a href="#window"><code>win.begin_3d()</code></a>.</p>
 <div class="sig"><span class="nm">camera</span>(<em>position_vec3</em>, <em>target_vec3</em>, <em>up_vec3</em>) <span class="pill">→ camera</span></div>
 <pre><code class="lox">from gfx import window, camera
@@ -1027,7 +1027,7 @@ win.end_3d()</code></pre>
 </table>
 
 <!-- ==================== SHADER ==================== -->
-<h2 class="section" id="shader">shader <span class="pill">native object</span></h2>
+<h2 class="section" id="shader">shader <span class="pill">gfx</span></h2>
 <p>Shaders load custom GLSL programs for GPU rendering effects. Create from files, or construct empty and load from source strings.</p>
 <div class="sig"><span class="nm">shader</span>(<em>vertex_file</em>, <em>fragment_file</em>) &nbsp;·&nbsp; <span class="nm">shader</span>() <span class="pill">→ shader</span></div>
 <pre><code class="lox">from gfx import window, shader
@@ -1060,7 +1060,7 @@ win.end_shader_mode()</code></pre>
 <div class="note"><strong>Instanced batches don't respect this</strong><code>begin_shader_mode</code> only affects draws that use raylib's currently-bound shader — plain <a href="#batch"><code>batch</code></a> draws, <code>win.plane()</code>/sphere/cube/etc., and <code>win.draw_render_texture()</code> all qualify. <a href="#batch-instanced"><code>batch_instanced</code></a> does not: it always renders with its own fixed lighting shader regardless of what's currently bound, so wrapping <code>my_batch_instanced.draw()</code> in <code>begin_shader_mode</code> has no effect. See <a href="#batch-instanced"><code>batch_instanced</code></a> below.</div>
 
 <!-- ==================== FLOAT ARRAY ==================== -->
-<h2 class="section" id="float-array">float_array <span class="pill">native object</span></h2>
+<h2 class="section" id="float-array">float_array <span class="pill">gfx</span></h2>
 <p>A dense 2D array of floats, useful for numeric computation and image/data generation. Colours can be RGBA-encoded into cells with <a href="#mod-gfx"><code>encode_rgba()</code></a> and rendered with <a href="#window"><code>win.draw_array()</code></a> or saved with <a href="#mod-gfx"><code>draw_png()</code></a>.</p>
 <div class="sig"><span class="nm">float_array</span>(<em>width</em>, <em>height</em>) <span class="pill">→ float_array</span></div>
 <pre><code class="lox">from gfx import float_array, window, encode_rgba
@@ -1086,7 +1086,7 @@ win.end()</code></pre>
 </table>
 
 <!-- ==================== PHYSICS WORLD ==================== -->
-<h2 class="section" id="physics-world">physics_world <span class="pill">native object</span></h2>
+<h2 class="section" id="physics-world">physics_world <span class="pill">physics</span></h2>
 <p><code>physics_world</code> is a native 3D rigid-body simulation for spheres. Each body has a position, velocity, radius and material; <code>step()</code> advances them all — applying gravity, bouncing off the boundary box, and resolving body-to-body collisions — in a single native call. Fixed level geometry (floors, shelves, ramps) can be added as static boxes with <code>add_static_box</code> — optionally tilted, never moving — for dynamic spheres to bounce off.</p>
 <h3>Creating a world</h3>
 <div class="sig"><span class="nm">physics_world</span>(<em>min_vec3</em>, <em>max_vec3</em>, <em>cell_size</em>, <em>gravity_vec3</em>) <span class="pill">→ physics_world</span></div>
