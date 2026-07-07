@@ -12,7 +12,7 @@ The extensions to the language include enhanced string operations, lists, dictio
 
 **Authorship**
 
-The port of Bob Nystrom's clox bytecode interpreter to Go was done **by hand**, along with the language extensions up to and including exception handling. The Raylib graphics bindings and the core VM optimisations — superinstructions, native vector types, and similar — were assisted by **GitHub Copilot**. More recent work was co-authored with **Claude Code** (Anthropic);  language features (lambdas, one-line braced blocks, loop-scope and compiler fixes), VM performance (`Value`-struct shrink, faster global lookup, per-call allocation removal), benchmarking, Raylib/physics additions and demos, and tooling, tests, and the HTML language reference.
+The port of Bob Nystrom's clox bytecode interpreter to Go was done **by hand**, along with the language extensions up to and including exception handling. The Raylib graphics bindings and the core VM optimisations — superinstructions, native vector types, and similar — were assisted by **GitHub Copilot**. More recent work was co-authored with **Claude Code** (Anthropic);  language features (lambdas, one-line braced blocks, the full compound-assignment set, the ternary conditional expression, default & variadic parameters, loop-scope and compiler fixes), VM performance (`Value`-struct shrink, faster global lookup, per-call allocation removal), benchmarking, Raylib/physics additions and demos, and tooling, tests, and the HTML language reference.
 
 
 ### Additions to vanilla Lox
@@ -24,10 +24,12 @@ Feature summary — see the **[language reference](docs/language-reference.html)
 - **Implicit variable declaration** (`a = 1`) and **`const`** immutables.
 - **Integer type** with `%` modulus, distinct from float.
 - **Destructuring / unpacking assignment** — `a, b, c = [1, 2, 3]`.
-- **Compound assignment** — `+=`, `-=`, `++`.
+- **Compound assignment** — `+=`, `-=`, `*=`, `/=`, `%=`, `++`.
+- **Ternary / conditional expression** — `cond ? a : b` (C-style, right-associative).
 - **`break` / `continue`**, and **`foreach`** over lists, strings, and iterables (`__iter__`/`__next__`).
 - **`range(start, end, step)`** — native integer iterator, faster than an equivalent `for`.
 - **Anonymous functions (lambdas)** — `func (x) { ... }` as expressions; full closures.
+- **Default & variadic parameters** — `func f(a, b=expr)` (defaults evaluated at call time) and a trailing `*rest` that collects surplus positional arguments into a list.
 - **Exceptions** — `try` / `except` / `finally`, `raise`, custom `Exception` subclasses, catchable runtime errors.
 - **Module imports with bytecode caching** — `import m`, `import m as alias`, `from m import ...`; compiled modules cached as `__loxcache__/<module>.lxc`.
 
