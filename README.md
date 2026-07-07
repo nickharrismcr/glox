@@ -90,6 +90,8 @@ The legacy runner (`tests/old/test.py`) does exact byte comparison against store
 
 ## Performance Notes:
 
+This is a toy project written in go, its expected that it will perform poorly compared to Cpython or Clox. However it has been instructive and fun to implement optimisations to squeeze more performance out of the VM, or lift often used lox functions into the language library in go to get a native performance boost.
+
 Benchmarks run via `bin/benchmarks.sh` (loxcraft suite).  
 
 | benchmark | glox | CPython 3 | ratio |
