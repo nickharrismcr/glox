@@ -49,7 +49,7 @@ Feature summary — see the **[language reference](docs/language-reference.html)
 - **Batch rendering** — `batch()` draws thousands of primitives per call; `batch_instanced()` draws 100k+ instanced textured cubes.
 - **`physics_world`** — native 3D rigid-body sphere simulation (gravity, boundary bounce, collisions in Go).
 - **File & directory I/O** via `os`; PNG output; RGB encode/decode.
-- **Built-in modules** — `math`, `random`, `colour`, `string`, `itertools`, `functools`, `particle_sys`, `sys`, `os`, `inspect`, `gfx` (graphics constructors: `window`, `batch`, `texture`, `shader`, `camera`, …), `physics` (`physics_world`). Import with `from gfx import *` or `import gfx`; only `vec2`/`vec3`/`vec4` remain global.
+- **Built-in modules** — `math`, `random`, `colour`, `string`, `itertools`, `functools`, `particle_sys`, `sys`, `os`, `inspect`, `gfx` (graphics constructors: `window`, `batch`, `texture`, `shader`, `camera`, …), `physics` (`physics_world`). Import with `from gfx import *` or `import gfx`.
 
 ---
 
