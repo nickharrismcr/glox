@@ -106,6 +106,8 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		return byteInstruction(c, "OP_SET_LOCAL", offset)
 	case core.OP_JUMP_IF_FALSE:
 		return jumpInstruction(c, "OP_JUMP_IF_FALSE", 1, offset)
+	case core.OP_JUMP_IF_DEFINED:
+		return jumpIfDefinedInstruction(c, "OP_JUMP_IF_DEFINED", offset)
 	case core.OP_JUMP:
 		return jumpInstruction(c, "OP_JUMP", 1, offset)
 	case core.OP_LOOP:
@@ -281,6 +283,17 @@ func jumpInstruction(c *core.Chunk, name string, sign int, offset int) int {
 	core.LogFmt(core.TRACE, "%-16s %04d -> %d \n", name, offset, uint16(offset)+3+(uint16(sign)*jump))
 	return offset + 3
 }
+
+// jumpIfDefinedInstruction disassembles OP_JUMP_IF_DEFINED: a 1-byte local slot
+// followed by a 2-byte forward jump offset (4 bytes total).
+func jumpIfDefinedInstruction(c *core.Chunk, name string, offset int) int {
+
+	slot := c.Code[offset+1]
+	jump := uint16(c.Code[offset+2])<<8 | uint16(c.Code[offset+3])
+	core.LogFmt(core.TRACE, "%-16s slot %04d  %04d -> %d \n", name, slot, offset, uint16(offset)+4+jump)
+	return offset + 4
+}
+
 func foreachInstruction(c *core.Chunk, offset int) int {
 
 	var jump uint16

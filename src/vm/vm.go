@@ -554,6 +554,16 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 				frame.Ip += int(offset)
 			}
 
+		case core.OP_JUMP_IF_DEFINED:
+			// Default-parameter prologue guard: if the local slot already holds a
+			// caller-supplied value (not UNDEFINED), skip the default expression.
+			slot := int(vm.currCode[frame.Ip])
+			offset := uint16(vm.currCode[frame.Ip+1])<<8 | uint16(vm.currCode[frame.Ip+2])
+			frame.Ip += 3
+			if vm.stack[frame.Slots+slot].Type != core.VAL_UNDEFINED {
+				frame.Ip += int(offset)
+			}
+
 		case core.OP_JUMP:
 			// Unconditional jump forward by offset amount (used for control flow)
 
@@ -1734,6 +1744,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 // callValue attempts to call a value with the specified number of arguments.
 // Handles closures, built-in functions, classes (constructors), and bound methods.
+//
 //go:noinline
 func (vm *VM) callValue(callee core.Value, argCount int) bool {
 
@@ -1779,6 +1790,7 @@ func (vm *VM) callValue(callee core.Value, argCount int) bool {
 
 // invoke performs optimized method calls and module access without separate property lookup.
 // optimised method call/module access
+//
 //go:noinline
 func (vm *VM) invoke(name core.Value, argCount int) bool {
 	receiver := vm.Peek(argCount)
@@ -1820,6 +1832,7 @@ func (vm *VM) invoke(name core.Value, argCount int) bool {
 //------------------------------------------------------------------------------------------
 
 // invokeFromClass calls a method from a specific class, handling both static and instance methods.
+//
 //go:noinline
 func (vm *VM) invokeFromClass(class *core.ClassObject, name core.Value, argCount int, isStatic bool) bool {
 	i := int(name.InternedId)
@@ -1993,13 +2006,58 @@ func (vm *VM) call(closure *core.ClosureObject, argCount int) bool {
 		vm.DebugHook(vm, core.DebugEventCall, closure)
 	}
 
-	if argCount != closure.Function.Arity {
-		vm.RunTimeError("Expected %d arguments but got %d.", closure.Function.Arity, argCount)
+	fn := closure.Function
+	arity := fn.Arity
+	fixedCount := arity
+	if fn.IsVariadic {
+		fixedCount = arity - 1
+	}
+
+	// Validate the argument count against the accepted range.
+	if fn.IsVariadic {
+		if argCount < fn.MinArity {
+			vm.RunTimeError("Expected at least %d arguments but got %d.", fn.MinArity, argCount)
+			return false
+		}
+	} else if argCount < fn.MinArity || argCount > fixedCount {
+		if fn.MinArity == arity {
+			vm.RunTimeError("Expected %d arguments but got %d.", arity, argCount)
+		} else {
+			vm.RunTimeError("Expected between %d and %d arguments but got %d.", fn.MinArity, fixedCount, argCount)
+		}
 		return false
 	}
+
+	// Shape the stack so exactly `arity` parameter slots sit above the closure.
+	if fn.IsVariadic {
+		if argCount >= fixedCount {
+			// Collect surplus positional args (in order) into the *rest list.
+			surplusN := argCount - fixedCount
+			surplus := make([]core.Value, surplusN)
+			copy(surplus, vm.stack[vm.stackTop-surplusN:vm.stackTop])
+			vm.stackTop -= surplusN
+			vm.stack[vm.stackTop] = core.MakeObjectValue(core.MakeListObject(surplus, false), false)
+			vm.stackTop++
+		} else {
+			// Pad omitted optional fixed params, then push an empty *rest list.
+			for i := argCount; i < fixedCount; i++ {
+				vm.stack[vm.stackTop] = core.UNDEFINED_VALUE
+				vm.stackTop++
+			}
+			vm.stack[vm.stackTop] = core.MakeObjectValue(core.MakeListObject([]core.Value{}, false), false)
+			vm.stackTop++
+		}
+	} else {
+		// Pad omitted optional params with the UNDEFINED sentinel.
+		for i := argCount; i < arity; i++ {
+			vm.stack[vm.stackTop] = core.UNDEFINED_VALUE
+			vm.stackTop++
+		}
+	}
+
 	vm.Frames[vm.frameCount] = core.CallFrame{
 		Closure: closure,
-		Slots:   vm.stackTop - argCount - 1,
+		Slots:   vm.stackTop - arity - 1,
 		Depth:   vm.frameCount + 1,
 	}
 	vm.frameCount++
@@ -2048,6 +2106,7 @@ func (vm *VM) RaiseExceptionByName(name string, msg string) bool {
 //------------------------------------------------------------------------------------------
 
 // raiseException handles exception propagation through the call stack and exception handlers.
+//
 //go:noinline
 func (vm *VM) raiseException(err core.Value) bool {
 
@@ -2196,6 +2255,7 @@ func (vm *VM) sourceLine(script string, line int) string {
 //------------------------------------------------------------------------------------------
 
 // importModule loads and executes a Lox module, adding it to the current environment.
+//
 //go:noinline
 func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 

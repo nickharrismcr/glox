@@ -564,16 +564,52 @@ func (p *Parser) function(type_ FunctionType, name string, isExpr bool) {
 
 	p.consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.")
 	if !p.check(TOKEN_RIGHT_PAREN) {
+		minArity := 0
+		sawDefault := false
+		sawRest := false
 		for {
 			p.currentCompiler.function.Arity += 1
 			if p.currentCompiler.function.Arity > 255 {
 				p.errorAtCurrent("Can't have more than 255 parameters")
 			}
+			if p.match(TOKEN_STAR) {
+				// Variadic *rest parameter: collects surplus positional args into a list.
+				constant := p.parseVariable("Expect parameter name after '*'.")
+				p.defineVariable(constant)
+				p.currentCompiler.function.IsVariadic = true
+				sawRest = true
+				// *rest must be the last parameter.
+				break
+			}
 			constant := p.parseVariable("Expect parameter name.")
 			p.defineVariable(constant)
+			slot := uint8(p.currentCompiler.localCount - 1)
+			if p.match(TOKEN_EQUAL) {
+				// Default parameter: emit a prologue guard that runs the default
+				// expression only when the slot is still UNDEFINED (arg omitted).
+				sawDefault = true
+				p.emitByte(core.OP_JUMP_IF_DEFINED)
+				p.emitByte(slot)
+				p.emitByte(0xff)
+				p.emitByte(0xff)
+				off := len(p.currentChunk().Code) - 2
+				p.expression()
+				p.emitBytes(core.OP_SET_LOCAL, slot)
+				p.emitByte(core.OP_POP)
+				p.patchJump(off)
+			} else if sawDefault {
+				p.error("Non-default parameter cannot follow a default parameter.")
+			} else {
+				minArity += 1
+			}
 			if !p.match(TOKEN_COMMA) {
 				break
 			}
+		}
+		p.currentCompiler.function.MinArity = minArity
+		// If a *rest parameter was parsed, no further parameters are allowed.
+		if sawRest && p.check(TOKEN_COMMA) {
+			p.error("'*rest' must be the last parameter.")
 		}
 	}
 	p.match(TOKEN_EOL)

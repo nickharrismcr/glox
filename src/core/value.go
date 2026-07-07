@@ -4,11 +4,16 @@ import (
 	"bytes"
 	bin "encoding/binary"
 	"fmt"
-	"math"
 	"glox/src/util"
+	"math"
 )
 
 var NIL_VALUE = Value{Type: VAL_NIL}
+
+// UNDEFINED_VALUE is a VM-internal sentinel placed in an optional parameter's
+// local slot when the caller omits it. The function prologue replaces it by
+// running the default expression, so it never reaches user code.
+var UNDEFINED_VALUE = Value{Type: VAL_UNDEFINED}
 
 type ValueType uint8
 
@@ -21,15 +26,16 @@ const (
 	VAL_VEC2
 	VAL_VEC3
 	VAL_VEC4
+	VAL_UNDEFINED // internal sentinel: an omitted optional-parameter slot before its default runs
 )
 
 type Value struct {
-	Obj        Object  // 16 bytes (largest alignment first)
-	Data       uint64  // 8 bytes — holds int (cast), float64 bits, or bool (0/1)
-	InternedId int32   // 4 bytes — string intern ID cache; int32 is sufficient (max ~2B unique strings)
+	Obj        Object    // 16 bytes (largest alignment first)
+	Data       uint64    // 8 bytes — holds int (cast), float64 bits, or bool (0/1)
+	InternedId int32     // 4 bytes — string intern ID cache; int32 is sufficient (max ~2B unique strings)
 	Type       ValueType // 1 byte
-	Immut      bool    // 1 byte
-	_          [2]byte // 2 bytes padding (keeps struct size a multiple of 8)
+	Immut      bool      // 1 byte
+	_          [2]byte   // 2 bytes padding (keeps struct size a multiple of 8)
 }
 
 func boolToUint64(b bool) uint64 {
@@ -288,6 +294,8 @@ func (v Value) String() string {
 	case VAL_VEC4:
 		vec4 := v.Obj.(*Vec4Object)
 		return fmt.Sprintf("vec4(%g, %g, %g, %g)", vec4.X, vec4.Y, vec4.Z, vec4.W)
+	case VAL_UNDEFINED:
+		return "<undefined>"
 	default:
 		return "<unknown>"
 	}
@@ -427,6 +435,12 @@ func (v *Value) Serialise(buffer *bytes.Buffer) {
 			util.WriteString(buffer, fo.Name.Get())
 			bin.Write(buffer, bin.LittleEndian, uint32(fo.Arity))
 			bin.Write(buffer, bin.LittleEndian, uint32(fo.UpvalueCount))
+			bin.Write(buffer, bin.LittleEndian, uint32(fo.MinArity))
+			variadic := byte(0)
+			if fo.IsVariadic {
+				variadic = 1
+			}
+			buffer.Write([]byte{variadic})
 			fo.Chunk.Serialise(buffer)
 		default:
 			panic("serialise object value not handled")

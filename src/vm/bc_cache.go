@@ -155,12 +155,18 @@ func readValue(r io.Reader, env *core.Environment) core.Value {
 		var upvalueCount uint32
 		bin.Read(r, bin.LittleEndian, &upvalueCount)
 		//Debugf("Arity %d", arity)
+		var minArity uint32
+		bin.Read(r, bin.LittleEndian, &minArity)
+		var variadic [1]byte
+		r.Read(variadic[:])
 		chunk := readChunk(r, env)
 		fo := core.MakeFunctionObject(name.Get(), env)
 		fo.Name = name
 		//Debugf("Function %s arity %d upvalueCount %d", fo.name.get(), arity, upvalueCount)
 		fo.Arity = int(arity)
 		fo.UpvalueCount = int(upvalueCount)
+		fo.MinArity = int(minArity)
+		fo.IsVariadic = variadic[0] == 1
 		fo.Chunk = chunk
 		return core.MakeObjectValue(fo, false)
 	case 0x05:

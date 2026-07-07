@@ -1,6 +1,11 @@
 # Plan: Default & variadic parameters
 
-Status: proposed (not yet implemented).
+Status: **implemented** (shipped). Kept for historical reference. Implementation
+matches this plan: `UNDEFINED` sentinel + `OP_JUMP_IF_DEFINED` prologue guards,
+`MinArity`/`IsVariadic` on `FunctionObject`, call-time arg shaping in `vm.call`,
+and `.lxc` serialisation. See the Functions section of
+`docs/language-reference.html` and `tests/new_tests/test_default_params.py` /
+`test_variadic.py`.
 
 ## Context
 

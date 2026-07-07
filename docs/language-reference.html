@@ -402,6 +402,31 @@ print c()   // 1
 print c()   // 2</code></pre>
 <p>A function with no <code>return</code> returns <code>nil</code>. Functions can be passed as arguments and stored in variables, lists and dicts — see <a href="#mod-functools">functools</a> for <code>map</code>/<code>filter</code>/<code>reduce</code>.</p>
 
+<h3>Default parameters</h3>
+<p>A parameter may be given a default value with <code>name=expr</code>. The default is used when the caller omits that argument. Defaults are <strong>evaluated at call time</strong>, once per call — so a fresh value is produced each time (no shared mutable-default trap), the default may be any expression (including a function call), and it may reference earlier parameters.</p>
+<pre><code class="lox">func greet(name, greeting="hi") { return greeting & ", " & name }
+print greet("Sam")            // hi, Sam
+print greet("Sam", "yo")      // yo, Sam
+
+func f(n, m=n*2) { return m } // default references an earlier parameter
+print f(4)                    // 8
+
+func acc(x, items=[]) { items.append(x); return items }
+print acc(1)                  // [ 1 ]   (fresh list every call)
+print acc(2)                  // [ 2 ]</code></pre>
+<p>All defaulted parameters must come after the non-default (required) ones — a required parameter may not follow a defaulted one.</p>
+
+<h3>Variadic parameters (<code>*rest</code>)</h3>
+<p>A trailing <code>*name</code> parameter collects any surplus positional arguments into a fresh list. It must be the last parameter, and combines with required and default parameters.</p>
+<pre><code class="lox">func sum(*xs) { var t = 0; foreach (x in xs) { t = t + x } return t }
+print sum()                   // 0
+print sum(1, 2, 3)            // 6
+
+func lead(a, *rest) { return str(a) & "/" & str(len(rest)) }
+print lead("x", 1, 2)         // x/2
+
+func mix(a, b=10, *rest) { ... }   // required, then default, then *rest</code></pre>
+
 <h3>Anonymous functions (lambdas)</h3>
 <p>Omit the name to write a function as an expression. Anonymous functions are ordinary closures — they capture surrounding variables (and <code>this</code> inside a method) just like named ones — and are handy as inline callbacks:</p>
 <pre><code class="lox">var add = func (a, b) { return a + b }

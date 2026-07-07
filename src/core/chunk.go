@@ -81,6 +81,7 @@ const (
 	OP_INCR_CONST_N
 	OP_INCR_CONST_I
 	OP_INCR_CONST_F
+	OP_JUMP_IF_DEFINED // operands: 1-byte local slot, 2-byte forward offset; skips the default-fill prologue when the slot is already defined
 )
 
 func NewChunk(filename string) *Chunk {

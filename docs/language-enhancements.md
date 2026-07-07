@@ -17,6 +17,11 @@ in [`src/compiler/scanner.go`](../src/compiler/scanner.go), the run loop in
 > **Done:** Ternary / conditional expression (`cond ? a : b`) — shipped, C-style
 > and right-associative, only the selected branch is evaluated. See the
 > Conditional expression section of the language reference.
+>
+> **Done:** Default & variadic parameters — shipped. `func f(a, b=expr)` with
+> call-time-evaluated defaults, and a trailing `*rest` that collects surplus
+> positional args into a fresh list. See the Functions section of the language
+> reference.
 
 ---
 
@@ -92,10 +97,10 @@ token sequence the compiler desugars into concatenation / a `format` call. Touch
 
 **Effort.** Moderate-high (scanner + compiler); the runtime is unchanged.
 
-### 4. Default & variadic parameters
+### 4. Default & variadic parameters — *done*
 
-**Why.** `function()` parses a fixed parameter list and bumps `Arity`
-unconditionally, so every call must pass exactly N arguments. Defaults and a
+**Why.** `function()` parsed a fixed parameter list and bumped `Arity`
+unconditionally, so every call had to pass exactly N arguments. Defaults and a
 trailing `*rest` pair especially well with the functional-style APIs
 (`map`/`filter`/`reduce`) now that inline lambdas exist.
 
@@ -104,10 +109,16 @@ func greet(name, greeting="hi") { ... }
 func sum(*xs) { ... }
 ```
 
-**Hooks.** Extend the parameter loop in `function()`
-([`compile.go`](../src/compiler/compile.go)) to record defaults / a rest slot,
-and adjust argument binding and the arity check at the call sites (`OP_CALL`
-handling in [`vm.go`](../src/vm/vm.go)).
+**Hooks.** Extended the parameter loop in `function()`
+([`compile.go`](../src/compiler/compile.go)) to emit a call-time default-fill
+prologue guarded by a new `OP_JUMP_IF_DEFINED` opcode (skips the default
+expression when the caller supplied the argument), and record `MinArity` /
+`IsVariadic` on `FunctionObject`. `vm.call` ([`vm.go`](../src/vm/vm.go)) now
+range-checks the argument count, pads omitted optionals with a VM-internal
+`UNDEFINED` sentinel, and packs surplus args into the `*rest` list.
+`MinArity`/`IsVariadic` are serialised in the `.lxc` cache. Defaults are
+evaluated at call time (fresh value each call — no shared-mutable trap) and may
+reference earlier parameters. Keyword arguments remain out of scope.
 
 **Effort.** Moderate — parameter parsing plus call-time arity/argument handling.
 
@@ -141,7 +152,7 @@ codegen, break semantics.
 1. ~~**Compound assignment** (`*=`/`/=`/`%=`)~~ — done.
 2. ~~**Ternary**~~ — done (C-style `cond ? a : b`).
 3. **String interpolation** — biggest day-to-day ergonomics improvement.
-4. **Default/variadic params** — rounds out the function model.
+4. ~~**Default/variadic params**~~ — done.
 5. Bitwise / `switch` as demand arises.
 
 Everything here reuses existing machinery (Pratt rules, jump/patch helpers, the
