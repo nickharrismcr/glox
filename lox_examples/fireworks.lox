@@ -1,3 +1,4 @@
+from gfx import *
 // 2d particle system fireworks demo
 
 

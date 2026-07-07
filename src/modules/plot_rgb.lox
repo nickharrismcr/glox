@@ -1,3 +1,4 @@
+from gfx import *
 //
 // @file plot_rgb.lox
 // @brief RGB color plotting utilities for GLOX

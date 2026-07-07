@@ -1,3 +1,4 @@
+from gfx import *
 // textured_cube_example.lox - Example using the new textured_cube method
 
 import math;

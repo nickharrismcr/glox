@@ -1,3 +1,4 @@
+from gfx import *
 // city of stacks with colored cubes
 
 import math

@@ -533,13 +533,14 @@ try {
 <h2 class="section" id="modules">Modules &amp; imports</h2>
 <p>Modules are imported by name. Compiled module bytecode is cached in <code>__loxcache__/&lt;module&gt;.lxc</code> and reused unless the source is newer.</p>
 <pre><code class="lox">import math
-import graphics as gfx           // alias
+import particle_sys as ps        // alias
 import random, colour as clr     // multiple, with alias</code></pre>
 <h3>from … import</h3>
-<p>Selectively import names into the current namespace, or import everything with <code>*</code>.</p>
+<p>Selectively import names into the current namespace, or import everything with <code>*</code>. This works for both file modules and the native built-in modules.</p>
 <pre><code class="lox">from math import sin, cos, PI
-from colour import *</code></pre>
-<p>Module resolution uses the <code>LOX_PATH</code> environment variable. Built-in modules (<a href="#mod-sys">sys</a>, <a href="#mod-os">os</a>, <a href="#mod-inspect">inspect</a>, <a href="#mod-colour-utils">colour_utils</a>) are registered natively and need only be imported, not resolved from disk.</p>
+from colour import *
+from gfx import window, batch     // native built-in module</code></pre>
+<p>Module resolution uses the <code>LOX_PATH</code> environment variable. Built-in modules are registered natively and need only be imported, not resolved from disk: <a href="#mod-sys">sys</a>, <a href="#mod-os">os</a>, <a href="#mod-inspect">inspect</a>, <a href="#mod-colour-utils">colour_utils</a>, <a href="#mod-gfx">gfx</a> (window, batch, texture, shader, camera, …), and <a href="#mod-physics">physics</a> (physics_world).</p>
 
 <!-- ==================== NUMBERS ==================== -->
 <h2 class="section" id="numbers">Numbers</h2>
@@ -719,8 +720,18 @@ sum = vec3(1, 2, 3) ++ vec3(10, 10, 10)   // vec3(11, 12, 13)</code></pre>
 <div class="sig"><span class="nm">lox_julia_array</span>(<em>width</em>, <em>height</em>, <em>zoom</em>, <em>cx</em>, <em>cy</em>, <em>max_iter</em>) <span class="pill">→ float_array</span></div>
 <p>Generates a Julia set as an RGBA-encoded <a href="#float-array">float_array</a>.</p>
 
-<h3>Constructors</h3>
-<p>These create native objects, each documented in its own section: <a href="#vectors"><code>vec2</code>/<code>vec3</code>/<code>vec4</code></a>, <a href="#window"><code>window</code></a>, <a href="#image"><code>image</code></a>, <a href="#texture"><code>texture</code></a>, <a href="#render-texture"><code>render_texture</code></a>, <a href="#camera"><code>camera</code></a>, <a href="#shader"><code>shader</code></a>, <a href="#batch"><code>batch</code></a>, <a href="#batch-instanced"><code>batch_instanced</code></a>, <a href="#float-array"><code>float_array</code></a>, <a href="#physics-world"><code>physics_world</code></a>.</p>
+<h3 id="mod-gfx">Constructors — the <code>gfx</code> and <code>physics</code> modules</h3>
+<p>These create native objects, each documented in its own section. <code>vec2</code>/<code>vec3</code>/<code>vec4</code> are <strong>global</strong> (core value types). The graphics constructors live in the built-in <code>gfx</code> module and the physics constructor in <code>physics</code> — import them before use:</p>
+<pre><code class="lox">from gfx import *              // window, batch, texture, shader, camera, ...
+from physics import physics_world
+// or keep them namespaced:
+import gfx
+win = gfx.window(800, 600)</code></pre>
+<ul>
+<li><strong>global:</strong> <a href="#vectors"><code>vec2</code>/<code>vec3</code>/<code>vec4</code></a></li>
+<li><strong>gfx:</strong> <a href="#window"><code>window</code></a>, <a href="#image"><code>image</code></a>, <a href="#texture"><code>texture</code></a>, <a href="#render-texture"><code>render_texture</code></a>, <a href="#camera"><code>camera</code></a>, <a href="#shader"><code>shader</code></a>, <a href="#batch"><code>batch</code></a>, <a href="#batch-instanced"><code>batch_instanced</code></a>, <a href="#float-array"><code>float_array</code></a>, and the image helpers <code>draw_png</code>, <code>lox_mandel_array</code>, <code>lox_julia_array</code>, <code>encode_rgba</code>, <code>decode_rgba</code></li>
+<li><strong id="mod-physics">physics:</strong> <a href="#physics-world"><code>physics_world</code></a></li>
+</ul>
 <div class="sig"><span class="nm">sleep</span>(<em>seconds</em>) <span class="pill">→ nil</span></div>
 <p>Pauses execution for the given number of seconds.</p>
 
@@ -728,7 +739,8 @@ sum = vec3(1, 2, 3) ++ vec3(10, 10, 10)   // vec3(11, 12, 13)</code></pre>
 <h2 class="section" id="window">window <span class="pill">native object</span></h2>
 <p>The <code>window</code> object is the main interface for graphics rendering and input. It wraps a Raylib window and requires a display; graphics scripts should not be run headless.</p>
 <div class="sig"><span class="nm">window</span>(<em>width</em>, <em>height</em>) <span class="pill">→ window</span></div>
-<pre><code class="lox">win = window(800, 600)
+<pre><code class="lox">from gfx import *
+win = window(800, 600)
 win.init()
 while (!win.should_close()) {
     win.begin()
@@ -993,7 +1005,8 @@ win.end_shader_mode()</code></pre>
 </ul>
 <h3>Basic usage</h3>
 <p>Register a material, add bodies to get their ids, then call <code>step()</code> each frame and read positions back with <code>get_position()</code>:</p>
-<pre><code class="lox">world = physics_world(vec3(-10, 0, -10), vec3(10, 100, 10), 2.0, vec3(0, -0.01, 0))
+<pre><code class="lox">from physics import physics_world
+world = physics_world(vec3(-10, 0, -10), vec3(10, 100, 10), 2.0, vec3(0, -0.01, 0))
 mat = world.add_material(0.5, 0.3, 0.99)     // restitution, friction, damping
 
 ids = []

@@ -1,3 +1,4 @@
+from gfx import *
 //fast mandelbrot PNG using native plotter 
  
  

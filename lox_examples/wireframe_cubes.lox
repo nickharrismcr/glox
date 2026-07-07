@@ -1,3 +1,4 @@
+from gfx import *
 // Wireframe Cubes Demo
 //
 // 100 wireframe cubes of random size and hue, tumbling and drifting inside

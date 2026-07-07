@@ -1,3 +1,4 @@
+from gfx import *
 //
 // @file plot_grey.lox
 // @brief Grayscale plotting utilities for GLOX

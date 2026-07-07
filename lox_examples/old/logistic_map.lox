@@ -1,3 +1,4 @@
+from gfx import *
 // logistic map in graphics window
 // This example generates a logistic map and displays it in a window using the Lox programming language.
 

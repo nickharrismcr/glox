@@ -1,3 +1,4 @@
+from gfx import *
 // textured_cube_with_render_texture.lox - Example showing render_texture with textured_cube
 
 import math;

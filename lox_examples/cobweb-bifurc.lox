@@ -1,3 +1,4 @@
+from gfx import *
 // Cobweb plot and live bifurcation diagram of the logistic map  
 // can be paused and stepped through parameter space interactively
 import colour 

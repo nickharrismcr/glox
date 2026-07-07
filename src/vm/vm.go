@@ -1393,10 +1393,18 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			frame.Ip++
 			length := int(lv)
 
-			status := vm.importModule(module, module)
-			if status != INTERPRET_OK {
-				vm.RunTimeError("Failed to import module '%s'.", module)
-				return status, core.NIL_VALUE
+			// Built-in modules (sys, os, gfx, ...) are already registered in
+			// memory; register the module object into the current environment
+			// rather than trying to load <module>.lox from disk.
+			bID := core.InternName(module)
+			if moduleObj, ok := vm.BuiltInModules[bID]; ok {
+				frame.Closure.Function.Environment.SetVar(bID, core.MakeObjectValue(moduleObj, false))
+			} else {
+				status := vm.importModule(module, module)
+				if status != INTERPRET_OK {
+					vm.RunTimeError("Failed to import module '%s'.", module)
+					return status, core.NIL_VALUE
+				}
 			}
 
 			if length == 0 {
@@ -2355,7 +2363,8 @@ func (vm *VM) importFunctionFromModule(module string, name string) bool {
 		// import all functions from the module
 		moduleObj := moduleVal.AsModule()
 		for k, v := range moduleObj.Environment.Vars {
-			if v.Type == core.VAL_OBJ && v.Obj.GetType() == core.OBJECT_CLOSURE {
+			if v.Type == core.VAL_OBJ && (v.Obj.GetType() == core.OBJECT_CLOSURE ||
+				v.Obj.GetType() == core.OBJECT_NATIVE) {
 				currentEnv.SetVar(k, v)
 				// also write to the fast globals slot using a name-based lookup
 				for slot, gname := range currentChunk.GlobalNames {
@@ -2376,7 +2385,7 @@ func (vm *VM) importFunctionFromModule(module string, name string) bool {
 			return false
 		}
 		t := fn.Obj.GetType()
-		if t != core.OBJECT_CLOSURE && t != core.OBJECT_CLASS {
+		if t != core.OBJECT_CLOSURE && t != core.OBJECT_CLASS && t != core.OBJECT_NATIVE {
 			vm.RunTimeError("'%s' not found in module '%s'.", name, module)
 			return false
 		}

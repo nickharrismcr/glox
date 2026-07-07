@@ -1,3 +1,4 @@
+from gfx import *
 
 // dynamic julia set with hue translation
 

@@ -1,3 +1,4 @@
+from gfx import *
 // kaleidoscope from loaded image  
 
 import colour,math,random,os 

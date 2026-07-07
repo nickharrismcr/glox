@@ -1,5 +1,7 @@
 # Batched Drawing System Design
 
+> **Note:** `batch`, `batch_instanced`, `window`, `texture` and the other graphics constructors now live in the built-in `gfx` module. Add `from gfx import *` (keeps the unqualified names used below) or use `import gfx` and `gfx.batch(...)`.
+
 ## Overview
 
 This document describes the design and implementation of a batched drawing system for the GLox interpreter. The system will dramatically improve rendering performance by reducing individual draw calls and leveraging OpenGL/Raylib's batching capabilities.

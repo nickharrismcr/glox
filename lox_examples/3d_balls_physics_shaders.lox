@@ -1,3 +1,5 @@
+from gfx import *
+from physics import *
 // 3D Physics Simulation with Shaders
 
 import colour  as col

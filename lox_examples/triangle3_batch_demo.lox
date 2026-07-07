@@ -1,3 +1,4 @@
+from gfx import *
 // Triangle3 Batch Demo - demonstrates batched triangles with 3 arbitrary points
 // Creates a large undulating terrain mesh using thousands of small triangles
 import colour

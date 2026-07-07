@@ -1,3 +1,4 @@
+from gfx import *
 import random as rn
 import math  
 import colour as col 

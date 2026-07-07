@@ -1,3 +1,4 @@
+from gfx import *
 // textured cube batch performance demo
 // Shows thousands of textured cubes with camera orbit and culling
 import math;

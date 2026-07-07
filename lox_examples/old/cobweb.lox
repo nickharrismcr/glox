@@ -1,3 +1,4 @@
+from gfx import *
 // Cobweb plot of the logistic map using a graphics API
 
 fun logistic(r, x) {

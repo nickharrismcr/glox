@@ -1,5 +1,7 @@
 # Implementing Lox Batched Textured Cubes Based on Go Mesh Instancing Pattern
 
+> **Note:** `batch_instanced`, `window`, `render_texture` and the other graphics constructors now live in the built-in `gfx` module. Add `from gfx import *` (keeps the unqualified names used below) or use `import gfx` and `gfx.batch_instanced(...)`.
+
 ## Analysis of the Go Example Architecture
 
 The Go mesh instancing example demonstrates a highly efficient pattern for rendering thousands of objects with minimal draw calls:

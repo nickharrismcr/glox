@@ -1,5 +1,7 @@
 # GLox Shader System Documentation
 
+> **Note:** `shader`, `window`, `texture` and the other graphics constructors now live in the built-in `gfx` module. Add `from gfx import *` (keeps the unqualified names used below) or use `import gfx` and `gfx.shader(...)`.
+
 ## Overview
 
 The GLox interpreter now includes comprehensive shader support using raylib-go bindings. This allows for custom GLSL shaders to be loaded, configured, and used in 3D rendering applications.

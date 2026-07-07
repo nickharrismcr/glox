@@ -49,12 +49,17 @@
 
 ### Graphics Functions
 
-- **`draw_png(filename, width, height, data)`** - Writes PNG image data to file
-- **`batch(type)`** - Creates a new batch object for optimized rendering of primitives
+> **Note:** graphics constructors and helpers live in the built-in **`gfx`** module (and `physics_world` in **`physics`**). Import them before use — `from gfx import *` (names stay unqualified, as below) or `import gfx` then `gfx.window(...)`. Only `vec2`/`vec3`/`vec4` remain global.
+
+- **`window(width, height)`** - Creates a window object (`gfx`)
+- **`batch(type)`** - Creates a new batch object for optimized rendering of primitives (`gfx`)
+- **`texture` / `render_texture` / `shader` / `camera` / `image` / `batch_instanced` / `float_array`** - native graphics objects (`gfx`)
+- **`draw_png(filename, width, height, data)`** - Writes PNG image data to file (`gfx`)
+- **`encode_rgba` / `decode_rgba`** - pack/unpack RGBA into a float (`gfx`)
 
 ### Special Functions
 
-- **`lox_mandel_array(width, height, zoom, center_x, center_y, max_iter)`** - Generates Mandelbrot set data as a float array
+- **`lox_mandel_array(width, height, zoom, center_x, center_y, max_iter)`** - Generates Mandelbrot set data as a float array (`gfx`)
 
 ---
 
