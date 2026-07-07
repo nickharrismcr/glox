@@ -1708,10 +1708,11 @@ func (p *Parser) namedVariable(name Token, canAssign bool) {
 
 func (p *Parser) handleCompoundAssignment(canAssign bool, getOp uint8, setOp uint8, arg int) bool {
 
-	if canAssign && (p.check(TOKEN_PLUS_EQUAL) || p.check(TOKEN_MINUS_EQUAL)) {
+	if canAssign && (p.check(TOKEN_PLUS_EQUAL) || p.check(TOKEN_MINUS_EQUAL) ||
+		p.check(TOKEN_STAR_EQUAL) || p.check(TOKEN_SLASH_EQUAL) || p.check(TOKEN_PERCENT_EQUAL)) {
 		// Handle compound assignment
 		opType := p.current.Tokentype
-		p.advance() // consume += or -=
+		p.advance() // consume += -= *= /= or %=
 
 		// Get current value
 		p.emitBytes(getOp, uint8(arg))
@@ -1725,6 +1726,12 @@ func (p *Parser) handleCompoundAssignment(canAssign bool, getOp uint8, setOp uin
 			p.emitByte(core.OP_ADD_NUMERIC)
 		case TOKEN_MINUS_EQUAL:
 			p.emitByte(core.OP_SUBTRACT)
+		case TOKEN_STAR_EQUAL:
+			p.emitByte(core.OP_MULTIPLY)
+		case TOKEN_SLASH_EQUAL:
+			p.emitByte(core.OP_DIVIDE)
+		case TOKEN_PERCENT_EQUAL:
+			p.emitByte(core.OP_MODULUS)
 		}
 
 		// Store the result back
@@ -2176,10 +2183,11 @@ func dot(p *Parser, canAssign bool) {
 // e.g obj.prop += value
 func (p *Parser) handlePropertyCompoundAssignment(canAssign bool, name uint8) bool {
 
-	if canAssign && (p.check(TOKEN_PLUS_EQUAL) || p.check(TOKEN_MINUS_EQUAL)) {
+	if canAssign && (p.check(TOKEN_PLUS_EQUAL) || p.check(TOKEN_MINUS_EQUAL) ||
+		p.check(TOKEN_STAR_EQUAL) || p.check(TOKEN_SLASH_EQUAL) || p.check(TOKEN_PERCENT_EQUAL)) {
 		// Handle compound assignment on properties: obj.prop += value
 		opType := p.current.Tokentype
-		p.advance() // consume += or -=
+		p.advance() // consume += -= *= /= or %=
 
 		// Duplicate the object reference for getting the current value
 		p.emitByte(core.OP_DUP)
@@ -2200,6 +2208,12 @@ func (p *Parser) handlePropertyCompoundAssignment(canAssign bool, name uint8) bo
 			p.emitByte(core.OP_CONCAT)
 		case TOKEN_MINUS_EQUAL:
 			p.emitByte(core.OP_SUBTRACT)
+		case TOKEN_STAR_EQUAL:
+			p.emitByte(core.OP_MULTIPLY)
+		case TOKEN_SLASH_EQUAL:
+			p.emitByte(core.OP_DIVIDE)
+		case TOKEN_PERCENT_EQUAL:
+			p.emitByte(core.OP_MODULUS)
 		}
 
 		// Set the property with the new value

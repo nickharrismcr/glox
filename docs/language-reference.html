@@ -318,13 +318,17 @@ x, y, z = (10, 20, 30)</code></pre>
 </tbody>
 </table>
 <h3>Compound assignment</h3>
-<p>Numeric <code>+=</code> / <code>-=</code> work on variables and object properties. Vector properties may use <code>++</code> forms via the property compound path.</p>
+<p>The compound-assignment operators <code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code>, and <code>%=</code> work on variables and object properties. As with the binary operators, <code>/</code> on two integers is integer division and <code>%</code> requires integer operands. Vector properties may also use <code>++</code> forms via the property compound path.</p>
 <pre><code class="lox">a = 5
 a += 1        // 6
 a -= 2        // 4
+a *= 3        // 12
+a /= 4        // 3   (integer division)
+a %= 2        // 1
 
 p = vec2(1, 2)
-p.x += 1      // 2</code></pre>
+p.x += 1      // 2
+p.y *= 3      // 6</code></pre>
 
 <!-- ==================== CONTROL FLOW ==================== -->
 <h2 class="section" id="control-flow">Control flow</h2>

@@ -75,6 +75,8 @@ Source (.lox)
 
 The compiler does a single-pass Pratt parser; there is no AST. Closures, upvalues, and class methods are all resolved at compile time.
 
+On exit, the VM prints the last value left on the stack (the implicit return value of the top-level script). For most scripts this is `nil`, which is why a trailing `nil` line appears in script output and in the expected test outputs — it is expected, not a bug.
+
 ### Package layout
 
 | Package | Role |

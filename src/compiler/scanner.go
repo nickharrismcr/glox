@@ -22,6 +22,9 @@ const (
 	TOKEN_PLUS
 	TOKEN_PLUS_EQUAL
 	TOKEN_MINUS_EQUAL
+	TOKEN_STAR_EQUAL
+	TOKEN_SLASH_EQUAL
+	TOKEN_PERCENT_EQUAL
 	TOKEN_SEMICOLON
 	TOKEN_SLASH
 	TOKEN_STAR
@@ -128,6 +131,9 @@ var repr = map[TokenType]string{
 	TOKEN_PLUS:          "TOKEN_PLUS",
 	TOKEN_PLUS_EQUAL:    "TOKEN_PLUS_EQUAL",
 	TOKEN_MINUS_EQUAL:   "TOKEN_MINUS_EQUAL",
+	TOKEN_STAR_EQUAL:    "TOKEN_STAR_EQUAL",
+	TOKEN_SLASH_EQUAL:   "TOKEN_SLASH_EQUAL",
+	TOKEN_PERCENT_EQUAL: "TOKEN_PERCENT_EQUAL",
 	TOKEN_SEMICOLON:     "TOKEN_SEMICOLON",
 	TOKEN_SLASH:         "TOKEN_SLASH",
 	TOKEN_STAR:          "TOKEN_STAR",
@@ -324,10 +330,19 @@ func (s *Scanner) ScanToken() Token {
 		case "&":
 			return s.MakeToken(TOKEN_AMPERSAND)
 		case "%":
+			if s.Match("=") {
+				return s.MakeToken(TOKEN_PERCENT_EQUAL)
+			}
 			return s.MakeToken(TOKEN_PERCENT)
 		case "/":
+			if s.Match("=") {
+				return s.MakeToken(TOKEN_SLASH_EQUAL)
+			}
 			return s.MakeToken(TOKEN_SLASH)
 		case "*":
+			if s.Match("=") {
+				return s.MakeToken(TOKEN_STAR_EQUAL)
+			}
 			return s.MakeToken(TOKEN_STAR)
 		case "!":
 			if s.Match("=") {

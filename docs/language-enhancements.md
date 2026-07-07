@@ -9,17 +9,21 @@ in [`src/compiler/scanner.go`](../src/compiler/scanner.go), the run loop in
 
 > **Done:** Anonymous functions / lambdas (`func (a, b) { ... }` as an
 > expression) — shipped. See the Functions section of the language reference.
+>
+> **Done:** Full compound-assignment set (`*=`, `/=`, `%=`) — shipped. Works on
+> variables and object properties, alongside the existing `+=` / `-=`. See the
+> Compound assignment section of the language reference.
 
 ---
 
 ## Tier 1 — high value, natural fits
 
-### 1. Full compound-assignment set (`*=`, `/=`, `%=`)
+### 1. Full compound-assignment set (`*=`, `/=`, `%=`) — *done*
 
-**Why.** Only `+=` and `-=` exist today; the scanner has just `TOKEN_PLUS_EQUAL`
+**Why.** Only `+=` and `-=` existed; the scanner had just `TOKEN_PLUS_EQUAL`
 / `TOKEN_MINUS_EQUAL`, handled in `namedVariable` and the property/index setters
-in `compile.go`. Rounding out the set is the most-requested small ergonomic win
-and follows the existing pattern exactly.
+in `compile.go`. Rounding out the set was the most-requested small ergonomic win
+and followed the existing pattern exactly.
 
 ```lox
 x *= 2
@@ -27,14 +31,16 @@ obj.scale /= 4
 i %= n
 ```
 
-**Hooks.** Add `TOKEN_STAR_EQUAL` / `TOKEN_SLASH_EQUAL` / `TOKEN_PERCENT_EQUAL`
+**Hooks.** Added `TOKEN_STAR_EQUAL` / `TOKEN_SLASH_EQUAL` / `TOKEN_PERCENT_EQUAL`
 in [`scanner.go`](../src/compiler/scanner.go) (`ScanToken` `*`/`/`/`%` cases),
-then extend the two existing compound-assignment sites in
-[`compile.go`](../src/compiler/compile.go) (the global/local `namedVariable`
-path and the `dot`/`slice` setter path that already switch on
-`TOKEN_PLUS_EQUAL`/`TOKEN_MINUS_EQUAL`).
+then extended the two existing compound-assignment sites in
+[`compile.go`](../src/compiler/compile.go) — the global/local `namedVariable`
+path (`handleCompoundAssignment`) and the property setter path
+(`handlePropertyCompoundAssignment`) — to emit `OP_MULTIPLY` / `OP_DIVIDE` /
+`OP_MODULUS`. Indexed targets (`a[i] *= x`) remain unsupported, matching the
+existing lack of `a[i] += x`.
 
-**Effort.** Low — mechanical, mirrors code that already exists.
+**Effort.** Low — mechanical, mirrored code that already existed.
 
 ### 2. Ternary / conditional expression (`cond ? a : b`)
 
