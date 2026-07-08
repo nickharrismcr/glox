@@ -19,6 +19,21 @@ func (env *Environment) InitGlobals(count int) {
 	env.Defined = make([]bool, count)
 }
 
+// GrowGlobals extends the slot-indexed slices to hold at least count entries,
+// preserving existing values. Used by the REPL so globals defined on earlier
+// lines survive into later ones (unlike InitGlobals, which reallocates).
+func (env *Environment) GrowGlobals(count int) {
+	if count <= len(env.Globals) {
+		return
+	}
+	g := make([]Value, count)
+	copy(g, env.Globals)
+	d := make([]bool, count)
+	copy(d, env.Defined)
+	env.Globals = g
+	env.Defined = d
+}
+
 // SetGlobal writes to the fast slot-indexed array.
 func (env *Environment) SetGlobal(slot int, value Value) {
 	env.Globals[slot] = value

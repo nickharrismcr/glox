@@ -241,6 +241,21 @@ go build -o bin/glox main.go
 </table>
 <div class="note"><strong>Bytecode cache</strong>Imported modules are cached as compiled bytecode in <code>__loxcache__/*.lxc</code>. A cached module is reloaded unless its source is newer, or <code>--force-compile</code> is passed.</div>
 
+<h3>The REPL</h3>
+<p><code>./bin/glox --repl</code> starts an interactive session. State <strong>persists across lines</strong>: variables, functions, and classes defined on one line remain in scope for every later line.</p>
+<pre><code class="lox">&gt; var x = 10
+&gt; fun add(a) { return a + x }
+&gt; print add(5)
+15</code></pre>
+<p>Definitions can span multiple lines. When a line leaves brackets open (<code>{ }</code>, <code>( )</code>, <code>[ ]</code>) or a string unterminated, the prompt changes to <code>...</code> and input is buffered until the statement is complete:</p>
+<pre><code class="lox">&gt; fun greet(name) {
+...   return "hello, ${name}"
+... }
+&gt; print greet("world")
+hello, world</code></pre>
+<p>Pressing <kbd>Enter</kbd> on an empty line exits the REPL; pressing it while a multi-line entry is still open (at the <code>...</code> prompt) cancels that pending entry and returns to the <code>&gt;</code> prompt.</p>
+<div class="note"><strong>Runtime errors don't end the session</strong>An error on one line is reported and the REPL continues — previously defined variables and functions are still available on the next line.</div>
+
 <!-- ==================== COMMENTS ==================== -->
 <h2 class="section" id="comments">Comments</h2>
 <p>Line comments start with <code>//</code> and run to the end of the line. There are no block comments.</p>

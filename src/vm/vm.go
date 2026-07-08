@@ -51,6 +51,9 @@ type VM struct {
 	BuiltIns       map[int]core.Value         // global built-in functions
 	BuiltInModules map[int]*core.ModuleObject // global built-in modules - need to be imported before use
 
+	Repl      bool                // REPL mode: persist globals across Interpret calls
+	replState *compiler.ReplState // persistent compile/run global state for the REPL session
+
 	// Debug hook: called with (vm, event, data) at opcode, call, return
 	// opcode events will have data as the opcode byte,
 	// call events will have data as the closure object being called,
@@ -95,6 +98,12 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 
 //------------------------------------------------------------------------------------------
 
+// SetRepl marks this VM as running an interactive REPL session, so that global
+// state (variables, functions, classes) persists across Interpret calls.
+func (vm *VM) SetRepl(b bool) {
+	vm.Repl = b
+}
+
 // SetArgs sets the command-line arguments that will be available to the running Lox script.
 func (vm *VM) SetArgs(args []string) {
 	vm.args = args
@@ -108,8 +117,18 @@ func (vm *VM) SetArgs(args []string) {
 // functions or modules, so OP_GET_GLOBAL can use a direct slice lookup with no map fallback.
 func (vm *VM) initGlobals(fn *core.FunctionObject) {
 	env := fn.Environment
-	env.InitGlobals(fn.Chunk.GlobalCount)
+	if vm.Repl {
+		// Preserve globals from earlier REPL lines; only extend the slices.
+		env.GrowGlobals(fn.Chunk.GlobalCount)
+	} else {
+		env.InitGlobals(fn.Chunk.GlobalCount)
+	}
 	for slot, name := range fn.Chunk.GlobalNames {
+		// Never overwrite a slot the user has already defined — otherwise a
+		// per-line re-seed would clobber a global that shadows a builtin name.
+		if env.Defined[slot] {
+			continue
+		}
 		id := core.InternName(name)
 		if bv, ok := vm.BuiltIns[id]; ok {
 			env.Globals[slot] = bv
@@ -129,7 +148,23 @@ func (vm *VM) Interpret(source string, module string) (InterpretResult, string) 
 
 	core.LogFmtLn(core.INFO, "VM %s starting execution\n", vm.script)
 	vm.source = source
-	function := compiler.Compile(vm.script, source, module)
+
+	var function *core.FunctionObject
+	if vm.Repl {
+		// Reset the stack/frames so a runtime error on a previous line can't
+		// wedge this one; globals live on the persistent Environment, not the
+		// stack, so they survive. Clear the stack trace too so a reported error
+		// doesn't carry stale frames from an earlier line (ErrorMsg is already
+		// reset at the top of run()).
+		vm.resetStack()
+		vm.stackTrace = nil
+		if vm.replState == nil {
+			vm.replState = compiler.NewReplState(module)
+		}
+		function = compiler.CompileRepl(vm.script, source, module, vm.replState)
+	} else {
+		function = compiler.Compile(vm.script, source, module)
+	}
 	if function == nil {
 		return INTERPRET_COMPILE_ERROR, ""
 	}
@@ -2257,8 +2292,8 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 	searchPath := getPath(vm.Args(), moduleName) + ".lox"
 	bytes, err := os.ReadFile(searchPath)
 	if err != nil {
-		fmt.Printf("Could not find module %s.", searchPath)
-		os.Exit(1)
+		vm.RunTimeError("Could not find module %s.", searchPath)
+		return INTERPRET_RUNTIME_ERROR
 	}
 	module, ok := globalModules[moduleName]
 	if ok {
