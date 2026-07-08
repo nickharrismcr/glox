@@ -1,10 +1,24 @@
 package core
 
+import "fmt"
+
 type Environment struct {
-	Name    string
-	Vars    map[int]Value // InternedId → Value, for module export and import-all iteration
-	Globals []Value       // slot-indexed, for fast OP_GET_GLOBAL
-	Defined []bool        // slot-indexed defined flags
+	Name        string
+	Vars        map[int]Value // InternedId → Value, for module export and import-all iteration
+	Globals     []Value       // slot-indexed, for fast OP_GET_GLOBAL
+	Defined     []bool        // slot-indexed defined flags
+	GlobalNames []string      // slot → name, shared by every function in the compilation unit (for error messages)
+}
+
+// NameForSlot returns the global variable name for a slot, for error messages.
+// The slot→name table lives on the top-level chunk, but all functions in a
+// compilation unit share this Environment, so inner functions resolve names
+// here rather than from their own (empty) chunk.GlobalNames.
+func (env *Environment) NameForSlot(slot int) string {
+	if slot >= 0 && slot < len(env.GlobalNames) {
+		return env.GlobalNames[slot]
+	}
+	return fmt.Sprintf("#%d", slot)
 }
 
 func NewEnvironment(name string) *Environment {
