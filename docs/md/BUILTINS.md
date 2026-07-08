@@ -39,6 +39,10 @@
 ### String Functions
 
 - **`replace(string, old, new)`** - Replaces occurrences of 'old' with 'new' in string
+- **`str(value)`** - Converts any value to its string form (uses a class's `toString` for instances)
+- **`format(fmt, args...)`** - printf-style formatting using Go verbs (`%s`, `%d`, `%f`, `%v`); wraps `fmt.Sprintf`
+
+**String interpolation:** any `${ expr }` inside a string literal (either `"…"` or `'…'`) is evaluated and stringified into the result, e.g. `print "total: ${count} (${pct}%)"`. Values are stringified the same way as `str()`. Write a literal `$` as `$$`. It is pure sugar: `"a${x}b"` desugars to `("a" & str(x) & "b")`.
 
 ### Color Functions
 

@@ -26,6 +26,7 @@ Feature summary — see the **[language reference](docs/language-reference.html)
 - **Destructuring / unpacking assignment** — `a, b, c = [1, 2, 3]`.
 - **Compound assignment** — `+=`, `-=`, `*=`, `/=`, `%=`, `++`.
 - **Ternary / conditional expression** — `cond ? a : b` (C-style, right-associative).
+- **String interpolation** — `"total: ${count} (${pct}%)"` in either quote style; `$$` escapes a literal `$`.
 - **`break` / `continue`**, and **`foreach`** over lists, strings, and iterables (`__iter__`/`__next__`).
 - **`range(start, end, step)`** — native integer iterator, faster than an equivalent `for`.
 - **Anonymous functions (lambdas)** — `func (x) { ... }` as expressions; full closures.
@@ -37,7 +38,7 @@ Feature summary — see the **[language reference](docs/language-reference.html)
 - **Lists** — slicing, slice assignment, `&` concatenation, `in` membership, `append`/`remove`.
 - **Tuples** — immutable sequences.
 - **Dictionaries** — `get(k, default)`, `keys()`, `remove()`.
-- **Strings** — `format()` (Go `Sprintf`), `&` concat, `*` repeat, slicing, `in`, `replace`, `join`; all interned.
+- **Strings** — `${expr}` interpolation, `format()` (Go `Sprintf`), `&` concat, `*` repeat, slicing, `in`, `replace`, `join`; all interned.
 - **Native vectors** `vec2` / `vec3` / `vec4` — inlined (no heap allocation); `++` concatenation.
 - **`float_array`** — fast native 2D float grid.
 

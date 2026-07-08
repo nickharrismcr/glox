@@ -22,6 +22,11 @@ in [`src/compiler/scanner.go`](../src/compiler/scanner.go), the run loop in
 > call-time-evaluated defaults, and a trailing `*rest` that collects surplus
 > positional args into a fresh list. See the Functions section of the language
 > reference.
+>
+> **Done:** String interpolation (`"${expr}"`) — shipped. Works in both quote
+> styles, `$$` escapes a literal `$`, values are stringified via the same path as
+> `str()`/`print`. Pure scanner-level desugaring to `& str(…)` concatenation —
+> no new opcodes. See the String interpolation section of the language reference.
 
 ---
 
@@ -80,7 +85,7 @@ reused existing jump/patch helpers.
 
 ## Tier 2 — high value, more work
 
-### 3. String interpolation (f-strings)
+### 3. String interpolation (f-strings) — *done*
 
 **Why.** `format()` (a `fmt.Sprintf` wrapper) exists, but there is no inline
 interpolation, and `print` takes a single expression — so `print("a", b)` prints
@@ -91,11 +96,18 @@ a *tuple*, a documented footgun. Interpolation removes most `&`-concatenation an
 print "total: ${count} (${pct}%)"
 ```
 
-**Hooks.** Scanner-level: recognise `${ … }` inside string literals and emit a
-token sequence the compiler desugars into concatenation / a `format` call. Touches
-[`scanner.go`](../src/compiler/scanner.go) `string()` and a small compiler helper.
+**Hooks.** Shipped as a **scanner-only** change in
+[`scanner.go`](../src/compiler/scanner.go) `string()`. On hitting `${ … }` the
+scanner synthesises the token sequence `( "chunk" & str(<expr>) & … )` — all
+existing tokens — and feeds it through a new per-scanner pending-token queue, so
+the compiler parses it with existing rules (`&`→`OP_CONCAT`, `str()`→`OP_STR`).
+Embedded expressions are tokenised by recursively re-scanning their source, so
+nested strings, complex expressions, local-variable references, and even nested
+interpolation all work. `$$` escapes a literal `$`; both quote styles interpolate.
+No new opcodes, no compiler/VM changes, no `.lxc` format change.
 
-**Effort.** Moderate-high (scanner + compiler); the runtime is unchanged.
+**Effort.** Moderate — isolated to the scanner. The subtle parts were the
+matching-`}` scan (brace depth + skipping nested strings) and the pending queue.
 
 ### 4. Default & variadic parameters — *done*
 
@@ -151,7 +163,7 @@ codegen, break semantics.
 
 1. ~~**Compound assignment** (`*=`/`/=`/`%=`)~~ — done.
 2. ~~**Ternary**~~ — done (C-style `cond ? a : b`).
-3. **String interpolation** — biggest day-to-day ergonomics improvement.
+3. ~~**String interpolation**~~ — done (`"${expr}"`, scanner-level desugaring).
 4. ~~**Default/variadic params**~~ — done.
 5. Bitwise / `switch` as demand arises.
 

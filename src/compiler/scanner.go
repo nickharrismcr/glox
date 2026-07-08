@@ -195,6 +195,7 @@ type Scanner struct {
 	Start, Current, Line int
 	Tokens               TokenList
 	TokenIdx             int
+	pending              []Token // queued tokens from string interpolation desugaring
 }
 
 type Token struct {
@@ -273,6 +274,13 @@ func (s *Scanner) NextToken() Token {
 }
 
 func (s *Scanner) ScanToken() Token {
+
+	// Drain any tokens queued by string interpolation desugaring first.
+	if len(s.pending) > 0 {
+		t := s.pending[0]
+		s.pending = s.pending[1:]
+		return t
+	}
 
 	for {
 
@@ -498,19 +506,197 @@ func (s *Scanner) PeekNext() string {
 	return s.Source[s.Current+1 : s.Current+2]
 }
 
+// interpSegment is one piece of an interpolated string literal: either a run of
+// literal text (isExpr == false) or an embedded ${ ... } expression already
+// tokenised into toks (isExpr == true).
+type interpSegment struct {
+	isExpr bool
+	text   string
+	toks   []Token
+}
+
 func (s *Scanner) string(which string) Token {
 
-	for s.Peek() != which && !s.IsAtEnd() {
-		if s.Peek() == "\n" {
+	// Opening quote has already been consumed by ScanToken. Walk the literal,
+	// splitting on ${ ... } interpolations and collapsing the $$ escape.
+	var lit strings.Builder
+	var segments []interpSegment
+	hasInterp := false
+	hadEscape := false
+
+	for {
+		if s.IsAtEnd() {
+			return s.ErrorToken("Unterminated string")
+		}
+		c := s.Peek()
+		if c == which {
+			s.Advance() // consume closing quote
+			break
+		}
+		if c == "$" && s.PeekNext() == "$" {
+			// $$ escapes to a single literal $
+			hadEscape = true
+			s.Advance()
+			s.Advance()
+			lit.WriteString("$")
+			continue
+		}
+		if c == "$" && s.PeekNext() == "{" {
+			hasInterp = true
+			segments = append(segments, interpSegment{isExpr: false, text: lit.String()})
+			lit.Reset()
+			s.Advance() // $
+			s.Advance() // {
+			exprSrc, ok := s.scanInterpExpr()
+			if !ok {
+				return s.ErrorToken("Unterminated interpolation")
+			}
+			if strings.TrimSpace(exprSrc) == "" {
+				return s.ErrorToken("Empty interpolation expression")
+			}
+			segments = append(segments, interpSegment{isExpr: true, toks: s.scanInterpTokens(exprSrc)})
+			continue
+		}
+		if c == "\n" {
+			s.Line++
+		}
+		lit.WriteString(c)
+		s.Advance()
+	}
+
+	if !hasInterp {
+		if !hadEscape {
+			// Fast path: no interpolation and no escapes — emit the literal
+			// exactly as before, spanning the original source (quotes included).
+			return s.MakeToken(TOKEN_STRING)
+		}
+		// Only $$ escapes: emit a single synthetic string with collapsed content.
+		return s.synthString(lit.String(), which)
+	}
+
+	// Flush the trailing literal run.
+	segments = append(segments, interpSegment{isExpr: false, text: lit.String()})
+
+	// Synthesise: ( seg0 & seg1 & ... ) where literal segments become string
+	// constants and expression segments become str( <expr tokens> ).
+	out := []Token{s.synthToken(TOKEN_LEFT_PAREN, "(")}
+	first := true
+	amp := func() {
+		if !first {
+			out = append(out, s.synthToken(TOKEN_AMPERSAND, "&"))
+		}
+		first = false
+	}
+	for _, seg := range segments {
+		if seg.isExpr {
+			amp()
+			out = append(out, s.synthToken(TOKEN_STR, "str"), s.synthToken(TOKEN_LEFT_PAREN, "("))
+			out = append(out, seg.toks...)
+			out = append(out, s.synthToken(TOKEN_RIGHT_PAREN, ")"))
+		} else if seg.text != "" {
+			amp()
+			out = append(out, s.synthString(seg.text, which))
+		}
+	}
+	out = append(out, s.synthToken(TOKEN_RIGHT_PAREN, ")"))
+
+	// Return the first token; queue the rest for subsequent ScanToken calls.
+	s.pending = append(s.pending, out[1:]...)
+	return out[0]
+}
+
+// scanInterpExpr consumes source from just after "${" through the matching "}"
+// (tracking brace depth and skipping nested string literals so their braces and
+// the outer quote do not interfere). It returns the expression source between
+// the braces, or ok == false if the string/EOF ends first.
+func (s *Scanner) scanInterpExpr() (string, bool) {
+
+	start := s.Current
+	depth := 1
+	for !s.IsAtEnd() {
+		c := s.Peek()
+		if c == "\"" || c == "'" {
+			s.Advance() // opening quote
+			for !s.IsAtEnd() && s.Peek() != c {
+				if s.Peek() == "\n" {
+					s.Line++
+				}
+				s.Advance()
+			}
+			if s.IsAtEnd() {
+				return "", false
+			}
+			s.Advance() // closing quote
+			continue
+		}
+		if c == "{" {
+			depth++
+			s.Advance()
+			continue
+		}
+		if c == "}" {
+			depth--
+			if depth == 0 {
+				expr := s.Source[start:s.Current]
+				s.Advance() // consume closing }
+				return expr, true
+			}
+			s.Advance()
+			continue
+		}
+		if c == "\n" {
 			s.Line++
 		}
 		s.Advance()
 	}
-	if s.IsAtEnd() {
-		return s.ErrorToken("Unterminated string")
+	return "", false
+}
+
+// scanInterpTokens tokenises an interpolated expression's source by running a
+// fresh scanner over it and stripping the trailing EOL/EOF tokens. Nested
+// interpolation is handled recursively. All tokens are re-lined to the current
+// source line for sensible error reporting.
+func (s *Scanner) scanInterpTokens(exprSrc string) []Token {
+
+	sub := NewScanner(exprSrc)
+	toks := sub.Tokens.Tokens
+	end := len(toks)
+	for end > 0 && (toks[end-1].Tokentype == TOKEN_EOF || toks[end-1].Tokentype == TOKEN_EOL) {
+		end--
 	}
-	s.Advance()
-	return s.MakeToken(TOKEN_STRING)
+	toks = toks[:end]
+	for i := range toks {
+		toks[i].Line = s.Line
+	}
+	return toks
+}
+
+// synthToken builds a synthetic token backed by its own lexeme string.
+func (s *Scanner) synthToken(tt TokenType, lexeme string) Token {
+
+	src := lexeme
+	return Token{
+		Tokentype: tt,
+		Source:    &src,
+		Start:     0,
+		Length:    len(src),
+		Line:      s.Line,
+	}
+}
+
+// synthString builds a synthetic TOKEN_STRING whose lexeme is content wrapped in
+// the delimiter, so the compiler's loxstring (which strips the first/last char)
+// recovers content. content cannot contain the delimiter, so this is unambiguous.
+func (s *Scanner) synthString(content, which string) Token {
+
+	src := which + content + which
+	return Token{
+		Tokentype: TOKEN_STRING,
+		Source:    &src,
+		Start:     0,
+		Length:    len(src),
+		Line:      s.Line,
+	}
 }
 
 func (s *Scanner) IsDigit(c string) bool {
