@@ -50,9 +50,14 @@ overheads**.
   closures for *every* list created
   ([`src/core/obj_list.go:15-21,45-93`](../src/core/obj_list.go)); dicts do the
   same. clox's collection methods are static functions with zero per-object cost.
-- **An explicit `runtime.GC()` fires on every top-level return**
-  ([`src/vm/vm.go:962-965`](../src/vm/vm.go)) — a stop-the-world collection each
-  time the outermost frame unwinds.
+- **Forced stop-the-world collections.** Two `runtime.GC()` calls used to fire:
+  a *periodic* one in the dispatch loop (every 65 536 instructions, on a 5 s
+  interval) and one on *every top-level return*. The periodic loop GC has been
+  **removed** — Go's own pacer handles heap growth, so the forced collection was
+  pure overhead. The top-level-return GC ([`src/vm/vm.go`](../src/vm/vm.go),
+  `OP_RETURN` `frameCount == 0` branch) still fires each time the outermost frame
+  unwinds (also per module import / REPL line); gating it to debug-only remains a
+  cheap win.
 - **The value stack is GC-scanned.** A `Value` contains an `Obj` interface
   pointer, so the whole `[16384]Value` stack and every `[]Value` are
   pointer-bearing and scanned by the collector; stores of pointer-containing
@@ -206,9 +211,10 @@ order of everything below.
 
 ### Step 1 — Cheap, high-confidence wins
 
-- **Gate the forced `runtime.GC()`** at
-  [`src/vm/vm.go:964`](../src/vm/vm.go) to debug-only; measure `binary_trees` /
-  `trees` before and after.
+- ✅ **Periodic loop `runtime.GC()` removed** (was every 65 536 instructions on a
+  5 s interval). The remaining forced GC on top-level return
+  ([`src/vm/vm.go`](../src/vm/vm.go), `OP_RETURN` `frameCount == 0`) can still be
+  gated to debug-only; measure `binary_trees` / `trees` before and after.
 - **Cache collection and string method tables** package-level (shared, keyed by
   interned id) instead of rebuilding them per object in
   `RegisterAllListMethods` / `StringObject.GetMethod`.

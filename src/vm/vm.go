@@ -30,9 +30,8 @@ const (
 )
 
 const (
-	FRAMES_MAX          int     = 64
-	STACK_MAX           int     = FRAMES_MAX * 256
-	GC_COLLECT_INTERVAL float64 = 5
+	FRAMES_MAX int = 64
+	STACK_MAX  int = FRAMES_MAX * 256
 )
 
 type VM struct {
@@ -44,7 +43,6 @@ type VM struct {
 	frameCount     int
 	currCode       []uint8 // current code being executed
 	Starttime      time.Time
-	lastGC         time.Time
 	openUpValues   *core.UpvalueObject // head of list
 	args           []string
 	ErrorMsg       string
@@ -81,7 +79,6 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 	vm := &VM{
 		script:         script,
 		Starttime:      time.Now(),
-		lastGC:         time.Now(),
 		openUpValues:   nil,
 		args:           []string{},
 		ErrorMsg:       "",
@@ -357,7 +354,6 @@ func (vm *VM) pop() core.Value {
 // The mode parameter controls whether to run to completion or just the current function.
 // main interpreter loop
 func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
-	counter := 0
 	vm.ErrorMsg = ""
 	startFrame := vm.frameCount
 
@@ -380,15 +376,6 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 	}
 
 	for {
-		counter++
-		if counter&0xFFFF == 0 {
-			elapsed := time.Since(vm.lastGC).Seconds()
-			if elapsed > GC_COLLECT_INTERVAL {
-				runtime.GC()
-				vm.lastGC = time.Now()
-			}
-		}
-
 		inst := vm.currCode[frame.Ip]
 		if vm.DebugHook != nil {
 			vm.DebugHook(vm, core.DebugEventOpcode, inst)
