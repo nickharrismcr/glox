@@ -817,15 +817,14 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 			case core.VAL_OBJ:
 				ov2 := v2.Obj
-				switch ov2.GetType() {
+				switch v2.ObjType {
 
 				case core.OBJECT_STRING:
 					if v1.Type != core.VAL_OBJ {
 						vm.RunTimeError("Concatenation type mismatch: %s + %s", v1.String(), v2.String())
 						goto End
 					}
-					ov1 := v1.Obj
-					if ov1.GetType() == core.OBJECT_STRING {
+					if v1.ObjType == core.OBJECT_STRING {
 						vm.stack[vm.stackTop] = core.MakeStringObjectValue(v1.AsString().Get()+v2.AsString().Get(), false)
 						vm.stackTop++
 						continue
@@ -838,7 +837,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 						goto End
 					}
 					ov1 := v1.Obj
-					if ov1.GetType() == core.OBJECT_LIST {
+					if v1.ObjType == core.OBJECT_LIST {
 						lo := ov1.(*core.ListObject).Add(ov2.(*core.ListObject))
 						vm.stack[vm.stackTop] = core.MakeObjectValue(lo, false)
 						vm.stackTop++
@@ -1026,7 +1025,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			nv := constants[idx]
 			stringId := int(nv.InternedId)
 
-			switch v.Obj.GetType() {
+			switch v.ObjType {
 			case core.OBJECT_VEC2:
 				// special case for Vec2, which has x and y properties
 				switch stringId {
@@ -1143,7 +1142,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			idx := vm.currCode[frame.Ip]
 			frame.Ip++
 			stringId := int(constants[idx].InternedId)
-			switch v.Obj.GetType() {
+			switch v.ObjType {
 			case core.OBJECT_VEC2:
 				// special case for Vec2, which has x and y properties
 				switch stringId {
@@ -1433,7 +1432,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			switch v.Type {
 			case core.VAL_OBJ:
 				ov := v.Obj
-				switch ov.GetType() {
+				switch v.ObjType {
 				case core.OBJECT_STRING:
 					ot := ov.(core.StringObject)
 					s = ot.Get()
@@ -1619,7 +1618,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			iterSlot := frame.Slots + int(vm.currCode[frame.Ip])
 			frame.Ip++
 			iterVal := vm.stack[iterSlot]
-			if iterVal.Obj.GetType() != core.OBJECT_INSTANCE {
+			if iterVal.ObjType != core.OBJECT_INSTANCE {
 				val := iterVal.AsIterator().Next()
 				if val.Type != core.VAL_NIL {
 					vm.stack[iterSlot-1] = val
@@ -1678,7 +1677,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 				vm.RunTimeError("'in' requires string or list as right operand.")
 				goto End
 			}
-			switch b.Obj.GetType() {
+			switch b.ObjType {
 			case core.OBJECT_STRING:
 				if !a.IsStringObject() {
 					vm.RunTimeError("'in' requires string as left operand.")
@@ -1712,7 +1711,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 				vm.RunTimeError("Unpack requires a list or tuple on stack top.")
 				goto End
 			}
-			if top.Obj.GetType() != core.OBJECT_LIST {
+			if top.ObjType != core.OBJECT_LIST {
 				vm.RunTimeError("Unpack requires a list or tuple on stack top.")
 				goto End
 			}
@@ -1817,7 +1816,7 @@ func (vm *VM) invoke(name core.Value, argCount int) bool {
 		return vm.invokeFromBuiltin(receiver.Obj, name, argCount)
 	}
 
-	switch receiver.Obj.GetType() {
+	switch receiver.ObjType {
 
 	case core.OBJECT_INSTANCE:
 		instance := receiver.AsInstance()
@@ -1906,7 +1905,7 @@ func (vm *VM) VectorMethodCall(receiver core.Value, name core.Value, argCount in
 		if int(name.InternedId) == core.ADD && argCount == 1 {
 			// special case for Vec2 addition
 			other := vm.Peek(0)
-			if other.Obj.GetType() == core.OBJECT_VEC2 {
+			if other.ObjType == core.OBJECT_VEC2 {
 				v2 := other.AsVec2()
 				receiver.AsVec2().AddInPlace(v2)
 				vm.pop() // pop the other vector
@@ -1917,7 +1916,7 @@ func (vm *VM) VectorMethodCall(receiver core.Value, name core.Value, argCount in
 		if int(name.InternedId) == core.ADD && argCount == 1 {
 			// special case for Vec3 addition
 			other := vm.Peek(0)
-			if other.Obj.GetType() == core.OBJECT_VEC3 {
+			if other.ObjType == core.OBJECT_VEC3 {
 				v3 := other.AsVec3()
 				receiver.AsVec3().AddInPlace(v3)
 				vm.pop() // pop the other vector
@@ -1928,7 +1927,7 @@ func (vm *VM) VectorMethodCall(receiver core.Value, name core.Value, argCount in
 		if int(name.InternedId) == core.ADD && argCount == 1 {
 			// special case for Vec4 addition
 			other := vm.Peek(0)
-			if other.Obj.GetType() == core.OBJECT_VEC4 {
+			if other.ObjType == core.OBJECT_VEC4 {
 				v4 := other.AsVec4()
 				receiver.AsVec4().AddInPlace(v4)
 				vm.pop() // pop the other vector
@@ -2363,8 +2362,8 @@ func (vm *VM) importFunctionFromModule(module string, name string) bool {
 		// import all functions from the module
 		moduleObj := moduleVal.AsModule()
 		for k, v := range moduleObj.Environment.Vars {
-			if v.Type == core.VAL_OBJ && (v.Obj.GetType() == core.OBJECT_CLOSURE ||
-				v.Obj.GetType() == core.OBJECT_NATIVE) {
+			if v.Type == core.VAL_OBJ && (v.ObjType == core.OBJECT_CLOSURE ||
+				v.ObjType == core.OBJECT_NATIVE) {
 				currentEnv.SetVar(k, v)
 				// also write to the fast globals slot using a name-based lookup
 				for slot, gname := range currentChunk.GlobalNames {
@@ -2384,7 +2383,7 @@ func (vm *VM) importFunctionFromModule(module string, name string) bool {
 			vm.RunTimeError("Function '%s' not found in module '%s'.", name, module)
 			return false
 		}
-		t := fn.Obj.GetType()
+		t := fn.ObjType
 		if t != core.OBJECT_CLOSURE && t != core.OBJECT_CLASS && t != core.OBJECT_NATIVE {
 			vm.RunTimeError("'%s' not found in module '%s'.", name, module)
 			return false
@@ -2469,7 +2468,7 @@ func (vm *VM) index() bool {
 	sv := vm.pop()
 
 	if sv.IsObj() {
-		switch sv.Obj.GetType() {
+		switch sv.ObjType {
 		case core.OBJECT_LIST:
 			if iv.Type != core.VAL_INT {
 				vm.RunTimeError("Subscript must be an integer.")
@@ -2537,7 +2536,7 @@ func (vm *VM) indexAssign() bool {
 	index := vm.pop()
 	collection := vm.Peek(0)
 	if collection.Type == core.VAL_OBJ {
-		switch collection.Obj.GetType() {
+		switch collection.ObjType {
 		case core.OBJECT_LIST:
 			t := collection.AsList()
 			if t.Tuple {
@@ -2602,7 +2601,7 @@ func (vm *VM) slice() bool {
 
 	lv := vm.pop()
 	if lv.IsObj() {
-		if lv.Obj.GetType() == core.OBJECT_LIST {
+		if lv.ObjType == core.OBJECT_LIST {
 			lo, err := lv.AsList().Slice(from_idx, to_idx)
 			if err != nil {
 				vm.RunTimeError("%v", err)
@@ -2612,7 +2611,7 @@ func (vm *VM) slice() bool {
 			vm.stackTop++
 			return true
 
-		} else if lv.Obj.GetType() == core.OBJECT_STRING {
+		} else if lv.ObjType == core.OBJECT_STRING {
 			so, err := lv.AsString().Slice(from_idx, to_idx)
 			if err != nil {
 				vm.RunTimeError("%v", err)
@@ -2659,7 +2658,7 @@ func (vm *VM) sliceAssign() bool {
 	lv := vm.Peek(0)
 	if lv.IsObj() {
 
-		if lv.Obj.GetType() == core.OBJECT_LIST {
+		if lv.ObjType == core.OBJECT_LIST {
 			lst := lv.AsList()
 			if lst.Tuple {
 				vm.RunTimeError("Tuples are immutable")

@@ -30,12 +30,17 @@ const (
 )
 
 type Value struct {
-	Obj        Object    // 16 bytes (largest alignment first)
-	Data       uint64    // 8 bytes — holds int (cast), float64 bits, or bool (0/1)
-	InternedId int32     // 4 bytes — string intern ID cache; int32 is sufficient (max ~2B unique strings)
-	Type       ValueType // 1 byte
-	Immut      bool      // 1 byte
-	_          [2]byte   // 2 bytes padding (keeps struct size a multiple of 8)
+	Obj        Object     // 16 bytes (largest alignment first)
+	Data       uint64     // 8 bytes — holds int (cast), float64 bits, or bool (0/1)
+	InternedId int32      // 4 bytes — string intern ID cache; int32 is sufficient (max ~2B unique strings)
+	Type       ValueType  // 1 byte
+	ObjType    ObjectType // 1 byte — concrete object subtype, cached at construction so the VM can
+	// discriminate without an interface GetType() call. Valid ONLY when this value
+	// carries an object (Type is VAL_OBJ / VAL_VEC2 / VAL_VEC3 / VAL_VEC4); its zero
+	// value coincides with OBJECT_STRING, so never read it without first confirming
+	// the value is object-typed. Every run-loop read site already gates on that.
+	Immut bool    // 1 byte
+	_     [1]byte // 1 byte padding (keeps struct size a multiple of 8 → 32 bytes)
 }
 
 func boolToUint64(b bool) uint64 {
@@ -263,11 +268,11 @@ func MakeBooleanValue(b bool, immut bool) Value {
 
 func MakeStringObjectValue(s string, immut bool) Value {
 	so := MakeStringObject(s)
-	return Value{Type: VAL_OBJ, Obj: so, Immut: immut, InternedId: int32(so.InternedId)}
+	return Value{Type: VAL_OBJ, ObjType: OBJECT_STRING, Obj: so, Immut: immut, InternedId: int32(so.InternedId)}
 }
 
 func MakeObjectValue(obj Object, immut bool) Value {
-	return Value{Type: VAL_OBJ, Obj: obj, Immut: immut}
+	return Value{Type: VAL_OBJ, ObjType: obj.GetType(), Obj: obj, Immut: immut}
 }
 
 func (v Value) String() string {
@@ -462,13 +467,13 @@ func (v *Value) Serialise(buffer *bytes.Buffer) {
 // built in vectors
 
 func MakeVec2Value(x, y float64, immut bool) Value {
-	return Value{Type: VAL_VEC2, Obj: MakeVec2Object(x, y), Immut: immut}
+	return Value{Type: VAL_VEC2, ObjType: OBJECT_VEC2, Obj: MakeVec2Object(x, y), Immut: immut}
 }
 func MakeVec3Value(x, y, z float64, immut bool) Value {
-	return Value{Type: VAL_VEC3, Obj: MakeVec3Object(x, y, z), Immut: immut}
+	return Value{Type: VAL_VEC3, ObjType: OBJECT_VEC3, Obj: MakeVec3Object(x, y, z), Immut: immut}
 }
 func MakeVec4Value(x, y, z, w float64, immut bool) Value {
-	return Value{Type: VAL_VEC4, Obj: MakeVec4Object(x, y, z, w), Immut: immut}
+	return Value{Type: VAL_VEC4, ObjType: OBJECT_VEC4, Obj: MakeVec4Object(x, y, z, w), Immut: immut}
 }
 
 func (v Value) AsVec2() *Vec2Object {

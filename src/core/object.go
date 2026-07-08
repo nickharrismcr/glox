@@ -2,7 +2,7 @@ package core
 
 import "time"
 
-type ObjectType int
+type ObjectType uint8
 type NativeType int
 
 const (

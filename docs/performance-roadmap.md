@@ -92,6 +92,105 @@ forced GC (B).
 
 ---
 
+## Deep dive: the `Value.Obj` interface representation
+
+`Value.Obj` ([`src/core/value.go:33`](../src/core/value.go)) is a Go interface —
+a **two-word fat pointer** `(itab, data)` = 16 bytes. It is the single largest
+field, driving the struct to 32 bytes, and it imposes **four distinct taxes**.
+Separating them matters because different fixes target different taxes:
+
+1. **Virtual dispatch on `GetType()`** — 21 call sites in the run loop
+   ([`src/vm/vm.go`](../src/vm/vm.go)), including inside `OP_ADD`
+   ([`820`](../src/vm/vm.go)), `OP_GET_PROPERTY` ([`1029`](../src/vm/vm.go),
+   [`1146`](../src/vm/vm.go)), `OP_INVOKE` ([`1820`](../src/vm/vm.go)), and
+   equality. Each is an itab load + indirect call that Go rarely devirtualises,
+   where clox switches on one tag byte.
+2. **Type assertions** — every `v.Obj.(*ListObject)` etc.
+   ([`src/core/value.go:315-482`](../src/core/value.go)) does an itab comparison
+   before yielding the concrete pointer.
+3. **Width** — 16 of the 32 bytes, copied on every stack push/pop and `[]Value`
+   shuffle.
+4. **GC scanning + write barriers** — because `Obj` is a pointer, the entire
+   `[16384]Value` stack and every `[]Value` are pointer-bearing: the collector
+   scans all of it, and every store of an object-bearing `Value` hits a write
+   barrier during marking. This is a large slice of family B.
+
+**Existing precedent:** `vec2`/`vec3`/`vec4` already dodge tax #1 — they carry
+their own top-level `ValueType` tags (`VAL_VEC2/3/4`) *and* an `Obj`, so the VM
+discriminates them from the tag byte without a `GetType()` call. The pattern
+below just generalises that.
+
+### Options, cheapest to most radical
+
+**Option 1 — Discriminate object subtype from a tag byte (keep the interface).**
+✅ **Implemented.** Added an `ObjType ObjectType` byte to `Value` (in the free
+padding at [`src/core/value.go`](../src/core/value.go), so **zero size growth** —
+still 32 bytes; `ObjectType` narrowed to `uint8`), set in the five `Make*Value`
+constructors, and replaced all 21 `v.Obj.GetType()` run-loop reads with
+`v.ObjType`. *Kills #1* (each virtual call becomes a byte compare). *Leaves
+#2–#4.* Correctness-equivalent (assertions still validate); all 155 `new_tests`
+pass. An isolated Go microbenchmark measured the discrimination step itself at
+**~1.89 ns → ~0.84 ns per call (~2.25×)**; end-to-end this is a small
+single-digit-percent win, below the wall-clock noise floor of a thermally-
+constrained laptop (control benchmarks `fib`/`loop` drifted ±10–17% per run).
+Highest confidence-to-effort item; generalises the vec2/3/4 precedent.
+
+**Option 2 — Replace the `Object` interface with `unsafe.Pointer` + the tag.**
+Store `Ptr unsafe.Pointer` instead of `Obj Object`; the Option 1 tag selects the
+concrete type and `(*ListObject)(v.Ptr)` recovers it with no itab check. *Kills
+#1, #2, and half of #3* — `Value` drops 32 → 24 bytes (one word not two).
+*Leaves #4* (still a real pointer, still scanned). Effort: **medium-high** and
+invasive — every `.Obj` access across `core`/`vm`/`builtin`/`debug` changes, Go
+type-checking is lost on those conversions (a wrong tag becomes memory
+corruption, not a panic), polymorphic interfaces (`Iterator`, `HasMethods`,
+`Iterable`) still need a narrow dispatch path, and serialisation
+([`src/core/value.go:415`](../src/core/value.go)) touches `.Obj` so `.lxc` code
+changes → `clear_lxc.sh`.
+
+**Option 3 — Handle/index instead of pointer (the GC win).** Store a `uint32`
+index into per-type object pools (`[]*ListObject`, `[]*InstanceObject`, …)
+selected by the tag byte. If `Value` then contains *no pointers*, the value
+stack and every `[]Value` become **pointer-free**: the GC skips them and write
+barriers vanish on the hottest stores. *Kills all four*, including #4 — the one
+tax that is family B, the cost *above* the 2.2× floor. `Value` could shrink to
+~16 bytes (near clox parity). Effort: **high** — needs lifetime management
+(pools keep objects alive; slot reuse or you leak), essentially a semi-manual
+heap. Risk: **high** — a stale handle is a use-after-free. Interned strings
+(`InternedId`) are a partial precedent, but reclaimable mutable instances are a
+different beast.
+
+**Option 4 — NaN-boxing into a single `uint64`.** Largely a **dead end in Go**:
+Go's precise GC must identify every pointer by static type, so a pointer
+smuggled into a NaN payload is invisible to the collector and gets freed
+underneath you. clox can NaN-box because it manages its own GC roots; we cannot,
+short of adopting Option 3's pools anyway. Skip unless paired with handles.
+
+**Option 5 — Inline-cache the dispatch *result* (orthogonal).** Don't shrink the
+representation; cache what the interface call resolves to — a one-entry
+`(classID → slot/method)` cache on `OP_GET_PROPERTY`/`OP_INVOKE` (see Step 2).
+Removes the *repeated* cost at monomorphic sites and attacks map-backed fields
+(family A) at the same time. Complementary to Option 1.
+
+### How this maps to the taxes
+
+| Option | #1 dispatch | #2 assert | #3 width | #4 GC scan | Effort | Risk |
+|---|---|---|---|---|---|---|
+| 1 tag byte | ✅ | — | — | — | low | low |
+| 2 unsafe.Pointer | ✅ | ✅ | ½ (→24B) | — | med-high | med |
+| 3 handles | ✅ | ✅ | ✅ (→~16B) | ✅ | high | high |
+| 4 NaN-box | — dead end in Go — | | | | | |
+| 5 inline cache | (caches result) | | | | med | med |
+
+**Sequencing:** Option 1 first (free, low-risk, generalises vec2/3/4), then
+profile. Options 1–2 attack dispatch/width (families A + C); **Option 3 is the
+only one that attacks GC scanning of the stack (family B)** — the roadmap's
+prime suspect for the above-2.2× cost. So if allocation/GC profiling confirms
+family B dominates *after* 1–2, the interface's *pointer-ness* (#4) matters more
+than its *dispatch* (#1), and handles become the priority despite the hazard.
+Skip Option 4 in Go.
+
+---
+
 ## Prioritised, profile-first roadmap
 
 Don't optimise blind — the factors above are hypotheses ranked by evidence.
@@ -128,6 +227,10 @@ dynamic/unknown fields. This targets the likely top contributor to
 
 ### Step 3 — Dispatch & object-model micro-opts
 
+- ✅ **Object-subtype tag byte (Option 1 above) — done.** `ObjType` byte added to
+  `Value` in the free padding; all 21 hot-loop `v.Obj.GetType()` calls replaced
+  with a byte compare — kills tax #1 at zero size cost. Discrimination measured
+  ~2.25× faster in isolation; see the deep-dive above.
 - Use the `Value.Type` tag instead of `GetType()` interface calls where the tag
   already distinguishes the case; move the `IsStringObject()` check in `<` / `>`
   behind the numeric fast path.
@@ -136,10 +239,19 @@ dynamic/unknown fields. This targets the likely top contributor to
 
 ### Step 4 — Research-level (only if profiles justify it)
 
+- **`unsafe.Pointer` `Value` (Option 2 above).** Drop the interface for a raw
+  pointer + tag → 24-byte `Value`, no itab checks. Invasive; trades Go type
+  safety for width. Do only if profiling still shows `assertI2T`/itab cost after
+  Step 3.
+- **Handle/index representation (Option 3 above).** Replace object pointers with
+  `uint32` pool indices to make `Value` pointer-free — the only option that
+  removes GC scanning of the value stack (tax #4, family B). Biggest win, biggest
+  hazard (semi-manual heap, use-after-free risk); pursue only if allocation/GC
+  profiling confirms family B still dominates. **NaN-boxing is a dead end in Go**
+  (see Option 4) — pursue handles instead.
 - Threaded dispatch via a `[]func()` jump table (Go has no computed goto; this
   trades the switch for indirect calls — measure, it can lose).
-- Further `Value` shrink toward NaN-boxing, or a register-based bytecode. Large
-  efforts; defer until Steps 1–3 are exhausted.
+- Register-based bytecode. Large effort; defer until Steps 1–3 are exhausted.
 
 ---
 
