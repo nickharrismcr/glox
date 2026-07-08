@@ -51,6 +51,9 @@ type VM struct {
 	BuiltIns       map[int]core.Value         // global built-in functions
 	BuiltInModules map[int]*core.ModuleObject // global built-in modules - need to be imported before use
 
+	Repl      bool                // REPL mode: persist globals across Interpret calls
+	replState *compiler.ReplState // persistent compile/run global state for the REPL session
+
 	// Debug hook: called with (vm, event, data) at opcode, call, return
 	// opcode events will have data as the opcode byte,
 	// call events will have data as the closure object being called,
@@ -95,6 +98,12 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 
 //------------------------------------------------------------------------------------------
 
+// SetRepl marks this VM as running an interactive REPL session, so that global
+// state (variables, functions, classes) persists across Interpret calls.
+func (vm *VM) SetRepl(b bool) {
+	vm.Repl = b
+}
+
 // SetArgs sets the command-line arguments that will be available to the running Lox script.
 func (vm *VM) SetArgs(args []string) {
 	vm.args = args
@@ -108,8 +117,22 @@ func (vm *VM) SetArgs(args []string) {
 // functions or modules, so OP_GET_GLOBAL can use a direct slice lookup with no map fallback.
 func (vm *VM) initGlobals(fn *core.FunctionObject) {
 	env := fn.Environment
-	env.InitGlobals(fn.Chunk.GlobalCount)
+	// The full slot→name table lives on this top-level chunk; publish it on the
+	// shared Environment so inner functions can resolve names for error messages
+	// (their own chunk.GlobalNames is empty).
+	env.GlobalNames = fn.Chunk.GlobalNames
+	if vm.Repl {
+		// Preserve globals from earlier REPL lines; only extend the slices.
+		env.GrowGlobals(fn.Chunk.GlobalCount)
+	} else {
+		env.InitGlobals(fn.Chunk.GlobalCount)
+	}
 	for slot, name := range fn.Chunk.GlobalNames {
+		// Never overwrite a slot the user has already defined — otherwise a
+		// per-line re-seed would clobber a global that shadows a builtin name.
+		if env.Defined[slot] {
+			continue
+		}
 		id := core.InternName(name)
 		if bv, ok := vm.BuiltIns[id]; ok {
 			env.Globals[slot] = bv
@@ -129,7 +152,23 @@ func (vm *VM) Interpret(source string, module string) (InterpretResult, string) 
 
 	core.LogFmtLn(core.INFO, "VM %s starting execution\n", vm.script)
 	vm.source = source
-	function := compiler.Compile(vm.script, source, module)
+
+	var function *core.FunctionObject
+	if vm.Repl {
+		// Reset the stack/frames so a runtime error on a previous line can't
+		// wedge this one; globals live on the persistent Environment, not the
+		// stack, so they survive. Clear the stack trace too so a reported error
+		// doesn't carry stale frames from an earlier line (ErrorMsg is already
+		// reset at the top of run()).
+		vm.resetStack()
+		vm.stackTrace = nil
+		if vm.replState == nil {
+			vm.replState = compiler.NewReplState(module)
+		}
+		function = compiler.CompileRepl(vm.script, source, module, vm.replState)
+	} else {
+		function = compiler.Compile(vm.script, source, module)
+	}
 	if function == nil {
 		return INTERPRET_COMPILE_ERROR, ""
 	}
@@ -491,7 +530,7 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			slot := vm.currCode[frame.Ip]
 			frame.Ip++
 			if !defined[slot] {
-				vm.RunTimeError("Undefined variable '%s'", chunk.GlobalNames[slot])
+				vm.RunTimeError("Undefined variable '%s'", function.Environment.NameForSlot(int(slot)))
 				goto End
 			}
 			vm.stack[vm.stackTop] = globals[slot]
@@ -503,11 +542,11 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			slot := vm.currCode[frame.Ip]
 			frame.Ip++
 			if !defined[slot] {
-				vm.RunTimeError("Undefined variable '%s'", chunk.GlobalNames[slot])
+				vm.RunTimeError("Undefined variable '%s'", function.Environment.NameForSlot(int(slot)))
 				goto End
 			}
 			if globals[slot].Immutable() {
-				vm.RunTimeError("Cannot assign to const '%s'", chunk.GlobalNames[slot])
+				vm.RunTimeError("Cannot assign to const '%s'", function.Environment.NameForSlot(int(slot)))
 				goto End
 			}
 			globals[slot] = core.Mutable(vm.Peek(0))
@@ -1807,6 +1846,13 @@ func (vm *VM) invoke(name core.Value, argCount int) bool {
 
 	case core.OBJECT_INSTANCE:
 		instance := receiver.AsInstance()
+		// A field can shadow a method and may itself hold a callable, so check
+		// fields before method lookup: `this.fn(x)` where fn is a field must
+		// fetch the field value and call it, not look for a method named fn.
+		if field, ok := instance.Fields[int(name.InternedId)]; ok {
+			vm.stack[vm.stackTop-argCount-1] = field
+			return vm.callValue(field, argCount)
+		}
 		return vm.invokeFromClass(instance.Class, name, argCount, false)
 	case core.OBJECT_CLASS:
 		class := receiver.AsClass()
@@ -2257,8 +2303,8 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 	searchPath := getPath(vm.Args(), moduleName) + ".lox"
 	bytes, err := os.ReadFile(searchPath)
 	if err != nil {
-		fmt.Printf("Could not find module %s.", searchPath)
-		os.Exit(1)
+		vm.RunTimeError("Could not find module %s.", searchPath)
+		return INTERPRET_RUNTIME_ERROR
 	}
 	module, ok := globalModules[moduleName]
 	if ok {

@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"strings"
 	"time"
 )
 
@@ -35,6 +36,7 @@ func main() {
 	if opts.doRepl {
 		fmt.Println("GLOX:")
 		vmInstance := vm.NewVM("repl", true)
+		vmInstance.SetRepl(true)
 		repl(vmInstance)
 		return
 	}
@@ -87,22 +89,70 @@ func parseArgs() *Options {
 	return opts
 }
 
+// replInputComplete reports whether buffered REPL input forms a complete
+// statement, i.e. all (){}[] are balanced and no string is left open. Strings,
+// comments, and ${} interpolation never contribute stray/unbalanced brackets,
+// so a simple net-depth count over the token stream is reliable.
+func replInputComplete(src string) bool {
+	s := compiler.NewScanner(src)
+	depth := 0
+	for _, t := range s.Tokens.Tokens {
+		switch t.Tokentype {
+		case compiler.TOKEN_LEFT_BRACE, compiler.TOKEN_LEFT_PAREN, compiler.TOKEN_LEFT_BRACKET:
+			depth++
+		case compiler.TOKEN_RIGHT_BRACE, compiler.TOKEN_RIGHT_PAREN, compiler.TOKEN_RIGHT_BRACKET:
+			depth--
+		case compiler.TOKEN_ERROR:
+			if strings.Contains(t.Lexeme(), "Unterminated") {
+				return false // open string/interpolation — keep reading
+			}
+		}
+	}
+	return depth <= 0
+}
+
 func repl(vmInstance *vm.VM) {
 	inp := bufio.NewScanner(os.Stdin)
+	var buf strings.Builder
 	for {
-		fmt.Printf("> ")
-		for inp.Scan() {
-			s := inp.Text()
-			if len(s) == 0 {
-				return
+		if buf.Len() == 0 {
+			fmt.Print("> ")
+		} else {
+			fmt.Print("... ") // continuation prompt
+		}
+		if !inp.Scan() {
+			return // EOF (Ctrl-Z / Ctrl-D)
+		}
+		line := inp.Text()
+
+		if buf.Len() == 0 && len(line) == 0 {
+			return // blank line at top level exits
+		}
+		if buf.Len() > 0 && len(line) == 0 {
+			buf.Reset() // blank line while buffering cancels the pending entry
+			continue
+		}
+		if buf.Len() > 0 {
+			buf.WriteByte('\n')
+		}
+		buf.WriteString(line)
+
+		src := buf.String()
+		if !replInputComplete(src) {
+			continue // need more input
+		}
+		buf.Reset()
+
+		status, result := vmInstance.Interpret(src, "__repl__")
+		switch status {
+		case vm.INTERPRET_OK:
+			if result != "nil" {
+				fmt.Println(result)
 			}
-			status, result := vmInstance.Interpret(s, "__repl__")
-			if status == vm.INTERPRET_OK {
-				if result != "nil" {
-					fmt.Println(result)
-				}
-			}
-			break
+		case vm.INTERPRET_RUNTIME_ERROR:
+			fmt.Println(vmInstance.ErrorMsg)
+			vmInstance.PrintStackTrace()
+			// compile errors are already reported by the compiler as they occur
 		}
 	}
 }

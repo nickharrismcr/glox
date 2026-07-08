@@ -192,6 +192,69 @@ func Compile(script string, source string, module string) *core.FunctionObject {
 	return function
 }
 
+// ReplState carries the compile-time and run-time global state that must persist
+// across REPL lines: the name→slot table, the declared-globals set, the running
+// slot count, and the one Environment whose Globals/Defined slices hold the actual
+// values. A fresh Compile() would rebuild all of this from scratch each line,
+// which is why globals defined on one line are invisible on the next.
+type ReplState struct {
+	Globals         map[string]int
+	GlobalsDeclared map[string]bool
+	GlobalCount     int
+	Environment     *core.Environment
+}
+
+// NewReplState creates an empty persistent state for a REPL session.
+func NewReplState(module string) *ReplState {
+	return &ReplState{
+		Globals:         map[string]int{},
+		GlobalsDeclared: map[string]bool{},
+		GlobalCount:     0,
+		Environment:     core.NewEnvironment(module),
+	}
+}
+
+// CompileRepl compiles a single REPL line, seeding the parser from st so that
+// globals keep stable slot numbers across lines and stay declared. The slot-table
+// changes are committed back into st only when compilation succeeds, so a line
+// with a parse error cannot leave st desynchronised from the environment.
+func CompileRepl(script, source, module string, st *ReplState) *core.FunctionObject {
+
+	if core.DebugTraceExecution && !core.DebugSuppress {
+		fmt.Printf("Compiling %s\n", script)
+	}
+	parser := NewParser()
+	// Work on copies so a failed compile leaves st untouched.
+	parser.globals = make(map[string]int, len(st.Globals))
+	for k, v := range st.Globals {
+		parser.globals[k] = v
+	}
+	parser.globalsDeclared = make(map[string]bool, len(st.GlobalsDeclared))
+	for k, v := range st.GlobalsDeclared {
+		parser.globalsDeclared[k] = v
+	}
+	parser.globalCount = st.GlobalCount
+
+	parser.scn = NewScanner(source)
+	parser.currentCompiler = NewCompiler(TYPE_SCRIPT, script, nil, st.Environment)
+	parser.advance()
+	for !parser.match(TOKEN_EOF) {
+		parser.declaration()
+	}
+	function := parser.endCompiler()
+	if core.DebugTraceExecution && !core.DebugSuppress {
+		fmt.Println("Compile done.")
+	}
+	if parser.hadError {
+		return nil
+	}
+	// Commit the (possibly grown) slot table back into the session state.
+	st.Globals = parser.globals
+	st.GlobalsDeclared = parser.globalsDeclared
+	st.GlobalCount = parser.globalCount
+	return function
+}
+
 // setRules initializes the parsing rules table that maps token types to their
 // corresponding prefix/infix parsing functions and operator precedence levels.
 // This implements Pratt parsing (top-down operator precedence parsing) where:
@@ -449,17 +512,28 @@ func (p *Parser) importStatement() {
 	c := 0
 	for {
 		p.consume(TOKEN_IDENTIFIER, "Expect module name.")
-		nameConstant := p.identifierConstant(p.previous)
+		moduleTok := p.previous
+		nameConstant := p.identifierConstant(moduleTok)
 		c = c + 1
 		p.emitBytes(core.OP_IMPORT, nameConstant)
+		var aliasName string
 		if p.match(TOKEN_AS) {
 			p.consume(TOKEN_IDENTIFIER, "Expect alias name.")
 			aliasConstant := p.identifierConstant(p.previous)
 			p.emitByte(aliasConstant)
+			aliasName = p.previous.Lexeme()
 		} else {
 			// no alias, use module name as alias
 			p.emitByte(nameConstant)
+			aliasName = moduleTok.Lexeme()
 		}
+		// Allocate a persistent global slot for the bound name so OP_IMPORT
+		// writes the module into the fast globals array (via SlotForName), not
+		// only into the environment's Vars map. Without this the binding is
+		// invisible to a later reference that resolves to a fresh global slot —
+		// which is exactly what breaks a two-line "import x" then "x.f()" in the REPL.
+		p.globalSlot(aliasName)
+		p.markGlobalDeclared(aliasName)
 		if !p.match(TOKEN_COMMA) {
 			break
 		}
@@ -498,6 +572,10 @@ func (p *Parser) importFromStatement() {
 	for _, name := range names {
 		constant := p.identifierConstant(name)
 		p.emitByte(constant) // emit the constant for each name
+		// Allocate a persistent global slot so the imported name is bound in the
+		// fast globals array and survives to later REPL lines (see importStatement).
+		p.globalSlot(name.Lexeme())
+		p.markGlobalDeclared(name.Lexeme())
 	}
 	p.consumeStatementEnd("Expect ';' after import list.")
 }
