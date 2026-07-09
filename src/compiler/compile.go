@@ -1105,6 +1105,7 @@ func (p *Parser) breakStatement() {
 	p.consumeStatementEnd("Expect ';' after statement.")
 	if p.currentCompiler.loop == nil {
 		p.errorAtCurrent("Cannot use break outside loop.")
+		return
 	}
 
 	// drop local vars on stack, but not the loop's own control-variable scope --
@@ -1140,6 +1141,7 @@ func (p *Parser) continueStatement() {
 	p.consumeStatementEnd("Expect ';' after statement.")
 	if p.currentCompiler.loop == nil {
 		p.errorAtCurrent("Cannot use continue outside loop.")
+		return
 	}
 
 	// drop local vars on stack, but preserve the loop's own control-variable scope

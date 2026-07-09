@@ -2248,6 +2248,9 @@ func (vm *VM) popFrame() bool {
 func (vm *VM) appendStackTrace() {
 
 	frame := vm.frame()
+	if frame == nil || frame.Closure == nil {
+		return
+	}
 	function := frame.Closure.Function
 	where, script := "", ""
 	if function.Name.Get() == "" {
@@ -2257,7 +2260,20 @@ func (vm *VM) appendStackTrace() {
 		script = function.Chunk.Filename
 		where = function.Name.Get()
 	}
-	line := function.Chunk.Lines[frame.Ip-1]
+	// A frame caught mid-push (e.g. on stack overflow) can have Ip == 0, and a
+	// finished frame can have Ip past the code; clamp so the line lookup for the
+	// trace can never index out of range.
+	ip := frame.Ip - 1
+	if ip < 0 {
+		ip = 0
+	}
+	if ip >= len(function.Chunk.Lines) {
+		ip = len(function.Chunk.Lines) - 1
+	}
+	if ip < 0 {
+		return
+	}
+	line := function.Chunk.Lines[ip]
 
 	s := fmt.Sprintf("File '%s' , line %d, in %s ", script, line, where)
 	vm.stackTrace = append(vm.stackTrace, s)
@@ -2908,6 +2924,10 @@ func (vm *VM) binaryModulus() bool {
 
 	if !v1.IsInt() || !v2.IsInt() {
 		vm.RunTimeError("Operands must be integers")
+		return false
+	}
+	if int(v2.Data) == 0 {
+		vm.RunTimeError("Division by zero")
 		return false
 	}
 	vm.stack[vm.stackTop] = core.MakeIntValue(int(v1.Data)%int(v2.Data), false)
