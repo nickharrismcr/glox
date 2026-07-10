@@ -3,6 +3,10 @@ from bullets import BulletPool
 from laser import LaserPool
 import lander
 import human
+import pod
+import swarmer
+import baiter
+import bomber
 import random
 import functools
 import event
@@ -14,12 +18,22 @@ class EntityMgr {
         this.worldwidth = worldwidth
         this.height = height
         this.screenwidth = worldwidth   // overridden by main with the actual screen width
+        this.top = height * 0.16        // ceiling of the play area (below the radar)
         this.mountains = nil
+        this.player = nil               // set by main; NPCs hunt it
         this.entities = []
         this.queue = []
         this.bullets = BulletPool(100)
         this.lasers = LaserPool(12)
         this.events = event.EventDispatcher()
+
+        // sprite sheets, loaded once and shared by every instance
+        this.img_lander  = image("pngs/lander.png")
+        this.img_human   = image("pngs/human.png")
+        this.img_pod     = image("pngs/pod.png")
+        this.img_swarmer = image("pngs/swarmer.png")
+        this.img_baiter  = image("pngs/baiter.png")
+        this.img_bomber  = image("pngs/bomb.png")   // placeholder: no bomber.png in assets
     }
     get_all() {
         return this.entities
@@ -29,24 +43,47 @@ class EntityMgr {
         this.queue.append([entity,delay])
     }
     add_landers(num,delay) {
-        img = image("pngs/lander.png")
         foreach (var i in range(0, num)) {
-            e = lander.Lander(vec2(random.integer(0, this.worldwidth), random.integer(100, this.height/2)), img, 3, 1, 3)
+            e = lander.Lander(vec2(random.integer(0, this.worldwidth), random.integer(100, this.height/2)), this.img_lander, 3, 1, 3)
             this.add_to_queue(e,delay)
         }
     }
     // Spawn a single lander near world-x cx, so at least one materialises within
     // the player's view rather than somewhere off in the 10k-wide world.
     add_lander_near(cx, delay) {
-        img = image("pngs/lander.png")
         var x = cx + random.integer(-60, 60)
-        e = lander.Lander(vec2(x, random.integer(120, this.height/2)), img, 3, 1, 3)
+        e = lander.Lander(vec2(x, random.integer(120, this.height/2)), this.img_lander, 3, 1, 3)
         this.add_to_queue(e, delay)
     }
+    // Pods drift near the player, waiting to be shot open.
+    add_pods(num, cx) {
+        foreach (var i in range(0, num)) {
+            var x = cx + random.integer(0, 1500)
+            var y = random.integer(this.top, this.height - 400)
+            this.add_to_queue(pod.Pod(vec2(x, y), this.img_pod), 0)
+        }
+    }
+    // Released when a pod is destroyed; they burst out from the pod's position.
+    add_swarmers(num, x, y) {
+        foreach (var i in range(0, num)) {
+            var p = vec2(x + random.integer(-20, 20), y + random.integer(-20, 20))
+            this.add_to_queue(swarmer.Swarmer(p, this.img_swarmer), 0)
+        }
+    }
+    add_bombers(num) {
+        foreach (var i in range(0, num)) {
+            var x = random.integer(0, this.worldwidth)
+            var y = random.integer(this.top, this.height - 200)
+            this.add_to_queue(bomber.Bomber(vec2(x, y), this.img_bomber, this.top), 0)
+        }
+    }
+    // A baiter lurks invisibly, then materialises next to the player.
+    add_baiter(wait_frames) {
+        this.add_to_queue(baiter.Baiter(vec2(0, 0), this.img_baiter, wait_frames), 0)
+    }
     add_humans(num) {
-        img = image("pngs/human.png")
         foreach ( i in range ( 0,num )) {
-            e = human.Human(vec2(random.integer(0, this.worldwidth), this.height ), img, 1, 1, 1)
+            e = human.Human(vec2(random.integer(0, this.worldwidth), this.height ), this.img_human, 1, 1, 1)
             this.add_to_queue(e,0)
         }
     }
@@ -109,23 +146,25 @@ class EntityMgr {
     }
 
     // Player lasers destroy shootable NPCs; deadly NPCs hit the player.
+    // Driven by per-entity flags rather than type, so every NPC (and a mutated
+    // lander) takes part without special-casing.
     check_collisions(player) {
+        var pbox = collide.entity_box(player)
         foreach (var e in this.entities) {
-            if (!e.alive) {
+            if (!e.alive or !(e.shootable or e.deadly)) {
                 continue
             }
-            if (e.type == "lander") {
-                var ebox = collide.entity_box(e)
-                // laser hits
+            var ebox = collide.entity_box(e)
+            if (e.shootable) {
                 foreach (var l in this.lasers.lasers) {
                     if (l.active and collide.overlap(collide.laser_box(l), ebox, this.worldwidth)) {
                         e.hit()
                     }
                 }
-                // collision with the player ship
-                if (e.alive and collide.overlap(collide.entity_box(player), ebox, this.worldwidth)) {
-                    player.hit()
-                }
+            }
+            // hit() clears `deadly`, so a just-destroyed NPC can't also kill the player
+            if (e.deadly and collide.overlap(pbox, ebox, this.worldwidth)) {
+                player.hit()
             }
         }
     }

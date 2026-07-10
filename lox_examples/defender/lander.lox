@@ -19,9 +19,11 @@ class Lander < Sprite {
         this.b = vec4(0,0,255,255)
         this.m = vec4(255,0,255,255)
         this.radar = this.g
-        this.counter = 0 
+        this.counter = 0
         this.mgr = nil
-        this.alive = true 
+        this.alive = true
+        this.shootable = true     // player lasers can destroy it
+        this.deadly = true        // touching it hurts the player
         this.width = this.texture.frame_width()
         this.height = this.texture.height()
     }
@@ -177,6 +179,8 @@ func die(e) {
     e.dp = vec2(0, 0)
     e.update_func = explode
     e.radar = nil
+    e.shootable = false
+    e.deadly = false
     e.mgr.events.emit(e.type & "_killed", e)     // lander_killed / mutant_killed
 }
 

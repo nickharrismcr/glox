@@ -1,0 +1,74 @@
+from gfx import *
+from npc import NPC, draw_normal, draw_dispersed, seek_player
+import random
+
+// Baiter: lurks unseen, then materialises next to the player and hunts it down.
+// In the original it appears to punish slow play. States ported from
+// states/npc/baiter/{wait,materialize,chase,die}.lua
+
+class Baiter < NPC {
+
+    init(pos, img, wait_frames) {
+        super.init(pos, img, 2, 1, 2, "baiter")   // baiter.png = 2 frames of 44x16
+        this.animate(10)
+        this.radar = vec4(255, 255, 0, 255)
+        this.update_func = wait
+        this.wait_frames = wait_frames
+        this.x_to_player = 0
+        this.nextthink = 0
+        this.maxspeed = 33.0        // Lua clamps dx to +/- 2000 px/s at 60fps
+
+        // hidden and harmless until it materialises
+        this.visible = false
+        this.shootable = false
+        this.deadly = false
+    }
+}
+
+func wait(e, width, height) {
+    if (e.mgr.player == nil or e.counter < e.wait_frames) {
+        return
+    }
+    // pop into existence somewhere near the player
+    e.x_to_player = random.integer(-500, 500)
+    e.pos.y = random.integer(200, height - 100)
+    e.disperse = 50
+    e.visible = true
+    e.draw_func = draw_dispersed
+    e.update_func = materialize
+}
+
+func materialize(e, width, height) {
+    // Lua re-anchors x to the player every frame while coalescing
+    e.pos.x = e.mgr.player.pos.x + e.x_to_player
+    e.disperse = e.disperse - 0.67          // Lua: 40 * dt
+    if (e.disperse <= 1) {
+        e.disperse = 1
+        e.draw_func = draw_normal
+        e.update_func = chase
+        e.shootable = true
+        e.deadly = true
+        e.nextthink = 0
+    }
+}
+
+func chase(e, width, height) {
+    var player = e.mgr.player
+    if (player == nil) {
+        return
+    }
+    e.nextthink = e.nextthink - 1
+    if (e.nextthink < 0) {
+        e.dp = seek_player(e, player, e.maxspeed, 60,
+                           random.integer(-200, 0), random.integer(-100, 100))
+        e.nextthink = 30                    // re-aim every 0.5s
+    }
+    e.pos = e.pos ++ e.dp
+
+    if (e.pos.y < 110) { e.pos.y = 110 }
+    if (e.pos.y > height - 40) { e.pos.y = height - 40 }
+
+    if (random.integer(0, 150) == 1) {
+        e.fire_bullet_at(player.pos.x, player.pos.y, 7)
+    }
+}

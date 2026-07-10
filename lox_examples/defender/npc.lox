@@ -1,0 +1,149 @@
+from gfx import *
+from sprite import Sprite
+import math
+import random
+
+// Shared base for the NPC roster (pod, swarmer, bomber, baiter).
+//
+// Behaviour is a state machine of swappable function pointers, matching the
+// established idiom: `update_func` / `draw_func` are free functions taking the
+// entity. Death is common to every NPC in the Lua original -- the sprite
+// disperses (1 -> 60) and the entity is removed -- so it lives here.
+//
+// Subclasses set `update_func` in init and may override `on_die()` for
+// death side-effects (e.g. a pod releasing swarmers).
+
+class NPC < Sprite {
+
+    init(pos, img, frames, start_frame, end_frame, type) {
+        super.init(pos, img, frames, start_frame, end_frame)
+        this.type = type
+        this.width = this.texture.frame_width()
+        this.height = this.texture.height()
+        this.dp = vec2(0, 0)
+        this.disperse = 1          // 1 == assembled; rises while exploding
+        this.alive = true
+        this.visible = true
+        this.dying = false
+        this.shootable = true      // player lasers can destroy it
+        this.deadly = true         // touching it hurts the player
+        this.mgr = nil
+        this.counter = 0
+        this.radar = vec4(255, 255, 255, 255)
+        this.update_func = nil
+        this.draw_func = draw_normal
+        this.disperse_rate = 1.3   // explode speed (Lua: 80 * dt)
+        this.disperse_max = 60
+    }
+
+    update(width, height) {
+        if (!this.alive) {
+            return
+        }
+        this.counter = this.counter + 1
+        var f = this.update_func
+        if (f != nil) {
+            f(this, width, height)
+        }
+        // horizontal world wrap-around
+        var ww = this.mgr.worldwidth
+        if (this.pos.x > ww) { this.pos.x = this.pos.x - ww }
+        if (this.pos.x < 0)  { this.pos.x = this.pos.x + ww }
+    }
+
+    draw(win, cam) {
+        if (!this.alive or !this.visible) {
+            return
+        }
+        var f = this.draw_func
+        if (f != nil) {
+            f(this, win, cam)
+        }
+    }
+
+    // struck by a player laser
+    hit() {
+        die(this)
+    }
+
+    // hook for death side-effects; overridden by e.g. Pod
+    on_die() {
+    }
+
+    // Fire a bullet toward (px, py) at the given per-frame speed.
+    fire_bullet_at(px, py, speed) {
+        var dx = shortest_dx(this.pos.x, px, this.mgr.worldwidth)
+        var dy = py - this.pos.y
+        var d = math.sqrt(dx * dx + dy * dy)
+        if (d < 1) {
+            return
+        }
+        this.mgr.fire_bullet(this.pos, vec2(dx / d * speed, dy / d * speed))
+    }
+}
+
+// --- shared state functions ---------------------------------------------------
+
+func draw_normal(e, win, cam) {
+    var spos = cam.translate(e.pos.x)
+    if (spos != nil) {
+        win.draw_texture(e.texture, spos, e.pos.y, vec4(255, 255, 255, 255))
+    }
+}
+
+// Used for both materialise (disperse falling to 1) and explode (rising).
+func draw_dispersed(e, win, cam) {
+    var spos = cam.translate(e.pos.x)
+    if (spos != nil) {
+        e.draw_disperse(win, spos, e.pos.y, e.disperse, vec4(255, 255, 255, 255))
+    }
+}
+
+func die(e) {
+    if (e.dying) {
+        return
+    }
+    e.dying = true
+    e.draw_func = draw_dispersed
+    e.update_func = explode
+    e.disperse = 1
+    e.dp = vec2(0, 0)
+    e.shootable = false
+    e.deadly = false
+    e.radar = nil
+    e.on_die()
+    e.mgr.events.emit(e.type & "_killed", e)
+}
+
+func explode(e, width, height) {
+    e.disperse = e.disperse + e.disperse_rate
+    if (e.disperse >= e.disperse_max) {
+        e.alive = false
+    }
+}
+
+// --- helpers ------------------------------------------------------------------
+
+// Signed x-distance from a to b, taking the shorter way around the wrapped world.
+func shortest_dx(from_x, to_x, worldwidth) {
+    var d = to_x - from_x
+    var half = worldwidth / 2
+    if (d > half)  { d = d - worldwidth }
+    if (d < -half) { d = d + worldwidth }
+    return d
+}
+
+func clamp(v, lo, hi) {
+    return math.max(lo, math.min(v, hi))
+}
+
+// Per-frame velocity toward where the player will be in `lead` frames, clamped to
+// maxspeed. Ported from calc_fire() in game/util.lua (accuracy 1, t = 1s),
+// converted from px/sec to px/frame.
+func seek_player(e, player, maxspeed, lead, xoff, yoff) {
+    var tx = player.pos.x + player.vx * lead + xoff
+    var ty = player.pos.y + yoff
+    var dx = shortest_dx(e.pos.x, tx, e.mgr.worldwidth) / lead
+    var dy = (ty - e.pos.y) / lead
+    return vec2(clamp(dx, -maxspeed, maxspeed), clamp(dy, -maxspeed, maxspeed))
+}

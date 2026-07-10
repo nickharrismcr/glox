@@ -1,0 +1,45 @@
+from gfx import *
+from npc import NPC, seek_player
+import random
+
+// Swarmer: released when a pod is destroyed. Homes in on the player at speed,
+// re-aiming several times a second, and occasionally fires.
+// Ported from states/npc/swarmer/{chase,die}.lua
+
+class Swarmer < NPC {
+
+    init(pos, img) {
+        super.init(pos, img, 1, 1, 1, "swarmer")   // swarmer.png = single 20x16 frame
+        this.radar = vec4(255, 80, 0, 255)
+        this.update_func = chase
+        this.maxspeed = random.float(13.0, 17.0)   // Lua 800-1000 px/s at 60fps
+        this.nextthink = 0
+
+        // Lua: ddisp = randf(10,50); disperse rises by ddisp*dt to ddisp*3,
+        // so swarmers burst apart at varying spreads over ~3 seconds.
+        var ddisp = random.float(10.0, 50.0)
+        this.disperse_rate = ddisp / 60.0
+        this.disperse_max = ddisp * 3
+    }
+}
+
+func chase(e, width, height) {
+    var player = e.mgr.player
+    if (player == nil) {
+        return
+    }
+    e.nextthink = e.nextthink - 1
+    if (e.nextthink < 0) {
+        e.dp = seek_player(e, player, e.maxspeed, 60,
+                           random.integer(-500, 500), random.integer(-300, 300))
+        e.nextthink = 12                       // re-aim every 0.2s
+        if (e.counter > 60 and random.integer(0, 100) == 1) {
+            e.fire_bullet_at(player.pos.x, player.pos.y, 6)
+        }
+    }
+    e.pos = e.pos ++ e.dp
+
+    // keep inside the play area vertically
+    if (e.pos.y < 110) { e.pos.y = 110 }
+    if (e.pos.y > height - 40) { e.pos.y = height - 40 }
+}

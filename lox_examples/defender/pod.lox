@@ -1,0 +1,26 @@
+from gfx import *
+from npc import NPC
+
+// Pod: hangs motionless until shot, then bursts into a cluster of swarmers.
+// Ported from states/npc/pod/{drift,die}.lua -- the pod's die state fires
+// PodKill, which the engine listens for to spawn swarmers at that position.
+
+class Pod < NPC {
+
+    init(pos, img) {
+        super.init(pos, img, 2, 1, 2, "pod")   // pod.png = 2 frames of 28x28
+        this.animate(20)
+        this.radar = vec4(255, 0, 255, 255)
+        this.update_func = drift
+        this.swarmer_count = 5
+    }
+
+    // shooting a pod releases the swarm
+    on_die() {
+        this.mgr.add_swarmers(this.swarmer_count, this.pos.x, this.pos.y)
+    }
+}
+
+func drift(e, width, height) {
+    // pods hang motionless
+}

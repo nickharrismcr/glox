@@ -1,0 +1,39 @@
+from gfx import *
+from npc import NPC
+import random
+
+// Bomber: drifts diagonally, bouncing off the top and bottom of the play area,
+// scattering bombs as it goes. Ported from states/npc/bomber/{bomb,die}.lua
+//
+// NOTE: the asset set has no bomber sprite (the Lua original draws it from
+// inline ASCII art), so bomb.png stands in for now. Drop a bomber.png into
+// pngs/ and change the image passed from entity_mgr to fix the visuals.
+
+class Bomber < NPC {
+
+    init(pos, img, top) {
+        super.init(pos, img, 1, 1, 1, "bomber")
+        this.radar = vec4(0, 150, 255, 255)
+        this.update_func = bomb
+        this.dp = vec2(1.7, 1.7)     // Lua: 100 px/s each axis, at 60fps
+        this.top = top
+    }
+}
+
+func bomb(e, width, height) {
+    e.pos = e.pos ++ e.dp
+
+    // bounce off the ceiling / floor of the play area
+    if (e.pos.y < e.top) {
+        e.pos.y = e.top
+        e.dp.y = -e.dp.y
+    }
+    if (e.pos.y > height - 60) {
+        e.pos.y = height - 60
+        e.dp.y = -e.dp.y
+    }
+
+    if (random.integer(0, 100) == 1) {
+        e.mgr.fire_bullet(e.pos, vec2(0, 3))    // drop a bomb straight down
+    }
+}
