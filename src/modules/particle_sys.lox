@@ -120,15 +120,19 @@ class Emitter {
 
 class Emitters {
     init() {
-        
-        this.queue = [];
+        // NOTE: this list must not be named `queue` -- a field shadows a method of
+        // the same name, so it would make the queue() method below unreachable
+        // (emitters.queue(...) would try to call the list).
+        this.pending = [];
         this.emitters = [];
     }
+    // Queue an emitter to fire `particles` particles after `delay` frames. Good for
+    // one-shot bursts: once its particles all die, the emitter is dropped.
     queue(emitter,particles,delay) {
-        this.queue.append([emitter, particles, delay]);
+        this.pending.append([emitter, particles, delay]);
     }
     queue_length(){
-        return len(this.queue);
+        return len(this.pending);
     }
     update() {
         
@@ -138,16 +142,16 @@ class Emitters {
     }
     update_queue() {
         var i = 0;
-        var n = len(this.queue);
+        var n = len(this.pending);
         while (i < n) {
-            var q = this.queue[i];
+            var q = this.pending[i];
             q[2] = q[2] - 1; // Decrease delay
             if (q[2] <= 0) {
                 q[0].emit(q[1]);
                 this.emitters.append(q[0]); // Add emitter to the list
                 n = n - 1;                  // swap-with-last removal
-                this.queue[i] = this.queue[n];
-                this.queue.remove(n);
+                this.pending[i] = this.pending[n];
+                this.pending.remove(n);
             } else {
                 i = i + 1;
             }
