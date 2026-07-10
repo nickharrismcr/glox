@@ -11,6 +11,8 @@ import random
 import functools
 import event
 import collide
+import particle_sys
+import fx
 
 class EntityMgr {
 
@@ -25,6 +27,7 @@ class EntityMgr {
         this.queue = []
         this.bullets = BulletPool(100)
         this.lasers = LaserPool(12)
+        this.particles = particle_sys.Emitters()   // one-shot explosion bursts
         this.events = event.EventDispatcher()
 
         // sprite sheets, loaded once and shared by every instance
@@ -135,6 +138,11 @@ class EntityMgr {
         }
         this.bullets.update(worldwidth, height)
         this.lasers.update(this.screenwidth, height)
+        this.particles.update()
+    }
+    // One-shot explosion burst at a world position.
+    explode_at(x, y) {
+        fx.explosion(this.particles, x, y, 140)
     }
     fire_bullet(p,v) {
         this.bullets.fire(p,v)
@@ -174,5 +182,6 @@ class EntityMgr {
         }
         this.bullets.draw(g, cam)
         this.lasers.draw(g, cam)
+        fx.draw(this.particles, g, cam)
     }
 }

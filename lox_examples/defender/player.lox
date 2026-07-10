@@ -3,20 +3,28 @@ from sprite import Sprite
 import math
 import colour
 
-// The player ship. Ported behaviourally from states/player/play.lua in the Lua
-// Love2D original, adapted to this port's frame-based (no-dt) update model.
+// The player ship. Ported behaviourally from states/player/{play,die,explode}.lua
+// in the Lua Love2D original, adapted to this port's frame-based (no-dt) model.
+//
 // Controls (classic Defender):
 //   RIGHT (hold) : thrust in the facing direction
 //   LEFT  (tap)  : reverse facing and reset speed
 //   Q / A        : move up / down within the play area
 //   SPACE        : fire
+//
+// Death runs as a small state machine of swappable update functions, matching
+// the NPC idiom:
+//   play -> die (frozen, flashing red) -> explode (hidden, particle burst) -> play
+//
 // The camera follows the ship, keeping it at a fixed screen offset that shifts
 // to look ahead in the facing direction.
 
 class Player < Sprite {
 
-    init(pos, img, thrust_img, width, worldwidth, height) {
-        // ship.png is a 5-frame animation strip; thrust.png is a 2-frame flame.
+    init(pos, img, thrust_img, shipd_img, width, worldwidth, height) {
+        // ship.png is a 5-frame animation strip; thrust.png is a 2-frame flame;
+        // shipd.png is the solid-red ship used for the death flash (2 frames,
+        // same 60px frame width as ship.png so it lines up exactly).
         super.init(pos, img, 5, 1, 5)
         this.type = "player"
         this.animate(8)
@@ -25,6 +33,7 @@ class Player < Sprite {
         this.thrust_tex = texture(thrust_img, 2, 1, 2)
         this.thrust_tex.animate(6)
         this.thrust_width = this.thrust_tex.frame_width()
+        this.red_tex = texture(shipd_img, 2, 1, 2)
 
         // Classic Defender: a persistent facing (dir) plus a scalar speed. Thrust
         // accelerates in the facing direction; reverse flips facing and zeroes speed.
@@ -32,6 +41,7 @@ class Player < Sprite {
         this.dir = 1
         this.speed = 0
         this.vx = 0
+        this.vy = 0
         this.maxspeed = 16
         this.accel = 0.7
         this.friction = 0.90
@@ -51,19 +61,27 @@ class Player < Sprite {
         this.thrusting = false
         this.alive = true
         this.mgr = nil
-        this.invuln = 0          // frames of post-hit invulnerability (also drives the flash)
+
+        // death / respawn state
+        this.update_func = state_play
+        this.timer = 0
+        this.flash = false           // draw the red ship this frame
+        this.visible = true
+        this.invuln = 0              // frames of respawn invulnerability (drives a blink)
     }
 
-    // Struck by a deadly NPC. Minimal response for the core loop: brief
-    // invulnerability + flash. (The full die -> explode -> respawn FSM is deferred.)
+    dying() {
+        return this.update_func != state_play
+    }
+
+    // Struck by a deadly NPC: begin the death sequence, unless we are already
+    // dying or still invulnerable from a respawn.
     hit() {
-        if (this.invuln > 0) {
+        if (this.invuln > 0 or this.dying()) {
             return
         }
-        this.invuln = 90
-        if (this.mgr != nil) {
-            this.mgr.events.emit("player_hit", this)
-        }
+        this.mgr.events.emit("player_hit", this)
+        enter_die(this)
     }
 
     handle_input(win) {
@@ -100,33 +118,8 @@ class Player < Sprite {
     }
 
     update(win) {
-        this.handle_input(win)
-        this.fire(win)
-
-        if (this.invuln > 0) {
-            this.invuln = this.invuln - 1
-        }
-
-        this.vx = this.speed * this.dir      // signed velocity for parallax / laser
-        this.pos.x = this.pos.x + this.vx
-        this.pos.y = this.pos.y + this.vy
-
-        // horizontal world wrap-around
-        if (this.pos.x > this.worldwidth) { this.pos.x = this.pos.x - this.worldwidth }
-        if (this.pos.x < 0) { this.pos.x = this.pos.x + this.worldwidth }
-
-        // clamp to the vertical play area
-        if (this.pos.y < this.top) { this.pos.y = this.top }
-        if (this.pos.y > this.bottom) { this.pos.y = this.bottom }
-
-        // slide the camera offset to look ahead in the facing direction
-        var target = this.leftoffset
-        if (this.dir == -1) { target = this.rightoffset }
-        if (this.offset < target) {
-            this.offset = math.min(this.offset + this.offsetspeed, target)
-        } else if (this.offset > target) {
-            this.offset = math.max(this.offset - this.offsetspeed, target)
-        }
+        var f = this.update_func
+        f(this, win)
     }
 
     // Camera x that keeps the ship drawn at screen x == this.offset.
@@ -135,25 +128,116 @@ class Player < Sprite {
     }
 
     draw(win, cam) {
-        // flash while invulnerable: skip drawing on alternate 4-frame windows
+        if (!this.visible) {
+            return
+        }
+        // blink while invulnerable after a respawn
         if (this.invuln > 0 and (this.invuln / 4) % 2 == 0) {
             return
         }
         var spos = cam.translate(this.pos.x)
-        if (spos != nil) {
-            var flip = this.dir == -1     // ship art faces right; mirror it when facing left
-            var white = vec4(255, 255, 255, 255)
-            if (this.thrusting) {
-                // thrust flame sits flush against the ship's tail (opposite the
-                // facing dir). Ship occupies [spos, spos+width] on screen;
-                // facing right the tail is at spos, facing left it is at spos+width.
-                var tx = spos - this.thrust_width      // facing right: flame just left of ship
-                if (this.dir == -1) {
-                    tx = spos + this.width             // facing left: flame just right of ship
-                }
-                win.draw_texture_flip(this.thrust_tex, tx, this.pos.y, white, flip)
-            }
-            win.draw_texture_flip(this.texture, spos, this.pos.y, white, flip)
+        if (spos == nil) {
+            return
         }
+        var flip = this.dir == -1     // ship art faces right; mirror it when facing left
+        var white = vec4(255, 255, 255, 255)
+
+        if (this.thrusting) {
+            // thrust flame sits flush against the ship's tail (opposite the
+            // facing dir). Ship occupies [spos, spos+width] on screen;
+            // facing right the tail is at spos, facing left it is at spos+width.
+            var tx = spos - this.thrust_width      // facing right: flame just left of ship
+            if (this.dir == -1) {
+                tx = spos + this.width             // facing left: flame just right of ship
+            }
+            win.draw_texture_flip(this.thrust_tex, tx, this.pos.y, white, flip)
+        }
+
+        // NOTE: single assignment, not `var tex = ...; tex = ...`. texture() returns
+        // an immutable value, and (unlike globals) a `var` local keeps that flag,
+        // so reassigning it raises "Cannot assign to const local".
+        var tex = this.flash ? this.red_tex : this.texture   // red ship mid-death
+        win.draw_texture_flip(tex, spos, this.pos.y, white, flip)
     }
+}
+
+// --- states -------------------------------------------------------------------
+
+func state_play(e, win) {
+    e.handle_input(win)
+    e.fire(win)
+
+    if (e.invuln > 0) {
+        e.invuln = e.invuln - 1
+    }
+
+    e.vx = e.speed * e.dir           // signed velocity for parallax / laser
+    e.pos.x = e.pos.x + e.vx
+    e.pos.y = e.pos.y + e.vy
+
+    // horizontal world wrap-around
+    if (e.pos.x > e.worldwidth) { e.pos.x = e.pos.x - e.worldwidth }
+    if (e.pos.x < 0) { e.pos.x = e.pos.x + e.worldwidth }
+
+    // clamp to the vertical play area
+    if (e.pos.y < e.top) { e.pos.y = e.top }
+    if (e.pos.y > e.bottom) { e.pos.y = e.bottom }
+
+    // slide the camera offset to look ahead in the facing direction
+    var target = e.leftoffset
+    if (e.dir == -1) { target = e.rightoffset }
+    if (e.offset < target) {
+        e.offset = math.min(e.offset + e.offsetspeed, target)
+    } else if (e.offset > target) {
+        e.offset = math.max(e.offset - e.offsetspeed, target)
+    }
+}
+
+func enter_die(e) {
+    e.update_func = state_die
+    e.timer = 120                    // Lua: 2 seconds, frozen
+    e.speed = 0
+    e.vx = 0
+    e.vy = 0
+    e.thrusting = false
+    e.mgr.events.emit("player_die", e)
+}
+
+// Frozen in place, flashing red before it blows.
+func state_die(e, win) {
+    e.timer = e.timer - 1
+    e.flash = (e.timer / 3) % 2 == 0     // rapid alternation, ~10Hz
+    if (e.timer <= 0) {
+        enter_explode(e)
+    }
+}
+
+func enter_explode(e) {
+    e.update_func = state_explode
+    e.timer = 150                    // Lua: 3 seconds before respawning
+    e.visible = false
+    e.flash = false
+    // burst from the centre of the ship
+    e.mgr.explode_at(e.pos.x + e.width / 2, e.pos.y + e.height / 2)
+    e.mgr.events.emit("player_explode", e)
+}
+
+// Ship is gone; the particle burst plays out while we wait to respawn.
+func state_explode(e, win) {
+    e.timer = e.timer - 1
+    if (e.timer <= 0) {
+        enter_play(e)
+    }
+}
+
+func enter_play(e) {
+    e.update_func = state_play
+    e.visible = true
+    e.flash = false
+    e.speed = 0
+    e.vx = 0
+    e.dir = 1
+    e.offset = e.leftoffset
+    e.invuln = 120                   // grace period so you don't die on respawn
+    e.mgr.events.emit("player_start", e)
 }

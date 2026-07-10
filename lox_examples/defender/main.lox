@@ -24,11 +24,15 @@ import colour
 //   "player_hit"        (player)  - struck by a deadly NPC
 //   "pod_killed"        (pod)     - a pod burst open, releasing swarmers
 //   "<type>_spawn/_killed"        - also for pod, swarmer, baiter, bomber
+//   "player_die"        (player)  - death sequence began (ship freezes, flashes red)
+//   "player_explode"    (player)  - ship vanished; explosion particles burst
+//   "player_start"      (player)  - ship respawned (brief invulnerability)
 const GAME_EVENTS = ["lander_spawn", "human_spawn", "lander_searching",
                      "human_grabbed", "lander_mutated", "lander_killed",
                      "mutant_killed", "bullet_fire", "laser_fire", "player_hit",
                      "pod_spawn", "pod_killed", "swarmer_spawn", "swarmer_killed",
-                     "baiter_spawn", "baiter_killed", "bomber_spawn", "bomber_killed"]
+                     "baiter_spawn", "baiter_killed", "bomber_spawn", "bomber_killed",
+                     "player_die", "player_explode", "player_start"]
 
 // Debug: log every game event to the console. Trim GAME_EVENTS to quieten it.
 func make_event_logger(name) {
@@ -65,7 +69,8 @@ foreach (var ev in GAME_EVENTS) {
 
 ship_img = image("pngs/ship.png")
 thrust_img = image("pngs/thrust.png")
-ship = player.Player(vec2(worldwidth/2, height/2), ship_img, thrust_img, width, worldwidth, height)
+shipd_img = image("pngs/shipd.png")     // solid red ship, for the death flash
+ship = player.Player(vec2(worldwidth/2, height/2), ship_img, thrust_img, shipd_img, width, worldwidth, height)
 ship.mgr = entities
 entities.player = ship          // NPCs hunt the player
 
