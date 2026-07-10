@@ -21,10 +21,11 @@ import colour
 
 class Player < Sprite {
 
-    init(pos, img, thrust_img, shipd_img, width, worldwidth, height) {
+    init(pos, img, thrust_img, shipw_img, width, worldwidth, height) {
         // ship.png is a 5-frame animation strip; thrust.png is a 2-frame flame;
-        // shipd.png is the solid-red ship used for the death flash (2 frames,
-        // same 60px frame width as ship.png so it lines up exactly).
+        // shipw.png is an all-white ship silhouette (2 frames, same 60px frame
+        // width as ship.png). Being pure white it can be tinted to any colour, so
+        // the death flash draws it tinted alternately white and red.
         super.init(pos, img, 5, 1, 5)
         this.type = "player"
         this.animate(8)
@@ -33,7 +34,7 @@ class Player < Sprite {
         this.thrust_tex = texture(thrust_img, 2, 1, 2)
         this.thrust_tex.animate(6)
         this.thrust_width = this.thrust_tex.frame_width()
-        this.red_tex = texture(shipd_img, 2, 1, 2)
+        this.flash_tex = texture(shipw_img, 2, 1, 2)
 
         // Classic Defender: a persistent facing (dir) plus a scalar speed. Thrust
         // accelerates in the facing direction; reverse flips facing and zeroes speed.
@@ -142,6 +143,17 @@ class Player < Sprite {
         var flip = this.dir == -1     // ship art faces right; mirror it when facing left
         var white = vec4(255, 255, 255, 255)
 
+        if (this.dying()) {
+            // death flash: alternate an all-white and an all-red ship. The white
+            // silhouette is tinted, so both colours come from one texture.
+            var tint = white
+            if (!this.flash) {
+                tint = vec4(255, 0, 0, 255)
+            }
+            win.draw_texture_flip(this.flash_tex, spos, this.pos.y, tint, flip)
+            return
+        }
+
         if (this.thrusting) {
             // thrust flame sits flush against the ship's tail (opposite the
             // facing dir). Ship occupies [spos, spos+width] on screen;
@@ -152,12 +164,7 @@ class Player < Sprite {
             }
             win.draw_texture_flip(this.thrust_tex, tx, this.pos.y, white, flip)
         }
-
-        var tex = this.texture
-        if (this.flash) {
-            tex = this.red_tex                     // solid red ship, mid-death
-        }
-        win.draw_texture_flip(tex, spos, this.pos.y, white, flip)
+        win.draw_texture_flip(this.texture, spos, this.pos.y, white, flip)
     }
 }
 

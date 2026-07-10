@@ -11,10 +11,10 @@ import particle_sys
 
 func explosion_init(p) {
     var angle = random.float(0, 2 * math.PI)
-    var speed = random.float(0.3, 6.0)
+    var speed = random.float(1.0, 14.0)          // wide spread: some fast, some slow
     p.dpos = vec2(math.cos(angle) * speed, math.sin(angle) * speed)
-    p.life = random.integer(25, 70)
-    p.size = random.float(1.0, 2.5)
+    p.life = random.integer(30, 85)
+    p.size = random.float(3.0, 7.5)      // 3x the original for chunky debris
     p.col = vec4(255, 255, 255, 255)     // white-hot at birth
 }
 
@@ -31,22 +31,31 @@ func explosion_update(p) {
         a = int(255 * (1.0 - t) / 0.4)
     }
     p.col = vec4(255, gb, gb, a)
-    p.dpos = vec2(p.dpos.x * 0.97, p.dpos.y * 0.97)   // drag
+    p.dpos = vec2(p.dpos.x * 0.985, p.dpos.y * 0.985)   // light drag: particles carry further
 }
 
 // Queue a one-shot burst at world (x, y). Once its particles die, particle_sys
-// drops the emitter automatically.
+// drops the emitter automatically. Uses square particles for the chunky,
+// pixel-debris look of the arcade original.
 func explosion(emitters, x, y, count) {
-    emitters.queue(particle_sys.Emitter(vec2(x, y), explosion_init, explosion_update), count, 0)
+    var em = particle_sys.Emitter(vec2(x, y), explosion_init, explosion_update)
+    em.shape = "square"
+    emitters.queue(em, count, 0)
 }
 
 func draw(emitters, win, cam) {
     win.begin_blend_mode("BLEND_ADD")
     foreach (var e in emitters.get()) {
+        var square = e.shape == "square"
         foreach (var p in e.get_particles()) {
             var spos = cam.translate(p.pos.x)
             if (spos != nil) {
-                win.circle_fill(spos, p.pos.y, p.size, p.col)
+                if (square) {
+                    var s = int(p.size * 2)                 // side length
+                    win.rectangle(int(spos) - s / 2, int(p.pos.y) - s / 2, s, s, p.col)
+                } else {
+                    win.circle_fill(spos, p.pos.y, p.size, p.col)
+                }
             }
         }
     }

@@ -83,6 +83,10 @@ class Emitter {
         this.update_function = update_function;
         this.particles = [];
         this.emit_queue = [];
+        // Rendering hint honoured by the caller's draw loop: "circle" (default)
+        // or "square". This module stays render-agnostic -- it never draws -- but
+        // carrying the shape here lets a shared draw routine pick per emitter.
+        this.shape = "circle";
     }
  
     emit(num_particles) {

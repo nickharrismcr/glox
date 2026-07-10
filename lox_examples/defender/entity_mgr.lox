@@ -30,6 +30,13 @@ class EntityMgr {
         this.particles = particle_sys.Emitters()   // one-shot explosion bursts
         this.events = event.EventDispatcher()
 
+        // Baiters are spawned dynamically, not up front: once the landers are
+        // nearly cleared, a baiter is sent in every baiter_delay frames to keep
+        // the pressure on. These are tuning knobs a future level controller sets.
+        this.baiter_threshold = 3       // spawn baiters when <= this many landers remain
+        this.baiter_delay = 600         // frames between baiter spawns (~10s at 60fps)
+        this.baiter_timer = this.baiter_delay
+
         // sprite sheets, loaded once and shared by every instance
         this.img_lander  = image("pngs/lander.png")
         this.img_human   = image("pngs/human.png")
@@ -113,6 +120,42 @@ class EntityMgr {
         return len(lst)
     }
 
+    // Landers still in play: active landers plus any yet to materialise. A mutated
+    // lander has type "mutant", so mutants are naturally excluded.
+    lander_count() {
+        var n = 0
+        foreach (var e in this.entities) {
+            if (e.alive and e.type == "lander") {
+                n = n + 1
+            }
+        }
+        foreach (var q in this.queue) {
+            if (q[0].type == "lander") {
+                n = n + 1
+            }
+        }
+        return n
+    }
+
+    // Send in a baiter every baiter_delay frames once the landers are nearly
+    // cleared. While plenty of landers remain the timer is held at its reset value,
+    // so the first baiter arrives baiter_delay frames after the threshold is met.
+    update_baiters() {
+        // pick up a shortened delay (e.g. from a level controller) right away
+        if (this.baiter_timer > this.baiter_delay) {
+            this.baiter_timer = this.baiter_delay
+        }
+        if (this.lander_count() <= this.baiter_threshold) {
+            this.baiter_timer = this.baiter_timer - 1
+            if (this.baiter_timer <= 0) {
+                this.add_baiter(0)
+                this.baiter_timer = this.baiter_delay
+            }
+        } else {
+            this.baiter_timer = this.baiter_delay
+        }
+    }
+
 
     update(worldwidth,height) {
 
@@ -139,6 +182,7 @@ class EntityMgr {
         this.bullets.update(worldwidth, height)
         this.lasers.update(this.screenwidth, height)
         this.particles.update()
+        this.update_baiters()
     }
     // One-shot explosion burst at a world position.
     explode_at(x, y) {
@@ -172,6 +216,14 @@ class EntityMgr {
             }
             // hit() clears `deadly`, so a just-destroyed NPC can't also kill the player
             if (e.deadly and collide.overlap(pbox, ebox, this.worldwidth)) {
+                player.hit()
+            }
+        }
+
+        // NPC bullets die when they strike the player (and damage it).
+        foreach (var b in this.bullets.bullets) {
+            if (!b.dead() and collide.overlap(collide.entity_box(b), pbox, this.worldwidth)) {
+                b.kill()
                 player.hit()
             }
         }

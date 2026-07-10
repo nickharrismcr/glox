@@ -71,18 +71,18 @@ foreach (var ev in GAME_EVENTS) {
 
 ship_img = image("pngs/ship.png")
 thrust_img = image("pngs/thrust.png")
-shipd_img = image("pngs/shipd.png")     // solid red ship, for the death flash
-ship = player.Player(vec2(worldwidth/2, height/2), ship_img, thrust_img, shipd_img, width, worldwidth, height)
+shipw_img = image("pngs/shipw.png")     // white ship silhouette, tinted for the death flash
+ship = player.Player(vec2(worldwidth/2, height/2), ship_img, thrust_img, shipw_img, width, worldwidth, height)
 ship.mgr = entities
 entities.player = ship          // NPCs hunt the player
 
 // guarantee one lander materialises in view (roughly screen-centre at start)
 entities.add_lander_near(ship.pos.x + width * 0.35, 0)
 
-// the rest of the NPC roster
+// the rest of the NPC roster. Baiters are not seeded here -- the entity manager
+// sends them in once the landers are nearly cleared (see update_baiters).
 entities.add_pods(3, ship.pos.x)      // shoot a pod to release swarmers
 entities.add_bombers(4)
-entities.add_baiter(600)              // lurks ~10s, then materialises on the player
 
 // HUD: score driven by the NPC kill events, drawn from the font atlas
 font = text.Font(image("pngs/font.png"))
