@@ -6,13 +6,32 @@ import lander
 import entity_mgr 
 import itertools
 import radar
-import controller
+import player
 import camera
-import event 
+import event
 import colour
  
-func lander_search_event(e) {
-    print("Lander searching at ", e.pos.x, " ", e.pos.y)
+// --- Game events -------------------------------------------------------------
+// Emitted via entities.events; subscribe with entities.events.on(name, fn).
+// Wired now for later systems (audio, scoring, particles, HUD). Payload in ( ):
+//   "lander_spawn" / "human_spawn" (entity) - materialised into the world
+//   "lander_searching"  (lander)  - began searching for a human
+//   "human_grabbed"     (lander)  - latched onto a human (lander.human)
+//   "lander_mutated"    (lander)  - reached the top and became a mutant
+//   "lander_killed" / "mutant_killed" (entity) - destroyed
+//   "bullet_fire"       (pos)     - an NPC fired a bullet
+//   "laser_fire"        (pos)     - the player fired the laser
+//   "player_hit"        (player)  - struck by a deadly NPC
+const GAME_EVENTS = ["lander_spawn", "human_spawn", "lander_searching",
+                     "human_grabbed", "lander_mutated", "lander_killed",
+                     "mutant_killed", "bullet_fire", "laser_fire", "player_hit"]
+
+// Debug: log every game event to the console. Trim GAME_EVENTS to quieten it.
+func make_event_logger(name) {
+    func log(data) {
+        print("[event] ${name}")
+    }
+    return log
 }
 
 
@@ -22,44 +41,47 @@ const height=800
 const worldwidth=width*10
 var win = window(width,height)
 win.init()
+win.set_target_fps(60)
 
 cam=camera.Camera(width, worldwidth, 0)
-cont=controller.Controller(10)
  
 mountain=mountains.Mountain(worldwidth, height*0.3)
 starfield=stars.Stars(width, height*0.7, 30)
 entities= entity_mgr.EntityMgr(worldwidth, height)
 entities.mountains = mountain
+entities.screenwidth = width
 radar=radar.Radar(width, height, worldwidth)
 foreach ( var i in range(0,3,1)) {
     entities.add_landers(3,i*100) 
 }
 entities.add_humans(9) 
-entities.events.on("lander_searching", lander_search_event)
- 
- 
-bgxpos=0
-fgxpos=0
+foreach (var ev in GAME_EVENTS) {
+    entities.events.on(ev, make_event_logger(ev))
+}
+
+ship_img = image("pngs/ship.png")
+thrust_img = image("pngs/thrust.png")
+ship = player.Player(vec2(worldwidth/2, height/2), ship_img, thrust_img, width, worldwidth, height)
+ship.mgr = entities
+
+// guarantee one lander materialises in view (roughly screen-centre at start)
+entities.add_lander_near(ship.pos.x + width * 0.35, 0)
 
 while (!win.should_close()) {
 
     win.begin()
     win.clear(colour.BLACK)
 
-    vel = int(cont.vel)
-    cont.update(win)
-    //vel = 0 
-    starfield.update(-vel/5)
-   
-    fgxpos = fgxpos + vel
-    if (fgxpos > width*10) {
-        fgxpos = 0
-    }
-    cam.move(fgxpos)
-    mountain.draw(win,height, cam, width)
+    ship.update(win)
+    cam.move(ship.camera_x())
+    starfield.update(-ship.vx/5)
+
+    mountain.draw(win, height, cam, width)
     starfield.draw(win)
     entities.update(worldwidth, height)
-    entities.draw(win,cam)
+    entities.check_collisions(ship)
+    entities.draw(win, cam)
+    ship.draw(win, cam)
     radar.draw(win, cam, entities, mountain)
     win.end()
 }

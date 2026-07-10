@@ -1,0 +1,159 @@
+from gfx import *
+from sprite import Sprite
+import math
+import colour
+
+// The player ship. Ported behaviourally from states/player/play.lua in the Lua
+// Love2D original, adapted to this port's frame-based (no-dt) update model.
+// Controls (classic Defender):
+//   RIGHT (hold) : thrust in the facing direction
+//   LEFT  (tap)  : reverse facing and reset speed
+//   Q / A        : move up / down within the play area
+//   SPACE        : fire
+// The camera follows the ship, keeping it at a fixed screen offset that shifts
+// to look ahead in the facing direction.
+
+class Player < Sprite {
+
+    init(pos, img, thrust_img, width, worldwidth, height) {
+        // ship.png is a 5-frame animation strip; thrust.png is a 2-frame flame.
+        super.init(pos, img, 5, 1, 5)
+        this.type = "player"
+        this.animate(8)
+        this.width = this.texture.frame_width()
+        this.height = this.texture.height()
+        this.thrust_tex = texture(thrust_img, 2, 1, 2)
+        this.thrust_tex.animate(6)
+        this.thrust_width = this.thrust_tex.frame_width()
+
+        // Classic Defender: a persistent facing (dir) plus a scalar speed. Thrust
+        // accelerates in the facing direction; reverse flips facing and zeroes speed.
+        // vx is the derived signed velocity (used for parallax / laser inheritance).
+        this.dir = 1
+        this.speed = 0
+        this.vx = 0
+        this.maxspeed = 16
+        this.accel = 0.7
+        this.friction = 0.90
+        this.vspeed = 7
+
+        // camera look-ahead: ship sits at screen x == offset, which lerps between
+        // leftoffset (facing right -> ship near the left edge, seeing ahead right)
+        // and rightoffset (facing left -> ship near the right edge).
+        this.leftoffset = width * 0.15
+        this.rightoffset = width - width * 0.15
+        this.offset = this.leftoffset
+        this.offsetspeed = 10
+
+        this.worldwidth = worldwidth
+        this.top = height * 0.16     // keep clear of the radar strip at the top
+        this.bottom = height - 50
+        this.thrusting = false
+        this.alive = true
+        this.mgr = nil
+        this.invuln = 0          // frames of post-hit invulnerability (also drives the flash)
+    }
+
+    // Struck by a deadly NPC. Minimal response for the core loop: brief
+    // invulnerability + flash. (The full die -> explode -> respawn FSM is deferred.)
+    hit() {
+        if (this.invuln > 0) {
+            return
+        }
+        this.invuln = 90
+        if (this.mgr != nil) {
+            this.mgr.events.emit("player_hit", this)
+        }
+    }
+
+    handle_input(win) {
+        this.thrusting = false
+
+        // reverse (edge-triggered): flip facing and kill speed
+        if (win.key_pressed(win.KEY_LEFT)) {
+            this.dir = -this.dir
+            this.speed = 0
+        }
+
+        // thrust (held): accelerate in the facing direction, else coast to a stop
+        if (win.key_down(win.KEY_RIGHT)) {
+            this.speed = math.min(this.speed + this.accel, this.maxspeed)
+            this.thrusting = true
+        } else {
+            this.speed = this.speed * this.friction
+        }
+
+        var vy = 0
+        if (win.key_down(win.KEY_Q)) { vy = -this.vspeed }   // up
+        if (win.key_down(win.KEY_A)) { vy = this.vspeed }    // down
+        this.vy = vy
+    }
+
+    fire(win) {
+        if (win.key_pressed(win.KEY_SPACE) and this.mgr != nil) {
+            // draw_texture is top-left anchored: the nose is at the front edge
+            // (front in the facing direction) and the vertical centre of the sprite.
+            var nose_x = this.pos.x + (this.width / 2) + this.dir * (this.width / 2)
+            var nose_y = this.pos.y + (this.height / 2)
+            this.mgr.fire_laser(nose_x, nose_y, this.dir, math.abs(this.vx))
+        }
+    }
+
+    update(win) {
+        this.handle_input(win)
+        this.fire(win)
+
+        if (this.invuln > 0) {
+            this.invuln = this.invuln - 1
+        }
+
+        this.vx = this.speed * this.dir      // signed velocity for parallax / laser
+        this.pos.x = this.pos.x + this.vx
+        this.pos.y = this.pos.y + this.vy
+
+        // horizontal world wrap-around
+        if (this.pos.x > this.worldwidth) { this.pos.x = this.pos.x - this.worldwidth }
+        if (this.pos.x < 0) { this.pos.x = this.pos.x + this.worldwidth }
+
+        // clamp to the vertical play area
+        if (this.pos.y < this.top) { this.pos.y = this.top }
+        if (this.pos.y > this.bottom) { this.pos.y = this.bottom }
+
+        // slide the camera offset to look ahead in the facing direction
+        var target = this.leftoffset
+        if (this.dir == -1) { target = this.rightoffset }
+        if (this.offset < target) {
+            this.offset = math.min(this.offset + this.offsetspeed, target)
+        } else if (this.offset > target) {
+            this.offset = math.max(this.offset - this.offsetspeed, target)
+        }
+    }
+
+    // Camera x that keeps the ship drawn at screen x == this.offset.
+    camera_x() {
+        return this.pos.x - this.offset
+    }
+
+    draw(win, cam) {
+        // flash while invulnerable: skip drawing on alternate 4-frame windows
+        if (this.invuln > 0 and (this.invuln / 4) % 2 == 0) {
+            return
+        }
+        var spos = cam.translate(this.pos.x)
+        if (spos != nil) {
+            var flip = this.dir == -1     // ship art faces right; mirror it when facing left
+            var white = vec4(255, 255, 255, 255)
+            if (this.thrusting) {
+                // thrust flame sits flush against the ship's tail (opposite the
+                // facing dir). Ship occupies [spos, spos+width] on screen;
+                // facing right the tail is at spos, facing left it is at spos+width.
+                var tx = spos - this.thrust_width      // facing right: flame just left of ship
+                if (this.dir == -1) {
+                    tx = spos + this.width             // facing left: flame just right of ship
+                }
+                win.draw_texture_flip(this.thrust_tex, tx, this.pos.y, white, flip)
+            }
+            win.draw_texture_flip(this.texture, spos, this.pos.y, white, flip)
+        }
+    }
+}

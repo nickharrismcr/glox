@@ -1,0 +1,101 @@
+from gfx import *
+import colour
+import math
+
+// The player's laser. Ported behaviourally from states/player/laser.lua +
+// systems/draw/LaserDraw.lua in the Lua original: a horizontal beam that shoots
+// from the ship nose in the facing direction, extends across the screen, cycles
+// colour, and expires after a short life. Drawn as filled rectangles (a bright
+// core plus a translucent glow), not a sprite.
+
+class Laser {
+    init() {
+        this.active = false
+        this.pos = vec2(0, 0)
+        this.dir = 1
+        this.len = 0
+        this.speed = 0
+        this.alive = 0
+        this.color = colour.YELLOW
+    }
+    dead() {
+        return !this.active
+    }
+    reset(x, y, dir, speed, color) {
+        this.active = true
+        this.pos = vec2(x, y)
+        this.dir = dir
+        this.len = 20 * dir
+        this.speed = speed + 14        // beam travels faster than the ship
+        this.alive = 0
+        this.color = color
+    }
+    update(width, height) {
+        if (!this.active) {
+            return
+        }
+        this.pos.x = this.pos.x + this.dir * this.speed
+        // extend the beam until it spans (up to) the screen width
+        if (math.abs(this.len) < width) {
+            this.len = this.len + this.dir * this.speed * 2
+        }
+        this.alive = this.alive + 1
+        if (this.alive > 90) {
+            this.active = false
+        }
+    }
+    draw(win, cam) {
+        if (!this.active) {
+            return
+        }
+        var spos = cam.translate(this.pos.x)
+        if (spos == nil) {
+            return
+        }
+        // normalise so width is positive when firing left (negative len)
+        var x = spos
+        var w = this.len
+        if (w < 0) {
+            x = spos + w
+            w = -w
+        }
+        var ix = int(x)
+        var iy = int(this.pos.y)
+        var iw = int(w)
+        var c = this.color
+        // translucent glow above/below, then the bright core
+        win.rectangle(ix, iy - 4, iw, 8, colour.fade(c, 0.15))
+        win.rectangle(ix, iy - 2, iw, 4, colour.fade(c, 0.3))
+        win.rectangle(ix, iy, iw, 2, c)
+    }
+}
+
+class LaserPool {
+    init(size) {
+        this.lasers = []
+        this.colors = [colour.YELLOW, colour.CYAN, colour.GREEN, colour.BLUE]
+        this.ci = 0
+        for (var i = 0; i < size; i = i + 1) {
+            this.lasers.append(Laser())
+        }
+    }
+    fire(x, y, dir, speed) {
+        foreach (var l in this.lasers) {
+            if (l.dead()) {
+                this.ci = (this.ci + 1) % 4
+                l.reset(x, y, dir, speed, this.colors[this.ci])
+                break
+            }
+        }
+    }
+    update(width, height) {
+        foreach (var l in this.lasers) {
+            l.update(width, height)
+        }
+    }
+    draw(win, cam) {
+        foreach (var l in this.lasers) {
+            l.draw(win, cam)
+        }
+    }
+}

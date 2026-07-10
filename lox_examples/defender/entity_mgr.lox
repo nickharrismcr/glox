@@ -1,22 +1,26 @@
 from gfx import *
 from bullets import BulletPool
-import lander 
+from laser import LaserPool
+import lander
 import human
 import random
 import functools
-import event 
+import event
+import collide
 
 class EntityMgr {
 
     init(worldwidth, height) {
         this.worldwidth = worldwidth
         this.height = height
-        this.mountains = nil 
+        this.screenwidth = worldwidth   // overridden by main with the actual screen width
+        this.mountains = nil
         this.entities = []
         this.queue = []
         this.bullets = BulletPool(100)
+        this.lasers = LaserPool(12)
         this.events = event.EventDispatcher()
-    }  
+    }
     get_all() {
         return this.entities
     }
@@ -30,6 +34,14 @@ class EntityMgr {
             e = lander.Lander(vec2(random.integer(0, this.worldwidth), random.integer(100, this.height/2)), img, 3, 1, 3)
             this.add_to_queue(e,delay)
         }
+    }
+    // Spawn a single lander near world-x cx, so at least one materialises within
+    // the player's view rather than somewhere off in the 10k-wide world.
+    add_lander_near(cx, delay) {
+        img = image("pngs/lander.png")
+        var x = cx + random.integer(-60, 60)
+        e = lander.Lander(vec2(x, random.integer(120, this.height/2)), img, 3, 1, 3)
+        this.add_to_queue(e, delay)
     }
     add_humans(num) {
         img = image("pngs/human.png")
@@ -72,9 +84,10 @@ class EntityMgr {
             delay = q[1]
             delay = delay - 1
             if (delay <= 0) {
-                e.alive = true 
+                e.alive = true
                 this.entities.append(e)
                 this.queue.remove(i)
+                this.events.emit(e.type & "_spawn", e)   // e.g. lander_spawn, human_spawn
             }
             q[1] = delay
             i=i+1
@@ -84,14 +97,43 @@ class EntityMgr {
             e.update(worldwidth,height)
         }
         this.bullets.update(worldwidth, height)
+        this.lasers.update(this.screenwidth, height)
     }
     fire_bullet(p,v) {
         this.bullets.fire(p,v)
+        this.events.emit("bullet_fire", p)      // an NPC fired a bullet
+    }
+    fire_laser(x, y, dir, speed) {
+        this.lasers.fire(x, y, dir, speed)
+        this.events.emit("laser_fire", vec2(x, y))   // the player fired the laser
+    }
+
+    // Player lasers destroy shootable NPCs; deadly NPCs hit the player.
+    check_collisions(player) {
+        foreach (var e in this.entities) {
+            if (!e.alive) {
+                continue
+            }
+            if (e.type == "lander") {
+                var ebox = collide.entity_box(e)
+                // laser hits
+                foreach (var l in this.lasers.lasers) {
+                    if (l.active and collide.overlap(collide.laser_box(l), ebox, this.worldwidth)) {
+                        e.hit()
+                    }
+                }
+                // collision with the player ship
+                if (e.alive and collide.overlap(collide.entity_box(player), ebox, this.worldwidth)) {
+                    player.hit()
+                }
+            }
+        }
     }
     draw(g,cam) {
         foreach (var e in this.entities) {
             e.draw(g,cam)
         }
         this.bullets.draw(g, cam)
+        this.lasers.draw(g, cam)
     }
 }

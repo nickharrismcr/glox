@@ -9,3 +9,4 @@ glox.exe
 __pycache__/
 .pytest_cache/
 *.pyc
+portfrom/

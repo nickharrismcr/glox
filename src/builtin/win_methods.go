@@ -437,6 +437,42 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			return core.NIL_VALUE
 		},
 	})
+	o.RegisterMethod("draw_texture_flip", &core.BuiltInObject{
+		// Like draw_texture, but mirrors the sprite horizontally when flip_x is
+		// true (a negative source width flips it in place). Preserves animation.
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 5 {
+				vm.RunTimeError("draw_texture_flip expects 5 arguments: texture, x, y, color, flip_x")
+				return core.NIL_VALUE
+			}
+
+			textureVal := vm.Stack(arg_stackptr)
+			xVal := vm.Stack(arg_stackptr + 1)
+			yVal := vm.Stack(arg_stackptr + 2)
+			colVal := vm.Stack(arg_stackptr + 3)
+			flipVal := vm.Stack(arg_stackptr + 4)
+
+			if colVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vec4 for texture color")
+				return core.NIL_VALUE
+			}
+			v4obj := colVal.Obj.(*core.Vec4Object)
+			tint := rl.NewColor(uint8(v4obj.X), uint8(v4obj.Y), uint8(v4obj.Z), uint8(v4obj.W))
+
+			x := float32(xVal.AsFloat())
+			y := float32(yVal.AsFloat())
+			flip := flipVal.Type == core.VAL_BOOL && flipVal.Data == 1
+
+			to := textureVal.Obj.(*TextureObject)
+			rect := to.Data.GetFrameRect()
+			if flip {
+				rect.Width = -rect.Width
+			}
+			rl.DrawTextureRec(to.Data.Texture, rect, rl.Vector2{X: x, Y: y}, tint)
+			to.Data.Animate()
+			return core.NIL_VALUE
+		},
+	})
 	o.RegisterMethod("draw_render_texture", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 4 {
