@@ -16,26 +16,30 @@ import fx
 
 class EntityMgr {
 
-    init(worldwidth, height) {
-        this.worldwidth = worldwidth
-        this.height = height
-        this.screenwidth = worldwidth   // overridden by main with the actual screen width
-        this.top = height * 0.16        // ceiling of the play area (below the radar)
+    init(config) {
+        this.config = config
+        this.worldwidth = config.worldwidth()
+        this.height = config.height
+        this.screenwidth = config.width
+        this.top = config.height * 0.16   // ceiling of the play area (below the radar)
         this.mountains = nil
         this.player = nil               // set by main; NPCs hunt it
         this.entities = []
         this.queue = []
-        this.bullets = BulletPool(100)
-        this.lasers = LaserPool(12)
+        this.bullets = BulletPool(config.bullet_pool)
+        this.lasers = LaserPool(config.laser_pool)
         this.particles = particle_sys.Emitters()   // one-shot explosion bursts
         this.events = event.EventDispatcher()
 
         // Baiters are spawned dynamically, not up front: once the landers are
         // nearly cleared, a baiter is sent in every baiter_delay frames to keep
-        // the pressure on. These are tuning knobs a future level controller sets.
-        this.baiter_threshold = 3       // spawn baiters when <= this many landers remain
-        this.baiter_delay = 600         // frames between baiter spawns (~10s at 60fps)
+        // the pressure on.
+        this.baiter_threshold = config.baiter_threshold
+        this.baiter_delay = config.baiter_delay
         this.baiter_timer = this.baiter_delay
+
+        this.swarmers_per_pod = config.swarmers_per_pod
+        this.explosion_particles = config.explosion_particles
 
         this.human_count = 0            // living colonists; hits 0 -> "no_humans"
 
@@ -196,7 +200,7 @@ class EntityMgr {
     }
     // One-shot explosion burst at a world position.
     explode_at(x, y) {
-        fx.explosion(this.particles, x, y, 140)
+        fx.explosion(this.particles, x, y, this.explosion_particles)
     }
     fire_bullet(p,v) {
         this.bullets.fire(p,v)

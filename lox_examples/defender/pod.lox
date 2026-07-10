@@ -12,12 +12,11 @@ class Pod < NPC {
         this.animate(20)
         this.radar = vec4(255, 0, 255, 255)
         this.update_func = drift
-        this.swarmer_count = 5
     }
 
-    // shooting a pod releases the swarm
+    // shooting a pod releases the swarm (count is a level setting on the manager)
     on_die() {
-        this.mgr.add_swarmers(this.swarmer_count, this.pos.x, this.pos.y)
+        this.mgr.add_swarmers(this.mgr.swarmers_per_pod, this.pos.x, this.pos.y)
     }
 }
 

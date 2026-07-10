@@ -12,7 +12,8 @@ import event
 import colour
 import text
 import score
- 
+import config
+
 // --- Game events -------------------------------------------------------------
 // Emitted via entities.events; subscribe with entities.events.on(name, fn).
 // Wired now for later systems (audio, scoring, particles, HUD). Payload in ( ):
@@ -47,25 +48,26 @@ func make_event_logger(name) {
 
 
 
-const width=1000
-const height=800
-const worldwidth=width*10
+// All tunable state lives in config.lox; a level controller will set it per level.
+cfg = config.Config()
+const width = cfg.width
+const height = cfg.height
+const worldwidth = cfg.worldwidth()
 var win = window(width,height)
 win.init()
-win.set_target_fps(60)
+win.set_target_fps(cfg.target_fps)
 
 cam=camera.Camera(width, worldwidth, 0)
- 
+
 mountain=mountains.Mountain(worldwidth, height*0.3)
 starfield=stars.Stars(width, height*0.7, 30)
-entities= entity_mgr.EntityMgr(worldwidth, height)
+entities= entity_mgr.EntityMgr(cfg)
 entities.mountains = mountain
-entities.screenwidth = width
 radar=radar.Radar(width, height, worldwidth)
-foreach ( var i in range(0,3,1)) {
-    entities.add_landers(3,i*100) 
+foreach ( var i in range(0, cfg.lander_waves)) {
+    entities.add_landers(cfg.landers_per_wave, i * cfg.lander_wave_delay)
 }
-entities.add_humans(9) 
+entities.add_humans(cfg.humans)
 foreach (var ev in GAME_EVENTS) {
     entities.events.on(ev, make_event_logger(ev))
 }
@@ -73,7 +75,7 @@ foreach (var ev in GAME_EVENTS) {
 ship_img = image("pngs/ship.png")
 thrust_img = image("pngs/thrust.png")
 shipw_img = image("pngs/shipw.png")     // white ship silhouette, tinted for the death flash
-ship = player.Player(vec2(worldwidth/2, height/2), ship_img, thrust_img, shipw_img, width, worldwidth, height)
+ship = player.Player(vec2(worldwidth/2, height/2), ship_img, thrust_img, shipw_img, cfg)
 ship.mgr = entities
 entities.player = ship          // NPCs hunt the player
 
@@ -82,8 +84,8 @@ entities.add_lander_near(ship.pos.x + width * 0.35, 0)
 
 // the rest of the NPC roster. Baiters are not seeded here -- the entity manager
 // sends them in once the landers are nearly cleared (see update_baiters).
-entities.add_pods(3, ship.pos.x)      // shoot a pod to release swarmers
-entities.add_bombers(4)
+entities.add_pods(cfg.pods, ship.pos.x)   // shoot a pod to release swarmers
+entities.add_bombers(cfg.bombers)
 
 // HUD: score driven by the NPC kill events, drawn from the font atlas
 font = text.Font(image("pngs/font.png"))

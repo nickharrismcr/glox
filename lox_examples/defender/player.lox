@@ -21,7 +21,7 @@ import colour
 
 class Player < Sprite {
 
-    init(pos, img, thrust_img, shipw_img, width, worldwidth, height) {
+    init(pos, img, thrust_img, shipw_img, config) {
         // ship.png is a 5-frame animation strip; thrust.png is a 2-frame flame;
         // shipw.png is an all-white ship silhouette (2 frames, same 60px frame
         // width as ship.png). Being pure white it can be tinted to any colour, so
@@ -43,22 +43,23 @@ class Player < Sprite {
         this.speed = 0
         this.vx = 0
         this.vy = 0
-        this.maxspeed = 28
-        this.accel = 0.7
-        this.friction = 0.96      // closer to 1 => less friction, longer coast
-        this.vspeed = 7
+        this.maxspeed = config.player_maxspeed
+        this.accel = config.player_accel
+        this.friction = config.player_friction   // closer to 1 => less friction, longer coast
+        this.vspeed = config.player_vspeed
 
         // camera look-ahead: ship sits at screen x == offset, which lerps between
         // leftoffset (facing right -> ship near the left edge, seeing ahead right)
         // and rightoffset (facing left -> ship near the right edge).
+        var width = config.width
         this.leftoffset = width * 0.15
         this.rightoffset = width - width * 0.15
         this.offset = this.leftoffset
         this.offsetspeed = 10
 
-        this.worldwidth = worldwidth
-        this.top = height * 0.16     // keep clear of the radar strip at the top
-        this.bottom = height - 50
+        this.worldwidth = config.worldwidth()
+        this.top = config.height * 0.16   // keep clear of the radar strip at the top
+        this.bottom = config.height - 50
         this.thrusting = false
         this.alive = true
         this.mgr = nil

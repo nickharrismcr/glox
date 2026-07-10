@@ -1,0 +1,50 @@
+// Central configuration for the Defender port -- every tunable knob in one place.
+// The game reads all of these at start-up, so a future level controller can just
+// hand the game a Config (or mutate one between levels) to define level settings:
+// how many landers/humans/pods/bombers, how fast the ship flies, how often
+// baiters arrive, and so on. The defaults here reproduce the current game.
+
+class Config {
+    init() {
+        // --- display / world ---
+        this.width       = 1000     // window width in pixels
+        this.height      = 800      // window height in pixels
+        this.world_scale = 10       // world is this many screens wide
+        this.target_fps  = 60
+
+        // --- lander waves ---
+        this.lander_waves      = 3   // landers arrive in this many waves...
+        this.landers_per_wave  = 3   // ...of this many landers each
+        this.lander_wave_delay = 100 // frames between waves
+
+        // --- other enemies ---
+        this.pods             = 3    // pods drifting at the start of the level
+        this.bombers          = 4
+        this.swarmers_per_pod = 5    // swarmers released when a pod is shot
+
+        // --- baiters (spawned dynamically once the landers thin out) ---
+        this.baiter_threshold = 3    // start sending baiters at <= this many landers
+        this.baiter_delay     = 600  // frames between baiter spawns
+
+        // --- humans ---
+        this.humans = 9
+
+        // --- player ship ---
+        this.player_maxspeed = 28
+        this.player_accel    = 0.7
+        this.player_friction = 0.96
+        this.player_vspeed   = 7
+
+        // --- weapon pools (simultaneous projectiles) ---
+        this.laser_pool  = 12
+        this.bullet_pool = 100
+
+        // --- fx ---
+        this.explosion_particles = 140
+    }
+
+    // Total world width in pixels. Derived so changing width/world_scale is enough.
+    worldwidth() {
+        return this.width * this.world_scale
+    }
+}
