@@ -21,6 +21,7 @@ class Lander < Sprite {
         this.radar = this.g
         this.counter = 0
         this.mgr = nil
+        this.human = nil          // the human it has chosen / grabbed, if any
         this.alive = true
         this.shootable = true     // player lasers can destroy it
         this.deadly = true        // touching it hurts the player
@@ -121,7 +122,7 @@ func grab(e,width, height) {
     if (e.pos.y > e.human.pos.y  ) {
         e.update_func = abduct
         e.pos.y = e.human.pos.y - 50
-        e.human.update_func = nil
+        e.human.grab(e)                           // human now follows this lander
         e.dp.y = -4
         e.mgr.events.emit("human_grabbed", e)     // lander latched onto a human
     }
@@ -129,9 +130,8 @@ func grab(e,width, height) {
 }
 
 func abduct(e,width, height) {
+    // the human tracks us itself now (its `grabbed` state), so just ascend
     e.pos.y = e.pos.y + e.dp.y
-    e.human.pos.x = e.pos.x
-    e.human.pos.y = e.pos.y + 50
     if (e.pos.y < 150 ) {
         mutate(e)
     }
@@ -141,7 +141,7 @@ func abduct(e,width, height) {
 func mutate(e) {
     e.update_func = mutated
     e.image = image
-    e.human.pos.y = -1000
+    e.human.eat()                                 // the carried human is eaten
     e.human = nil
     img = image("pngs/mutant.png") 
     e.type = "mutant"
@@ -181,6 +181,15 @@ func die(e) {
     e.radar = nil
     e.shootable = false
     e.deadly = false
+    // if carrying/holding a human, drop a grabbed one, otherwise free a chosen one
+    if (e.human != nil) {
+        if (e.human.state == "grabbed") {
+            e.human.drop()
+        } else {
+            e.human.release()
+        }
+        e.human = nil
+    }
     e.mgr.events.emit(e.type & "_killed", e)     // lander_killed / mutant_killed
 }
 

@@ -37,6 +37,8 @@ class EntityMgr {
         this.baiter_delay = 600         // frames between baiter spawns (~10s at 60fps)
         this.baiter_timer = this.baiter_delay
 
+        this.human_count = 0            // living colonists; hits 0 -> "no_humans"
+
         // sprite sheets, loaded once and shared by every instance
         this.img_lander  = image("pngs/lander.png")
         this.img_human   = image("pngs/human.png")
@@ -92,9 +94,17 @@ class EntityMgr {
         this.add_to_queue(baiter.Baiter(vec2(0, 0), this.img_baiter, wait_frames), 0)
     }
     add_humans(num) {
+        this.human_count = this.human_count + num
         foreach ( i in range ( 0,num )) {
             e = human.Human(vec2(random.integer(0, this.worldwidth), this.height ), this.img_human, 1, 1, 1)
             this.add_to_queue(e,0)
+        }
+    }
+    // A colonist was eaten or died from a fall. At zero, the planet is lost.
+    human_lost() {
+        this.human_count = this.human_count - 1
+        if (this.human_count <= 0) {
+            this.events.emit("no_humans", nil)
         }
     }
 
@@ -227,6 +237,15 @@ class EntityMgr {
             if (!b.dead() and collide.overlap(collide.entity_box(b), pbox, this.worldwidth)) {
                 b.kill()
                 player.hit()
+            }
+        }
+
+        // the player scoops up a falling human on contact
+        foreach (var e in this.entities) {
+            if (e.alive and e.type == "human" and e.state == "dropping") {
+                if (collide.overlap(collide.entity_box(e), pbox, this.worldwidth)) {
+                    e.catch_by(player)
+                }
             }
         }
     }

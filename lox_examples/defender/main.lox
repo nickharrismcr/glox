@@ -34,7 +34,8 @@ const GAME_EVENTS = ["lander_spawn", "human_spawn", "lander_searching",
                      "mutant_killed", "bullet_fire", "laser_fire", "player_hit",
                      "pod_spawn", "pod_killed", "swarmer_spawn", "swarmer_killed",
                      "baiter_spawn", "baiter_killed", "bomber_spawn", "bomber_killed",
-                     "player_die", "player_explode", "player_start"]
+                     "player_die", "player_explode", "player_start",
+                     "no_humans"]
 
 // Debug: log every game event to the console. Trim GAME_EVENTS to quieten it.
 func make_event_logger(name) {
