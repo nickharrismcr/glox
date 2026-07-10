@@ -199,15 +199,17 @@ class EntityMgr {
 
     // Player lasers destroy shootable NPCs; deadly NPCs hit the player.
     // Driven by per-entity flags rather than type, so every NPC (and a mutated
-    // lander) takes part without special-casing.
-    check_collisions(player) {
+    // lander) takes part without special-casing. cam is used so the laser only
+    // damages NPCs that are actually on screen -- the beam can reach a screen's
+    // width into off-screen world space, and hitting things you can't see is unfair.
+    check_collisions(player, cam) {
         var pbox = collide.entity_box(player)
         foreach (var e in this.entities) {
             if (!e.alive or !(e.shootable or e.deadly)) {
                 continue
             }
             var ebox = collide.entity_box(e)
-            if (e.shootable) {
+            if (e.shootable and cam.translate(e.pos.x) != nil) {
                 foreach (var l in this.lasers.lasers) {
                     if (l.active and collide.overlap(collide.laser_box(l), ebox, this.worldwidth)) {
                         e.hit()

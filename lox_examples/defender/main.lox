@@ -101,7 +101,7 @@ while (!win.should_close()) {
     mountain.draw(win, height, cam, width)
     starfield.draw(win)
     entities.update(worldwidth, height)
-    entities.check_collisions(ship)
+    entities.check_collisions(ship, cam)
     entities.draw(win, cam)
     ship.draw(win, cam)
     radar.draw(win, cam, entities, mountain)
