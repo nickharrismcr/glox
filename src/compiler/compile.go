@@ -38,6 +38,7 @@ type Local struct {
 	lexeme     string
 	depth      int
 	isCaptured bool
+	isConst    bool // declared with `const`; assignment is a compile-time error
 }
 
 type Loop struct {
@@ -1615,13 +1616,30 @@ func (p *Parser) markInitialised() {
 	c.locals[c.localCount-1].depth = c.scopeDepth
 }
 
-// setLocalImmutable marks the most recently added constant as immutable.
-// Applies the immutable wrapper to prevent modification of const variables.
-// Used for const declarations to enforce compile-time immutability.
-func (p *Parser) setLocalImmutable() {
+// markLocalConst marks the most recently declared local as const, so that any
+// assignment to it is rejected at compile time.
+//
+// Const-ness is a property of the *binding*, not of the value. An earlier version
+// marked the initialiser's constant-pool entry immutable instead, which was wrong
+// three ways: it poisoned that literal for every other use in the chunk (so
+// `const a = 5; var b = 5; b = 6;` failed), it silently did nothing when the
+// initialiser was computed rather than a literal (so `const a = 2 + 3; a = 99;`
+// was allowed), and it made any local initialised from an already-immutable value
+// (e.g. the result of texture()) unassignable.
+func (p *Parser) markLocalConst() {
 
-	c := p.currentChunk()
-	c.Constants[len(c.Constants)-1] = core.Immutable(c.Constants[len(c.Constants)-1])
+	c := p.currentCompiler
+	c.locals[c.localCount-1].isConst = true
+}
+
+// isConstLocal reports whether an assignment targets a local declared `const`.
+func (p *Parser) isConstLocal(setOp uint8, arg int) bool {
+
+	if setOp != core.OP_SET_LOCAL || arg < 0 || arg >= p.currentCompiler.localCount {
+		return false
+	}
+	local := p.currentCompiler.locals[arg]
+	return local != nil && local.isConst
 }
 
 // defineVariable finalizes variable definition with appropriate bytecode emission.
@@ -1723,7 +1741,7 @@ func (p *Parser) defineConstVariable(global uint8) {
 	// if local, it will already be on the stack
 	if p.currentCompiler.scopeDepth > 0 {
 		p.markInitialised()
-		p.setLocalImmutable()
+		p.markLocalConst()
 		return
 	}
 	p.emitBytes(core.OP_DEFINE_GLOBAL_CONST, global)
@@ -1813,6 +1831,13 @@ func (p *Parser) namedVariable(name Token, canAssign bool) {
 
 	arg, getOp, setOp := p.resolveVariable(name)
 
+	// Reject `const` local reassignment up front, so it covers both plain (`x = v`)
+	// and compound (`x += v`) assignment.
+	if canAssign && p.isConstLocal(setOp, arg) && p.assignmentFollows() {
+		p.error(fmt.Sprintf("Cannot assign to const '%s'.", name.Lexeme()))
+		return
+	}
+
 	if p.handleCompoundAssignment(canAssign, getOp, setOp, arg) {
 		return
 	}
@@ -1822,6 +1847,15 @@ func (p *Parser) namedVariable(name Token, canAssign bool) {
 	} else {
 		p.emitBytes(getOp, uint8(arg))
 	}
+}
+
+// assignmentFollows reports whether the next token assigns to the name just parsed
+// (`=` or one of the compound forms). Note TOKEN_EQUAL_EQUAL is a comparison and
+// is deliberately not included.
+func (p *Parser) assignmentFollows() bool {
+
+	return p.check(TOKEN_EQUAL) || p.check(TOKEN_PLUS_EQUAL) || p.check(TOKEN_MINUS_EQUAL) ||
+		p.check(TOKEN_STAR_EQUAL) || p.check(TOKEN_SLASH_EQUAL) || p.check(TOKEN_PERCENT_EQUAL)
 }
 
 func (p *Parser) handleCompoundAssignment(canAssign bool, getOp uint8, setOp uint8, arg int) bool {
@@ -1873,6 +1907,7 @@ func (p *Parser) addLocal(name Token) {
 		lexeme:     name.Lexeme(),
 		depth:      -1, // marks as uninitialised
 		isCaptured: false,
+		isConst:    false,
 	}
 	p.currentCompiler.locals[p.currentCompiler.localCount] = local
 	p.currentCompiler.localCount += 1

@@ -560,15 +560,15 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			vm.stackTop++
 
 		case core.OP_SET_LOCAL:
-			// Assign value from stack top to local variable at specified slot (must be mutable)
+			// Assign value from stack top to local variable at specified slot.
+			// Assignment to a `const` local is rejected by the compiler, so there is
+			// no check here: a local's mutability is a property of its binding, not
+			// of whatever value happens to sit in the slot (builtins such as
+			// texture() return values already flagged immutable).
 
 			val := vm.Peek(0)
 			slot_idx := int(vm.currCode[frame.Ip])
 			frame.Ip++
-			if vm.stack[frame.Slots+slot_idx].Immutable() {
-				vm.RunTimeError("Cannot assign to const local.")
-				goto End
-			}
 			vm.stack[frame.Slots+slot_idx] = core.Mutable(val)
 
 		case core.OP_JUMP_IF_FALSE:
