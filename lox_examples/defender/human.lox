@@ -37,7 +37,7 @@ class Human < Sprite {
         this.mgr = nil
         this.chosen = false
         this.alive = true
-        this.shootable = false       // humans are rescued, not shot
+        this.shootable = true       // humans can be shot by mistake 
         this.deadly = false
         this.width = this.texture.frame_width()
         this.height = this.texture.height()
@@ -81,6 +81,26 @@ class Human < Sprite {
         this.chosen = false
         this.carrier = nil
     }
+
+    // shot by a player laser: start the death/explode sequence, unless already exploding.
+    hit() {
+        if (this.draw_func != draw_dispersed) {
+            this.die()
+        }
+    }
+
+    die() {
+        this.draw_func = draw_dispersed
+        this.state = "dying"
+        this.disperse = 1
+        this.dp = vec2(0, 0)
+        this.update_func = dying
+        this.radar = nil
+        this.shootable = false
+        this.deadly = false
+        this.mgr.events.emit(this.type & "_killed", this)     // lander_killed / mutant_killed
+    }
+
 
     ground_y() {
         return this.mgr.height - this.mgr.mountains.get(this.pos.x)
@@ -149,7 +169,7 @@ func dropping(e, width, height) {
     if (e.pos.y >= ground) {
         e.pos.y = ground
         if (e.drop_start_y < height / 3 ) {
-            enter_dying(e)           // dropped from above the middle: fatal
+            e.die()           // dropped from above the middle: fatal
         } else {
             e.release()              // survived the fall
             e.state = "walking"
@@ -174,12 +194,7 @@ func caught(e, width, height) {
     }
 }
 
-func enter_dying(e) {
-    e.state = "dying"
-    e.disperse = 1
-    e.draw_func = draw_dispersed
-    e.update_func = dying
-}
+ 
 
 func dying(e, width, height) {
     e.disperse = e.disperse + 1.3
