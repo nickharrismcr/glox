@@ -10,6 +10,8 @@ import player
 import camera
 import event
 import colour
+import text
+import score
  
 // --- Game events -------------------------------------------------------------
 // Emitted via entities.events; subscribe with entities.events.on(name, fn).
@@ -82,6 +84,11 @@ entities.add_pods(3, ship.pos.x)      // shoot a pod to release swarmers
 entities.add_bombers(4)
 entities.add_baiter(600)              // lurks ~10s, then materialises on the player
 
+// HUD: score driven by the NPC kill events, drawn from the font atlas
+font = text.Font(image("pngs/font.png"))
+hud_score = score.Score(font, 10, 10)  // left of the radar strip
+hud_score.attach(entities.events)
+
 while (!win.should_close()) {
 
     win.begin()
@@ -98,6 +105,8 @@ while (!win.should_close()) {
     entities.draw(win, cam)
     ship.draw(win, cam)
     radar.draw(win, cam, entities, mountain)
+    hud_score.update()
+    hud_score.draw(win)
     win.end()
 }
 win.close()
