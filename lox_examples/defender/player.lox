@@ -47,6 +47,7 @@ class Player < Sprite {
         this.accel = config.player_accel
         this.friction = config.player_friction   // closer to 1 => less friction, longer coast
         this.vspeed = config.player_vspeed
+        this.nodie = config.nodie
 
         // camera look-ahead: ship sits at screen x == offset, which lerps between
         // leftoffset (facing right -> ship near the left edge, seeing ahead right)
@@ -79,7 +80,7 @@ class Player < Sprite {
     // Struck by a deadly NPC: begin the death sequence, unless we are already
     // dying or still invulnerable from a respawn.
     hit() {
-        if (this.invuln > 0 or this.dying()) {
+        if (this.nodie or this.invuln > 0 or this.dying()) {
             return
         }
         this.mgr.events.emit("player_hit", this)

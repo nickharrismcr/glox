@@ -7,8 +7,8 @@
 class Config {
     init() {
         // --- display / world ---
-        this.width       = 1000     // window width in pixels
-        this.height      = 800      // window height in pixels
+        this.width       = 1300     // window width in pixels
+        this.height      = 1000      // window height in pixels
         this.world_scale = 10       // world is this many screens wide
         this.target_fps  = 60
 
@@ -34,6 +34,7 @@ class Config {
         this.player_accel    = 0.7
         this.player_friction = 0.96
         this.player_vspeed   = 7
+        this.nodie = true // if true, the player ship cannot die (for testing)
 
         // --- weapon pools (simultaneous projectiles) ---
         this.laser_pool  = 12

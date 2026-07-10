@@ -31,9 +31,13 @@ class EntityMgr {
         this.particles = particle_sys.Emitters()   // one-shot explosion bursts
         this.events = event.EventDispatcher()
 
+        this.landers_alive = 0
+        this.entities_alive = 0 
+
         // Baiters are spawned dynamically, not up front: once the landers are
         // nearly cleared, a baiter is sent in every baiter_delay frames to keep
         // the pressure on.
+  
         this.baiter_threshold = config.baiter_threshold
         this.baiter_delay = config.baiter_delay
         this.baiter_timer = this.baiter_delay
@@ -55,13 +59,14 @@ class EntityMgr {
         return this.entities
     }
     add_to_queue(entity,delay) {
-        entity.mgr = this
+        entity.mgr = this                  // set the entity's mgr so it can call back to the manager (e.g. to spawn swarmers)
         this.queue.append([entity,delay])
     }
     add_landers(num,delay) {
         foreach (var i in range(0, num)) {
             e = lander.Lander(vec2(random.integer(0, this.worldwidth), random.integer(100, this.height/2)), this.img_lander, 3, 1, 3)
             this.add_to_queue(e,delay)
+            this.landers_alive += 1
         }
     }
     // Spawn a single lander near world-x cx, so at least one materialises within
@@ -70,6 +75,7 @@ class EntityMgr {
         var x = cx + random.integer(-60, 60)
         e = lander.Lander(vec2(x, random.integer(120, this.height/2)), this.img_lander, 3, 1, 3)
         this.add_to_queue(e, delay)
+        this.landers_alive   += 1
     }
     // Pods drift near the player, waiting to be shot open.
     add_pods(num, cx) {
@@ -134,22 +140,7 @@ class EntityMgr {
         return len(lst)
     }
 
-    // Landers still in play: active landers plus any yet to materialise. A mutated
-    // lander has type "mutant", so mutants are naturally excluded.
-    lander_count() {
-        var n = 0
-        foreach (var e in this.entities) {
-            if (e.alive and e.type == "lander") {
-                n = n + 1
-            }
-        }
-        foreach (var q in this.queue) {
-            if (q[0].type == "lander") {
-                n = n + 1
-            }
-        }
-        return n
-    }
+  
 
     // Send in a baiter every baiter_delay frames once the landers are nearly
     // cleared. While plenty of landers remain the timer is held at its reset value,
@@ -159,7 +150,7 @@ class EntityMgr {
         if (this.baiter_timer > this.baiter_delay) {
             this.baiter_timer = this.baiter_delay
         }
-        if (this.lander_count() <= this.baiter_threshold) {
+        if (this.landers_alive <= this.baiter_threshold) {
             this.baiter_timer = this.baiter_timer - 1
             if (this.baiter_timer <= 0) {
                 this.add_baiter(0)
@@ -173,6 +164,7 @@ class EntityMgr {
 
     update(worldwidth,height) {
 
+        this.landers_alive = 0 
         // Process the queue 
         i=0 
         foreach( var q in this.queue ) {
@@ -192,11 +184,21 @@ class EntityMgr {
 
         foreach (var e in this.entities) {
             e.update(worldwidth,height)
+            if (e.alive and e.type != "human") {
+                this.entities_alive += 1
+                if (e.type == "lander" and e.alive) {
+                    this.landers_alive += 1
+                }
+            }
         }
         this.bullets.update(worldwidth, height)
         this.lasers.update(this.screenwidth, height)
         this.particles.update()
         this.update_baiters()
+         
+        if (this.entities_alive <= 0) {
+            this.events.emit("level_cleared", nil)
+        }
     }
     // One-shot explosion burst at a world position.
     explode_at(x, y) {

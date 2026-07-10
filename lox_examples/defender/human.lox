@@ -53,6 +53,7 @@ class Human < Sprite {
         this.chosen = true
         this.state = "grabbed"
         this.update_func = grabbed
+        this.mgr.events.emit("human_grabbed", this)
     }
     drop() {                         // the carrier was killed
         this.carrier = nil
@@ -65,6 +66,7 @@ class Human < Sprite {
         this.carrier = player
         this.state = "caught"
         this.update_func = caught
+        this.mgr.events.emit("human_caught", this)
     }
     eat() {                          // the carrier mutated; lost instantly
         if (!this.alive) {
@@ -141,17 +143,18 @@ func grabbed(e, width, height) {
 }
 
 func dropping(e, width, height) {
-    e.dy = e.dy + 0.4                // gravity
+    e.dy = e.dy + 0.1                // gravity
     e.pos.y = e.pos.y + e.dy
     var ground = e.ground_y()
     if (e.pos.y >= ground) {
         e.pos.y = ground
-        if (e.drop_start_y < height / 2) {
+        if (e.drop_start_y < height / 3 ) {
             enter_dying(e)           // dropped from above the middle: fatal
         } else {
             e.release()              // survived the fall
             e.state = "walking"
             e.update_func = walk
+            e.mgr.events.emit("human_saved", e)
         }
     }
 }
@@ -167,6 +170,7 @@ func caught(e, width, height) {
         e.release()                  // no longer a child of the player ship
         e.state = "walking"
         e.update_func = walk
+        e.mgr.events.emit("human_saved", e)
     }
 }
 
