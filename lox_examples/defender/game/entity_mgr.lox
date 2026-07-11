@@ -2,6 +2,7 @@ from gfx import *
 from bullets import BulletPool
 from laser import LaserPool
 import lander
+from lander import enter_mutated, state_search, state_grab, state_abduct, state_die, state_mutated
 import human
 import pod
 import swarmer
@@ -53,7 +54,8 @@ class EntityMgr {
         this.swarmers_per_pod = config.swarmers_per_pod
         this.explosion_particles = config.explosion_particles
 
-        this.human_count = 0            // living colonists; hits 0 -> "no_humans"
+        this.humans_left = 0            // recounted from the live entity list every frame
+        this.world_exploding = false    // latches once, when humans_left first hits 0
 
         this.bomb_pending = 0     // frames until the smart bomb's second pass fires
         this.bomb_flash = 0       // frames left to show the white screen flash
@@ -121,20 +123,11 @@ class EntityMgr {
         this.add_to_queue(baiter.Baiter(vec2(0, 0), this.img_baiter, wait_frames), 0)
     }
     add_humans(num) {
-        this.human_count = this.human_count + num
         foreach ( i in range ( 0,num )) {
             e = human.Human(vec2(random.integer(0, this.worldwidth), this.height ), this.img_human, 1, 1, 1)
             this.add_to_queue(e,0)
         }
     }
-    // A colonist was eaten or died from a fall. At zero, the planet is lost.
-    human_lost() {
-        this.human_count = this.human_count - 1
-        if (this.human_count <= 0) {
-            this.events.emit("no_humans", nil)
-        }
-    }
-
     pick_a_human() {
  
         foreach (var e in this.entities) {
@@ -201,11 +194,13 @@ class EntityMgr {
 
     update(worldwidth,height) {
 
-        this.landers_alive = 0 
-        // Process the queue 
-        i=0 
+        this.landers_alive = 0
+        this.entities_alive = 0
+        this.humans_left = 0
+        // Process the queue
+        i=0
         foreach( var q in this.queue ) {
-    
+
             e = q[0]
             delay = q[1]
             delay = delay - 1
@@ -221,6 +216,9 @@ class EntityMgr {
 
         foreach (var e in this.entities) {
             e.update(worldwidth,height)
+            if (e.alive and e.type == "human") {
+                this.humans_left += 1
+            }
             if (e.alive and e.type != "human") {
                 this.entities_alive += 1
                 if (e.type == "lander" and e.alive) {
@@ -228,6 +226,7 @@ class EntityMgr {
                 }
             }
         }
+        this.mountains.update()
         this.bullets.update(worldwidth, height)
         this.lasers.update(this.screenwidth, height)
         this.particles.update()
@@ -244,9 +243,35 @@ class EntityMgr {
             this.bomb_flash = this.bomb_flash - 1
         }
 
+        if (this.humans_left <= 0 and !this.world_exploding) {
+            this.world_exploding = true
+            this.trigger_world_explode()
+        }
+
         if (this.entities_alive <= 0) {
             this.events.emit("level_cleared", nil)
         }
+    }
+    // All humans are gone: force every still-hunting lander to mutate
+    // immediately (landers not yet actively engaged are just removed, no
+    // death animation -- already-mutant or already-dying landers are left
+    // alone), and start the mountains crumbling for the rest of the game.
+    // Ported from AISystem:mutateAll / WorldDrawSystem's WORLD_EXPLODING in
+    // the Lua original, triggered there by the same all-humans-dead check.
+    trigger_world_explode() {
+        this.mountains.explode()
+        foreach (var e in this.entities) {
+            if (!e.alive or e.type != "lander") {
+                continue
+            }
+            var f = e.update_func
+            if (f == state_search or f == state_grab or f == state_abduct) {
+                enter_mutated(e)
+            } else if (f != state_die and f != state_mutated) {
+                e.alive = false
+            }
+        }
+        this.events.emit("no_humans", nil)
     }
     // Backspace: kill every enemy on screen (humans are spared), twice in
     // quick succession -- the second pass catches swarmers released by any

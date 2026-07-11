@@ -1,8 +1,15 @@
 
 import random
 import colour
-import math; 
+import math;
 
+// per-frame terrain points perturbed while exploding -- ported from
+// WorldDrawSystem's WORLD_EXPLODING handling in the Lua original (500 random
+// points/frame, jittered and occasionally sent flying off-screen for good).
+const EXPLODE_POINTS_PER_FRAME = 2000
+const EXPLODE_JITTER_MAX = 25          // random +/- kick per touch
+const EXPLODE_COLLAPSE_CHANCE = 40     // 1-in-N chance per touched point of vanishing for good
+const EXPLODE_COLLAPSE_HEIGHT = 100000 // sentinel: draws far off the top of the screen
 
 class Mountain {
     init(width,max_height) {
@@ -10,10 +17,28 @@ class Mountain {
         this.max_height = max_height
         this.points = []
         this.generate_points()
+        this.exploding = false
         // built once: draw() runs every frame and iterates the screen width,
         // so a fresh vec4 per iteration was a steady per-frame GC-pressure
         // source. Same shade as radar.lox's terrain dot.
         this.terrain_colour = colour.TERRAIN_ORANGE
+    }
+    // All humans are lost: the terrain starts crumbling and never stops for
+    // the rest of the game (matches the Lua original -- no reset back).
+    explode() {
+        this.exploding = true
+    }
+    update() {
+        if (!this.exploding) {
+            return
+        }
+        foreach (var i in range(0, EXPLODE_POINTS_PER_FRAME)) {
+            var idx = random.integer(0, len(this.points) - 1)
+            this.points[idx] = this.points[idx] + random.integer(-EXPLODE_JITTER_MAX, EXPLODE_JITTER_MAX)
+            if (random.integer(0, EXPLODE_COLLAPSE_CHANCE) == 0) {
+                this.points[idx] = EXPLODE_COLLAPSE_HEIGHT
+            }
+        }
     }
     generate_points() {
         x = 0
@@ -47,11 +72,15 @@ class Mountain {
         return this.points[int(x)%len(this.points)] 
     }    
     draw(win,height,cam,width){
+        var r = 2
+        if (this.exploding) {
+            r = 4   // chunkier debris once the terrain starts crumbling
+        }
         // draw from screen x start to screen end
         foreach ( var x in range(0,width)){
             if (x%5==0){
                 var h = this.get(x + cam.x)
-                win.circle_fill(x, height-h, 2, this.terrain_colour)
+                win.circle_fill(x, height-h, r, this.terrain_colour)
             }
         }
     }

@@ -12,7 +12,7 @@ class Lander < Sprite {
         super.init(pos, img, frames, start_frame, end_frame)
         this.type = "lander"
         this.animate(10)
-        this.update_func=materialize
+        this.update_func=state_materialize
         this.draw_func=draw_exp
         this.disperse=50
         this.g = vec4(0,200,0,255)
@@ -80,7 +80,7 @@ class Lander < Sprite {
     }
     // shot by a player laser: start the death/explode sequence, unless already exploding.
     hit() {
-        if (this.update_func != die) {
+        if (this.update_func != state_die) {
             enter_die(this)
         }
     }
@@ -90,7 +90,7 @@ class Lander < Sprite {
 // Every transition into a state (other than the initial one, set in init()) goes
 // through a matching enter_<state>(e) function.
 
-func materialize(e, width, height) {
+func state_materialize(e, width, height) {
     // converge the dispersed tiles into the assembled sprite (disperse 50 -> 1)
     e.disperse = e.disperse - 0.7
     if (e.disperse <= 1) {
@@ -103,10 +103,10 @@ func enter_descend(e) {
     e.draw_func = draw_
     e.dp = vec2(random.choice((-5,-5)),5)
     e.counter = 0
-    e.update_func = descend
+    e.update_func = state_descend
 }
 
-func descend(e, width, height) {
+func state_descend(e, width, height) {
     e.pos.add(e.dp)
 
     mh = e.mgr.mountains.get(e.pos.x)
@@ -123,11 +123,11 @@ func enter_search(e) {
     e.human = e.mgr.pick_a_human()
     e.dp.x = -e.mgr.config.lander_search_speed
     e.dp.y = 0
-    e.update_func = search
+    e.update_func = state_search
     e.mgr.events.emit("lander_searching", e)
 }
 
-func search(e, width, height) {
+func state_search(e, width, height) {
     e.pos.add(e.dp)
     mh = e.mgr.mountains.get(e.pos.x)
     msh = e.mgr.height - mh
@@ -149,7 +149,7 @@ func search(e, width, height) {
 func enter_grab(e) {
     e.dp.x = 0
     e.dp.y = 3
-    e.update_func = grab
+    e.update_func = state_grab
     // a single decisive shot right at the player the instant it commits to the
     // grab -- but only if on screen (landers should never fire while off-screen)
     var on_screen = e.mgr.cam == nil or e.mgr.cam.translate(e.pos.x) != nil
@@ -158,7 +158,7 @@ func enter_grab(e) {
     }
 }
 
-func grab(e,width, height) {
+func state_grab(e,width, height) {
     e.pos.add(e.dp)
     if (e.human == nil or e.human.state == "dying" or !e.human.alive) {
         enter_search(e)   // target died before being grabbed -- find another
@@ -174,10 +174,10 @@ func enter_abduct(e) {
     e.pos.y = e.human.pos.y - 50
     e.human.grab(e)                           // human now follows this lander
     e.dp.y = -e.mgr.config.lander_ascend_speed
-    e.update_func = abduct
+    e.update_func = state_abduct
 }
 
-func abduct(e,width, height) {
+func state_abduct(e,width, height) {
     // the human tracks us itself now (its `grabbed` state), so just ascend
     e.pos.y = e.pos.y + e.dp.y
     if (e.pos.y < 150 ) {
@@ -188,8 +188,12 @@ func abduct(e,width, height) {
 
 func enter_mutated(e) {
     e.image = image
-    e.human.eat()                                 // the carried human is eaten
-    e.human = nil
+    // may be nil here if forced to mutate before it ever grabbed anyone (see
+    // EntityMgr.trigger_world_explode())
+    if (e.human != nil) {
+        e.human.eat()                              // the carried human is eaten
+        e.human = nil
+    }
     img = image("pngs/mutant.png")
     e.type = "mutant"
     e.img = img
@@ -198,11 +202,11 @@ func enter_mutated(e) {
     e.dp.x = 0            // mutated() aims this at the player every frame
     e.dp.y = 0
     e.counter = 0
-    e.update_func = mutated
+    e.update_func = state_mutated
     e.mgr.events.emit("lander_mutated", e)        // lander reached the top and became a mutant
 }
 
-func mutated(e,width, height) {
+func state_mutated(e,width, height) {
     e.radar = random.choice([e.r,e.g,e.b,e.m])
     // chase the player horizontally, taking the shorter way around the world
     // wrap rather than a naive x1-x2 (which breaks near the seam)
@@ -257,11 +261,11 @@ func enter_die(e) {
         }
         e.human = nil
     }
-    e.update_func = die
+    e.update_func = state_die
     e.mgr.events.emit(e.type & "_killed", e)     // lander_killed / mutant_killed
 }
 
-func die(e,width, height) {
+func state_die(e,width, height) {
     // scatter the tiles apart (disperse 1 -> 60), then the entity is gone
     e.disperse = e.disperse + 1.3
     if (e.disperse >= 60) {

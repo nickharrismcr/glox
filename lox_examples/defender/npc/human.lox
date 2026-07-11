@@ -14,9 +14,10 @@ from sprite import Sprite
 //   dying    : dropped from too high; explodes (disperse) then is lost
 //   eaten    : the carrier reached the top and mutated; lost instantly
 //
-// Only `dying` and `eaten` cost a human (mgr.human_lost()); a human that lands
-// or is caught survives and returns to walking. `state` is a readable string the
-// lander and entity manager test across module boundaries.
+// `dying` and `eaten` set `alive = false`, so EntityMgr's per-frame live-human
+// recount (humans_left) drops -- a human that lands or is caught survives and
+// returns to walking. `state` is a readable string the lander and entity
+// manager test across module boundaries.
 
 class Human < Sprite {
 
@@ -25,7 +26,7 @@ class Human < Sprite {
         this.type = "human"
         this.img = img
         this.state = "walking"
-        this.update_func = walk
+        this.update_func = state_walk
         this.draw_func = draw_normal
         this.dx = random.choice([-1, 1])
         this.dy = 0                  // vertical speed while dropping
@@ -50,8 +51,9 @@ class Human < Sprite {
     // --- transitions, driven by the lander / entity manager ---
     // Each of these sets whatever data the target state needs, then hands off to
     // a matching enter_<state>(e) free function that installs update_func (and,
-    // for grabbed/caught/dying, emits the relevant event). Mirrors the
-    // enter_<state> convention used in npc.lox, lander.lox and player.lox.
+    // for grabbed/caught/dying, emits the relevant event) as state_<state>.
+    // Mirrors the enter_<state>/state_<state> convention used in npc.lox,
+    // lander.lox and player.lox.
     grab(carrier) {                  // a lander latched on
         this.carrier = carrier
         this.chosen = true
@@ -71,7 +73,6 @@ class Human < Sprite {
         }
         this.state = "eaten"
         this.alive = false
-        this.mgr.human_lost()
     }
     // a lander that had chosen but not yet grabbed this human died: free it up
     release() {
@@ -128,7 +129,7 @@ func draw_dispersed(e, win, cam) {
 
 // --- states -------------------------------------------------------------------
 
-func walk(e, width, height) {
+func state_walk(e, width, height) {
     if (e.counter % 10 == 0) {
         e.pos.x = e.pos.x + e.dx
         e.pos.y = e.ground_y()
@@ -137,11 +138,11 @@ func walk(e, width, height) {
 
 func enter_grabbed(e) {
     e.state = "grabbed"
-    e.update_func = grabbed
+    e.update_func = state_grabbed
     e.mgr.events.emit("human_grabbed", e)
 }
 
-func grabbed(e, width, height) {
+func state_grabbed(e, width, height) {
     // hang centred below the carrier lander (sprites are top-left anchored, so
     // the lander's own centre is offset by half its width) as it lifts us
     if (e.carrier != nil) {
@@ -154,10 +155,10 @@ func enter_dropping(e) {
     e.state = "dropping"
     e.dy = 0
     e.drop_start_y = e.pos.y
-    e.update_func = dropping
+    e.update_func = state_dropping
 }
 
-func dropping(e, width, height) {
+func state_dropping(e, width, height) {
     e.dy = e.dy + e.mgr.config.human_drop_accel     // gravity
     e.pos.y = e.pos.y + e.dy
     var ground = e.ground_y()
@@ -173,11 +174,11 @@ func dropping(e, width, height) {
 
 func enter_caught(e) {
     e.state = "caught"
-    e.update_func = caught
+    e.update_func = state_caught
     e.mgr.events.emit("human_caught", e)
 }
 
-func caught(e, width, height) {
+func state_caught(e, width, height) {
     // ride below the ship until we reach the ground, then walk free
     if (e.carrier != nil) {
         e.pos.x = e.carrier.pos.x
@@ -194,7 +195,7 @@ func caught(e, width, height) {
 func enter_walking(e) {
     e.release()                      // no longer a child of a lander/the player ship
     e.state = "walking"
-    e.update_func = walk
+    e.update_func = state_walk
     e.mgr.events.emit("human_saved", e)
 }
 
@@ -206,14 +207,13 @@ func enter_dying(e) {
     e.radar = nil
     e.shootable = false
     e.deadly = false
-    e.update_func = dying
+    e.update_func = state_dying
     e.mgr.events.emit("human_killed", e)
 }
 
-func dying(e, width, height) {
+func state_dying(e, width, height) {
     e.disperse = e.disperse + 1.3
     if (e.disperse >= 60) {
         e.alive = false
-        e.mgr.human_lost()
     }
 }
