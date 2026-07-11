@@ -134,6 +134,10 @@ func search(e, width, height) {
     e.pos.y = msh - 200
     e.maybe_fire_bullet(2.0)   // slower, more lenient shot while wandering/searching
 
+    if (e.human != nil and (e.human.state == "dying" or !e.human.alive)) {
+        e.human = e.mgr.pick_a_human()   // target died before being grabbed -- find another
+    }
+
     if (e.human != nil) {
         if (e.near(e.human.pos.x, e.pos.x)) {
             enter_grab(e)
@@ -156,6 +160,10 @@ func enter_grab(e) {
 
 func grab(e,width, height) {
     e.pos.add(e.dp)
+    if (e.human == nil or e.human.state == "dying" or !e.human.alive) {
+        enter_search(e)   // target died before being grabbed -- find another
+        return
+    }
     if (e.pos.y > e.human.pos.y  ) {
         enter_abduct(e)
     }
