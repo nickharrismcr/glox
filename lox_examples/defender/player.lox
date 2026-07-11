@@ -102,17 +102,17 @@ class Player < Sprite {
         enter_die(this)
     }
 
-    handle_input(win) {
+    handle_input(input) {
         this.thrusting = false
 
         // reverse (edge-triggered): flip facing and kill speed
-        if (win.key_pressed(win.KEY_SPACE)) {
+        if (input.reverse) {
             this.dir = -this.dir
             this.speed = 0
         }
 
         // thrust (held): accelerate in the facing direction, else coast to a stop
-        if (win.key_down(win.KEY_RIGHT_SHIFT)) {
+        if (input.thrust) {
             this.speed = math.min(this.speed + this.accel, this.maxspeed)
             this.thrusting = true
         } else {
@@ -120,13 +120,13 @@ class Player < Sprite {
         }
 
         var vy = 0
-        if (win.key_down(win.KEY_Q)) { vy = -this.vspeed }   // up
-        if (win.key_down(win.KEY_A)) { vy = this.vspeed }    // down
+        if (input.up) { vy = -this.vspeed }
+        if (input.down) { vy = this.vspeed }
         this.vy = vy
     }
 
-    fire(win) {
-        if (win.key_pressed(win.KEY_ENTER) and this.mgr != nil) {
+    fire(input) {
+        if (input.fire and this.mgr != nil) {
             // draw_texture is top-left anchored: the nose is at the front edge
             // (front in the facing direction) and the vertical centre of the sprite.
             var nose_x = this.pos.x + (this.width / 2) + this.dir * (this.width / 2)
@@ -135,9 +135,9 @@ class Player < Sprite {
         }
     }
 
-    update(win) {
+    update(input) {
         var f = this.update_func
-        f(this, win)
+        f(this, input)
     }
 
     // Camera x that keeps the ship drawn at screen x == this.offset.
@@ -195,9 +195,9 @@ class Player < Sprite {
 
 // --- states -------------------------------------------------------------------
 
-func state_play(e, win) {
-    e.handle_input(win)
-    e.fire(win)
+func state_play(e, input) {
+    e.handle_input(input)
+    e.fire(input)
 
     // ease the visual lean toward full (thrusting) or zero (not thrusting),
     // at the same speed in both directions
@@ -249,7 +249,7 @@ func enter_die(e) {
 }
 
 // Frozen in place, flashing red before it blows.
-func state_die(e, win) {
+func state_die(e, input) {
     e.timer = e.timer - 1
     e.flash = (e.timer / 3) % 2 == 0     // rapid alternation, ~10Hz
     if (e.timer <= 0) {
@@ -268,7 +268,7 @@ func enter_explode(e) {
 }
 
 // Ship is gone; the particle burst plays out while we wait to respawn.
-func state_explode(e, win) {
+func state_explode(e, input) {
     e.timer = e.timer - 1
     if (e.timer <= 0) {
         enter_play(e)

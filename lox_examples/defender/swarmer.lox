@@ -20,23 +20,10 @@ class Swarmer < NPC {
         var ddisp = random.float(10.0, 50.0)
         this.disperse_rate = ddisp / 60.0
         this.disperse_max = ddisp * 3
-
-        // brief grace period on spawning out of a shot pod, so a single sweep
-        // can't wipe out the whole cluster before it's even had a chance to scatter
-        this.invuln = 30            // ~0.5s at 60fps
-        this.shootable = false
-        this.deadly = false
     }
 }
 
 func chase(e, width, height) {
-    if (e.invuln > 0) {
-        e.invuln = e.invuln - 1
-        if (e.invuln <= 0) {
-            e.shootable = true
-            e.deadly = true
-        }
-    }
     var player = e.mgr.player
     if (player == nil) {
         return

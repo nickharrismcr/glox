@@ -13,6 +13,7 @@ import colour
 import text
 import score
 import config
+import controller
 
 // --- Game events -------------------------------------------------------------
 // Emitted via entities.events; subscribe with entities.events.on(name, fn).
@@ -63,6 +64,8 @@ if (cfg.fullscreen) {
     win.toggle_fullscreen()
 }
 
+var input = controller.Controller()
+
 // The whole game still draws at the logical width x height play-area size,
 // unchanged, into this offscreen buffer; only the final blit onto the actual
 // (possibly much larger, fullscreen) OS window needs to know the real screen
@@ -110,9 +113,13 @@ hud_score.attach(entities.events)
 
 while (!win.should_close()) {
 
-    ship.update(win)
+    input.update(win)
+    ship.update(input)
     cam.move(ship.camera_x())
     starfield.update(-ship.vx/5)
+    if (input.smart_bomb) {
+        entities.trigger_smart_bomb()
+    }
     entities.update(worldwidth, height)
     entities.check_collisions(ship, cam)
     hud_score.update()

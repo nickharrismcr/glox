@@ -15,6 +15,12 @@ import particle_sys
 import fx
 import bonus
 
+// Smart bomb: fires twice in quick succession (BOMB_PASS_DELAY frames apart)
+// so the second pass catches swarmers released by any pod killed in the
+// first. Each pass flashes the screen white for BOMB_FLASH_FRAMES frames.
+const BOMB_PASS_DELAY = 15
+const BOMB_FLASH_FRAMES = 8
+
 class EntityMgr {
 
     init(config) {
@@ -48,6 +54,9 @@ class EntityMgr {
         this.explosion_particles = config.explosion_particles
 
         this.human_count = 0            // living colonists; hits 0 -> "no_humans"
+
+        this.bomb_pending = 0     // frames until the smart bomb's second pass fires
+        this.bomb_flash = 0       // frames left to show the white screen flash
 
         // sprite sheets, loaded once and shared by every instance
         this.img_lander  = image("pngs/lander.png")
@@ -224,10 +233,39 @@ class EntityMgr {
         this.particles.update()
         this.bonus.update(this.player)
         this.update_baiters()
-         
+
+        if (this.bomb_pending > 0) {
+            this.bomb_pending = this.bomb_pending - 1
+            if (this.bomb_pending <= 0) {
+                this.smart_bomb_pass()
+            }
+        }
+        if (this.bomb_flash > 0) {
+            this.bomb_flash = this.bomb_flash - 1
+        }
+
         if (this.entities_alive <= 0) {
             this.events.emit("level_cleared", nil)
         }
+    }
+    // Backspace: kill every enemy on screen (humans are spared), twice in
+    // quick succession -- the second pass catches swarmers released by any
+    // pod killed in the first (pods don't spawn them until on_die() -> queue
+    // -> next frame's queue-drain, so they don't exist yet for the first pass).
+    trigger_smart_bomb() {
+        this.smart_bomb_pass()
+        this.bomb_pending = BOMB_PASS_DELAY
+    }
+    smart_bomb_pass() {
+        if (this.cam == nil) {
+            return
+        }
+        foreach (var e in this.entities) {
+            if (e.alive and e.type != "human" and this.cam.translate(e.pos.x) != nil) {
+                e.hit()
+            }
+        }
+        this.bomb_flash = BOMB_FLASH_FRAMES
     }
     // One-shot explosion burst at a world position.
     explode_at(x, y) {
@@ -293,5 +331,9 @@ class EntityMgr {
         this.lasers.draw(g, cam)
         fx.draw(this.particles, g, cam)
         this.bonus.draw(g, cam)
+        if (this.bomb_flash > 0) {
+            var alpha = int(255.0 * this.bomb_flash / BOMB_FLASH_FRAMES)
+            g.rectangle(0, 0, this.screenwidth, this.height, vec4(255, 255, 255, alpha))
+        }
     }
 }
