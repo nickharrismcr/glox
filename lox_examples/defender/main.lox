@@ -41,7 +41,7 @@ const GAME_EVENTS = ["lander_spawn", "human_spawn", "lander_searching",
                      "player_die", "player_explode", "player_start",
                      "level_cleared"]
 
-// Debug: log every game event to the console. Trim GAME_EVENTS to quieten it.
+// Debug: log every game event to the console.  
 func make_event_logger(name) {
     func log(data) {
         print("[event] ${name} ${data}")
@@ -106,16 +106,17 @@ while (!win.should_close()) {
     ship.update(win)
     cam.move(ship.camera_x())
     starfield.update(-ship.vx/5)
-
-    mountain.draw(win, height, cam, width)
-    starfield.draw(win)
     entities.update(worldwidth, height)
     entities.check_collisions(ship, cam)
+    hud_score.update()
+    
+    mountain.draw(win, height, cam, width)
+    starfield.draw(win)
     entities.draw(win, cam)
     ship.draw(win, cam)
     radar.draw(win, cam, entities, mountain)
-    hud_score.update()
     hud_score.draw(win)
+    
     win.end()
 }
 win.close()
