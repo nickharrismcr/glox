@@ -29,9 +29,13 @@ func wait(e, width, height) {
     if (e.mgr.player == nil or e.counter < e.wait_frames) {
         return
     }
+    enter_materialize(e)
+}
+
+func enter_materialize(e) {
     // pop into existence somewhere near the player
     e.x_to_player = random.integer(-500, 500)
-    e.pos.y = random.integer(200, height - 100)
+    e.pos.y = random.integer(200, e.mgr.height - 100)
     e.disperse = 50
     e.visible = true
     e.draw_func = draw_dispersed
@@ -44,12 +48,16 @@ func materialize(e, width, height) {
     e.disperse = e.disperse - 0.67          // Lua: 40 * dt
     if (e.disperse <= 1) {
         e.disperse = 1
-        e.draw_func = draw_normal
-        e.update_func = chase
-        e.shootable = true
-        e.deadly = true
-        e.nextthink = 0
+        enter_chase(e)
     }
+}
+
+func enter_chase(e) {
+    e.draw_func = draw_normal
+    e.update_func = chase
+    e.shootable = true
+    e.deadly = true
+    e.nextthink = 0
 }
 
 func chase(e, width, height) {

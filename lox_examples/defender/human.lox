@@ -48,25 +48,22 @@ class Human < Sprite {
     }
 
     // --- transitions, driven by the lander / entity manager ---
+    // Each of these sets whatever data the target state needs, then hands off to
+    // a matching enter_<state>(e) free function that installs update_func (and,
+    // for grabbed/caught/dying, emits the relevant event). Mirrors the
+    // enter_<state> convention used in npc.lox, lander.lox and player.lox.
     grab(carrier) {                  // a lander latched on
         this.carrier = carrier
         this.chosen = true
-        this.state = "grabbed"
-        this.update_func = grabbed
-        this.mgr.events.emit("human_grabbed", this)
+        enter_grabbed(this)
     }
     drop() {                         // the carrier was killed
         this.carrier = nil
-        this.state = "dropping"
-        this.dy = 0
-        this.drop_start_y = this.pos.y
-        this.update_func = dropping
+        enter_dropping(this)
     }
     catch_by(player) {               // the player scooped it up mid-fall
         this.carrier = player
-        this.state = "caught"
-        this.update_func = caught
-        this.mgr.events.emit("human_caught", this)
+        enter_caught(this)
     }
     eat() {                          // the carrier mutated; lost instantly
         if (!this.alive) {
@@ -84,23 +81,10 @@ class Human < Sprite {
 
     // shot by a player laser: start the death/explode sequence, unless already exploding.
     hit() {
-        if (this.draw_func != draw_dispersed) {
-            this.die()
+        if (this.state != "dying") {
+            enter_dying(this)
         }
     }
-
-    die() {
-        this.draw_func = draw_dispersed
-        this.state = "dying"
-        this.disperse = 1
-        this.dp = vec2(0, 0)
-        this.update_func = dying
-        this.radar = nil
-        this.shootable = false
-        this.deadly = false
-        this.mgr.events.emit(this.type & "_killed", this)     // lander_killed / mutant_killed
-    }
-
 
     ground_y() {
         return this.mgr.height - this.mgr.mountains.get(this.pos.x)
@@ -154,12 +138,25 @@ func walk(e, width, height) {
     }
 }
 
+func enter_grabbed(e) {
+    e.state = "grabbed"
+    e.update_func = grabbed
+    e.mgr.events.emit("human_grabbed", e)
+}
+
 func grabbed(e, width, height) {
     // hang just below the carrier lander as it lifts us
     if (e.carrier != nil) {
         e.pos.x = e.carrier.pos.x
         e.pos.y = e.carrier.pos.y + 30
     }
+}
+
+func enter_dropping(e) {
+    e.state = "dropping"
+    e.dy = 0
+    e.drop_start_y = e.pos.y
+    e.update_func = dropping
 }
 
 func dropping(e, width, height) {
@@ -169,14 +166,17 @@ func dropping(e, width, height) {
     if (e.pos.y >= ground) {
         e.pos.y = ground
         if (e.drop_start_y < height / 3 ) {
-            e.die()           // dropped from above the middle: fatal
+            enter_dying(e)           // dropped from above the middle: fatal
         } else {
-            e.release()              // survived the fall
-            e.state = "walking"
-            e.update_func = walk
-            e.mgr.events.emit("human_saved", e)
+            enter_walking(e)         // survived the fall
         }
     }
+}
+
+func enter_caught(e) {
+    e.state = "caught"
+    e.update_func = caught
+    e.mgr.events.emit("human_caught", e)
 }
 
 func caught(e, width, height) {
@@ -187,14 +187,30 @@ func caught(e, width, height) {
     }
     if (e.pos.y >= e.ground_y()) {
         e.pos.y = e.ground_y()
-        e.release()                  // no longer a child of the player ship
-        e.state = "walking"
-        e.update_func = walk
-        e.mgr.events.emit("human_saved", e)
+        enter_walking(e)
     }
 }
 
- 
+// Reached the ground safely, whether unaided (from dropping) or carried down
+// by the player (from caught) -- both lead here, so the outcome is shared.
+func enter_walking(e) {
+    e.release()                      // no longer a child of a lander/the player ship
+    e.state = "walking"
+    e.update_func = walk
+    e.mgr.events.emit("human_saved", e)
+}
+
+func enter_dying(e) {
+    e.draw_func = draw_dispersed
+    e.state = "dying"
+    e.disperse = 1
+    e.dp = vec2(0, 0)
+    e.radar = nil
+    e.shootable = false
+    e.deadly = false
+    e.update_func = dying
+    e.mgr.events.emit("human_killed", e)
+}
 
 func dying(e, width, height) {
     e.disperse = e.disperse + 1.3

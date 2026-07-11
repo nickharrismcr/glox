@@ -10,6 +10,14 @@ import random
 // entity. Death is common to every NPC in the Lua original -- the sprite
 // disperses (1 -> 60) and the entity is removed -- so it lives here.
 //
+// Naming convention (see also lander.lox, human.lox, player.lox): every state
+// has a per-frame update function named after the state (e.g. `die`), and any
+// transition INTO that state -- other than the initial state, set directly in
+// init() -- goes through a matching `enter_<state>(e)` function that performs
+// the one-off setup (flags, event emits, etc.) before installing it as
+// `update_func`. Callers trigger a transition by calling `enter_<state>`, never
+// by poking `update_func` directly.
+//
 // Subclasses set `update_func` in init and may override `on_die()` for
 // death side-effects (e.g. a pod releasing swarmers).
 
@@ -63,7 +71,7 @@ class NPC < Sprite {
 
     // struck by a player laser
     hit() {
-        die(this)
+        enter_die(this)
     }
 
     // hook for death side-effects; overridden by e.g. Pod
@@ -99,13 +107,13 @@ func draw_dispersed(e, win, cam) {
     }
 }
 
-func die(e) {
+func enter_die(e) {
     if (e.dying) {
         return
     }
     e.dying = true
     e.draw_func = draw_dispersed
-    e.update_func = explode
+    e.update_func = die
     e.disperse = 1
     e.dp = vec2(0, 0)
     e.shootable = false
@@ -115,7 +123,7 @@ func die(e) {
     e.mgr.events.emit(e.type & "_killed", e)
 }
 
-func explode(e, width, height) {
+func die(e, width, height) {
     e.disperse = e.disperse + e.disperse_rate
     if (e.disperse >= e.disperse_max) {
         e.alive = false
