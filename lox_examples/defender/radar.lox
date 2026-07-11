@@ -68,8 +68,32 @@ class Radar {
                 rx = rx + this.width
             }
             ry = ey * this.wyscale
-            c = entity.radar
-            win.rectangle(rx, ry, 5, 5, c)
+
+            if (entity.type == "lander") {
+                // two-tone dot: yellow upper half, green lower half
+                win.rectangle(rx, ry, 5, 2, colour.YELLOW)
+                win.rectangle(rx, ry + 2, 5, 3, colour.GREEN)
+            } else {
+                c = entity.radar
+                win.rectangle(rx, ry, 5, 5, c)
+            }
+        }
+
+        // player: a distinct white blob (not part of entities.get_all())
+        if (entities.player != nil and entities.player.alive) {
+            ex = entities.player.pos.x
+            ey = entities.player.pos.y
+            screenx  = ex - cam.x - sw2
+            scx  = screenx * this.wxscale
+            rx = sw2 + scx
+            if ( rx > this.end ) {
+                rx = rx - this.width
+            }
+            if (rx < this.pos) {
+                rx = rx + this.width
+            }
+            ry = ey * this.wyscale
+            win.circle_fill(rx + 2, ry + 2, 3, colour.WHITE)
         }
     }
 }

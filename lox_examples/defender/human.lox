@@ -32,7 +32,7 @@ class Human < Sprite {
         this.disperse = 1
         this.drop_start_y = 0
         this.carrier = nil           // lander while grabbed, player while caught
-        this.radar = vec4(150,0,150,255)
+        this.radar = colour.LIGHTGRAY
         this.counter = 0
         this.mgr = nil
         this.chosen = false
