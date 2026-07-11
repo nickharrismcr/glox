@@ -684,8 +684,14 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 					vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
 					goto End
 				}
-				v3 := v1.AsVec2().Add(v2.AsVec2())
-				vm.stack[vm.stackTop] = core.MakeVec2Value(v3.X, v3.Y, false)
+				// Compute the sum directly rather than going through Add() (which
+				// allocates its own *Vec2Object) then MakeVec2Value (which allocates
+				// again from that result) -- matches binarySubtract's existing
+				// single-allocation pattern for the sibling operator. Never touches
+				// v1/v2's underlying objects, so this carries no aliasing risk.
+				a2 := v1.AsVec2()
+				b2 := v2.AsVec2()
+				vm.stack[vm.stackTop] = core.MakeVec2Value(a2.X+b2.X, a2.Y+b2.Y, false)
 				vm.stackTop++
 				continue
 
@@ -694,8 +700,9 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 					vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
 					goto End
 				}
-				v3 := v1.AsVec3().Add(v2.AsVec3())
-				vm.stack[vm.stackTop] = core.MakeVec3Value(v3.X, v3.Y, v3.Z, false)
+				a3 := v1.AsVec3()
+				b3 := v2.AsVec3()
+				vm.stack[vm.stackTop] = core.MakeVec3Value(a3.X+b3.X, a3.Y+b3.Y, a3.Z+b3.Z, false)
 				vm.stackTop++
 				continue
 
@@ -704,8 +711,9 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 					vm.RunTimeError("Addition type mismatch: %s + %s", v1.String(), v2.String())
 					goto End
 				}
-				v3 := v1.AsVec4().Add(v2.AsVec4())
-				vm.stack[vm.stackTop] = core.MakeVec4Value(v3.X, v3.Y, v3.Z, v3.W, false)
+				a4 := v1.AsVec4()
+				b4 := v2.AsVec4()
+				vm.stack[vm.stackTop] = core.MakeVec4Value(a4.X+b4.X, a4.Y+b4.Y, a4.Z+b4.Z, a4.W+b4.W, false)
 				vm.stackTop++
 				continue
 			}
