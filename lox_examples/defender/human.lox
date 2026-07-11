@@ -32,7 +32,7 @@ class Human < Sprite {
         this.disperse = 1
         this.drop_start_y = 0
         this.carrier = nil           // lander while grabbed, player while caught
-        this.radar = colour.LIGHTGRAY
+        this.radar = colour.GRAY
         this.counter = 0
         this.mgr = nil
         this.chosen = false
@@ -99,9 +99,6 @@ class Human < Sprite {
         if (f != nil) {
             f(this, width, height)
         }
-        if (this.chosen) {
-            this.radar = colour.WHITE
-        }
     }
 
     draw(win,cam) {
@@ -161,7 +158,7 @@ func enter_dropping(e) {
 }
 
 func dropping(e, width, height) {
-    e.dy = e.dy + 0.1                // gravity
+    e.dy = e.dy + e.mgr.config.human_drop_accel     // gravity
     e.pos.y = e.pos.y + e.dy
     var ground = e.ground_y()
     if (e.pos.y >= ground) {
