@@ -20,11 +20,11 @@ class Bullet < Sprite {
     kill() {
         this.ticks_to_live = 0
     }
-    reset(p,v) {
+    reset(p,v,life=100) {
 
         this.pos = vec2(p.x, p.y)
         this.dp = vec2(v.x, v.y)
-        this.ticks_to_live = 100
+        this.ticks_to_live = life
     }
 
     update(width,height) {

@@ -54,7 +54,7 @@ class EntityMgr {
         this.img_pod     = image("pngs/pod.png")
         this.img_swarmer = image("pngs/swarmer.png")
         this.img_baiter  = image("pngs/baiter.png")
-        this.img_bomber  = image("pngs/bomb.png")   // placeholder: no bomber.png in assets
+        this.img_bomber  = image("pngs/bomber.png")
         this.img_250     = image("pngs/250.png")
         this.img_500     = image("pngs/500.png")
 
@@ -212,8 +212,8 @@ class EntityMgr {
     explode_at(x, y) {
         fx.explosion(this.particles, x, y, this.explosion_particles)
     }
-    fire_bullet(p,v) {
-        this.bullets.fire(p,v)
+    fire_bullet(p,v,life=100) {
+        this.bullets.fire(p,v,life)
         this.events.emit("bullet_fire", p)      // an NPC fired a bullet
     }
     fire_laser(x, y, dir, speed) {
