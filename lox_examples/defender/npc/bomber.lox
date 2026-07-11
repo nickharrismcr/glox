@@ -35,7 +35,7 @@ func state_bomb(e, width, height) {
         e.dp.y = -e.dp.y
     }
 
-    // 5x the original drop rate (was random.integer(0,100)==1).
+    // ~1 in 20 chance per frame of dropping a bomb.
     if (random.integer(0, 100) < 5) {
         // dropped bombs sit where they land (zero velocity) and auto-expire via
         // Bullet's own ticks_to_live countdown, same as the Lua's dx=0/dy=0 bomb --

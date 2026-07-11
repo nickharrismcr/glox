@@ -252,7 +252,7 @@ class EntityMgr {
             this.events.emit("level_cleared", nil)
         }
     }
-    // All humans are gone: force every still-hunting lander to mutate
+    // All humans are gone: force every actively-hunting lander to mutate
     // immediately (landers not yet actively engaged are just removed, no
     // death animation -- already-mutant or already-dying landers are left
     // alone), and start the mountains crumbling for the rest of the game.

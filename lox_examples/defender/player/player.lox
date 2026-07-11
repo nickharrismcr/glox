@@ -5,9 +5,6 @@ import colour
 
 // Thrust flame is drawn smaller than the source art and offset from the hull
 // (not flush against it).
-// TODO: cycling tint was tried here and reverted -- thrust.png is pre-coloured
-// art, not a white silhouette, so the normal multiplicative tint (and even an
-// additive-blend attempt) didn't read as a visible colour cycle. Revisit.
 const THRUST_SCALE = 0.75
 const THRUST_GAP = 6
 

@@ -18,9 +18,9 @@ class Config {
         this.lander_waves      = 3   // landers arrive in this many waves...
         this.landers_per_wave  = 3   // ...of this many landers each
         this.lander_wave_delay = 100 // frames between waves
-        this.lander_search_speed = 2.5 // px/frame drift while hunting for a human (was 5)
+        this.lander_search_speed = 2.5 // px/frame drift while hunting for a human
         this.mutant_speed_pct = 0.7  // horizontal chase speed once mutated, as a fraction of player_maxspeed
-        this.lander_ascend_speed = 2.5 // px/frame carrying a grabbed human up to the top (was hardcoded 4, slower now)
+        this.lander_ascend_speed = 2.5 // px/frame carrying a grabbed human up to the top
 
         // --- other enemies ---
         this.pods             = 3    // pods drifting at the start of the level
@@ -34,7 +34,7 @@ class Config {
 
         // --- humans ---
         this.humans = 9
-        this.human_drop_accel = 0.05 // px/frame^2 gravity while falling, uncaught (was hardcoded 0.1, slower now)
+        this.human_drop_accel = 0.05 // px/frame^2 gravity while falling, uncaught
 
         // --- player ship ---
         this.player_maxspeed = 28
@@ -47,11 +47,6 @@ class Config {
         // --- weapon pools (simultaneous projectiles) ---
         this.laser_pool  = 12
         this.bullet_pool = 100
-
-        // Lander's non-aimed scatter shot (maybe_fire_bullet): random direction,
-        // speed randomised within this range.
-        this.lander_scatter_speed_min = 3.0
-        this.lander_scatter_speed_max = 10.0
 
         // Aimed shots (swarmer/baiter/lander grab-shot) home in on the player.
         // Ported from the Lua's calc_fire()/gl.bullet_time: TIME to target is

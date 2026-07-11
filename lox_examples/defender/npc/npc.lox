@@ -140,21 +140,11 @@ func state_die(e, width, height) {
 //   ty = player.pos.y                   -- (matches the Lua exactly)
 //   vx = (tx - e.pos.x) / t
 //   vy = (ty - e.pos.y) / t
-// Because x and y share the same t, they are GUARANTEED to arrive together --
+// Because x and y share the same t, they are guaranteed to arrive together --
 // a stationary player is hit dead-on, a moving one is led correctly in x.
-//
-// Two earlier, WRONG attempts fixed a SPEED (not a time) as the invariant:
-//   - normalizing (dx,dy) and scaling both axes to one fixed magnitude means
-//     whichever axis dominates the aim angle eats almost the whole speed
-//     budget, so a shallow-angle shot could get an absurdly fast y component;
-//   - fixing vy directly and deriving t = |dy|/vy overshoots a nearby target's
-//     y almost instantly regardless of x alignment (bullets "too fast in y",
-//     and a stationary player is simply never hit, since arrival in y and in x
-//     are no longer coupled to the same t once x's t gets floored/adjusted).
-// Fixing TIME instead of speed avoids all of this: velocity per axis is just
-// distance/time, naturally bounded, exact for any geometry, and the two axes
-// are inherently synchronised. This is frame-based, unlike the Lua's dt-based
-// real time, but the shape of the solve is identical.
+// Velocity per axis is just distance/time, naturally bounded, exact for any
+// geometry, and the two axes are inherently synchronised. This is frame-based,
+// unlike the Lua's dt-based real time, but the shape of the solve is identical.
 //
 // time_mult scales the configured time-to-target: > 1 gives a slower, more
 // lenient shot (e.g. a lander in its search state, which is more of a

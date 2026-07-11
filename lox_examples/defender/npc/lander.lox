@@ -57,25 +57,18 @@ class Lander < Sprite {
     near(x1, x2) {
         return (math.abs(x1 - x2) < 5)
     }   
-    // not aimed at the player -- a random-direction scatter shot, speed
-    // configurable via lander_scatter_speed_min/max. time_mult scales the
-    // aimed-path's time-to-target (used by search() for a slower, more
-    // lenient shot while wandering) -- see npc.aim_bullet_at().
+    // Fires a shot aimed at the player, gated by a small random per-frame
+    // chance. time_mult scales the aim's time-to-target (used by search() for
+    // a slower, more lenient shot while wandering) -- see npc.aim_bullet_at().
+    // Never fires while off-screen.
     maybe_fire_bullet(time_mult=1.0) {
         if (this.mgr.cam != nil and this.mgr.cam.translate(this.pos.x) == nil) {
-            return   // never fire while off-screen
+            return
         }
-        if (random.integer(0,200) ==1   ) {
-            // TEMPORARY: routed through the aimed path for testing. Restore the
-            // random-scatter block below (and delete this one) to revert.
+        if (random.integer(0,200) == 1) {
             if (this.mgr.player != nil) {
                 aim_bullet_at(this, this.mgr.player, time_mult)
             }
-            return
-            v=vec2(1.0,1.0)
-            v=math.rotate2d(v,random.float(0,math.PI*2))
-            v=math.scale2(v,random.float(this.mgr.config.lander_scatter_speed_min, this.mgr.config.lander_scatter_speed_max))
-            this.mgr.fire_bullet(this.pos,v)
         }
     }
     // shot by a player laser: start the death/explode sequence, unless already exploding.

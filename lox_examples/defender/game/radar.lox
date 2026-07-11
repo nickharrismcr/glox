@@ -17,10 +17,9 @@ class Radar {
         this.line4=(this.screenwidth/2-(this.width)*this.wxscale, 0, this.screenwidth/2-(this.width)*this.wxscale, 100)
         this.line5=(this.screenwidth/2+(this.width)*this.wxscale, 0, this.screenwidth/2+(this.width)*this.wxscale, 100)
 
-        // colours built once here rather than every frame in draw() -- this
-        // draw() runs every frame and its terrain loop runs ~worldwidth/30
-        // times, so re-allocating a vec4 per call/iteration was a significant,
-        // constant per-frame GC-pressure source.
+        // Colours are cached here since draw() runs every frame and its
+        // terrain loop runs ~worldwidth/30 times -- a fresh vec4 per
+        // call/iteration would be a steady per-frame GC-pressure source.
         this.border_colour = colour.RED
         this.crosshair_colour = colour.WHITE
         this.terrain_colour = colour.TERRAIN_ORANGE
