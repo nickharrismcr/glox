@@ -71,8 +71,11 @@ foreach ( var i in range(0, cfg.lander_waves)) {
     entities.add_landers(cfg.landers_per_wave, i * cfg.lander_wave_delay)
 }
 entities.add_humans(cfg.humans)
-foreach (var ev in GAME_EVENTS) {
-    entities.events.on(ev, make_event_logger(ev))
+
+if (cfg.log_events) {
+    foreach (var ev in GAME_EVENTS) {
+        entities.events.on(ev, make_event_logger(ev))
+    }
 }
 
 ship_img = image("pngs/ship.png")

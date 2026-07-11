@@ -43,6 +43,8 @@ class Config {
         // --- fx ---
         this.explosion_particles = 140
         this.bonus_life = 90         // frames a floating bonus-score popup stays on screen
+
+        this.log_events = false // if true, log all game events to the console (for testing)
     }
 
     // Total world width in pixels. Derived so changing width/world_scale is enough.
