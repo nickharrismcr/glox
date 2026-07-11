@@ -3,6 +3,14 @@ from sprite import Sprite
 import math
 import colour
 
+// Thrust flame is drawn smaller than the source art and offset from the hull
+// (not flush against it).
+// TODO: cycling tint was tried here and reverted -- thrust.png is pre-coloured
+// art, not a white silhouette, so the normal multiplicative tint (and even an
+// additive-blend attempt) didn't read as a visible colour cycle. Revisit.
+const THRUST_SCALE = 0.75
+const THRUST_GAP = 6
+
 // The player ship. Ported behaviourally from states/player/{play,die,explode}.lua
 // in the Lua Love2D original, adapted to this port's frame-based (no-dt) model.
 //
@@ -34,6 +42,7 @@ class Player < Sprite {
         this.thrust_tex = texture(thrust_img, 2, 1, 2)
         this.thrust_tex.animate(6)
         this.thrust_width = this.thrust_tex.frame_width()
+        this.thrust_height = this.thrust_tex.height()
         this.flash_tex = texture(shipw_img, 2, 1, 2)
 
         // Classic Defender: a persistent facing (dir) plus a scalar speed. Thrust
@@ -48,6 +57,12 @@ class Player < Sprite {
         this.friction = config.player_friction   // closer to 1 => less friction, longer coast
         this.vspeed = config.player_vspeed
         this.nodie = config.nodie
+
+        // purely visual: while thrusting, the drawn ship eases forward (in the
+        // facing direction) up to one ship-width, then eases back at the same
+        // speed once thrust is released. World position/physics are untouched.
+        this.lean = 0
+        this.lean_speed = config.player_lean_speed
 
         // camera look-ahead: ship sits at screen x == offset, which lerps between
         // leftoffset (facing right -> ship near the left edge, seeing ahead right)
@@ -142,6 +157,9 @@ class Player < Sprite {
         if (spos == nil) {
             return
         }
+        // shift the drawn (screen-space only) position by the current lean,
+        // forward in the facing direction -- world pos.x is untouched
+        var draw_x = spos + this.lean * this.dir
         var flip = this.dir == -1     // ship art faces right; mirror it when facing left
         var white = colour.WHITE
 
@@ -152,21 +170,26 @@ class Player < Sprite {
             if (!this.flash) {
                 tint = colour.RED
             }
-            win.draw_texture_flip(this.flash_tex, spos, this.pos.y, tint, flip)
+            win.draw_texture_flip(this.flash_tex, draw_x, this.pos.y, tint, flip)
             return
         }
 
         if (this.thrusting) {
-            // thrust flame sits flush against the ship's tail (opposite the
-            // facing dir). Ship occupies [spos, spos+width] on screen;
-            // facing right the tail is at spos, facing left it is at spos+width.
-            var tx = spos - this.thrust_width      // facing right: flame just left of ship
+            // thrust flame: scaled down and offset from the hull by a small
+            // gap (not flush against it). Ship occupies [draw_x, draw_x+width]
+            // on screen; facing right the tail is at draw_x, facing left it
+            // is at draw_x+width. Vertically re-centred on the unscaled frame
+            // so shrinking it doesn't drift it toward the top.
+            var flame_w = this.thrust_width * THRUST_SCALE
+            var flame_h = this.thrust_height * THRUST_SCALE
+            var ty = this.pos.y + (this.thrust_height - flame_h) / 2
+            var tx = draw_x - flame_w - THRUST_GAP     // facing right: flame left of ship
             if (this.dir == -1) {
-                tx = spos + this.width             // facing left: flame just right of ship
+                tx = draw_x + this.width + THRUST_GAP  // facing left: flame right of ship
             }
-            win.draw_texture_flip(this.thrust_tex, tx, this.pos.y, white, flip)
+            win.draw_texture_scaled(this.thrust_tex, tx, ty, white, flip, THRUST_SCALE)
         }
-        win.draw_texture_flip(this.texture, spos, this.pos.y, white, flip)
+        win.draw_texture_flip(this.texture, draw_x, this.pos.y, white, flip)
     }
 }
 
@@ -175,6 +198,18 @@ class Player < Sprite {
 func state_play(e, win) {
     e.handle_input(win)
     e.fire(win)
+
+    // ease the visual lean toward full (thrusting) or zero (not thrusting),
+    // at the same speed in both directions
+    var lean_target = 0
+    if (e.thrusting) {
+        lean_target = e.width
+    }
+    if (e.lean < lean_target) {
+        e.lean = math.min(e.lean + e.lean_speed, lean_target)
+    } else if (e.lean > lean_target) {
+        e.lean = math.max(e.lean - e.lean_speed, lean_target)
+    }
 
     if (e.invuln > 0) {
         e.invuln = e.invuln - 1
@@ -209,6 +244,7 @@ func enter_die(e) {
     e.vx = 0
     e.vy = 0
     e.thrusting = false
+    e.lean = 0
     e.mgr.events.emit("player_die", e)
 }
 
