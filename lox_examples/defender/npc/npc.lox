@@ -12,12 +12,12 @@ import colour
 // disperses (1 -> 60) and the entity is removed -- so it lives here.
 //
 // Naming convention (see also lander.lox, human.lox, player.lox): every state
-// has a per-frame update function named after the state (e.g. `die`), and any
-// transition INTO that state -- other than the initial state, set directly in
-// init() -- goes through a matching `enter_<state>(e)` function that performs
-// the one-off setup (flags, event emits, etc.) before installing it as
-// `update_func`. Callers trigger a transition by calling `enter_<state>`, never
-// by poking `update_func` directly.
+// has a per-frame update function named `state_<state>` (e.g. `state_die`),
+// and any transition INTO that state -- other than the initial state, set
+// directly in init() -- goes through a matching `enter_<state>(e)` function
+// that performs the one-off setup (flags, event emits, etc.) before
+// installing it as `update_func`. Callers trigger a transition by calling
+// `enter_<state>`, never by poking `update_func` directly.
 //
 // Subclasses set `update_func` in init and may override `on_die()` for
 // death side-effects (e.g. a pod releasing swarmers).
@@ -109,7 +109,7 @@ func enter_die(e) {
     }
     e.dying = true
     e.draw_func = draw_dispersed
-    e.update_func = die
+    e.update_func = state_die
     e.disperse = 1
     e.dp = vec2(0, 0)
     e.shootable = false
@@ -119,7 +119,7 @@ func enter_die(e) {
     e.mgr.events.emit(e.type & "_killed", e)
 }
 
-func die(e, width, height) {
+func state_die(e, width, height) {
     e.disperse = e.disperse + e.disperse_rate
     if (e.disperse >= e.disperse_max) {
         e.alive = false

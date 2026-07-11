@@ -11,7 +11,7 @@ class Swarmer < NPC {
     init(pos, img) {
         super.init(pos, img, 1, 1, 1, "swarmer")   // swarmer.png = single 20x16 frame
         this.radar = vec4(255, 80, 0, 255)
-        this.update_func = chase
+        this.update_func = state_chase
         this.maxspeed = random.float(13.0, 17.0)   // Lua 800-1000 px/s at 60fps
         this.nextthink = 0
 
@@ -23,7 +23,7 @@ class Swarmer < NPC {
     }
 }
 
-func chase(e, width, height) {
+func state_chase(e, width, height) {
     var player = e.mgr.player
     if (player == nil) {
         return

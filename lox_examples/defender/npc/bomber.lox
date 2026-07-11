@@ -16,13 +16,13 @@ class Bomber < NPC {
         super.init(pos, img, 3, 1, 3, "bomber")
         this.animate(8)
         this.radar = vec4(0, 150, 255, 255)
-        this.update_func = bomb
+        this.update_func = state_bomb
         this.dp = vec2(1.7, 1.7)     // Lua: 100 px/s each axis, at 60fps
         this.top = top
     }
 }
 
-func bomb(e, width, height) {
+func state_bomb(e, width, height) {
     e.pos.add(e.dp)
 
     // bounce off the ceiling / floor of the play area

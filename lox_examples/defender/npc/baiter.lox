@@ -13,7 +13,7 @@ class Baiter < NPC {
         super.init(pos, img, 2, 1, 2, "baiter")   // baiter.png = 2 frames of 44x16
         this.animate(10)
         this.radar = colour.GREEN
-        this.update_func = wait
+        this.update_func = state_wait
         this.wait_frames = wait_frames
         this.x_to_player = 0
         this.nextthink = 0
@@ -26,7 +26,7 @@ class Baiter < NPC {
     }
 }
 
-func wait(e, width, height) {
+func state_wait(e, width, height) {
     if (e.mgr.player == nil or e.counter < e.wait_frames) {
         return
     }
@@ -40,10 +40,10 @@ func enter_materialize(e) {
     e.disperse = 50
     e.visible = true
     e.draw_func = draw_dispersed
-    e.update_func = materialize
+    e.update_func = state_materialize
 }
 
-func materialize(e, width, height) {
+func state_materialize(e, width, height) {
     // Lua re-anchors x to the player every frame while coalescing
     e.pos.x = e.mgr.player.pos.x + e.x_to_player
     e.disperse = e.disperse - 0.67          // Lua: 40 * dt
@@ -55,13 +55,13 @@ func materialize(e, width, height) {
 
 func enter_chase(e) {
     e.draw_func = draw_normal
-    e.update_func = chase
+    e.update_func = state_chase
     e.shootable = true
     e.deadly = true
     e.nextthink = 0
 }
 
-func chase(e, width, height) {
+func state_chase(e, width, height) {
     var player = e.mgr.player
     if (player == nil) {
         return
