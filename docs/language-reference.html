@@ -689,6 +689,12 @@ sum = vec3(1, 2, 3) ++ vec3(10, 10, 10)   // vec3(11, 12, 13)</code></pre>
 </tbody>
 </table>
 <p>For vector length, normalisation, rotation and scaling helpers, see the <a href="#mod-math">math module</a>.</p>
+<h3>In-place addition</h3>
+<p>Each vector type also has an <code>.add(other)</code> method that mutates the receiver's components directly instead of allocating a new vector — useful in hot loops (e.g. updating an entity's position every frame).</p>
+<pre><code class="lox">pos = vec2(0, 0)
+dp = vec2(1, 1)
+pos.add(dp)        // pos becomes vec2(1, 1); dp is unchanged</code></pre>
+<p><strong>Caution:</strong> unlike <code>++</code> (which always allocates a fresh vector), <code>.add()</code> mutates the existing object, so any other reference to that same vector — e.g. a value stored via <code>this.pos = pos</code> in a constructor, when the caller kept its own reference to the argument — is mutated too. Prefer <code>.add()</code> only where the receiver is known not to be aliased elsewhere (a field set from an unshared literal, for example); otherwise use <code>++</code>.</p>
 
 <!-- ==================== BUILT-IN FUNCTIONS ==================== -->
 <h2 class="section" id="builtins">Built-in functions</h2>

@@ -626,6 +626,19 @@ v2.y = 2
 v1=vec3(1,3,4)
 v2=vec3(2,4,5)
 v3=v2 ++ v1
+```
+
+### In-place addition
+
+Each vector type also has an `.add(other)` method that mutates the receiver's components directly instead of allocating a new vector — useful in hot loops (e.g. updating an entity's position every frame).
+
+```lox
+pos = vec2(0, 0)
+dp = vec2(1, 1)
+pos.add(dp)        // pos becomes vec2(1, 1); dp is unchanged
+```
+
+**Caution:** unlike `++` (which always allocates a fresh vector), `.add()` mutates the existing object, so any other reference to that same vector — e.g. a value stored via `this.pos = pos` in a constructor, when the caller kept its own reference to the argument — is mutated too. Prefer `.add()` only where the receiver is known not to be aliased elsewhere (a field set from an unshared literal, for example); otherwise use `++`.
 
 ---
 
