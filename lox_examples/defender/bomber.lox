@@ -23,7 +23,7 @@ class Bomber < NPC {
 }
 
 func bomb(e, width, height) {
-    e.pos = e.pos ++ e.dp
+    e.pos.add(e.dp)
 
     // bounce off the ceiling / floor of the play area
     if (e.pos.y < e.top) {

@@ -107,7 +107,7 @@ func enter_descend(e) {
 }
 
 func descend(e, width, height) {
-    e.pos = e.pos ++ e.dp
+    e.pos.add(e.dp)
 
     mh = e.mgr.mountains.get(e.pos.x)
     msh = e.mgr.height - mh
@@ -128,7 +128,7 @@ func enter_search(e) {
 }
 
 func search(e, width, height) {
-    e.pos = e.pos ++ e.dp
+    e.pos.add(e.dp)
     mh = e.mgr.mountains.get(e.pos.x)
     msh = e.mgr.height - mh
     e.pos.y = msh - 200
@@ -155,7 +155,7 @@ func enter_grab(e) {
 }
 
 func grab(e,width, height) {
-    e.pos = e.pos ++ e.dp
+    e.pos.add(e.dp)
     if (e.pos.y > e.human.pos.y  ) {
         enter_abduct(e)
     }
@@ -196,7 +196,7 @@ func enter_mutated(e) {
 
 func mutated(e,width, height) {
     e.radar = random.choice([e.r,e.g,e.b,e.m])
-    e.pos = e.pos ++ e.dp
+    e.pos.add(e.dp)
     if (e.counter%20 == 0) {
         e.dp.y = random.choice((-5,5))
     }
