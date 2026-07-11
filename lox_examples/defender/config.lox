@@ -19,6 +19,7 @@ class Config {
         this.landers_per_wave  = 3   // ...of this many landers each
         this.lander_wave_delay = 100 // frames between waves
         this.lander_search_speed = 2.5 // px/frame drift while hunting for a human (was 5)
+        this.mutant_speed_pct = 0.7  // horizontal chase speed once mutated, as a fraction of player_maxspeed
 
         // --- other enemies ---
         this.pods             = 3    // pods drifting at the start of the level
@@ -38,6 +39,7 @@ class Config {
         this.player_accel    = 0.7
         this.player_friction = 0.96
         this.player_vspeed   = 7
+        this.player_lean_speed = 1.5 // px/frame the ship's screen lean eases in/out by while thrusting (see player.lox)
         this.nodie = true // if true, the player ship cannot die (for testing)
 
         // --- weapon pools (simultaneous projectiles) ---

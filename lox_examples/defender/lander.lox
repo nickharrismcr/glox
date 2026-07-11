@@ -4,7 +4,7 @@ import random
 import math
 import colour
 import event
-from npc import aim_bullet_at
+from npc import aim_bullet_at, shortest_dx
 
 class Lander < Sprite {
 
@@ -187,7 +187,7 @@ func enter_mutated(e) {
     e.img = img
     e.texture = texture(img,6,1,6)
     e.animate(2)
-    e.dp.x = random.choice((-15,15))
+    e.dp.x = 0            // mutated() aims this at the player every frame
     e.dp.y = 0
     e.counter = 0
     e.update_func = mutated
@@ -196,6 +196,16 @@ func enter_mutated(e) {
 
 func mutated(e,width, height) {
     e.radar = random.choice([e.r,e.g,e.b,e.m])
+    // chase the player horizontally, taking the shorter way around the world
+    // wrap rather than a naive x1-x2 (which breaks near the seam)
+    if (e.mgr.player != nil) {
+        var mutant_speed = e.mgr.config.player_maxspeed * e.mgr.config.mutant_speed_pct
+        var dx = shortest_dx(e.pos.x, e.mgr.player.pos.x, e.mgr.worldwidth)
+        e.dp.x = mutant_speed
+        if (dx < 0) {
+            e.dp.x = -mutant_speed
+        }
+    }
     e.pos.add(e.dp)
     if (e.counter%20 == 0) {
         e.dp.y = random.choice((-5,5))
@@ -206,10 +216,20 @@ func mutated(e,width, height) {
             e.dp.y = 5
         }
     }
-    e.maybe_fire_bullet()
+    if (e.pos.y > height - 40) {
+        e.pos.y = height - 40
+        if (e.dp.y > 0) {
+            e.dp.y = -5
+        }
+    }
 
-    if (e.counter > 150 ) {
-        enter_die(e)
+    // fixed cadence rather than the random-chance maybe_fire_bullet() other
+    // lander states use -- a mutant is already fully hostile and committed
+    if (e.counter % 60 == 0 and e.mgr.player != nil) {
+        var on_screen = e.mgr.cam == nil or e.mgr.cam.translate(e.pos.x) != nil
+        if (on_screen) {
+            aim_bullet_at(e, e.mgr.player)
+        }
     }
 }
 
