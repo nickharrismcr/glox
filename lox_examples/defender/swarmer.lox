@@ -47,7 +47,7 @@ func chase(e, width, height) {
                            random.integer(-500, 500), random.integer(-300, 300))
         e.nextthink = 12                       // re-aim every 0.2s
         if (e.counter > 60 and random.integer(0, 100) == 1) {
-            e.fire_bullet_at(player.pos.x, player.pos.y, 6)
+            e.fire_bullet_at(player)
         }
     }
     e.pos = e.pos ++ e.dp

@@ -143,14 +143,14 @@ class Player < Sprite {
             return
         }
         var flip = this.dir == -1     // ship art faces right; mirror it when facing left
-        var white = vec4(255, 255, 255, 255)
+        var white = colour.WHITE
 
         if (this.dying()) {
             // death flash: alternate an all-white and an all-red ship. The white
             // silhouette is tinted, so both colours come from one texture.
             var tint = white
             if (!this.flash) {
-                tint = vec4(255, 0, 0, 255)
+                tint = colour.RED
             }
             win.draw_texture_flip(this.flash_tex, spos, this.pos.y, tint, flip)
             return

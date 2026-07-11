@@ -66,6 +66,7 @@ mountain=mountains.Mountain(worldwidth, height*0.3)
 starfield=stars.Stars(width, height*0.7, 30)
 entities= entity_mgr.EntityMgr(cfg)
 entities.mountains = mountain
+entities.cam = cam
 radar=radar.Radar(width, height, worldwidth)
 foreach ( var i in range(0, cfg.lander_waves)) {
     entities.add_landers(cfg.landers_per_wave, i * cfg.lander_wave_delay)

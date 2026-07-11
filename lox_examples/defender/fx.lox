@@ -2,6 +2,7 @@ from gfx import *
 import random
 import math
 import particle_sys
+import colour
 
 // One-shot explosion bursts, built on the shared particle_sys module.
 //
@@ -15,7 +16,7 @@ func explosion_init(p) {
     p.dpos = vec2(math.cos(angle) * speed, math.sin(angle) * speed)
     p.life = random.integer(30, 85)
     p.size = random.float(3.0, 7.5)      // 3x the original for chunky debris
-    p.col = vec4(255, 255, 255, 255)     // white-hot at birth
+    p.col = colour.WHITE     // white-hot at birth
 }
 
 func explosion_update(p) {

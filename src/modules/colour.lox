@@ -44,6 +44,7 @@ const MAGENTA = vec4(255, 0, 255, 255);
 const BLACK   = vec4(0, 0, 0, 255);
 const WHITE   = vec4(255, 255, 255, 255);
 const ORANGE  = vec4(255, 165, 0, 255);
+const TERRAIN_ORANGE = vec4(255, 150, 0, 255); // slightly dimmer than ORANGE; used for terrain-outline dots
 
 // Additional Raylib color constants
 const LIGHTGRAY  = vec4(200, 200, 200, 255);

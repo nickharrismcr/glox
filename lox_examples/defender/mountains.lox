@@ -4,12 +4,16 @@ import colour
 import math; 
 
 
-class Mountain { 
+class Mountain {
     init(width,max_height) {
         this.width = width
         this.max_height = max_height
         this.points = []
-        this.generate_points()  
+        this.generate_points()
+        // built once: draw() runs every frame and iterates the screen width,
+        // so a fresh vec4 per iteration was a steady per-frame GC-pressure
+        // source. Same shade as radar.lox's terrain dot.
+        this.terrain_colour = colour.TERRAIN_ORANGE
     }
     generate_points() {
         x = 0
@@ -47,7 +51,7 @@ class Mountain {
         foreach ( var x in range(0,width)){
             if (x%5==0){
                 var h = this.get(x + cam.x)
-                win.circle_fill(x, height-h, 2, vec4(255,150,0,255))
+                win.circle_fill(x, height-h, 2, this.terrain_colour)
             }
         }
     }

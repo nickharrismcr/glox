@@ -2,6 +2,7 @@ from gfx import *
 from sprite import Sprite
 import math
 import random
+import colour
 
 // Shared base for the NPC roster (pod, swarmer, bomber, baiter).
 //
@@ -37,7 +38,7 @@ class NPC < Sprite {
         this.deadly = true         // touching it hurts the player
         this.mgr = nil
         this.counter = 0
-        this.radar = vec4(255, 255, 255, 255)
+        this.radar = colour.WHITE
         this.update_func = nil
         this.draw_func = draw_normal
         this.disperse_rate = 1.3   // explode speed (Lua: 80 * dt)
@@ -78,15 +79,10 @@ class NPC < Sprite {
     on_die() {
     }
 
-    // Fire a bullet toward (px, py) at the given per-frame speed.
-    fire_bullet_at(px, py, speed) {
-        var dx = shortest_dx(this.pos.x, px, this.mgr.worldwidth)
-        var dy = py - this.pos.y
-        var d = math.sqrt(dx * dx + dy * dy)
-        if (d < 1) {
-            return
-        }
-        this.mgr.fire_bullet(this.pos, vec2(dx / d * speed, dy / d * speed))
+    // Fire a bullet that homes in on player -- see aim_bullet_at(). time_mult
+    // scales the configured time-to-target (e.g. a slower, more lenient shot).
+    fire_bullet_at(player, time_mult=1.0) {
+        aim_bullet_at(this, player, time_mult)
     }
 }
 
@@ -95,7 +91,7 @@ class NPC < Sprite {
 func draw_normal(e, win, cam) {
     var spos = cam.translate(e.pos.x)
     if (spos != nil) {
-        win.draw_texture(e.texture, spos, e.pos.y, vec4(255, 255, 255, 255))
+        win.draw_texture(e.texture, spos, e.pos.y, colour.WHITE)
     }
 }
 
@@ -103,7 +99,7 @@ func draw_normal(e, win, cam) {
 func draw_dispersed(e, win, cam) {
     var spos = cam.translate(e.pos.x)
     if (spos != nil) {
-        e.draw_disperse(win, spos, e.pos.y, e.disperse, vec4(255, 255, 255, 255))
+        e.draw_disperse(win, spos, e.pos.y, e.disperse, colour.WHITE)
     }
 }
 
@@ -131,6 +127,51 @@ func die(e, width, height) {
 }
 
 // --- helpers ------------------------------------------------------------------
+
+// Fire a bullet from e that homes in on player, ported directly from the Lua
+// original's calc_fire() (game/util.lua) / BulletMgr:fireEvent (accuracy 1).
+// Free function (not an NPC method) so entities that don't extend NPC, e.g.
+// Lander, can use it too. NPC.fire_bullet_at() is a thin wrapper around this.
+//
+// The invariant is TIME, not speed: pick a fixed time-to-target t (frames),
+// then set this shot's velocity on EACH axis independently to whatever
+// distance/t requires:
+//   tx = player.pos.x + player.vx * t   -- player's projected x; y is NOT led
+//   ty = player.pos.y                   -- (matches the Lua exactly)
+//   vx = (tx - e.pos.x) / t
+//   vy = (ty - e.pos.y) / t
+// Because x and y share the same t, they are GUARANTEED to arrive together --
+// a stationary player is hit dead-on, a moving one is led correctly in x.
+//
+// Two earlier, WRONG attempts fixed a SPEED (not a time) as the invariant:
+//   - normalizing (dx,dy) and scaling both axes to one fixed magnitude means
+//     whichever axis dominates the aim angle eats almost the whole speed
+//     budget, so a shallow-angle shot could get an absurdly fast y component;
+//   - fixing vy directly and deriving t = |dy|/vy overshoots a nearby target's
+//     y almost instantly regardless of x alignment (bullets "too fast in y",
+//     and a stationary player is simply never hit, since arrival in y and in x
+//     are no longer coupled to the same t once x's t gets floored/adjusted).
+// Fixing TIME instead of speed avoids all of this: velocity per axis is just
+// distance/time, naturally bounded, exact for any geometry, and the two axes
+// are inherently synchronised. This is frame-based, unlike the Lua's dt-based
+// real time, but the shape of the solve is identical.
+//
+// time_mult scales the configured time-to-target: > 1 gives a slower, more
+// lenient shot (e.g. a lander in its search state, which is more of a
+// suppressing-fire threat than a precision shot); 1.0 (the default) is the
+// straight configured value.
+func aim_bullet_at(e, player, time_mult=1.0) {
+    var cfg = e.mgr.config
+    var t = random.float(cfg.npc_bullet_time / 2, cfg.npc_bullet_time) * time_mult
+
+    var tx = player.pos.x + player.vx * t
+    var ty = player.pos.y
+
+    var vx = shortest_dx(e.pos.x, tx, e.mgr.worldwidth) / t
+    var vy = (ty - e.pos.y) / t
+
+    e.mgr.fire_bullet(e.pos, vec2(vx, vy))
+}
 
 // Signed x-distance from a to b, taking the shorter way around the wrapped world.
 func shortest_dx(from_x, to_x, worldwidth) {

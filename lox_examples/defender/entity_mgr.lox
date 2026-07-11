@@ -25,6 +25,7 @@ class EntityMgr {
         this.top = config.height * 0.16   // ceiling of the play area (below the radar)
         this.mountains = nil
         this.player = nil               // set by main; NPCs hunt it
+        this.cam = nil                   // set by main; lets entities check on-screen visibility
         this.entities = []
         this.queue = []
         this.bullets = BulletPool(config.bullet_pool)
@@ -149,15 +150,35 @@ class EntityMgr {
 
   
 
+    // Baiters currently in play: alive plus queued-but-not-yet-materialised
+    // (the latter matters if baiter_delay is ever set low enough that more than
+    // one could be queued before the first actually spawns).
+    baiter_count() {
+        var n = 0
+        foreach (var e in this.entities) {
+            if (e.alive and e.type == "baiter") {
+                n = n + 1
+            }
+        }
+        foreach (var q in this.queue) {
+            if (q[0].type == "baiter") {
+                n = n + 1
+            }
+        }
+        return n
+    }
+
     // Send in a baiter every baiter_delay frames once the landers are nearly
-    // cleared. While plenty of landers remain the timer is held at its reset value,
-    // so the first baiter arrives baiter_delay frames after the threshold is met.
+    // cleared, up to max_baiters simultaneously. While plenty of landers remain
+    // (or the cap is reached) the timer is held at its reset value, so the next
+    // baiter arrives baiter_delay frames after a spawn slot opens up.
     update_baiters() {
         // pick up a shortened delay (e.g. from a level controller) right away
         if (this.baiter_timer > this.baiter_delay) {
             this.baiter_timer = this.baiter_delay
         }
-        if (this.landers_alive <= this.baiter_threshold) {
+        var gated = this.landers_alive <= this.baiter_threshold and this.baiter_count() < this.config.max_baiters
+        if (gated) {
             this.baiter_timer = this.baiter_timer - 1
             if (this.baiter_timer <= 0) {
                 this.add_baiter(0)

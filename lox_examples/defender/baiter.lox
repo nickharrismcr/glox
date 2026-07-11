@@ -77,6 +77,6 @@ func chase(e, width, height) {
     if (e.pos.y > height - 40) { e.pos.y = height - 40 }
 
     if (random.integer(0, 150) == 1) {
-        e.fire_bullet_at(player.pos.x, player.pos.y, 7)
+        e.fire_bullet_at(player)
     }
 }

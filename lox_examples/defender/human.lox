@@ -100,7 +100,7 @@ class Human < Sprite {
             f(this, width, height)
         }
         if (this.chosen) {
-            this.radar = vec4(255,255,255,255)
+            this.radar = colour.WHITE
         }
     }
 
@@ -118,14 +118,14 @@ class Human < Sprite {
 func draw_normal(e, win, cam) {
     var spos = cam.translate(e.pos.x)
     if (spos != nil) {
-        win.draw_texture(e.texture, spos, e.pos.y, vec4(255, 255, 255, 255))
+        win.draw_texture(e.texture, spos, e.pos.y, colour.WHITE)
     }
 }
 
 func draw_dispersed(e, win, cam) {
     var spos = cam.translate(e.pos.x)
     if (spos != nil) {
-        e.draw_disperse(win, spos, e.pos.y, e.disperse, vec4(255, 255, 255, 255))
+        e.draw_disperse(win, spos, e.pos.y, e.disperse, colour.WHITE)
     }
 }
 
@@ -145,9 +145,10 @@ func enter_grabbed(e) {
 }
 
 func grabbed(e, width, height) {
-    // hang just below the carrier lander as it lifts us
+    // hang centred below the carrier lander (sprites are top-left anchored, so
+    // the lander's own centre is offset by half its width) as it lifts us
     if (e.carrier != nil) {
-        e.pos.x = e.carrier.pos.x
+        e.pos.x = e.carrier.pos.x + e.carrier.width / 2 - e.width / 2
         e.pos.y = e.carrier.pos.y + 30
     }
 }

@@ -1,4 +1,5 @@
 from gfx import *
+import colour
 
 // Floating bonus-score popup, shown when a human is rescued. Ported
 // behaviourally from game/engine_mixins.lua's addScoreEvent, which spawns a
@@ -26,7 +27,7 @@ class Bonus {
     draw(win, cam) {
         var spos = cam.translate(this.pos.x)
         if (spos != nil) {
-            win.draw_texture(this.tex, spos, this.pos.y, vec4(255, 255, 255, 255))
+            win.draw_texture(this.tex, spos, this.pos.y, colour.WHITE)
         }
     }
 }

@@ -1,9 +1,10 @@
 from gfx import *
-from sprite import Sprite 
+from sprite import Sprite
 import random
-import math 
+import math
 import colour
 import event
+from npc import aim_bullet_at
 
 class Lander < Sprite {
 
@@ -56,11 +57,24 @@ class Lander < Sprite {
     near(x1, x2) {
         return (math.abs(x1 - x2) < 5)
     }   
-    maybe_fire_bullet() {
+    // not aimed at the player -- a random-direction scatter shot, speed
+    // configurable via lander_scatter_speed_min/max. time_mult scales the
+    // aimed-path's time-to-target (used by search() for a slower, more
+    // lenient shot while wandering) -- see npc.aim_bullet_at().
+    maybe_fire_bullet(time_mult=1.0) {
+        if (this.mgr.cam != nil and this.mgr.cam.translate(this.pos.x) == nil) {
+            return   // never fire while off-screen
+        }
         if (random.integer(0,200) ==1   ) {
+            // TEMPORARY: routed through the aimed path for testing. Restore the
+            // random-scatter block below (and delete this one) to revert.
+            if (this.mgr.player != nil) {
+                aim_bullet_at(this, this.mgr.player, time_mult)
+            }
+            return
             v=vec2(1.0,1.0)
             v=math.rotate2d(v,random.float(0,math.PI*2))
-            v=math.scale2(v,random.float(3.0,10.0))
+            v=math.scale2(v,random.float(this.mgr.config.lander_scatter_speed_min, this.mgr.config.lander_scatter_speed_max))
             this.mgr.fire_bullet(this.pos,v)
         }
     }
@@ -118,7 +132,7 @@ func search(e, width, height) {
     mh = e.mgr.mountains.get(e.pos.x)
     msh = e.mgr.height - mh
     e.pos.y = msh - 200
-    e.maybe_fire_bullet()
+    e.maybe_fire_bullet(2.0)   // slower, more lenient shot while wandering/searching
 
     if (e.human != nil) {
         if (e.near(e.human.pos.x, e.pos.x)) {
@@ -132,6 +146,12 @@ func enter_grab(e) {
     e.dp.x = 0
     e.dp.y = 3
     e.update_func = grab
+    // a single decisive shot right at the player the instant it commits to the
+    // grab -- but only if on screen (landers should never fire while off-screen)
+    var on_screen = e.mgr.cam == nil or e.mgr.cam.translate(e.pos.x) != nil
+    if (e.mgr.player != nil and on_screen) {
+        aim_bullet_at(e, e.mgr.player)
+    }
 }
 
 func grab(e,width, height) {
@@ -224,16 +244,16 @@ func die(e,width, height) {
 func draw_exp(e,win,cam) {
     var spos = cam.translate(e.pos.x)
     if (spos != nil) {
-        e.draw_disperse(win, spos, e.pos.y, e.disperse, vec4(255, 255, 255, 255))
+        e.draw_disperse(win, spos, e.pos.y, e.disperse, colour.WHITE)
     }
 }
 
 func draw_(e,win,cam){
     var spos = cam.translate(e.pos.x)
     if (spos != nil) {
-        win.draw_texture(e.texture, spos, e.pos.y, vec4(255, 255, 255, 255))
+        win.draw_texture(e.texture, spos, e.pos.y, colour.WHITE)
     }
-    
+
 }
 
 
