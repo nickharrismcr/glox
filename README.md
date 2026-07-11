@@ -39,7 +39,7 @@ Feature summary — see the **[language reference](docs/language-reference.html)
 - **Tuples** — immutable sequences.
 - **Dictionaries** — `get(k, default)`, `keys()`, `remove()`.
 - **Strings** — `${expr}` interpolation, `format()` (Go `Sprintf`), `&` concat, `*` repeat, slicing, `in`, `replace`, `join`; all interned.
-- **Native vectors** `vec2` / `vec3` / `vec4` — inlined (no heap allocation); `++` concatenation.
+- **Native vectors** `vec2` / `vec3` / `vec4` — heap-allocated objects tagged directly in the `Value` (no interface dispatch to discriminate); `++` addition, `.add()` in-place addition.
 - **`float_array`** — fast native 2D float grid.
 
 **Classes**
