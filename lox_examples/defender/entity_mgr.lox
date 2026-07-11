@@ -13,6 +13,7 @@ import event
 import collide
 import particle_sys
 import fx
+import bonus
 
 class EntityMgr {
 
@@ -54,6 +55,12 @@ class EntityMgr {
         this.img_swarmer = image("pngs/swarmer.png")
         this.img_baiter  = image("pngs/baiter.png")
         this.img_bomber  = image("pngs/bomb.png")   // placeholder: no bomber.png in assets
+        this.img_250     = image("pngs/250.png")
+        this.img_500     = image("pngs/500.png")
+
+        // floating bonus-score popups, spawned when a human is rescued
+        this.bonus = bonus.BonusDisplay(this.img_250, this.img_500, config.bonus_life)
+        this.bonus.attach(this.events)
     }
     get_all() {
         return this.entities
@@ -194,6 +201,7 @@ class EntityMgr {
         this.bullets.update(worldwidth, height)
         this.lasers.update(this.screenwidth, height)
         this.particles.update()
+        this.bonus.update(this.player)
         this.update_baiters()
          
         if (this.entities_alive <= 0) {
@@ -262,5 +270,6 @@ class EntityMgr {
         this.bullets.draw(g, cam)
         this.lasers.draw(g, cam)
         fx.draw(this.particles, g, cam)
+        this.bonus.draw(g, cam)
     }
 }
