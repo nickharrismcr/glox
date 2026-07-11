@@ -107,6 +107,7 @@ func descend(e, width, height) {
 
 func enter_search(e) {
     e.human = e.mgr.pick_a_human()
+    e.dp.x = -e.mgr.config.lander_search_speed
     e.dp.y = 0
     e.update_func = search
     e.mgr.events.emit("lander_searching", e)

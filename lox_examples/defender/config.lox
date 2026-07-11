@@ -16,6 +16,7 @@ class Config {
         this.lander_waves      = 3   // landers arrive in this many waves...
         this.landers_per_wave  = 3   // ...of this many landers each
         this.lander_wave_delay = 100 // frames between waves
+        this.lander_search_speed = 2.5 // px/frame drift while hunting for a human (was 5)
 
         // --- other enemies ---
         this.pods             = 3    // pods drifting at the start of the level
