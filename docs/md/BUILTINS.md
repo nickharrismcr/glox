@@ -107,6 +107,8 @@ win.init();
 #### Advanced Drawing
 - **`draw_array(float_array)`** - Draw an RGB encoded float array as colour image
 - **`draw_texture(texture, x, y, color_vec4)`** - Draw a texture
+- **`draw_texture_flip(texture, x, y, color_vec4, flip_x)`** - Draw a texture, mirrored horizontally when `flip_x` is true
+- **`draw_texture_scaled(texture, x, y, color_vec4, flip_x, scale)`** - Like `draw_texture_flip`, but scales the drawn size by `scale` (dest size = frame size × `scale`); `x, y` anchor the top-left corner of the *scaled* sprite
 - **`draw_texture_rect(texture, x, y, src_x, src_y, src_w, src_h, color_vec4)`** - Draw part of a texture
 - **`draw_render_texture(render_texture, x, y, color_vec4)`** - Draw a render texture
 - **`draw_render_texture_ex(render_texture, x, y, rotation, scale, color_vec4)`** - Draw render texture with transformation

@@ -473,6 +473,51 @@ func RegisterAllWindowMethods(o *WindowObject) {
 			return core.NIL_VALUE
 		},
 	})
+	o.RegisterMethod("draw_texture_scaled", &core.BuiltInObject{
+		// Like draw_texture_flip, but scales the drawn size by `scale` (dest
+		// size = frame size * scale, anchored at x,y as the top-left corner
+		// of the SCALED sprite). Preserves animation.
+		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+			if argCount != 6 {
+				vm.RunTimeError("draw_texture_scaled expects 6 arguments: texture, x, y, color, flip_x, scale")
+				return core.NIL_VALUE
+			}
+
+			textureVal := vm.Stack(arg_stackptr)
+			xVal := vm.Stack(arg_stackptr + 1)
+			yVal := vm.Stack(arg_stackptr + 2)
+			colVal := vm.Stack(arg_stackptr + 3)
+			flipVal := vm.Stack(arg_stackptr + 4)
+			scaleVal := vm.Stack(arg_stackptr + 5)
+
+			if colVal.Type != core.VAL_VEC4 {
+				vm.RunTimeError("Expected Vec4 for texture color")
+				return core.NIL_VALUE
+			}
+			v4obj := colVal.Obj.(*core.Vec4Object)
+			tint := rl.NewColor(uint8(v4obj.X), uint8(v4obj.Y), uint8(v4obj.Z), uint8(v4obj.W))
+
+			x := float32(xVal.AsFloat())
+			y := float32(yVal.AsFloat())
+			flip := flipVal.Type == core.VAL_BOOL && flipVal.Data == 1
+			scale := float32(scaleVal.AsFloat())
+
+			to := textureVal.Obj.(*TextureObject)
+			rect := to.Data.GetFrameRect()
+			if flip {
+				rect.Width = -rect.Width
+			}
+
+			absWidth := rect.Width
+			if absWidth < 0 {
+				absWidth = -absWidth
+			}
+			destRect := rl.Rectangle{X: x, Y: y, Width: absWidth * scale, Height: rect.Height * scale}
+			rl.DrawTexturePro(to.Data.Texture, rect, destRect, rl.Vector2{X: 0, Y: 0}, 0, tint)
+			to.Data.Animate()
+			return core.NIL_VALUE
+		},
+	})
 	o.RegisterMethod("draw_render_texture", &core.BuiltInObject{
 		Function: func(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 			if argCount != 4 {

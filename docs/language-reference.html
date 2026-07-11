@@ -821,6 +821,8 @@ win.close()</code></pre>
 <tr><td><code>text(text, x, y, size, color)</code></td><td>Draw text</td></tr>
 <tr><td><code>draw_array(float_array)</code></td><td>Draw an RGBA-encoded float array as a colour image</td></tr>
 <tr><td><code>draw_texture(texture, x, y, color)</code></td><td>Draw a texture</td></tr>
+<tr><td><code>draw_texture_flip(texture, x, y, color, flip_x)</code></td><td>Draw a texture, mirrored horizontally when <code>flip_x</code> is true</td></tr>
+<tr><td><code>draw_texture_scaled(texture, x, y, color, flip_x, scale)</code></td><td>Like <code>draw_texture_flip</code>, but scales the drawn size by <code>scale</code> (dest size = frame size × <code>scale</code>); <code>x, y</code> anchor the scaled sprite's top-left corner</td></tr>
 <tr><td><code>draw_texture_rect(texture, x, y, sx, sy, sw, sh, color)</code></td><td>Draw a sub-rectangle of a texture</td></tr>
 <tr><td><code>draw_render_texture(rt, x, y, color)</code></td><td>Draw a render texture</td></tr>
 <tr><td><code>draw_render_texture_ex(rt, x, y, rotation, scale, color)</code></td><td>Draw a render texture transformed</td></tr>
