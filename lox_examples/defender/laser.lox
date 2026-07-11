@@ -21,6 +21,11 @@ class Laser {
     dead() {
         return !this.active
     }
+    // struck an NPC: die immediately and free up this slot in the pool, so a
+    // single laser can't punch through and kill more than one target.
+    kill() {
+        this.active = false
+    }
     reset(x, y, dir, speed, color) {
         this.active = true
         this.pos = vec2(x, y)

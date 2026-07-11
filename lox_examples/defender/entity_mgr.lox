@@ -236,6 +236,7 @@ class EntityMgr {
             if (e.shootable and cam.translate(e.pos.x) != nil) {
                 foreach (var l in this.lasers.lasers) {
                     if (l.active and collide.overlap(collide.laser_box(l), ebox, this.worldwidth)) {
+                        l.kill()      // consumed by this hit -- can't punch through to another NPC
                         e.hit()
                     }
                 }
