@@ -1,4 +1,4 @@
-glox
+*glox
 *png
 tmp
 glox.exe
@@ -10,3 +10,4 @@ __pycache__/
 .pytest_cache/
 *.pyc
 portfrom/
+jslox/
