@@ -667,7 +667,7 @@ d.remove("a")</code></pre>
 
 <!-- ==================== VECTORS ==================== -->
 <h2 class="section" id="vectors">Vectors</h2>
-<p><code>vec2</code>, <code>vec3</code> and <code>vec4</code> are native fixed-size float vectors, inlined into the value representation to avoid heap allocation. They are used throughout the graphics API (positions, sizes, and RGBA colours as <code>vec4</code>).</p>
+<p><code>vec2</code>, <code>vec3</code> and <code>vec4</code> are native fixed-size float vectors. Each is a small heap-allocated object (like lists, dicts and other native types), referenced from its <code>Value</code> the same way any other object is — not unboxed into the value representation the way <code>int</code>/<code>float</code>/<code>bool</code> are. They are used throughout the graphics API (positions, sizes, and RGBA colours as <code>vec4</code>).</p>
 <p>Unlike the <a href="#mod-gfx"><code>gfx</code></a> constructors (<code>window</code>, <code>batch</code>, …), the vector constructors <code>vec2()</code> / <code>vec3()</code> / <code>vec4()</code> are <strong>built-in</strong> — always available, no import needed — because vectors are core value types rather than graphics objects.</p>
 <pre><code class="lox">v2 = vec2(1, 2)
 v3 = vec3(1, 2, 3)
