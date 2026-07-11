@@ -18,7 +18,7 @@ import bonus
 // Smart bomb: fires twice in quick succession (BOMB_PASS_DELAY frames apart)
 // so the second pass catches swarmers released by any pod killed in the
 // first. Each pass flashes the screen white for BOMB_FLASH_FRAMES frames.
-const BOMB_PASS_DELAY = 15
+const BOMB_PASS_DELAY = 5
 const BOMB_FLASH_FRAMES = 8
 
 class EntityMgr {

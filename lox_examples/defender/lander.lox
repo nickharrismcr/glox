@@ -165,7 +165,7 @@ func grab(e,width, height) {
 func enter_abduct(e) {
     e.pos.y = e.human.pos.y - 50
     e.human.grab(e)                           // human now follows this lander
-    e.dp.y = -4
+    e.dp.y = -e.mgr.config.lander_ascend_speed
     e.update_func = abduct
 }
 
