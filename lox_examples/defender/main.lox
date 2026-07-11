@@ -59,6 +59,15 @@ const worldwidth = cfg.worldwidth()
 var win = window(width,height)
 win.init()
 win.set_target_fps(cfg.target_fps)
+if (cfg.fullscreen) {
+    win.toggle_fullscreen()
+}
+
+// The whole game still draws at the logical width x height play-area size,
+// unchanged, into this offscreen buffer; only the final blit onto the actual
+// (possibly much larger, fullscreen) OS window needs to know the real screen
+// size, to center the play area within it.
+var play_area = render_texture(width, height)
 
 cam=camera.Camera(width, worldwidth, 0)
 
@@ -101,23 +110,30 @@ hud_score.attach(entities.events)
 
 while (!win.should_close()) {
 
-    win.begin()
-    win.clear(colour.BLACK)
-
     ship.update(win)
     cam.move(ship.camera_x())
     starfield.update(-ship.vx/5)
     entities.update(worldwidth, height)
     entities.check_collisions(ship, cam)
     hud_score.update()
-    
+
+    // draw the whole game, unchanged, into the fixed-size play_area texture
+    win.begin_texture_mode(play_area)
+    win.clear(colour.BLACK)
     mountain.draw(win, height, cam, width)
     starfield.draw(win)
     entities.draw(win, cam)
     ship.draw(win, cam)
     radar.draw(win, cam, entities, mountain)
     hud_score.draw(win)
-    
+    win.end_texture_mode()
+
+    // blit it centered onto the real (fullscreen) window
+    win.begin()
+    win.clear(colour.BLACK)
+    var offset_x = (win.get_screen_width() - width) / 2
+    var offset_y = (win.get_screen_height() - height) / 2
+    win.draw_render_texture(play_area, offset_x, offset_y, colour.WHITE)
     win.end()
 }
 win.close()

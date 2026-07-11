@@ -7,8 +7,10 @@
 class Config {
     init() {
         // --- display / world ---
-        this.width       = 1300     // window width in pixels
-        this.height      = 1000      // window height in pixels
+        this.width       = 1300     // play area width in pixels (logical, not the OS window)
+        this.height      = 1000      // play area height in pixels (logical, not the OS window)
+        this.fullscreen  = true     // if true, OS window fills the screen; the width x height
+                                     // play area is rendered to a texture and centered within it
         this.world_scale = 10       // world is this many screens wide
         this.target_fps  = 60
 
