@@ -6,6 +6,7 @@ import (
 	"glox/src/compiler"
 	"glox/src/core"
 	"glox/src/debug"
+	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
@@ -2985,7 +2986,8 @@ func (vm *VM) patchInstruction(ip int, newOp byte) {
 
 // return the path to the given module.
 // first, will look in lox/modules in the lox installation directory defined in LOX_PATH environment var.
-// if not found will look in the directory containing the main module being run
+// if not found will look in the directory containing the main module being run, then in any
+// subdirectory of it (recursively), so scripts can group modules into subfolders.
 // getPath constructs the full file path for a module, handling both absolute and relative paths.
 func getPath(args []string, module string) string {
 
@@ -3004,17 +3006,46 @@ func getPath(args []string, module string) string {
 		return module
 	}
 	path := args[0]
-	if strings.Contains(path, "/") {
-		list := strings.Split(path, "/")
-		searchPath := list[0 : len(list)-1]
-		return strings.Join(searchPath, "/") + "/" + module
+	baseDir := "."
+	if idx := strings.LastIndexAny(path, "/\\"); idx >= 0 {
+		baseDir = path[:idx]
 	}
-	if strings.Contains(path, "\\") {
-		list := strings.Split(path, "\\")
-		searchPath := list[0 : len(list)-1]
-		return strings.Join(searchPath, "\\") + "\\" + module
+
+	sameDir := baseDir + "/" + module
+	if _, err := os.Stat(sameDir + ".lox"); err == nil {
+		return sameDir
 	}
-	return module
+	if found := findModuleInSubdirs(baseDir, module); found != "" {
+		return found
+	}
+	// not found anywhere: return the same-directory path so the caller's
+	// existing "could not find module" error reports that expected location.
+	return sameDir
+}
+
+// findModuleInSubdirs recursively searches root for a "<module>.lox" file,
+// skipping bytecode cache directories, and returns its path without the
+// extension (matching getPath's other return values), or "" if not found.
+func findModuleInSubdirs(root string, module string) string {
+	target := module + ".lox"
+	found := ""
+	filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || found != "" {
+			return nil
+		}
+		if d.IsDir() {
+			if d.Name() == "__loxcache__" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.Name() == target {
+			found = strings.TrimSuffix(path, ".lox")
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	return strings.ReplaceAll(found, "\\", "/")
 }
 
 //------------------------------------------------------------------------------------------

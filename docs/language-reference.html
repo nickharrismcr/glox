@@ -556,7 +556,7 @@ import random, colour as clr     // multiple, with alias</code></pre>
 <pre><code class="lox">from math import sin, cos, PI
 from colour import *
 from gfx import window, batch     // native built-in module</code></pre>
-<p>Module resolution uses the <code>LOX_PATH</code> environment variable. Built-in modules are registered natively and need only be imported, not resolved from disk: <a href="#mod-sys">sys</a>, <a href="#mod-os">os</a>, <a href="#mod-inspect">inspect</a>, <a href="#mod-colour-utils">colour_utils</a>, <a href="#mod-gfx">gfx</a> (window, batch, texture, shader, camera, …), and <a href="#mod-physics">physics</a> (physics_world).</p>
+<p>Resolving <code>import foo</code> to a file tries, in order: <code>$LOX_PATH/src/modules/foo.lox</code> (glox's own shared modules); <code>foo.lox</code> in the same directory as the script being run; then <code>foo.lox</code> in any subdirectory of that directory, searched recursively — so a project's own modules can be grouped into subfolders without changing how they're imported. Built-in modules are registered natively and need only be imported, not resolved from disk: <a href="#mod-sys">sys</a>, <a href="#mod-os">os</a>, <a href="#mod-inspect">inspect</a>, <a href="#mod-colour-utils">colour_utils</a>, <a href="#mod-gfx">gfx</a> (window, batch, texture, shader, camera, …), and <a href="#mod-physics">physics</a> (physics_world).</p>
 
 <!-- ==================== NUMBERS ==================== -->
 <h2 class="section" id="numbers">Numbers</h2>
