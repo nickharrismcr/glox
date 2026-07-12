@@ -1,0 +1,38 @@
+// Per-level difficulty overrides, applied to Config at the start of each
+// level. Level 1 matches the existing tuned defaults; later levels escalate
+// landers/pods/bombers, tighten npc_bullet_time (faster, more aggressive aim),
+// and raise the baiter cap. Index is 1-based; levels past the end of the list
+// repeat the last one.
+
+class Level {
+    init(landers_per_wave, pods, bombers, npc_bullet_time, max_baiters) {
+        this.landers_per_wave = landers_per_wave
+        this.pods = pods
+        this.bombers = bombers
+        this.npc_bullet_time = npc_bullet_time
+        this.max_baiters = max_baiters
+    }
+}
+
+const LEVELS = [
+    Level(3, 3, 4, 90, 1),
+    Level(4, 3, 5, 80, 1),
+    Level(5, 4, 6, 70, 2),
+    Level(6, 4, 7, 60, 2),
+    Level(7, 5, 8, 50, 3),
+    Level(8, 5, 9, 45, 3)
+]
+
+// Apply level n's overrides onto cfg.
+func apply_level(cfg, n) {
+    var idx = n - 1
+    if (idx >= len(LEVELS)) {
+        idx = len(LEVELS) - 1
+    }
+    var lvl = LEVELS[idx]
+    cfg.landers_per_wave = lvl.landers_per_wave
+    cfg.pods = lvl.pods
+    cfg.bombers = lvl.bombers
+    cfg.npc_bullet_time = lvl.npc_bullet_time
+    cfg.max_baiters = lvl.max_baiters
+}

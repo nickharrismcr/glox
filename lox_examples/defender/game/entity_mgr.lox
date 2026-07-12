@@ -41,7 +41,6 @@ class EntityMgr {
         this.events = event.EventDispatcher()
 
         this.landers_alive = 0
-        this.entities_alive = 0 
 
         // Baiters are spawned dynamically, not up front: once the landers are
         // nearly cleared, a baiter is sent in every baiter_delay frames to keep
@@ -57,6 +56,7 @@ class EntityMgr {
         this.humans_left = 0            // recounted from the live entity list every frame
         this.world_exploding = false    // latches once, when humans_left first hits 0
 
+        this.bombs = config.starting_bombs   // remaining smart bomb uses
         this.bomb_pending = 0     // frames until the smart bomb's second pass fires
         this.bomb_flash = 0       // frames left to show the white screen flash
 
@@ -195,7 +195,6 @@ class EntityMgr {
     update(worldwidth,height) {
 
         this.landers_alive = 0
-        this.entities_alive = 0
         this.humans_left = 0
         // Process the queue
         i=0
@@ -219,11 +218,8 @@ class EntityMgr {
             if (e.alive and e.type == "human") {
                 this.humans_left += 1
             }
-            if (e.alive and e.type != "human") {
-                this.entities_alive += 1
-                if (e.type == "lander" and e.alive) {
-                    this.landers_alive += 1
-                }
+            if (e.alive and e.type == "lander") {
+                this.landers_alive += 1
             }
         }
         this.mountains.update()
@@ -247,17 +243,11 @@ class EntityMgr {
             this.world_exploding = true
             this.trigger_world_explode()
         }
-
-        if (this.entities_alive <= 0) {
-            this.events.emit("level_cleared", nil)
-        }
     }
     // All humans are gone: force every actively-hunting lander to mutate
     // immediately (landers not yet actively engaged are just removed, no
     // death animation -- already-mutant or already-dying landers are left
     // alone), and start the mountains crumbling for the rest of the game.
-    // Ported from AISystem:mutateAll / WorldDrawSystem's WORLD_EXPLODING in
-    // the Lua original, triggered there by the same all-humans-dead check.
     trigger_world_explode() {
         this.mountains.explode()
         foreach (var e in this.entities) {
@@ -277,7 +267,12 @@ class EntityMgr {
     // quick succession -- the second pass catches swarmers released by any
     // pod killed in the first (pods don't spawn them until on_die() -> queue
     // -> next frame's queue-drain, so they don't exist yet for the first pass).
+    // A no-op once this.bombs runs out.
     trigger_smart_bomb() {
+        if (this.bombs <= 0) {
+            return
+        }
+        this.bombs = this.bombs - 1
         this.smart_bomb_pass()
         this.bomb_pending = BOMB_PASS_DELAY
     }

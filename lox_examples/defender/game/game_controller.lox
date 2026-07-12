@@ -1,0 +1,212 @@
+from gfx import *
+import levels
+import colour
+
+// Drives the level/game-state machine: intro -> level_start -> level ->
+// level_finish -> level_start (loops), or level_start -> ... -> game_over.
+// Mirrors the enter_<state>/state_<state> convention used elsewhere (see
+// npc.lox); `state` is a readable string, tested by main.lox for gating what
+// runs/draws each frame -- mirrors the same convention human.lox uses.
+
+const LEVEL_FINISH_PAUSE = 30   // frames level_finish waits before looping back (0.5s at 60fps)
+const LEVEL_BANNER_TIME  = 180  // frames the "WAVE N COMPLETE" banner shows (3s at 60fps)
+const GAME_OVER_PAUSE    = 180  // frames game_over waits before done becomes true (3s at 60fps)
+const HUMANS_EVERY_N_LEVELS = 3 // humans top up only every Nth level, otherwise they persist
+
+const LIVES_ICON_SCALE = 0.35
+const LIVES_ICON_GAP   = 30
+const LIVES_ICON_MAX   = 7
+
+const BOMB_ICON_SCALE = 0.5
+const BOMB_ICON_GAP   = 20
+const BOMB_ICON_MAX   = 7
+
+class GameController {
+    init(cfg, entities, ship, ship_img, smartbomb_img) {
+        this.cfg = cfg
+        this.entities = entities
+        this.ship = ship
+        this.level = 0
+        this.lives = cfg.starting_lives
+        this.landers_killed = 0
+        this.level_landers = 0
+        this.timer = 0
+        this.banner = ""
+        this.done = false
+        this.state = "intro"
+        this.update_func = state_intro
+        // own texture, locked to a single static frame (start_frame ==
+        // end_frame): every draw_texture* call advances its texture's
+        // animation frame as a side effect, so reusing ship.texture here
+        // would make the real ship animate LIVES_ICON_MAX times too fast
+        this.lives_icon = texture(ship_img, 5, 1, 1)
+        this.bomb_icon = texture(smartbomb_img, 1, 1, 1)   // smartbomb.png is a single frame already
+
+        entities.events.on("lander_killed", this.on_lander_killed())
+        entities.events.on("mutant_killed", this.on_lander_killed())
+        entities.events.on("player_die", this.on_player_die())
+        entities.events.on("player_start", this.on_player_start())
+    }
+
+    on_lander_killed() {
+        func handler(e) {
+            this.landers_killed = this.landers_killed + 1
+        }
+        return handler
+    }
+    on_player_die() {
+        func handler(e) {
+            this.lives = this.lives - 1
+        }
+        return handler
+    }
+    on_player_start() {
+        func handler(e) {
+            if (this.lives < 0) {
+                enter_game_over(this)
+            }
+        }
+        return handler
+    }
+
+    // Gameplay (ship/entities update, collisions) runs during level_start and
+    // level; it's frozen during intro, the level_finish pause, and game_over.
+    gameplay_active() {
+        return this.state == "level_start" or this.state == "level"
+    }
+
+    update(win, input) {
+        var f = this.update_func
+        f(this, win, input)
+    }
+
+    draw(win, width, height, font) {
+        if (this.state == "intro") {
+            draw_centered(win, font, "DEFENDER", width/2, height/2 - 60, colour.YELLOW)
+            draw_centered(win, font, "PRESS SPACE TO PLAY", width/2, height/2, colour.WHITE)
+            draw_centered(win, font, "Q=UP A=DOWN SPACE=REVERSE SHIFT=THRUST ENTER=FIRE BACKSPACE=BOMB", width/2, height/2 + 60, colour.GRAY)
+        } else if (this.state == "level_start" and this.timer > 0) {
+            draw_centered(win, font, this.banner, width/2, height/2, colour.YELLOW)
+        } else if (this.state == "game_over") {
+            draw_centered(win, font, "GAME OVER", width/2, height/2, colour.RED)
+        }
+        if (this.state != "intro") {
+            this.draw_lives(win, width)
+            this.draw_bombs(win)
+        }
+    }
+
+    // A row of small static ship icons, one per life (capped at
+    // LIVES_ICON_MAX), matching PlayerDraw.lua's lives row.
+    draw_lives(win, width) {
+        var n = this.lives
+        if (n > LIVES_ICON_MAX) {
+            n = LIVES_ICON_MAX
+        }
+        var x = width - 250
+        foreach (var i in range(0, n)) {
+            win.draw_texture_scaled(this.lives_icon, x, 10, colour.WHITE, false, LIVES_ICON_SCALE)
+            x = x + LIVES_ICON_GAP
+        }
+    }
+
+    // A column of small bomb icons, one per remaining smart bomb (capped at
+    // BOMB_ICON_MAX), matching PlayerDraw.lua's bomb column.
+    draw_bombs(win) {
+        var n = this.entities.bombs
+        if (n > BOMB_ICON_MAX) {
+            n = BOMB_ICON_MAX
+        }
+        var y = 50
+        foreach (var i in range(0, n)) {
+            win.draw_texture_scaled(this.bomb_icon, 10, y, colour.WHITE, false, BOMB_ICON_SCALE)
+            y = y + BOMB_ICON_GAP
+        }
+    }
+}
+
+func draw_centered(win, font, s, cx, y, col) {
+    font.draw(win, s, cx - font.width(s) / 2, y, col)
+}
+
+func enter_intro(g) {
+    g.state = "intro"
+    g.update_func = state_intro
+}
+func state_intro(g, win, input) {
+    if (input.reverse) {   // SPACE, same key as the arcade "press space to start"
+        enter_level_start(g)
+    }
+}
+
+func enter_level_start(g) {
+    g.level = g.level + 1
+    levels.apply_level(g.cfg, g.level)
+
+    g.landers_killed = 0
+    g.level_landers = g.cfg.landers_per_wave * g.cfg.lander_waves
+
+    foreach (var i in range(0, g.cfg.lander_waves)) {
+        g.entities.add_landers(g.cfg.landers_per_wave, i * g.cfg.lander_wave_delay)
+    }
+    // guarantee one lander materialises in view (roughly screen-centre)
+    g.entities.add_lander_near(g.ship.pos.x + g.cfg.width * 0.35, 0)
+    g.entities.add_pods(g.cfg.pods, g.ship.pos.x)
+    g.entities.add_bombers(g.cfg.bombers)
+    if ((g.level - 1) % HUMANS_EVERY_N_LEVELS == 0) {
+        g.entities.add_humans(g.cfg.humans)
+    }
+
+    if (g.level > 1) {
+        g.banner = "WAVE ${g.level - 1} COMPLETE"
+        g.timer = LEVEL_BANNER_TIME
+    } else {
+        g.timer = 0
+    }
+    g.state = "level_start"
+    g.update_func = state_level_start
+}
+func state_level_start(g, win, input) {
+    if (g.timer > 0) {
+        g.timer = g.timer - 1
+        return
+    }
+    enter_level(g)
+}
+
+func enter_level(g) {
+    g.state = "level"
+    g.update_func = state_level
+}
+func state_level(g, win, input) {
+    if (g.lives >= 0 and g.landers_killed >= g.level_landers) {
+        enter_level_finish(g)
+    }
+}
+
+func enter_level_finish(g) {
+    g.timer = LEVEL_FINISH_PAUSE
+    g.state = "level_finish"
+    g.update_func = state_level_finish
+}
+func state_level_finish(g, win, input) {
+    if (g.timer > 0) {
+        g.timer = g.timer - 1
+        return
+    }
+    enter_level_start(g)
+}
+
+func enter_game_over(g) {
+    g.timer = GAME_OVER_PAUSE
+    g.state = "game_over"
+    g.update_func = state_game_over
+}
+func state_game_over(g, win, input) {
+    if (g.timer > 0) {
+        g.timer = g.timer - 1
+        if (g.timer <= 0) {
+            g.done = true
+        }
+    }
+}

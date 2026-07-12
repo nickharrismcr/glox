@@ -14,6 +14,7 @@ import text
 import score
 import config
 import controller
+import game_controller
 
 // --- Game events -------------------------------------------------------------
 // Emitted via entities.events; subscribe with entities.events.on(name, fn).
@@ -34,14 +35,12 @@ import controller
 //   "player_die"        (player)  - death sequence began (ship freezes, flashes red)
 //   "player_explode"    (player)  - ship vanished; explosion particles burst
 //   "player_start"      (player)  - ship respawned (brief invulnerability)
-//   "level_cleared"     (nil)     - all NPCs cleared; level complete
 const GAME_EVENTS = ["lander_spawn", "human_spawn", "lander_searching",
                      "human_grabbed", "human_caught", "human_saved", "lander_mutated", "lander_killed",
                      "mutant_killed", "bullet_fire", "laser_fire", "player_hit",
                      "pod_spawn", "pod_killed", "swarmer_spawn", "swarmer_killed",
                      "baiter_spawn", "baiter_killed", "bomber_spawn", "bomber_killed",
-                     "player_die", "player_explode", "player_start",
-                     "level_cleared"]
+                     "player_die", "player_explode", "player_start"]
 
 // Debug: log every game event to the console.  
 func make_event_logger(name) {
@@ -81,10 +80,6 @@ entities= entity_mgr.EntityMgr(cfg)
 entities.mountains = mountain
 entities.cam = cam
 radar=radar.Radar(width, height, worldwidth)
-foreach ( var i in range(0, cfg.lander_waves)) {
-    entities.add_landers(cfg.landers_per_wave, i * cfg.lander_wave_delay)
-}
-entities.add_humans(cfg.humans)
 
 if (cfg.log_events) {
     foreach (var ev in GAME_EVENTS) {
@@ -95,35 +90,36 @@ if (cfg.log_events) {
 ship_img = image("pngs/ship.png")
 thrust_img = image("pngs/thrust.png")
 shipw_img = image("pngs/shipw.png")     // white ship silhouette, tinted for the death flash
+smartbomb_img = image("pngs/smartbomb.png")
 ship = player.Player(vec2(worldwidth/2, height/2), ship_img, thrust_img, shipw_img, cfg)
 ship.mgr = entities
 entities.player = ship          // NPCs hunt the player
 
-// guarantee one lander materialises in view (roughly screen-centre at start)
-entities.add_lander_near(ship.pos.x + width * 0.35, 0)
-
-// the rest of the NPC roster. Baiters are not seeded here -- the entity manager
-// sends them in once the landers are nearly cleared (see update_baiters).
-entities.add_pods(cfg.pods, ship.pos.x)   // shoot a pod to release swarmers
-entities.add_bombers(cfg.bombers)
+// drives intro -> level_start -> level -> level_finish (-> level_start | game_over);
+// spawns each level's landers/pods/bombers/humans at level_start
+var game = game_controller.GameController(cfg, entities, ship, ship_img, smartbomb_img)
 
 // HUD: score driven by the NPC kill events, drawn from the font atlas
 font = text.Font(image("pngs/font.png"))
 hud_score = score.Score(font, 10, 10)  // left of the radar strip
 hud_score.attach(entities.events)
 
-while (!win.should_close()) {
+while (!win.should_close() and !game.done) {
 
     input.update(win)
-    ship.update(input)
-    cam.move(ship.camera_x())
-    starfield.update(-ship.vx/5)
-    if (input.smart_bomb) {
-        entities.trigger_smart_bomb()
+    game.update(win, input)
+
+    if (game.gameplay_active()) {
+        ship.update(input)
+        cam.move(ship.camera_x())
+        starfield.update(-ship.vx/5)
+        if (input.smart_bomb) {
+            entities.trigger_smart_bomb()
+        }
+        entities.update(worldwidth, height)
+        entities.check_collisions(ship, cam)
+        hud_score.update()
     }
-    entities.update(worldwidth, height)
-    entities.check_collisions(ship, cam)
-    hud_score.update()
 
     // draw the whole game into the fixed-size play_area texture
     win.begin_texture_mode(play_area)
@@ -134,6 +130,7 @@ while (!win.should_close()) {
     ship.draw(win, cam)
     radar.draw(win, cam, entities, mountain)
     hud_score.draw(win)
+    game.draw(win, width, height, font)
     win.end_texture_mode()
 
     // blit it centered onto the real (fullscreen) window

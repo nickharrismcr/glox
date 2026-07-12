@@ -1,8 +1,6 @@
-// Central configuration for the Defender port -- every tunable knob in one place.
-// The game reads all of these at start-up, so a future level controller can just
-// hand the game a Config (or mutate one between levels) to define level settings:
-// how many landers/humans/pods/bombers, how fast the ship flies, how often
-// baiters arrive, and so on. The defaults here reproduce the current game.
+// Central configuration -- every tunable knob in one place. game_controller.lox
+// overrides the level-specific fields (landers_per_wave, pods, bombers,
+// npc_bullet_time, max_baiters) at the start of each level; see levels.lox.
 
 class Config {
     init() {
@@ -30,11 +28,15 @@ class Config {
         // --- baiters (spawned dynamically once the landers thin out) ---
         this.baiter_threshold = 3    // start sending baiters at <= this many landers
         this.baiter_delay     = 600  // frames between baiter spawns
-        this.max_baiters      = 1    // cap on simultaneous baiters (Lua: levels.lua max_baiters)
+        this.max_baiters      = 1    // cap on simultaneous baiters
 
         // --- humans ---
         this.humans = 9
         this.human_drop_accel = 0.05 // px/frame^2 gravity while falling, uncaught
+
+        // --- levels / lives ---
+        this.starting_lives = 3
+        this.starting_bombs = 5   // smart bombs (Backspace); EntityMgr.trigger_smart_bomb() decrements
 
         // --- player ship ---
         this.player_maxspeed = 28
@@ -42,18 +44,17 @@ class Config {
         this.player_friction = 0.96
         this.player_vspeed   = 7
         this.player_lean_speed = 1.5 // px/frame the ship's screen lean eases in/out by while thrusting (see player.lox)
-        this.nodie = true // if true, the player ship cannot die (for testing)
+        this.nodie = false // if true, the player ship cannot die (for testing)
 
         // --- weapon pools (simultaneous projectiles) ---
         this.laser_pool  = 12
         this.bullet_pool = 100
 
         // Aimed shots (swarmer/baiter/lander grab-shot) home in on the player.
-        // Ported from the Lua's calc_fire()/gl.bullet_time: TIME to target is
-        // the invariant, not speed -- each shot's x/y velocity is solved so it
-        // arrives at the player's projected position in exactly t frames, t
-        // randomised between half and full of this value each shot (frames,
-        // where the Lua used real seconds). See aim_bullet_at() in npc.lox.
+        // TIME to target is the invariant, not speed -- each shot's x/y
+        // velocity is solved so it arrives at the player's projected position
+        // in exactly t frames, t randomised between half and full of this
+        // value each shot. See aim_bullet_at() in npc.lox.
         this.npc_bullet_time = 90   // ~1.5s at 60fps
 
         // --- fx ---
