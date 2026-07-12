@@ -94,6 +94,16 @@ class EntityMgr {
     unfreeze_enemies() {
         this.frozen = false
     }
+    // Stops any laser shots still in flight -- called when the player dies,
+    // since they can't still be firing.
+    clear_lasers() {
+        this.lasers.clear()
+    }
+    // Stops any NPC bullets/dropped bombs still in flight -- called when the
+    // player explodes, so nothing lingers waiting to hit an already-gone ship.
+    clear_bullets() {
+        this.bullets.clear()
+    }
     get_all() {
         return this.entities
     }
@@ -377,8 +387,21 @@ class EntityMgr {
             }
             // hit() clears `deadly`, so an already-dying NPC can't also kill the player
             if (e.deadly and collide.overlap(pbox, ebox, this.worldwidth)) {
+                was_dying = player.dying()
                 player.hit()
                 e.hit()
+                // If this collision is what actually killed the player (not
+                // just a graze while already invulnerable/dying), remove the
+                // entity outright rather than let it play out its own
+                // disperse-death animation -- that would otherwise sit
+                // frozen for the whole death sequence, since freeze_enemies()
+                // pauses every entity together. e.hit() already ran its
+                // normal enter_die() (score event, on_die() side effects
+                // like a pod's swarmers), so nothing is skipped, it just
+                // finishes instantly instead of over several frames.
+                if (!was_dying and player.dying()) {
+                    e.alive = false
+                }
             }
         }
 

@@ -12,18 +12,21 @@ class Config {
         this.world_scale = 10       // world is this many screens wide
         this.target_fps  = 60
 
-        // --- lander waves ---
+        // --- lander waves --- (matches the Lua reference's game/levels.lua;
+        // landers_per_wave/pods/bombers/npc_bullet_time/max_baiters below are
+        // just the level-1 baseline -- game_controller.lox overrides them
+        // every level via levels.apply_level(), see levels.lox)
         this.lander_waves      = 3   // landers arrive in this many waves...
-        this.landers_per_wave  = 3   // ...of this many landers each
-        this.lander_wave_delay = 100 // frames between waves
+        this.landers_per_wave  = 5   // ...of this many landers each
+        this.lander_wave_delay = 600 // frames between waves (10s at 60fps)
         this.lander_search_speed = 2.5 // px/frame drift while hunting for a human
         this.mutant_speed_pct = 0.7  // horizontal chase speed once mutated, as a fraction of player_maxspeed
         this.lander_ascend_speed = 2.5 // px/frame carrying a grabbed human up to the top
 
         // --- other enemies ---
-        this.pods             = 3    // pods drifting at the start of the level
-        this.bombers          = 4
-        this.swarmers_per_pod = 5    // swarmers released when a pod is shot
+        this.pods             = 0    // pods drifting at the start of the level
+        this.bombers          = 0
+        this.swarmers_per_pod = 10   // swarmers released when a pod is shot
 
         // --- baiters (spawned dynamically once the landers thin out) ---
         this.baiter_threshold = 3    // start sending baiters at <= this many landers
@@ -31,7 +34,7 @@ class Config {
         this.max_baiters      = 1    // cap on simultaneous baiters
 
         // --- humans ---
-        this.humans = 9
+        this.humans = 20
         this.human_drop_accel = 0.05 // px/frame^2 gravity while falling, uncaught
 
         // --- levels / lives ---
@@ -56,7 +59,7 @@ class Config {
         // velocity is solved so it arrives at the player's projected position
         // in exactly t frames, t randomised between half and full of this
         // value each shot. See aim_bullet_at() in npc.lox.
-        this.npc_bullet_time = 90   // ~1.5s at 60fps
+        this.npc_bullet_time = 180   // 3s at 60fps (level 1's value; see levels.lox)
 
         // --- fx ---
         this.explosion_particles = 140
