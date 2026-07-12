@@ -80,6 +80,7 @@ starfield=stars.Stars(width, height*0.7, 30)
 entities= entity_mgr.EntityMgr(cfg)
 entities.mountains = mountain
 entities.cam = cam
+mountain.attach(entities.events)   // hides itself for the level_finish banner
 radar=radar.Radar(width, height, worldwidth)
 
 if (cfg.log_events) {
@@ -114,20 +115,16 @@ while (!win.should_close() and !game.done) {
         ship.update(input)          // also handles firing the laser and the smart bomb
         cam.move(ship.camera_x())
         starfield.update(-ship.vx/5)
-        // freeze the world while the player's death sequence plays out
-        if (!ship.in_death_sequence()) {
-            entities.update(worldwidth, height)
-            entities.check_collisions(ship, cam)
-        }
+        entities.update_particles()   // keeps animating even while entities.update() is frozen
+        entities.update(worldwidth, height)
+        entities.check_collisions(ship, cam)
         hud_score.update()
     }
 
     // draw the whole game into the fixed-size play_area texture
     win.begin_texture_mode(play_area)
     win.clear(colour.BLACK)
-    if (game.state != "level_finish") {
-        mountain.draw(win, height, cam, width)
-    }
+    mountain.draw(win, height, cam, width)   // no-ops while hidden, see Mountain.attach()
     starfield.draw(win)
     entities.draw(win, cam)
     ship.draw(win, cam)

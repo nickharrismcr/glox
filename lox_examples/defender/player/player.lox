@@ -18,10 +18,7 @@ const HYPERSPACE_MATERIALISE_RATE = 0.7
 const HYPERSPACE_MIN_NPC_DIST = 400   // stay at least this far from any non-human NPC
 const HYPERSPACE_MAX_ATTEMPTS = 20    // give up and use the last candidate after this many tries
 
-// Briefly invisible and ignoring input when the ship first appears, so the
-// SPACE press that starts the game (read by game_controller's intro state)
-// doesn't also register here, in the same frame, as a "reverse" command.
-const SPAWN_WAIT_FRAMES = 30   // 0.5s at 60fps
+const SAFE_START_FRAMES = 60   // 1s at 60fps
 
 // The player ship.
 //
@@ -32,11 +29,30 @@ const SPAWN_WAIT_FRAMES = 30   // 0.5s at 60fps
 //   ENTER          : fire
 //   L-SHIFT (tap)  : hyperspace
 //
-// Death and hyperspace both run as a small state machine of swappable update
-// functions, matching the NPC idiom:
-//   play -> die (frozen, flashing red) -> explode (hidden, particle burst) -> play
-//   play -> hyperspace (rematerialising at a random spot) -> play, or die on a
-//           misjump (see hyperspace_death_chance)
+// A small state machine of swappable update functions, matching the NPC
+// idiom (enter_<state>/state_<state>). The player's own states, and what
+// they mean for the enemy NPCs (via EntityMgr.{hide,show,freeze,unfreeze}_
+// enemies(), called directly from the enter_/state_ functions below rather
+// than through an event, since the coupling here is tight and this keeps
+// cause and effect in one place):
+//
+//   safe_start : ship visible and already flyable, enemies hidden AND
+//                frozen. 1s. Entered on construction and after every
+//                respawn. Input is skipped for just its first frame, since
+//                that's the one frame SPACE might still be registering as
+//                having just started the game rather than as a "reverse"
+//                command here.
+//   play       : normal gameplay. Enemies visible and active.
+//   die        : just hit -- frozen in place, flashing red. Enemies stay
+//                visible but freeze too. 2s, then -> explode.
+//   explode    : ship gone, particle burst plays. Enemies hidden AND
+//                frozen. 3s, then -> safe_start (or game_controller ends
+//                the game first, if this was the last life -- see its
+//                on_player_start()).
+//   hyperspace : warped to a random spot, rematerialising. Enemies are
+//                NOT hidden/frozen for this one -- it's the player's own
+//                choice to jump into danger, not a death. On arrival,
+//                either -> play or -> die (misjump).
 //
 // The camera follows the ship, keeping it at a fixed screen offset that shifts
 // to look ahead in the facing direction.
@@ -95,24 +111,18 @@ class Player < Sprite {
         this.alive = true
         this.mgr = nil
 
-        // death / respawn state
-        this.update_func = state_spawn_wait
-        this.timer = SPAWN_WAIT_FRAMES
+        // death / respawn state -- initial state only (see enter_safe_start()
+        // for every later entry), set directly rather than via enter_
+        // since this.mgr isn't wired up yet at construction time.
+        this.update_func = state_safe_start
+        this.timer = SAFE_START_FRAMES
         this.flash = false           // draw the red ship this frame
-        this.visible = false         // hidden until the initial spawn wait elapses
-        this.invuln = 0              // frames of respawn invulnerability (drives a blink)
+        this.visible = true
+        this.invuln = 0              // frames of blink-protected grace once state_play resumes
     }
 
     dying() {
         return this.update_func != state_play
-    }
-
-    // True only during the death sequence itself (frozen-flashing, then
-    // exploding) -- unlike dying(), this deliberately excludes hyperspace and
-    // the initial spawn wait, which also swap update_func away from
-    // state_play but shouldn't freeze the rest of the world.
-    in_death_sequence() {
-        return this.update_func == state_die or this.update_func == state_explode
     }
 
     // Struck by a deadly NPC: begin the death sequence, unless we are already
@@ -198,7 +208,7 @@ class Player < Sprite {
         flip = this.dir == -1     // ship art faces right; mirror it when facing left
         white = colour.WHITE
 
-        if (this.dying()) {
+        if (this.update_func == state_die) {
             // death flash: alternate an all-white and an all-red ship. The white
             // silhouette is tinted, so both colours come from one texture.
             tint = white
@@ -230,13 +240,38 @@ class Player < Sprite {
 
 // --- states -------------------------------------------------------------------
 
-// Initial state only (see init()): waits out SPAWN_WAIT_FRAMES, invisible and
-// ignoring input, then hands off to enter_play().
-func state_spawn_wait(e, input) {
+// Ship visible, input ignored, enemies hidden and frozen. Entered directly by
+// init() for the very first spawn, and by enter_safe_start() after every
+// respawn. The player can already fly around during this window -- input is
+// skipped for exactly the first frame (see the e.timer check below), since
+// that's the one frame SPACE might still be registering as having just
+// started the game (read by game_controller's intro state) rather than as a
+// "reverse" command here.
+func state_safe_start(e, input) {
+    if (e.mgr != nil) {
+        e.mgr.hide_enemies()
+        e.mgr.freeze_enemies()
+    }
+    if (e.timer < SAFE_START_FRAMES) {
+        move(e, input)
+    }
     e.timer = e.timer - 1
     if (e.timer <= 0) {
         enter_play(e)
     }
+}
+
+func enter_safe_start(e) {
+    e.update_func = state_safe_start
+    e.timer = SAFE_START_FRAMES
+    e.visible = true
+    e.flash = false
+    e.speed = 0
+    e.vx = 0
+    e.dir = 1
+    e.offset = e.leftoffset
+    e.invuln = 0
+    e.mgr.events.emit("player_start", e)
 }
 
 func state_play(e, input) {
@@ -244,7 +279,14 @@ func state_play(e, input) {
         enter_hyperspace(e)
         return
     }
+    move(e, input)
+}
 
+// Shared per-frame flight physics: input handling, thrust-lean easing,
+// movement, world wrap, vertical clamp, and camera-offset easing. Used by
+// both state_play and state_safe_start (the latter counts down to state_play
+// underneath, but the player can already fly around while it does).
+func move(e, input) {
     e.handle_input(input)
     e.fire(input)
     e.smart_bomb(input)
@@ -288,6 +330,8 @@ func state_play(e, input) {
 }
 
 // Warp to a random spot away from the current enemies and start rematerialising.
+// Deliberately does not touch enemy visibility/freeze -- this is the player's
+// own choice to jump into danger, not a death.
 func enter_hyperspace(e) {
     e.pos = random_hyperspace_pos(e)
     e.update_func = state_hyperspace
@@ -343,6 +387,8 @@ func far_from_npcs(e, x, y) {
     return true
 }
 
+// Frozen in place, flashing red before it blows. Enemies stay visible but
+// freeze too.
 func enter_die(e) {
     e.update_func = state_die
     e.timer = 120                    // 2 seconds, frozen
@@ -351,10 +397,12 @@ func enter_die(e) {
     e.vy = 0
     e.thrusting = false
     e.lean = 0
+    if (e.mgr != nil) {
+        e.mgr.freeze_enemies()
+    }
     e.mgr.events.emit("player_die", e)
 }
 
-// Frozen in place, flashing red before it blows.
 func state_die(e, input) {
     e.timer = e.timer - 1
     e.flash = (e.timer / 3) % 2 == 0     // rapid alternation, ~10Hz
@@ -363,11 +411,16 @@ func state_die(e, input) {
     }
 }
 
+// Ship is gone, particle burst plays. Enemies hidden as well as frozen.
 func enter_explode(e) {
     e.update_func = state_explode
-    e.timer = 150                    // 3 seconds before respawning
+    e.timer = 150                    // 3 seconds before the safe-start window begins
     e.visible = false
     e.flash = false
+    if (e.mgr != nil) {
+        e.mgr.hide_enemies()
+        e.mgr.freeze_enemies()   // already frozen since enter_die(); stays that way
+    }
     // burst from the centre of the ship
     e.mgr.explode_at(e.pos.x + e.width / 2, e.pos.y + e.height / 2)
     e.mgr.events.emit("player_explode", e)
@@ -377,18 +430,17 @@ func enter_explode(e) {
 func state_explode(e, input) {
     e.timer = e.timer - 1
     if (e.timer <= 0) {
-        enter_play(e)
+        enter_safe_start(e)
     }
 }
 
+// Enemies become visible and active again; a brief blink-protected grace
+// period covers the player for a bit further into real play.
 func enter_play(e) {
     e.update_func = state_play
-    e.visible = true
-    e.flash = false
-    e.speed = 0
-    e.vx = 0
-    e.dir = 1
-    e.offset = e.leftoffset
-    e.invuln = 120                   // grace period so you don't die on respawn
-    e.mgr.events.emit("player_start", e)
+    e.invuln = 120
+    if (e.mgr != nil) {
+        e.mgr.show_enemies()
+        e.mgr.unfreeze_enemies()
+    }
 }

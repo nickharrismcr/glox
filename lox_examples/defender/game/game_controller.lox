@@ -11,11 +11,13 @@ from player import state_play
 // runs/draws each frame -- mirrors the same convention human.lox uses.
 //
 // level_finish is the "ATTACK WAVE N COMPLETED." screen: entering it clears
-// every enemy, bullet, and laser (humans persist) and hides the ship; the
-// mountains are hidden too, by main.lox, for the duration of the state. It
-// shows the banner for LEVEL_FINISH_DISPLAY_TIME before handing off to
-// level_start, which spawns the next level's entities, reveals the ship, and
-// moves straight on to level -- it no longer shows any banner itself.
+// every enemy, bullet, and laser (humans persist) and hides the ship. It also
+// emits a "level_finish" event (via entities.events) that Mountain listens
+// for to hide itself for the duration -- see Mountain.attach() in
+// world/mountains.lox. Shows the banner for LEVEL_FINISH_DISPLAY_TIME before
+// handing off to level_start, which spawns the next level's entities,
+// reveals the ship, and emits "level_start" (undoing both) -- it no longer
+// shows any banner itself.
 
 const LEVEL_FINISH_DISPLAY_TIME = 240  // frames the "ATTACK WAVE N COMPLETED." banner shows (4s at 60fps)
 const GAME_OVER_PAUSE    = 180  // frames game_over waits before done becomes true (3s at 60fps)
@@ -184,6 +186,7 @@ func enter_level_start(g) {
     }
     g.state = "level_start"
     g.update_func = state_level_start
+    g.entities.events.emit("level_start", nil)
 }
 func state_level_start(g, win, input) {
     enter_level(g)
@@ -206,6 +209,7 @@ func enter_level_finish(g) {
     g.timer = LEVEL_FINISH_DISPLAY_TIME
     g.state = "level_finish"
     g.update_func = state_level_finish
+    g.entities.events.emit("level_finish", nil)
 }
 func state_level_finish(g, win, input) {
     if (g.timer > 0) {

@@ -60,6 +60,14 @@ class EntityMgr {
         this.bomb_pending = 0     // frames until the smart bomb's second pass fires
         this.bomb_flash = 0       // frames left to show the white screen flash
 
+        // Set/cleared directly by Player's own enter_/state_ functions (see
+        // player.lox) as it moves through its states -- not event-driven,
+        // since the coupling between "what the player is doing" and "what
+        // the enemies should be doing" is tight enough that it's clearer to
+        // read at the call site than to chase through an event handler.
+        this.enemies_hidden = false   // draw() skips non-human entities while true
+        this.frozen = false           // update()/check_collisions() no-op while true
+
         // sprite sheets, loaded once and shared by every instance
         this.img_lander  = image("pngs/lander.png")
         this.img_human   = image("pngs/human.png")
@@ -73,6 +81,18 @@ class EntityMgr {
         // floating bonus-score popups, spawned when a human is rescued
         this.bonus = bonus.BonusDisplay(this.img_250, this.img_500, config.bonus_life)
         this.bonus.attach(this.events)
+    }
+    hide_enemies() {
+        this.enemies_hidden = true
+    }
+    show_enemies() {
+        this.enemies_hidden = false
+    }
+    freeze_enemies() {
+        this.frozen = true
+    }
+    unfreeze_enemies() {
+        this.frozen = false
     }
     get_all() {
         return this.entities
@@ -208,7 +228,21 @@ class EntityMgr {
     }
 
 
+    // Kept separate from update() (which no-ops while this.frozen) so the
+    // player's own death explosion keeps animating even while everything
+    // else is frozen -- main.lox calls this unconditionally every gameplay
+    // frame.
+    update_particles() {
+        this.particles.update()
+    }
+
+    // No-ops while the player's death sequence plays out (see on_player_die/
+    // on_player_start above) -- everything freezes in place until they
+    // respawn.
     update(worldwidth,height) {
+        if (this.frozen) {
+            return
+        }
 
         this.landers_alive = 0
         this.humans_left = 0
@@ -241,7 +275,6 @@ class EntityMgr {
         this.mountains.update()
         this.bullets.update(worldwidth, height)
         this.lasers.update(this.screenwidth, height)
-        this.particles.update()
         this.bonus.update(this.player)
         this.update_baiters()
 
@@ -325,6 +358,9 @@ class EntityMgr {
     // reach a screen's width into off-screen world space, and hitting things
     // you can't see is unfair.
     check_collisions(player, cam) {
+        if (this.frozen) {
+            return
+        }
         pbox = collide.entity_box(player)
         foreach (var e in this.entities) {
             if (!e.alive or !(e.shootable or e.deadly)) {
@@ -365,6 +401,9 @@ class EntityMgr {
     }
     draw(g,cam) {
         foreach (var e in this.entities) {
+            if (this.enemies_hidden and e.type != "human") {
+                continue
+            }
             e.draw(g,cam)
         }
         this.bullets.draw(g, cam)
