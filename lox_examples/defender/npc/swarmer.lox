@@ -4,7 +4,6 @@ import random
 
 // Swarmer: released when a pod is destroyed. Homes in on the player at speed,
 // re-aiming several times a second, and occasionally fires.
-// Ported from states/npc/swarmer/{chase,die}.lua
 
 class Swarmer < NPC {
 
@@ -12,11 +11,11 @@ class Swarmer < NPC {
         super.init(pos, img, 1, 1, 1, "swarmer")   // swarmer.png = single 20x16 frame
         this.radar = vec4(255, 80, 0, 255)
         this.update_func = state_chase
-        this.maxspeed = random.float(13.0, 17.0)   // Lua 800-1000 px/s at 60fps
+        this.maxspeed = random.float(13.0, 17.0)
         this.nextthink = 0
 
-        // Lua: ddisp = randf(10,50); disperse rises by ddisp*dt to ddisp*3,
-        // so swarmers burst apart at varying spreads over ~3 seconds.
+        // disperse rises by disperse_rate each frame up to disperse_max, over
+        // ~3 seconds, so swarmers burst apart at varying spreads
         var ddisp = random.float(10.0, 50.0)
         this.disperse_rate = ddisp / 60.0
         this.disperse_max = ddisp * 3

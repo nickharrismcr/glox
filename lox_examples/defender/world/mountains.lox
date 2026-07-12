@@ -3,9 +3,8 @@ import random
 import colour
 import math;
 
-// per-frame terrain points perturbed while exploding -- ported from
-// WorldDrawSystem's WORLD_EXPLODING handling in the Lua original (500 random
-// points/frame, jittered and occasionally sent flying off-screen for good).
+// per-frame terrain points perturbed while exploding: jittered, and
+// occasionally sent flying off-screen for good.
 const EXPLODE_POINTS_PER_FRAME = 2000
 const EXPLODE_JITTER_MAX = 25          // random +/- kick per touch
 const EXPLODE_COLLAPSE_CHANCE = 40     // 1-in-N chance per touched point of vanishing for good
@@ -24,7 +23,7 @@ class Mountain {
         this.terrain_colour = colour.TERRAIN_ORANGE
     }
     // All humans are lost: the terrain starts crumbling and never stops for
-    // the rest of the game (matches the Lua original -- no reset back).
+    // the rest of the game (no reset back).
     explode() {
         this.exploding = true
     }

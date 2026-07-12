@@ -4,8 +4,6 @@ import random
 import colour
 
 // Baiter: lurks unseen, then materialises next to the player and hunts it down.
-// In the original it appears to punish slow play. States ported from
-// states/npc/baiter/{wait,materialize,chase,die}.lua
 
 class Baiter < NPC {
 
@@ -17,7 +15,7 @@ class Baiter < NPC {
         this.wait_frames = wait_frames
         this.x_to_player = 0
         this.nextthink = 0
-        this.maxspeed = 33.0        // Lua clamps dx to +/- 2000 px/s at 60fps
+        this.maxspeed = 33.0
 
         // hidden and harmless until it materialises
         this.visible = false
@@ -44,9 +42,9 @@ func enter_materialize(e) {
 }
 
 func state_materialize(e, width, height) {
-    // Lua re-anchors x to the player every frame while coalescing
+    // re-anchors x to the player every frame while coalescing
     e.pos.x = e.mgr.player.pos.x + e.x_to_player
-    e.disperse = e.disperse - 0.67          // Lua: 40 * dt
+    e.disperse = e.disperse - 0.67
     if (e.disperse <= 1) {
         e.disperse = 1
         enter_chase(e)

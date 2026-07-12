@@ -3,12 +3,11 @@ from npc import NPC
 import random
 
 // Bomber: drifts diagonally, bouncing off the top and bottom of the play area,
-// scattering bombs as it goes. Ported from states/npc/bomber/{bomb,die}.lua
+// scattering bombs as it goes.
 //
-// bomber.png reproduces the Lua's inline ASCII sprite (game/graphics.lua's
-// `bomber` -- a violet-bordered, blue-bodied icon with a pulsing yellow core),
-// generated at the same 4x-per-source-pixel scale as pod.png/swarmer.png/
-// baiter.png: 3 frames of 24x24.
+// bomber.png: a violet-bordered, blue-bodied icon with a pulsing yellow core,
+// 3 frames of 24x24, at the same 4x-per-source-pixel scale as
+// pod.png/swarmer.png/baiter.png.
 
 class Bomber < NPC {
 
@@ -17,7 +16,7 @@ class Bomber < NPC {
         this.animate(8)
         this.radar = vec4(0, 150, 255, 255)
         this.update_func = state_bomb
-        this.dp = vec2(1.7, 1.7)     // Lua: 100 px/s each axis, at 60fps
+        this.dp = vec2(1.7, 1.7)     // ~100 px/s each axis, at 60fps
         this.top = top
     }
 }
@@ -38,8 +37,8 @@ func state_bomb(e, width, height) {
     // ~1 in 20 chance per frame of dropping a bomb.
     if (random.integer(0, 100) < 5) {
         // dropped bombs sit where they land (zero velocity) and auto-expire via
-        // Bullet's own ticks_to_live countdown, same as the Lua's dx=0/dy=0 bomb --
-        // just with double the usual bullet lifetime, so they linger as hazards.
+        // Bullet's own ticks_to_live countdown, with double the usual bullet
+        // lifetime, so they linger as hazards.
         e.mgr.fire_bullet(e.pos, vec2(0, 0), 200)
     }
 }

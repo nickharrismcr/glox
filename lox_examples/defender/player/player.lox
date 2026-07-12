@@ -8,8 +8,7 @@ import colour
 const THRUST_SCALE = 0.75
 const THRUST_GAP = 6
 
-// The player ship. Ported behaviourally from states/player/{play,die,explode}.lua
-// in the Lua Love2D original, adapted to this port's frame-based (no-dt) model.
+// The player ship.
 //
 // Controls (classic Defender):
 //   R-SHIFT (hold) : thrust in the facing direction
@@ -236,7 +235,7 @@ func state_play(e, input) {
 
 func enter_die(e) {
     e.update_func = state_die
-    e.timer = 120                    // Lua: 2 seconds, frozen
+    e.timer = 120                    // 2 seconds, frozen
     e.speed = 0
     e.vx = 0
     e.vy = 0
@@ -256,7 +255,7 @@ func state_die(e, input) {
 
 func enter_explode(e) {
     e.update_func = state_explode
-    e.timer = 150                    // Lua: 3 seconds before respawning
+    e.timer = 150                    // 3 seconds before respawning
     e.visible = false
     e.flash = false
     // burst from the centre of the ship
