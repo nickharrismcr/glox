@@ -128,6 +128,11 @@ class LaserPool {
             l.update(width, height)
         }
     }
+    clear() {
+        foreach (var l in this.lasers) {
+            l.kill()
+        }
+    }
     draw(win, cam) {
         foreach (var l in this.lasers) {
             l.draw(win, cam)

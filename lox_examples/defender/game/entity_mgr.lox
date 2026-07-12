@@ -150,6 +150,22 @@ class EntityMgr {
         return len(lst)
     }
 
+    // Removes every non-human entity, clears the spawn queue, and kills every
+    // active bullet (including dropped bombs, which are just slow bullets)
+    // and laser -- used at the end of a level so nothing lingers on screen
+    // behind the level-complete banner. Humans are left alone: they persist
+    // across levels (rescued or still on the ground), unlike enemies and
+    // projectiles, which belong to the finished wave.
+    clear_wave() {
+        func is_human(e) {
+            return e.type == "human"
+        }
+        this.entities = functools.filter(this.entities, is_human)
+        this.queue = []
+        this.bullets.clear()
+        this.lasers.clear()
+    }
+
   
 
     // Baiters currently in play: alive plus queued-but-not-yet-materialised
@@ -300,11 +316,14 @@ class EntityMgr {
         this.events.emit("laser_fire", vec2(x, y))   // the player fired the laser
     }
 
-    // Player lasers destroy shootable NPCs; deadly NPCs hit the player.
-    // Driven by per-entity flags rather than type, so every NPC (and a mutated
-    // lander) takes part without special-casing. cam is used so the laser only
-    // damages NPCs that are actually on screen -- the beam can reach a screen's
-    // width into off-screen world space, and hitting things you can't see is unfair.
+    // Player lasers destroy shootable NPCs; deadly NPCs hit the player, and
+    // ramming one kills it right back (humans are never deadly, so this never
+    // touches them -- they're only ever picked up, via the dropping-state
+    // check below). Driven by per-entity flags rather than type, so every NPC
+    // (and a mutated lander) takes part without special-casing. cam is used so
+    // the laser only damages NPCs that are actually on screen -- the beam can
+    // reach a screen's width into off-screen world space, and hitting things
+    // you can't see is unfair.
     check_collisions(player, cam) {
         var pbox = collide.entity_box(player)
         foreach (var e in this.entities) {
@@ -320,9 +339,10 @@ class EntityMgr {
                     }
                 }
             }
-            // hit() clears `deadly`, so a just-destroyed NPC can't also kill the player
+            // hit() clears `deadly`, so an already-dying NPC can't also kill the player
             if (e.deadly and collide.overlap(pbox, ebox, this.worldwidth)) {
                 player.hit()
+                e.hit()
             }
         }
 

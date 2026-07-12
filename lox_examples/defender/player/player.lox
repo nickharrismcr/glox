@@ -1,12 +1,22 @@
 from gfx import *
 from sprite import Sprite
+from npc import shortest_dx
 import math
+import random
 import colour
 
 // Thrust flame is drawn smaller than the source art and offset from the hull
 // (not flush against it).
 const THRUST_SCALE = 0.75
 const THRUST_GAP = 6
+
+// Hyperspace: warps to a random spot away from the current enemies, dispersed
+// like a materialising lander while it coalesces. Uses the same disperse
+// range/rate as NPC materialise (see npc.lox / lander.lox) for a consistent look.
+const HYPERSPACE_DISPERSE_START = 50
+const HYPERSPACE_MATERIALISE_RATE = 0.7
+const HYPERSPACE_MIN_NPC_DIST = 400   // stay at least this far from any non-human NPC
+const HYPERSPACE_MAX_ATTEMPTS = 20    // give up and use the last candidate after this many tries
 
 // The player ship.
 //
@@ -15,10 +25,13 @@ const THRUST_GAP = 6
 //   SPACE   (tap)  : reverse facing and reset speed
 //   Q / A          : move up / down within the play area
 //   ENTER          : fire
+//   L-SHIFT (tap)  : hyperspace
 //
-// Death runs as a small state machine of swappable update functions, matching
-// the NPC idiom:
+// Death and hyperspace both run as a small state machine of swappable update
+// functions, matching the NPC idiom:
 //   play -> die (frozen, flashing red) -> explode (hidden, particle burst) -> play
+//   play -> hyperspace (rematerialising at a random spot) -> play, or die on a
+//           misjump (see hyperspace_death_chance)
 //
 // The camera follows the ship, keeping it at a fixed screen offset that shifts
 // to look ahead in the facing direction.
@@ -53,6 +66,7 @@ class Player < Sprite {
         this.friction = config.player_friction   // closer to 1 => less friction, longer coast
         this.vspeed = config.player_vspeed
         this.nodie = config.nodie
+        this.hyperspace_death_chance = config.hyperspace_death_chance
 
         // purely visual: while thrusting, the drawn ship eases forward (in the
         // facing direction) up to one ship-width, then eases back at the same
@@ -131,6 +145,12 @@ class Player < Sprite {
         }
     }
 
+    smart_bomb(input) {
+        if (input.smart_bomb and this.mgr != nil) {
+            this.mgr.trigger_smart_bomb()
+        }
+    }
+
     update(input) {
         var f = this.update_func
         f(this, input)
@@ -153,6 +173,12 @@ class Player < Sprite {
         if (spos == nil) {
             return
         }
+
+        if (this.update_func == state_hyperspace) {
+            this.draw_disperse(win, spos, this.pos.y, this.disperse, colour.WHITE)
+            return
+        }
+
         // shift the drawn (screen-space only) position by the current lean,
         // forward in the facing direction -- world pos.x is untouched
         var draw_x = spos + this.lean * this.dir
@@ -192,8 +218,14 @@ class Player < Sprite {
 // --- states -------------------------------------------------------------------
 
 func state_play(e, input) {
+    if (input.hyperspace) {
+        enter_hyperspace(e)
+        return
+    }
+
     e.handle_input(input)
     e.fire(input)
+    e.smart_bomb(input)
 
     // ease the visual lean toward full (thrusting) or zero (not thrusting),
     // at the same speed in both directions
@@ -231,6 +263,62 @@ func state_play(e, input) {
     } else if (e.offset > target) {
         e.offset = math.max(e.offset - e.offsetspeed, target)
     }
+}
+
+// Warp to a random spot away from the current enemies and start rematerialising.
+func enter_hyperspace(e) {
+    e.pos = random_hyperspace_pos(e)
+    e.update_func = state_hyperspace
+    e.disperse = HYPERSPACE_DISPERSE_START
+    e.speed = 0
+    e.vx = 0
+    e.vy = 0
+    e.thrusting = false
+    e.lean = 0
+    e.mgr.events.emit("player_hyperspace", e)
+}
+
+// Coalesces the same way a materialising lander does (disperse falling to 1).
+// On arrival there's a chance of a fatal misjump.
+func state_hyperspace(e, input) {
+    e.disperse = e.disperse - HYPERSPACE_MATERIALISE_RATE
+    if (e.disperse <= 1) {
+        e.disperse = 1
+        if (random.integer(1, e.hyperspace_death_chance) == 1) {
+            enter_die(e)
+        } else {
+            enter_play(e)
+        }
+    }
+}
+
+// Random world position at least HYPERSPACE_MIN_NPC_DIST from every alive,
+// non-human NPC, giving up after HYPERSPACE_MAX_ATTEMPTS and using the last
+// candidate (better than looping forever if the world is crowded).
+func random_hyperspace_pos(e) {
+    var x = random.integer(0, e.worldwidth)
+    var y = random.integer(e.top, e.bottom)
+    var attempts = 0
+    while (attempts < HYPERSPACE_MAX_ATTEMPTS and !far_from_npcs(e, x, y)) {
+        x = random.integer(0, e.worldwidth)
+        y = random.integer(e.top, e.bottom)
+        attempts = attempts + 1
+    }
+    return vec2(x, y)
+}
+
+func far_from_npcs(e, x, y) {
+    foreach (var other in e.mgr.get_all()) {
+        if (!other.alive or other.type == "human") {
+            continue
+        }
+        var dx = shortest_dx(x, other.pos.x, e.worldwidth)
+        var dy = y - other.pos.y
+        if (dx * dx + dy * dy < HYPERSPACE_MIN_NPC_DIST * HYPERSPACE_MIN_NPC_DIST) {
+            return false
+        }
+    }
+    return true
 }
 
 func enter_die(e) {

@@ -24,7 +24,12 @@ class BulletPool {
             b.update(width, height)
         }
     }
-     
+    clear() {
+        foreach (var b in this.bullets) {
+            b.kill()
+        }
+    }
+
     draw(win,cam) {
         foreach (var b in this.bullets) {
             b.draw(win, cam)

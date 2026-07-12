@@ -10,6 +10,7 @@ class Controller {
         this.down = false          // held: move down
         this.fire = false          // edge-triggered: fire the laser
         this.smart_bomb = false    // edge-triggered: kill everything on screen
+        this.hyperspace = false    // edge-triggered: warp to a random spot
     }
 
     update(win) {
@@ -19,5 +20,6 @@ class Controller {
         this.down = win.key_down(win.KEY_A)
         this.fire = win.key_pressed(win.KEY_ENTER)
         this.smart_bomb = win.key_pressed(win.KEY_BACKSPACE)
+        this.hyperspace = win.key_pressed(win.KEY_LEFT_SHIFT)
     }
 }

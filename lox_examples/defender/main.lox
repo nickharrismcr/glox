@@ -35,12 +35,13 @@ import game_controller
 //   "player_die"        (player)  - death sequence began (ship freezes, flashes red)
 //   "player_explode"    (player)  - ship vanished; explosion particles burst
 //   "player_start"      (player)  - ship respawned (brief invulnerability)
+//   "player_hyperspace" (player)  - warped to a random spot; rematerialising
 const GAME_EVENTS = ["lander_spawn", "human_spawn", "lander_searching",
                      "human_grabbed", "human_caught", "human_saved", "lander_mutated", "lander_killed",
                      "mutant_killed", "bullet_fire", "laser_fire", "player_hit",
                      "pod_spawn", "pod_killed", "swarmer_spawn", "swarmer_killed",
                      "baiter_spawn", "baiter_killed", "bomber_spawn", "bomber_killed",
-                     "player_die", "player_explode", "player_start"]
+                     "player_die", "player_explode", "player_start", "player_hyperspace"]
 
 // Debug: log every game event to the console.  
 func make_event_logger(name) {
@@ -110,12 +111,9 @@ while (!win.should_close() and !game.done) {
     game.update(win, input)
 
     if (game.gameplay_active()) {
-        ship.update(input)
+        ship.update(input)          // also handles firing the laser and the smart bomb
         cam.move(ship.camera_x())
         starfield.update(-ship.vx/5)
-        if (input.smart_bomb) {
-            entities.trigger_smart_bomb()
-        }
         entities.update(worldwidth, height)
         entities.check_collisions(ship, cam)
         hud_score.update()
@@ -124,7 +122,9 @@ while (!win.should_close() and !game.done) {
     // draw the whole game into the fixed-size play_area texture
     win.begin_texture_mode(play_area)
     win.clear(colour.BLACK)
-    mountain.draw(win, height, cam, width)
+    if (game.state != "level_finish") {
+        mountain.draw(win, height, cam, width)
+    }
     starfield.draw(win)
     entities.draw(win, cam)
     ship.draw(win, cam)

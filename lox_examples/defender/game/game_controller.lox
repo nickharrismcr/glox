@@ -1,25 +1,36 @@
 from gfx import *
 import levels
 import colour
+import text
 
 // Drives the level/game-state machine: intro -> level_start -> level ->
 // level_finish -> level_start (loops), or level_start -> ... -> game_over.
 // Mirrors the enter_<state>/state_<state> convention used elsewhere (see
 // npc.lox); `state` is a readable string, tested by main.lox for gating what
 // runs/draws each frame -- mirrors the same convention human.lox uses.
+//
+// level_finish is the "ATTACK WAVE N COMPLETED." screen: entering it clears
+// every enemy, bullet, and laser (humans persist) and hides the ship; the
+// mountains are hidden too, by main.lox, for the duration of the state. It
+// shows the banner for LEVEL_FINISH_DISPLAY_TIME before handing off to
+// level_start, which spawns the next level's entities, reveals the ship, and
+// moves straight on to level -- it no longer shows any banner itself.
 
-const LEVEL_FINISH_PAUSE = 30   // frames level_finish waits before looping back (0.5s at 60fps)
-const LEVEL_BANNER_TIME  = 180  // frames the "WAVE N COMPLETE" banner shows (3s at 60fps)
+const LEVEL_FINISH_DISPLAY_TIME = 240  // frames the "ATTACK WAVE N COMPLETED." banner shows (4s at 60fps)
 const GAME_OVER_PAUSE    = 180  // frames game_over waits before done becomes true (3s at 60fps)
 const HUMANS_EVERY_N_LEVELS = 3 // humans top up only every Nth level, otherwise they persist
 
-const LIVES_ICON_SCALE = 0.35
-const LIVES_ICON_GAP   = 30
+const LIVES_ICON_SCALE = 0.45
+const LIVES_ICON_GAP   = 34
 const LIVES_ICON_MAX   = 7
+const LIVES_ROW_X      = 10   // left-aligned under the score
+const LIVES_ROW_Y       = 50
 
 const BOMB_ICON_SCALE = 0.5
 const BOMB_ICON_GAP   = 20
 const BOMB_ICON_MAX   = 7
+const BOMB_COLUMN_GAP  = 8    // gap between the icon column and the radar's left edge
+const BOMB_COLUMN_Y    = 0
 
 class GameController {
     init(cfg, entities, ship, ship_img, smartbomb_img) {
@@ -41,6 +52,8 @@ class GameController {
         // would make the real ship animate LIVES_ICON_MAX times too fast
         this.lives_icon = texture(ship_img, 5, 1, 1)
         this.bomb_icon = texture(smartbomb_img, 1, 1, 1)   // smartbomb.png is a single frame already
+        // same palette/speed as the score (see score.lox), for a consistent HUD look
+        this.banner_cycle = text.ColourCycle([colour.RED, colour.BLUE, colour.PURPLE, colour.YELLOW], 45)
 
         entities.events.on("lander_killed", this.on_lander_killed())
         entities.events.on("mutant_killed", this.on_lander_killed())
@@ -76,6 +89,7 @@ class GameController {
     }
 
     update(win, input) {
+        this.banner_cycle.update()
         var f = this.update_func
         f(this, win, input)
     }
@@ -85,41 +99,44 @@ class GameController {
             draw_centered(win, font, "DEFENDER", width/2, height/2 - 60, colour.YELLOW)
             draw_centered(win, font, "PRESS SPACE TO PLAY", width/2, height/2, colour.WHITE)
             draw_centered(win, font, "Q=UP A=DOWN SPACE=REVERSE SHIFT=THRUST ENTER=FIRE BACKSPACE=BOMB", width/2, height/2 + 60, colour.GRAY)
-        } else if (this.state == "level_start" and this.timer > 0) {
-            draw_centered(win, font, this.banner, width/2, height/2, colour.YELLOW)
+        } else if (this.state == "level_finish") {
+            draw_centered(win, font, this.banner, width/2, height/2, this.banner_cycle.get())
         } else if (this.state == "game_over") {
             draw_centered(win, font, "GAME OVER", width/2, height/2, colour.RED)
         }
         if (this.state != "intro") {
-            this.draw_lives(win, width)
-            this.draw_bombs(win)
+            this.draw_lives(win)
+            this.draw_bombs(win, width)
         }
     }
 
-    // A row of small static ship icons, one per life (capped at
-    // LIVES_ICON_MAX), matching PlayerDraw.lua's lives row.
-    draw_lives(win, width) {
+    // A row of small ship icons, one per life (capped at LIVES_ICON_MAX),
+    // under the score.
+    draw_lives(win) {
         var n = this.lives
         if (n > LIVES_ICON_MAX) {
             n = LIVES_ICON_MAX
         }
-        var x = width - 250
+        var x = LIVES_ROW_X
         foreach (var i in range(0, n)) {
-            win.draw_texture_scaled(this.lives_icon, x, 10, colour.WHITE, false, LIVES_ICON_SCALE)
+            win.draw_texture_scaled(this.lives_icon, x, LIVES_ROW_Y, colour.WHITE, false, LIVES_ICON_SCALE)
             x = x + LIVES_ICON_GAP
         }
     }
 
     // A column of small bomb icons, one per remaining smart bomb (capped at
-    // BOMB_ICON_MAX), matching PlayerDraw.lua's bomb column.
-    draw_bombs(win) {
+    // BOMB_ICON_MAX), sitting flush against the radar's left edge.
+    draw_bombs(win, width) {
         var n = this.entities.bombs
         if (n > BOMB_ICON_MAX) {
             n = BOMB_ICON_MAX
         }
-        var y = 50
+        var radar_left = width / 4
+        var icon_width = this.bomb_icon.frame_width() * BOMB_ICON_SCALE
+        var x = radar_left - icon_width - BOMB_COLUMN_GAP
+        var y = BOMB_COLUMN_Y
         foreach (var i in range(0, n)) {
-            win.draw_texture_scaled(this.bomb_icon, 10, y, colour.WHITE, false, BOMB_ICON_SCALE)
+            win.draw_texture_scaled(this.bomb_icon, x, y, colour.WHITE, false, BOMB_ICON_SCALE)
             y = y + BOMB_ICON_GAP
         }
     }
@@ -157,20 +174,11 @@ func enter_level_start(g) {
         g.entities.add_humans(g.cfg.humans)
     }
 
-    if (g.level > 1) {
-        g.banner = "WAVE ${g.level - 1} COMPLETE"
-        g.timer = LEVEL_BANNER_TIME
-    } else {
-        g.timer = 0
-    }
+    g.ship.visible = true
     g.state = "level_start"
     g.update_func = state_level_start
 }
 func state_level_start(g, win, input) {
-    if (g.timer > 0) {
-        g.timer = g.timer - 1
-        return
-    }
     enter_level(g)
 }
 
@@ -185,7 +193,10 @@ func state_level(g, win, input) {
 }
 
 func enter_level_finish(g) {
-    g.timer = LEVEL_FINISH_PAUSE
+    g.entities.clear_wave()
+    g.ship.visible = false
+    g.banner = "ATTACK WAVE ${g.level} COMPLETED."
+    g.timer = LEVEL_FINISH_DISPLAY_TIME
     g.state = "level_finish"
     g.update_func = state_level_finish
 }
