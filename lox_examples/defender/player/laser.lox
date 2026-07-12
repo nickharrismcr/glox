@@ -3,14 +3,12 @@ import colour
 import math
 import random
 
-// The player's laser. Ported behaviourally from states/player/laser.lua +
-// systems/draw/LaserDraw.lua in the Lua original: a horizontal beam that shoots
-// from the ship nose in the facing direction, extends across the screen, cycles
-// colour, and expires after a short life. Drawn as filled rectangles (a bright
-// core plus a translucent glow), not a sprite -- with small black gaps punched
-// into the glow band, randomised every 6 frames (~0.1s at 60fps, matching the
-// Lua's every-10-centiseconds re-roll), giving the beam a crackling look
-// instead of a smooth glow.
+// The player's laser: a horizontal beam that shoots from the ship nose in the
+// facing direction, extends across the screen, cycles colour, and expires
+// after a short life. Drawn as filled rectangles (a bright core plus a
+// translucent glow), not a sprite -- with small black gaps punched into the
+// glow band, randomised every 6 frames (~0.1s at 60fps), giving the beam a
+// crackling look instead of a smooth glow.
 
 const NUM_GAPS = 10
 

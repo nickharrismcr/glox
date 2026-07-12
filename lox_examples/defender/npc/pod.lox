@@ -2,8 +2,6 @@ from gfx import *
 from npc import NPC
 
 // Pod: hangs motionless until shot, then bursts into a cluster of swarmers.
-// Ported from states/npc/pod/{drift,die}.lua -- the pod's die state fires
-// PodKill, which the engine listens for to spawn swarmers at that position.
 
 class Pod < NPC {
 

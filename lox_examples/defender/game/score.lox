@@ -2,10 +2,10 @@ from gfx import *
 import text
 import colour
 
-// Points per kill, from GameSystem.scores in the Lua original. A mutated lander
-// keeps a lander's value, since in the original the entity is still named Lander.
-// human_caught/human_saved are the rescue bonuses (addScoreEvent's s500/s250),
-// also shown as a floating popup by bonus.BonusDisplay.
+// Points per kill. A mutated lander is still the same underlying entity, just
+// renamed to "mutant" on mutation, so it keeps a lander's value.
+// human_caught/human_saved are the rescue bonuses, also shown as a floating
+// popup by bonus.BonusDisplay.
 const SCORES = {
     "lander_killed":  150,
     "mutant_killed":  150,
@@ -24,7 +24,7 @@ class Score {
         this.font = font
         this.x = x
         this.y = y
-        // the score text cycles colour, as in the original
+        // the score text cycles colour
         this.cycle = text.ColourCycle([colour.RED, colour.BLUE, colour.PURPLE, colour.YELLOW], 45)
     }
 

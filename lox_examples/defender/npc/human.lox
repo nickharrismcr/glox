@@ -4,8 +4,7 @@ import math
 import colour
 from sprite import Sprite
 
-// Human colonist. A small state machine of swappable update functions, ported
-// behaviourally from states/npc/human/*.lua:
+// Human colonist. A small state machine of swappable update functions:
 //
 //   walking  : strolls along the mountain surface (default)
 //   grabbed  : a lander has it; hangs just below its carrier as it is lifted

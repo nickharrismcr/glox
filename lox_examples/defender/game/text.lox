@@ -7,8 +7,7 @@ from gfx import *
 // the ink width rather than the full cell keeps the last glyph ('Z', which ends
 // exactly at the atlas edge) from sampling past the texture.
 //
-// A character maps to its cell by index into CHARS, as in TextSystem in the Lua
-// original.
+// A character maps to its cell by index into CHARS.
 
 const CHARS   = "0123456789:?ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const PITCH   = 30    // distance between glyph cells in the atlas
@@ -46,8 +45,6 @@ class Font {
 }
 
 // Smoothly cycles a colour through a palette, taking `steps` frames per leg.
-// The Lua original drives this from a closure built by getColorCycleFactory();
-// a small class holding the same state does the job.
 class ColourCycle {
     init(palette, steps) {
         this.palette = palette
@@ -76,7 +73,7 @@ class ColourCycle {
     }
 }
 
-// Left-pad n with zeros to width w. The score is shown as %07d in the original.
+// Left-pad n with zeros to width w.
 func zero_pad(n, w) {
     var s = str(n)
     while (len(s) < w) {

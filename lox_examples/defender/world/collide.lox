@@ -1,6 +1,4 @@
-// Axis-aligned box collision, ported from game/util.lua (box_translate /
-// box_collision) in the Lua original, with the world-wrap-around handling from
-// systems/update/Collide.lua. Boxes are [x1, y1, x2, y2] in world coordinates.
+// Axis-aligned box collision. Boxes are [x1, y1, x2, y2] in world coordinates.
 //
 // Sprites are top-left anchored (draw_texture draws at pos), so an entity's box
 // is [pos.x, pos.y, pos.x+width, pos.y+height]. A laser is a horizontal beam

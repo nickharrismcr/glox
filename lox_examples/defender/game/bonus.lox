@@ -1,12 +1,10 @@
 from gfx import *
 import colour
 
-// Floating bonus-score popup, shown when a human is rescued. Ported
-// behaviourally from game/engine_mixins.lua's addScoreEvent, which spawns a
+// Floating bonus-score popup, shown when a human is rescued: spawns a
 // "250"/"500" graphic (pngs/250.png, pngs/500.png -- each a 3-frame, 45x20
-// flash-cycle strip) above the rescued human. The Lua then drifts the popup at
-// a fixed velocity for a couple of seconds; here it instead tracks the player
-// for its whole life, per this port's design.
+// flash-cycle strip) above the rescued human, and tracks the player for its
+// whole life.
 
 class Bonus {
     init(tex, dy, life) {
@@ -56,8 +54,7 @@ class BonusDisplay {
     // Subscribe to the human-rescue events: "human_caught" fires the instant the
     // player scoops a falling human up (the big reward); "human_saved" fires once
     // a human reaches the ground safely, whether unaided or carried down (the
-    // smaller reward). Mirrors addScoreEvent's HumanRescued/HumanSaved -> s500 and
-    // HumanLanded -> s250.
+    // smaller reward).
     attach(events) {
         events.on("human_caught", this.on_caught())
         events.on("human_saved", this.on_saved())
