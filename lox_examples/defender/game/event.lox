@@ -19,7 +19,7 @@ class EventDispatcher {
         if (! event in this.listeners.keys()){
             return 
         } 
-        var idx = this.listeners[event].find(listener);
+        idx = this.listeners[event].find(listener);
         if (idx != -1) {
             this.listeners[event].remove(idx);
         }

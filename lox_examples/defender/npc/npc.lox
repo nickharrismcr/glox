@@ -50,12 +50,12 @@ class NPC < Sprite {
             return
         }
         this.counter = this.counter + 1
-        var f = this.update_func
+        f = this.update_func
         if (f != nil) {
             f(this, width, height)
         }
         // horizontal world wrap-around
-        var ww = this.mgr.worldwidth
+        ww = this.mgr.worldwidth
         if (this.pos.x > ww) { this.pos.x = this.pos.x - ww }
         if (this.pos.x < 0)  { this.pos.x = this.pos.x + ww }
     }
@@ -64,7 +64,7 @@ class NPC < Sprite {
         if (!this.alive or !this.visible) {
             return
         }
-        var f = this.draw_func
+        f = this.draw_func
         if (f != nil) {
             f(this, win, cam)
         }
@@ -89,7 +89,7 @@ class NPC < Sprite {
 // --- shared state functions ---------------------------------------------------
 
 func draw_normal(e, win, cam) {
-    var spos = cam.translate(e.pos.x)
+    spos = cam.translate(e.pos.x)
     if (spos != nil) {
         win.draw_texture(e.texture, spos, e.pos.y, colour.WHITE)
     }
@@ -97,7 +97,7 @@ func draw_normal(e, win, cam) {
 
 // Used for both materialise (disperse falling to 1) and explode (rising).
 func draw_dispersed(e, win, cam) {
-    var spos = cam.translate(e.pos.x)
+    spos = cam.translate(e.pos.x)
     if (spos != nil) {
         e.draw_disperse(win, spos, e.pos.y, e.disperse, colour.WHITE)
     }
@@ -149,22 +149,22 @@ func state_die(e, width, height) {
 // suppressing-fire threat than a precision shot); 1.0 (the default) is the
 // straight configured value.
 func aim_bullet_at(e, player, time_mult=1.0) {
-    var cfg = e.mgr.config
-    var t = random.float(cfg.npc_bullet_time / 2, cfg.npc_bullet_time) * time_mult
+    cfg = e.mgr.config
+    t = random.float(cfg.npc_bullet_time / 2, cfg.npc_bullet_time) * time_mult
 
-    var tx = player.pos.x + player.vx * t
-    var ty = player.pos.y
+    tx = player.pos.x + player.vx * t
+    ty = player.pos.y
 
-    var vx = shortest_dx(e.pos.x, tx, e.mgr.worldwidth) / t
-    var vy = (ty - e.pos.y) / t
+    vx = shortest_dx(e.pos.x, tx, e.mgr.worldwidth) / t
+    vy = (ty - e.pos.y) / t
 
     e.mgr.fire_bullet(e.pos, vec2(vx, vy))
 }
 
 // Signed x-distance from a to b, taking the shorter way around the wrapped world.
 func shortest_dx(from_x, to_x, worldwidth) {
-    var d = to_x - from_x
-    var half = worldwidth / 2
+    d = to_x - from_x
+    half = worldwidth / 2
     if (d > half)  { d = d - worldwidth }
     if (d < -half) { d = d + worldwidth }
     return d
@@ -177,9 +177,9 @@ func clamp(v, lo, hi) {
 // Per-frame velocity toward where the player will be in `lead` frames, clamped to
 // maxspeed.
 func seek_player(e, player, maxspeed, lead, xoff, yoff) {
-    var tx = player.pos.x + player.vx * lead + xoff
-    var ty = player.pos.y + yoff
-    var dx = shortest_dx(e.pos.x, tx, e.mgr.worldwidth) / lead
-    var dy = (ty - e.pos.y) / lead
+    tx = player.pos.x + player.vx * lead + xoff
+    ty = player.pos.y + yoff
+    dx = shortest_dx(e.pos.x, tx, e.mgr.worldwidth) / lead
+    dy = (ty - e.pos.y) / lead
     return vec2(clamp(dx, -maxspeed, maxspeed), clamp(dy, -maxspeed, maxspeed))
 }

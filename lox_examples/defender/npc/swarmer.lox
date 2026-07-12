@@ -16,14 +16,14 @@ class Swarmer < NPC {
 
         // disperse rises by disperse_rate each frame up to disperse_max, over
         // ~3 seconds, so swarmers burst apart at varying spreads
-        var ddisp = random.float(10.0, 50.0)
+        ddisp = random.float(10.0, 50.0)
         this.disperse_rate = ddisp / 60.0
         this.disperse_max = ddisp * 3
     }
 }
 
 func state_chase(e, width, height) {
-    var player = e.mgr.player
+    player = e.mgr.player
     if (player == nil) {
         return
     }

@@ -145,7 +145,7 @@ func enter_grab(e) {
     e.update_func = state_grab
     // a single decisive shot right at the player the instant it commits to the
     // grab -- but only if on screen (landers should never fire while off-screen)
-    var on_screen = e.mgr.cam == nil or e.mgr.cam.translate(e.pos.x) != nil
+    on_screen = e.mgr.cam == nil or e.mgr.cam.translate(e.pos.x) != nil
     if (e.mgr.player != nil and on_screen) {
         aim_bullet_at(e, e.mgr.player)
     }
@@ -204,8 +204,8 @@ func state_mutated(e,width, height) {
     // chase the player horizontally, taking the shorter way around the world
     // wrap rather than a naive x1-x2 (which breaks near the seam)
     if (e.mgr.player != nil) {
-        var mutant_speed = e.mgr.config.player_maxspeed * e.mgr.config.mutant_speed_pct
-        var dx = shortest_dx(e.pos.x, e.mgr.player.pos.x, e.mgr.worldwidth)
+        mutant_speed = e.mgr.config.player_maxspeed * e.mgr.config.mutant_speed_pct
+        dx = shortest_dx(e.pos.x, e.mgr.player.pos.x, e.mgr.worldwidth)
         e.dp.x = mutant_speed
         if (dx < 0) {
             e.dp.x = -mutant_speed
@@ -231,7 +231,7 @@ func state_mutated(e,width, height) {
     // fixed cadence rather than the random-chance maybe_fire_bullet() other
     // lander states use -- a mutant is already fully hostile and committed
     if (e.counter % 60 == 0 and e.mgr.player != nil) {
-        var on_screen = e.mgr.cam == nil or e.mgr.cam.translate(e.pos.x) != nil
+        on_screen = e.mgr.cam == nil or e.mgr.cam.translate(e.pos.x) != nil
         if (on_screen) {
             aim_bullet_at(e, e.mgr.player)
         }
@@ -267,14 +267,14 @@ func state_die(e,width, height) {
 }
 
 func draw_exp(e,win,cam) {
-    var spos = cam.translate(e.pos.x)
+    spos = cam.translate(e.pos.x)
     if (spos != nil) {
         e.draw_disperse(win, spos, e.pos.y, e.disperse, colour.WHITE)
     }
 }
 
 func draw_(e,win,cam){
-    var spos = cam.translate(e.pos.x)
+    spos = cam.translate(e.pos.x)
     if (spos != nil) {
         win.draw_texture(e.texture, spos, e.pos.y, colour.WHITE)
     }

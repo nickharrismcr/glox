@@ -23,22 +23,22 @@ class Stars {
     }
     add_stars() {
         foreach (var i in range(0,this.num_stars)) {
-            var x = random.integer(0, this.width)
-            var y = random.integer(100, this.height)
+            x = random.integer(0, this.width)
+            y = random.integer(100, this.height)
             this.stars.append(Star(vec2(x, y),colour.random_rgb() ))  
         }
     }
 
     update(dx){
-        var a = random.integer(0, 10)
+        a = random.integer(0, 10)
         if (a < 1) {
-            var x = random.integer(0, this.width)
-            var y = random.integer(100, this.height)
-            var which = random.integer(0, len(this.stars)-1)
+            x = random.integer(0, this.width)
+            y = random.integer(100, this.height)
+            which = random.integer(0, len(this.stars)-1)
             this.stars[which].pos = vec2(x, y)
         }
         foreach (var star in this.stars) {
-            var pos = star.get()[0]
+            pos = star.get()[0]
             pos.x = pos.x + dx
             if (pos.x > this.width) {
                 pos.y = random.integer(100, this.height)

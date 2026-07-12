@@ -2,6 +2,7 @@ from gfx import *
 import levels
 import colour
 import text
+from player import state_play
 
 // Drives the level/game-state machine: intro -> level_start -> level ->
 // level_finish -> level_start (loops), or level_start -> ... -> game_over.
@@ -90,7 +91,7 @@ class GameController {
 
     update(win, input) {
         this.banner_cycle.update()
-        var f = this.update_func
+        f = this.update_func
         f(this, win, input)
     }
 
@@ -113,11 +114,11 @@ class GameController {
     // A row of small ship icons, one per life (capped at LIVES_ICON_MAX),
     // under the score.
     draw_lives(win) {
-        var n = this.lives
+        n = this.lives
         if (n > LIVES_ICON_MAX) {
             n = LIVES_ICON_MAX
         }
-        var x = LIVES_ROW_X
+        x = LIVES_ROW_X
         foreach (var i in range(0, n)) {
             win.draw_texture_scaled(this.lives_icon, x, LIVES_ROW_Y, colour.WHITE, false, LIVES_ICON_SCALE)
             x = x + LIVES_ICON_GAP
@@ -127,14 +128,14 @@ class GameController {
     // A column of small bomb icons, one per remaining smart bomb (capped at
     // BOMB_ICON_MAX), sitting flush against the radar's left edge.
     draw_bombs(win, width) {
-        var n = this.entities.bombs
+        n = this.entities.bombs
         if (n > BOMB_ICON_MAX) {
             n = BOMB_ICON_MAX
         }
-        var radar_left = width / 4
-        var icon_width = this.bomb_icon.frame_width() * BOMB_ICON_SCALE
-        var x = radar_left - icon_width - BOMB_COLUMN_GAP
-        var y = BOMB_COLUMN_Y
+        radar_left = width / 4
+        icon_width = this.bomb_icon.frame_width() * BOMB_ICON_SCALE
+        x = radar_left - icon_width - BOMB_COLUMN_GAP
+        y = BOMB_COLUMN_Y
         foreach (var i in range(0, n)) {
             win.draw_texture_scaled(this.bomb_icon, x, y, colour.WHITE, false, BOMB_ICON_SCALE)
             y = y + BOMB_ICON_GAP
@@ -174,7 +175,13 @@ func enter_level_start(g) {
         g.entities.add_humans(g.cfg.humans)
     }
 
-    g.ship.visible = true
+    // Only force the ship visible if it's just coasting along in normal play
+    // -- if it's mid death-sequence/hyperspace/spawn-wait, that state's own
+    // enter_/state_ functions already own visibility and know better (e.g. a
+    // level ending mid-explode shouldn't reveal the ship early).
+    if (g.ship.update_func == state_play) {
+        g.ship.visible = true
+    }
     g.state = "level_start"
     g.update_func = state_level_start
 }

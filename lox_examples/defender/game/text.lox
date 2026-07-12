@@ -19,7 +19,7 @@ class Font {
     init(img) {
         this.tex = texture(img, 1, 1, 1)   // sliced manually, so a single frame
         this.index = {}
-        var i = 0
+        i = 0
         foreach (var c in CHARS) {
             this.index[c] = i
             i = i + 1
@@ -34,7 +34,7 @@ class Font {
     // Draw s at screen (x, y), tinted col. Characters outside the atlas (a space,
     // say) draw nothing but still advance the pen.
     draw(win, s, x, y, col) {
-        var cx = x
+        cx = x
         foreach (var c in s) {
             if (c in this.chars) {
                 win.draw_texture_rect(this.tex, cx, y, this.index[c] * PITCH, 0, INK_W, INK_H, col)
@@ -63,9 +63,9 @@ class ColourCycle {
 
     // linear blend from the current palette entry toward the next
     get() {
-        var a = this.palette[this.i]
-        var b = this.palette[(this.i + 1) % len(this.palette)]
-        var f = float(this.t) / float(this.steps)     // float(): int/int would truncate to 0
+        a = this.palette[this.i]
+        b = this.palette[(this.i + 1) % len(this.palette)]
+        f = float(this.t) / float(this.steps)     // float(): int/int would truncate to 0
         return vec4(a.x + (b.x - a.x) * f,
                     a.y + (b.y - a.y) * f,
                     a.z + (b.z - a.z) * f,
@@ -75,7 +75,7 @@ class ColourCycle {
 
 // Left-pad n with zeros to width w.
 func zero_pad(n, w) {
-    var s = str(n)
+    s = str(n)
     while (len(s) < w) {
         s = "0" & s
     }

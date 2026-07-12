@@ -60,7 +60,7 @@ func enter_chase(e) {
 }
 
 func state_chase(e, width, height) {
-    var player = e.mgr.player
+    player = e.mgr.player
     if (player == nil) {
         return
     }

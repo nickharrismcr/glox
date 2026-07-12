@@ -49,8 +49,8 @@ class Laser {
     // [2, 15). Re-rolled every 6 frames, not every frame, so the gaps hold
     // still long enough to read as a crackle rather than pure noise.
     reroll_gaps() {
-        var w = math.abs(this.len)
-        var gaps = []
+        w = math.abs(this.len)
+        gaps = []
         foreach (var i in range(0, NUM_GAPS)) {
             gaps.append((random.float(0, w), random.float(2, 15)))
         }
@@ -77,29 +77,29 @@ class Laser {
         if (!this.active) {
             return
         }
-        var spos = cam.translate(this.pos.x)
+        spos = cam.translate(this.pos.x)
         if (spos == nil) {
             return
         }
         // normalise so width is positive when firing left (negative len)
-        var x = spos
-        var w = this.len
+        x = spos
+        w = this.len
         if (w < 0) {
             x = spos + w
             w = -w
         }
-        var ix = int(x)
-        var iy = int(this.pos.y)
-        var iw = int(w)
-        var c = this.color
+        ix = int(x)
+        iy = int(this.pos.y)
+        iw = int(w)
+        c = this.color
         // translucent glow above/below, then the bright core
         win.rectangle(ix, iy - 4, iw, 8, colour.fade(c, 0.15))
         win.rectangle(ix, iy - 2, iw, 4, colour.fade(c, 0.3))
         win.rectangle(ix, iy, iw, 2, c)
         // black gaps cut into the glow band, for the crackling-beam look
         foreach (var gap in this.gaps) {
-            var gx = int(gap[0])
-            var gw = int(gap[1])
+            gx = int(gap[0])
+            gw = int(gap[1])
             win.rectangle(ix + gx, iy - 4, gw, 8, colour.BLACK)
         }
     }
@@ -110,7 +110,7 @@ class LaserPool {
         this.lasers = []
         this.colors = [colour.YELLOW, colour.CYAN, colour.GREEN, colour.BLUE]
         this.ci = 0
-        for (var i = 0; i < size; i = i + 1) {
+        for (i = 0; i < size; i = i + 1) {
             this.lasers.append(Laser())
         }
     }

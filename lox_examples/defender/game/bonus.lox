@@ -23,7 +23,7 @@ class Bonus {
         this.life = this.life - 1
     }
     draw(win, cam) {
-        var spos = cam.translate(this.pos.x)
+        spos = cam.translate(this.pos.x)
         if (spos != nil) {
             win.draw_texture(this.tex, spos, this.pos.y, colour.WHITE)
         }
@@ -42,12 +42,12 @@ class BonusDisplay {
 
     // Spawn a floating "250" or "500" that follows the player for a few seconds.
     spawn(value) {
-        var tex = this.tex250
+        tex = this.tex250
         if (value == 500) {
             tex = this.tex500
         }
         // stack multiple simultaneous popups above the ship rather than overlapping
-        var dy = -60 - len(this.bonuses) * 24
+        dy = -60 - len(this.bonuses) * 24
         this.bonuses.append(Bonus(tex, dy, this.life))
     }
 
@@ -77,10 +77,10 @@ class BonusDisplay {
             return
         }
         // swap-with-last removal, as in particle_sys: O(1) per dead popup
-        var i = 0
-        var n = len(this.bonuses)
+        i = 0
+        n = len(this.bonuses)
         while (i < n) {
-            var b = this.bonuses[i]
+            b = this.bonuses[i]
             b.update(player)
             if (b.dead()) {
                 n = n - 1

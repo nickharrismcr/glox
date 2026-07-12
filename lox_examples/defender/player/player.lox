@@ -18,6 +18,11 @@ const HYPERSPACE_MATERIALISE_RATE = 0.7
 const HYPERSPACE_MIN_NPC_DIST = 400   // stay at least this far from any non-human NPC
 const HYPERSPACE_MAX_ATTEMPTS = 20    // give up and use the last candidate after this many tries
 
+// Briefly invisible and ignoring input when the ship first appears, so the
+// SPACE press that starts the game (read by game_controller's intro state)
+// doesn't also register here, in the same frame, as a "reverse" command.
+const SPAWN_WAIT_FRAMES = 30   // 0.5s at 60fps
+
 // The player ship.
 //
 // Controls (classic Defender):
@@ -77,7 +82,7 @@ class Player < Sprite {
         // camera look-ahead: ship sits at screen x == offset, which lerps between
         // leftoffset (facing right -> ship near the left edge, seeing ahead right)
         // and rightoffset (facing left -> ship near the right edge).
-        var width = config.width
+        width = config.width
         this.leftoffset = width * 0.15
         this.rightoffset = width - width * 0.15
         this.offset = this.leftoffset
@@ -91,15 +96,23 @@ class Player < Sprite {
         this.mgr = nil
 
         // death / respawn state
-        this.update_func = state_play
-        this.timer = 0
+        this.update_func = state_spawn_wait
+        this.timer = SPAWN_WAIT_FRAMES
         this.flash = false           // draw the red ship this frame
-        this.visible = true
+        this.visible = false         // hidden until the initial spawn wait elapses
         this.invuln = 0              // frames of respawn invulnerability (drives a blink)
     }
 
     dying() {
         return this.update_func != state_play
+    }
+
+    // True only during the death sequence itself (frozen-flashing, then
+    // exploding) -- unlike dying(), this deliberately excludes hyperspace and
+    // the initial spawn wait, which also swap update_func away from
+    // state_play but shouldn't freeze the rest of the world.
+    in_death_sequence() {
+        return this.update_func == state_die or this.update_func == state_explode
     }
 
     // Struck by a deadly NPC: begin the death sequence, unless we are already
@@ -129,7 +142,7 @@ class Player < Sprite {
             this.speed = this.speed * this.friction
         }
 
-        var vy = 0
+        vy = 0
         if (input.up) { vy = -this.vspeed }
         if (input.down) { vy = this.vspeed }
         this.vy = vy
@@ -139,8 +152,8 @@ class Player < Sprite {
         if (input.fire and this.mgr != nil) {
             // draw_texture is top-left anchored: the nose is at the front edge
             // (front in the facing direction) and the vertical centre of the sprite.
-            var nose_x = this.pos.x + (this.width / 2) + this.dir * (this.width / 2)
-            var nose_y = this.pos.y + (this.height / 2)
+            nose_x = this.pos.x + (this.width / 2) + this.dir * (this.width / 2)
+            nose_y = this.pos.y + (this.height / 2)
             this.mgr.fire_laser(nose_x, nose_y, this.dir, math.abs(this.vx))
         }
     }
@@ -152,7 +165,7 @@ class Player < Sprite {
     }
 
     update(input) {
-        var f = this.update_func
+        f = this.update_func
         f(this, input)
     }
 
@@ -169,7 +182,7 @@ class Player < Sprite {
         if (this.invuln > 0 and (this.invuln / 4) % 2 == 0) {
             return
         }
-        var spos = cam.translate(this.pos.x)
+        spos = cam.translate(this.pos.x)
         if (spos == nil) {
             return
         }
@@ -181,14 +194,14 @@ class Player < Sprite {
 
         // shift the drawn (screen-space only) position by the current lean,
         // forward in the facing direction -- world pos.x is untouched
-        var draw_x = spos + this.lean * this.dir
-        var flip = this.dir == -1     // ship art faces right; mirror it when facing left
-        var white = colour.WHITE
+        draw_x = spos + this.lean * this.dir
+        flip = this.dir == -1     // ship art faces right; mirror it when facing left
+        white = colour.WHITE
 
         if (this.dying()) {
             // death flash: alternate an all-white and an all-red ship. The white
             // silhouette is tinted, so both colours come from one texture.
-            var tint = white
+            tint = white
             if (!this.flash) {
                 tint = colour.RED
             }
@@ -202,10 +215,10 @@ class Player < Sprite {
             // on screen; facing right the tail is at draw_x, facing left it
             // is at draw_x+width. Vertically re-centred on the unscaled frame
             // so shrinking it doesn't drift it toward the top.
-            var flame_w = this.thrust_width * THRUST_SCALE
-            var flame_h = this.thrust_height * THRUST_SCALE
-            var ty = this.pos.y + (this.thrust_height - flame_h) / 2
-            var tx = draw_x - flame_w - THRUST_GAP     // facing right: flame left of ship
+            flame_w = this.thrust_width * THRUST_SCALE
+            flame_h = this.thrust_height * THRUST_SCALE
+            ty = this.pos.y + (this.thrust_height - flame_h) / 2
+            tx = draw_x - flame_w - THRUST_GAP     // facing right: flame left of ship
             if (this.dir == -1) {
                 tx = draw_x + this.width + THRUST_GAP  // facing left: flame right of ship
             }
@@ -216,6 +229,15 @@ class Player < Sprite {
 }
 
 // --- states -------------------------------------------------------------------
+
+// Initial state only (see init()): waits out SPAWN_WAIT_FRAMES, invisible and
+// ignoring input, then hands off to enter_play().
+func state_spawn_wait(e, input) {
+    e.timer = e.timer - 1
+    if (e.timer <= 0) {
+        enter_play(e)
+    }
+}
 
 func state_play(e, input) {
     if (input.hyperspace) {
@@ -229,7 +251,7 @@ func state_play(e, input) {
 
     // ease the visual lean toward full (thrusting) or zero (not thrusting),
     // at the same speed in both directions
-    var lean_target = 0
+    lean_target = 0
     if (e.thrusting) {
         lean_target = e.width
     }
@@ -256,7 +278,7 @@ func state_play(e, input) {
     if (e.pos.y > e.bottom) { e.pos.y = e.bottom }
 
     // slide the camera offset to look ahead in the facing direction
-    var target = e.leftoffset
+    target = e.leftoffset
     if (e.dir == -1) { target = e.rightoffset }
     if (e.offset < target) {
         e.offset = math.min(e.offset + e.offsetspeed, target)
@@ -296,9 +318,9 @@ func state_hyperspace(e, input) {
 // non-human NPC, giving up after HYPERSPACE_MAX_ATTEMPTS and using the last
 // candidate (better than looping forever if the world is crowded).
 func random_hyperspace_pos(e) {
-    var x = random.integer(0, e.worldwidth)
-    var y = random.integer(e.top, e.bottom)
-    var attempts = 0
+    x = random.integer(0, e.worldwidth)
+    y = random.integer(e.top, e.bottom)
+    attempts = 0
     while (attempts < HYPERSPACE_MAX_ATTEMPTS and !far_from_npcs(e, x, y)) {
         x = random.integer(0, e.worldwidth)
         y = random.integer(e.top, e.bottom)
@@ -312,8 +334,8 @@ func far_from_npcs(e, x, y) {
         if (!other.alive or other.type == "human") {
             continue
         }
-        var dx = shortest_dx(x, other.pos.x, e.worldwidth)
-        var dy = y - other.pos.y
+        dx = shortest_dx(x, other.pos.x, e.worldwidth)
+        dy = y - other.pos.y
         if (dx * dx + dy * dy < HYPERSPACE_MIN_NPC_DIST * HYPERSPACE_MIN_NPC_DIST) {
             return false
         }

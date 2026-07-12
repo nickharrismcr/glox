@@ -32,7 +32,7 @@ class Mountain {
             return
         }
         foreach (var i in range(0, EXPLODE_POINTS_PER_FRAME)) {
-            var idx = random.integer(0, len(this.points) - 1)
+            idx = random.integer(0, len(this.points) - 1)
             this.points[idx] = this.points[idx] + random.integer(-EXPLODE_JITTER_MAX, EXPLODE_JITTER_MAX)
             if (random.integer(0, EXPLODE_COLLAPSE_CHANCE) == 0) {
                 this.points[idx] = EXPLODE_COLLAPSE_HEIGHT
@@ -71,14 +71,14 @@ class Mountain {
         return this.points[int(x)%len(this.points)] 
     }    
     draw(win,height,cam,width){
-        var r = 2
+        r = 2
         if (this.exploding) {
             r = 4   // chunkier debris once the terrain starts crumbling
         }
         // draw from screen x start to screen end
         foreach ( var x in range(0,width)){
             if (x%5==0){
-                var h = this.get(x + cam.x)
+                h = this.get(x + cam.x)
                 win.circle_fill(x, height-h, r, this.terrain_colour)
             }
         }

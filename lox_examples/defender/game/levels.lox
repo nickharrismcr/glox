@@ -25,11 +25,11 @@ const LEVELS = [
 
 // Apply level n's overrides onto cfg.
 func apply_level(cfg, n) {
-    var idx = n - 1
+    idx = n - 1
     if (idx >= len(LEVELS)) {
         idx = len(LEVELS) - 1
     }
-    var lvl = LEVELS[idx]
+    lvl = LEVELS[idx]
     cfg.landers_per_wave = lvl.landers_per_wave
     cfg.pods = lvl.pods
     cfg.bombers = lvl.bombers

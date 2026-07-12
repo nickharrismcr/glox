@@ -11,10 +11,10 @@ func entity_box(e) {
 }
 
 func laser_box(l) {
-    var x1 = l.pos.x
-    var x2 = l.pos.x + l.len
+    x1 = l.pos.x
+    x2 = l.pos.x + l.len
     if (x2 < x1) {
-        var t = x1
+        t = x1
         x1 = x2
         x2 = t
     }
