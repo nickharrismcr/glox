@@ -37,7 +37,9 @@ func RegisterAllRenderTextureMethods(o *RenderTextureObject) {
 			if img != nil {
 				rl.UnloadImage(img)
 			}
-			return core.MakeObjectValue(MakeTextureObjectFromTexture2D(o.Data.RenderTexture.Texture), true)
+			to := MakeTextureObjectFromTexture2D(o.Data.RenderTexture.Texture)
+			RegisterAllTextureMethods(to)
+			return core.MakeObjectValue(to, true)
 		},
 	})
 
