@@ -1268,6 +1268,7 @@ print string.split("a,b,c", ",")   // ["a", "b", "c"]</code></pre>
 <tbody>
 <tr><td><code>json.encode(value)</code> / <code>json.encode(value, indent)</code></td><td>Encode a Lox value (<code>nil</code>, <code>boolean</code>, <code>int</code>/<code>float</code>, <code>string</code>, <code>list</code>, <code>dict</code>) to a JSON string. Compact by default; passing <code>indent</code> (a number of spaces) pretty-prints one element per line, matching Python's <code>json.dumps(indent=…)</code> style. Raises <code>JSONEncodeError</code> for values with no JSON representation (functions, classes, instances, …).</td></tr>
 <tr><td><code>json.decode(s)</code></td><td>Parse a JSON string into the corresponding Lox value. Raises <code>JSONDecodeError</code> on malformed input or trailing data.</td></tr>
+<tr><td><code>json.load(path)</code></td><td>Read the file at <code>path</code> and decode its contents as JSON (equivalent to <code>json.decode(os.read_all(path))</code>). Raises <code>JSONDecodeError</code> on malformed input, or <code>RunTimeError</code> if the file cannot be read.</td></tr>
 </tbody>
 </table>
 <pre><code class="lox">import json
@@ -1284,7 +1285,10 @@ try {
     json.decode("{bad json")
 } except JSONDecodeError as e {
     print "invalid: " & e.msg
-}</code></pre>
+}
+
+config = json.load("config.json")
+print config["name"]</code></pre>
 
 <!-- ==================== MODULE: COLOUR ==================== -->
 <h2 class="section" id="mod-colour">colour <span class="pill">module</span></h2>
@@ -1384,6 +1388,7 @@ try {
 <tbody>
 <tr><td><code>os.open(path, mode)</code></td><td>Open a file. Modes: <code>"r"</code> read, <code>"w"</code> write/create, <code>"a"</code> append. Returns a file object.</td></tr>
 <tr><td><code>os.readln(file)</code></td><td>Read one line (without newline). Raises <a href="#exceptions"><code>EOFError</code></a> at end of file.</td></tr>
+<tr><td><code>os.read_all(path)</code></td><td>Read the whole file at <code>path</code> and return its contents as a single string. Takes a path, not an open file object — opens and closes the file itself.</td></tr>
 <tr><td><code>os.write(file, text)</code></td><td>Write a string (handles <code>\n</code> escapes)</td></tr>
 <tr><td><code>os.close(file)</code></td><td>Close a file</td></tr>
 <tr><td><code>os.remove(path)</code></td><td>Delete a file</td></tr>

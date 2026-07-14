@@ -105,6 +105,30 @@ func WriteBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 	return core.MakeBooleanValue(true, false)
 }
 
+// ReadAllBuiltIn reads an entire file at path and returns its contents as a
+// single string. Reports errors via vm.RunTimeError (like every other
+// builtin here) rather than raising an exception directly from within the
+// native call -- see TODO for why the latter corrupts the caller's stack.
+func ReadAllBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+	if argCount != 1 {
+		vm.RunTimeError("Invalid argument count to read_all.")
+		return core.NIL_VALUE
+	}
+	path := vm.Stack(arg_stackptr)
+
+	if path.Type != core.VAL_OBJ || path.Obj.GetType() != core.OBJECT_STRING {
+		vm.RunTimeError("Invalid argument type to read_all.")
+		return core.NIL_VALUE
+	}
+
+	data, err := os.ReadFile(path.AsString().Get())
+	if err != nil {
+		vm.RunTimeError("%v", err)
+		return core.NIL_VALUE
+	}
+	return core.MakeStringObjectValue(string(data), false)
+}
+
 // Encoding functions
 func EncodeRGBABuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	if argCount != 3 {

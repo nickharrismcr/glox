@@ -72,6 +72,7 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "os", "close", builtin.CloseBuiltIn)
 	defineBuiltIn(vm, "os", "readln", builtin.ReadlnBuiltIn)
 	defineBuiltIn(vm, "os", "write", builtin.WriteBuiltIn)
+	defineBuiltIn(vm, "os", "read_all", builtin.ReadAllBuiltIn)
 	defineBuiltIn(vm, "os", "listdir", builtin.ListdirBuiltIn)
 	defineBuiltIn(vm, "os", "isdir", builtin.IsdirBuiltIn)
 	defineBuiltIn(vm, "os", "isfile", builtin.IsfileBuiltIn)

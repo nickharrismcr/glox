@@ -12,6 +12,7 @@
 // - json.encode(value [, indent]) -- Lox value to JSON string, optionally
 //   pretty-printed with `indent` spaces per nesting level
 // - json.decode(s) -- JSON string to Lox value
+// - json.load(path) -- read a file and decode its contents as JSON
 // - json.JSONDecodeError / json.JSONEncodeError -- raised on malformed
 //   input / on values that cannot be represented in JSON
 //
@@ -20,6 +21,7 @@
 //
 
 import re;
+import os;
 
 // -------------------------------------------------------------------------
 // Character constants.
@@ -257,6 +259,10 @@ func decode(s) {
         d.fail("Unexpected trailing data");
     }
     return value;
+}
+
+func load(path) {
+    return decode(os.read_all(path));
 }
 
 func encode_string(s) {
