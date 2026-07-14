@@ -72,7 +72,7 @@ func ReadlnBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value
 
 	rv := fo.ReadLine()
 	if rv.Type == core.VAL_NIL {
-		vm.RaiseExceptionByName("EOFError", "End of file reached")
+		vm.RunTimeErrorNamed("EOFError", "End of file reached")
 		return core.MakeBooleanValue(true, false)
 	}
 	return rv

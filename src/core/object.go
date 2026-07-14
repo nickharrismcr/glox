@@ -69,6 +69,7 @@ type IsNative interface {
 type VMContext interface {
 	Stack(int) Value
 	RunTimeError(string, ...interface{})
+	RunTimeErrorNamed(string, string, ...interface{})
 	Args() []string
 	StartTime() time.Time
 	RaiseExceptionByName(string, string) bool

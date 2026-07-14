@@ -47,7 +47,11 @@ type VM struct {
 	openUpValues   *core.UpvalueObject // head of list
 	args           []string
 	ErrorMsg       string
-	stackTrace     []string
+	// pendingExceptionClass names the exception class the next ErrorMsg
+	// conversion (at the End: label) should raise; empty means "RunTimeError".
+	// Set via RunTimeErrorNamed, cleared by RunTimeError and once consumed.
+	pendingExceptionClass string
+	stackTrace            []string
 	ModuleImport   bool
 	BuiltIns       map[int]core.Value         // global built-in functions
 	BuiltInModules map[int]*core.ModuleObject // global built-in modules - need to be imported before use
@@ -238,6 +242,20 @@ func (vm *VM) FileName() string {
 func (vm *VM) RunTimeError(format string, args ...any) {
 
 	vm.ErrorMsg = fmt.Sprintf(format, args...)
+	vm.pendingExceptionClass = ""
+}
+
+// RunTimeErrorNamed is like RunTimeError but raises a named exception class
+// (e.g. "EOFError") instead of the default "RunTimeError". Like RunTimeError,
+// it only records the error for the dispatch loop's End: label to convert
+// into a real exception once the calling opcode's own bookkeeping has
+// finished -- native builtins must use this (or RunTimeError) rather than
+// calling RaiseExceptionByName directly; see the comment on
+// RaiseExceptionByName for why.
+func (vm *VM) RunTimeErrorNamed(name string, format string, args ...any) {
+
+	vm.ErrorMsg = fmt.Sprintf(format, args...)
+	vm.pendingExceptionClass = name
 }
 
 //------------------------------------------------------------------------------------------
@@ -1772,7 +1790,12 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 	End:
 
 		if vm.ErrorMsg != "" {
-			if !vm.RaiseExceptionByName("RunTimeError", vm.ErrorMsg) {
+			name := "RunTimeError"
+			if vm.pendingExceptionClass != "" {
+				name = vm.pendingExceptionClass
+				vm.pendingExceptionClass = ""
+			}
+			if !vm.RaiseExceptionByName(name, vm.ErrorMsg) {
 				return INTERPRET_RUNTIME_ERROR, core.NIL_VALUE
 			}
 			refreshFrame()
@@ -2143,6 +2166,17 @@ func (vm *VM) isFalsey(v core.Value) bool {
 // - pass the instance to raiseException
 // used for vm raising errors that can be handled in lox e.g EOFError when reading a file
 // RaiseExceptionByName creates and raises an exception with the specified name and message.
+//
+// This is for the VM's own internal use (OP_RAISE, and the dispatch loop's
+// End: label converting a pending ErrorMsg into a real exception) -- it
+// raises synchronously, immediately rewinding vm.stackTop/frame().Ip to the
+// matching handler. Native builtins must NOT call this directly from inside
+// their own Go function body: the code that invoked the builtin (callValue,
+// invokeFromBuiltin) has no idea the stack was already rewound and will still
+// do its own post-call bookkeeping afterward, corrupting whatever local now
+// sits at the handler's stack slot. Builtins should call RunTimeError /
+// RunTimeErrorNamed instead, which defer the raise until after that
+// bookkeeping has run.
 func (vm *VM) RaiseExceptionByName(name string, msg string) bool {
 
 	classVal := vm.BuiltIns[core.InternName(name)]
