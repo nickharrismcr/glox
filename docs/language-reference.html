@@ -182,6 +182,7 @@ footer{color:var(--muted); font-size:13px; border-top:1px solid var(--border); m
       <a href="#mod-itertools">itertools</a>
       <a href="#mod-functools">functools</a>
       <a href="#mod-string">string</a>
+      <a href="#mod-json">json</a>
       <a href="#mod-colour">colour</a>
       <a href="#mod-colour-utils">colour_utils</a>
       <a href="#mod-particle">particle_sys</a>
@@ -189,6 +190,7 @@ footer{color:var(--muted); font-size:13px; border-top:1px solid var(--border); m
       <a href="#mod-plot">plot_grey / plot_rgb</a>
       <div class="group">System Modules</div>
       <a href="#mod-os">os</a>
+      <a href="#mod-re">re</a>
       <a href="#mod-sys">sys</a>
       <a href="#mod-inspect">inspect</a>
       <div class="group">Reference</div>
@@ -1258,6 +1260,32 @@ evens = functools.filter([1, 2, 3, 4], func(x) { return x % 2 == 0 })</code></pr
 <pre><code class="lox">import string
 print string.split("a,b,c", ",")   // ["a", "b", "c"]</code></pre>
 
+<!-- ==================== MODULE: JSON ==================== -->
+<h2 class="section" id="mod-json">json <span class="pill">module</span></h2>
+<p><code>import json</code> — minimal, ASCII-only JSON encoding and decoding, built on <a href="#mod-re"><code>re</code></a>. Not a full JSON implementation: <code>\uXXXX</code>, <code>\b</code> and <code>\f</code> string escapes are not supported and raise <code>JSONDecodeError</code> if encountered.</p>
+<table>
+<thead><tr><th>Function</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>json.encode(value)</code> / <code>json.encode(value, indent)</code></td><td>Encode a Lox value (<code>nil</code>, <code>boolean</code>, <code>int</code>/<code>float</code>, <code>string</code>, <code>list</code>, <code>dict</code>) to a JSON string. Compact by default; passing <code>indent</code> (a number of spaces) pretty-prints one element per line, matching Python's <code>json.dumps(indent=…)</code> style. Raises <code>JSONEncodeError</code> for values with no JSON representation (functions, classes, instances, …).</td></tr>
+<tr><td><code>json.decode(s)</code></td><td>Parse a JSON string into the corresponding Lox value. Raises <code>JSONDecodeError</code> on malformed input or trailing data.</td></tr>
+</tbody>
+</table>
+<pre><code class="lox">import json
+from json import JSONDecodeError
+
+s = json.encode({"name": "bob", "tags": ["a", "b"], "active": true})
+print s                      // {"name":"bob","tags":["a","b"],"active":true}
+print json.encode([1, 2], 2) // pretty-printed: "[" / "  1," / "  2" / "]" on separate lines
+
+v = json.decode(s)
+print v["name"]              // "bob"
+
+try {
+    json.decode("{bad json")
+} except JSONDecodeError as e {
+    print "invalid: " & e.msg
+}</code></pre>
+
 <!-- ==================== MODULE: COLOUR ==================== -->
 <h2 class="section" id="mod-colour">colour <span class="pill">module</span></h2>
 <p><code>import colour</code> — colour constants and manipulation helpers (a Lox-friendly wrapper over the native <a href="#mod-colour-utils">colour_utils</a>). All colours are <code>vec4</code> RGBA (0–255).</p>
@@ -1388,6 +1416,62 @@ try {
 } except EOFError as e {
     os.close(f)
 }</code></pre>
+
+<!-- ==================== MODULE: RE ==================== -->
+<h2 class="section" id="mod-re">re <span class="pill">module</span></h2>
+<p><code>import re</code> — regular expressions, wrapping Go's <code>regexp</code> package (RE2 syntax). RE2 does not support backreferences or lookaround; replacement strings use Go's <code>$1</code> / <code>${name}</code> syntax, not Python's <code>\1</code>.</p>
+<table>
+<thead><tr><th>Function</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>re.search(pattern, s)</code></td><td>Find the first match anywhere in <code>s</code>. Returns a <a href="#mod-re-match">Match</a> or <code>nil</code>.</td></tr>
+<tr><td><code>re.match(pattern, s)</code></td><td>Match anchored at the start of <code>s</code> (need not consume all of <code>s</code>). Returns a Match or <code>nil</code>.</td></tr>
+<tr><td><code>re.fullmatch(pattern, s)</code></td><td>Match the entire string <code>s</code>. Returns a Match or <code>nil</code>.</td></tr>
+<tr><td><code>re.sub(pattern, repl, s [, count])</code></td><td>Replace matches with <code>repl</code> (<code>$1</code> / <code>${name}</code> group refs). <code>count</code> limits the number of replacements (default/0: all).</td></tr>
+<tr><td><code>re.subn(pattern, repl, s [, count])</code></td><td>Like <code>sub()</code>, returns the tuple <code>(new_string, num_subs)</code></td></tr>
+<tr><td><code>re.split(pattern, s [, maxsplit])</code></td><td>Split <code>s</code> on matches, as a list. <code>maxsplit</code> limits the number of splits (default/0: all). Unlike Python, captured group text is not interleaved into the result.</td></tr>
+<tr><td><code>re.findall(pattern, s)</code></td><td>All non-overlapping matches. No groups → list of strings; one group → list of that group's strings; 2+ groups → list of tuples.</td></tr>
+<tr><td><code>re.compile(pattern)</code></td><td>Precompile a pattern into a <a href="#mod-re-pattern">Pattern</a> object exposing the same methods (minus the leading <code>pattern</code> argument), for reuse without recompiling.</td></tr>
+</tbody>
+</table>
+<h3 id="mod-re-match">Match objects</h3>
+<p>Returned by <code>search()</code>, <code>match()</code>, and <code>fullmatch()</code> on a successful match.</p>
+<table>
+<thead><tr><th>Method</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>group()</code> / <code>group(n)</code> / <code>group(name)</code></td><td>Matched text for group <code>0</code> (whole match), group <code>n</code>, or a named group. <code>nil</code> if that group didn't participate.</td></tr>
+<tr><td><code>groups()</code></td><td>Tuple of all groups <code>1..N</code> (<code>nil</code> for groups that didn't participate)</td></tr>
+<tr><td><code>groupdict()</code></td><td>Dict of named groups (<code>(?P&lt;name&gt;...)</code>) to their matched text</td></tr>
+<tr><td><code>start()</code> / <code>start(n)</code></td><td>Start offset of the whole match / group <code>n</code></td></tr>
+<tr><td><code>end()</code> / <code>end(n)</code></td><td>End offset of the whole match / group <code>n</code></td></tr>
+<tr><td><code>span()</code> / <code>span(n)</code></td><td><code>(start, end)</code> tuple for the whole match / group <code>n</code></td></tr>
+</tbody>
+</table>
+<h3 id="mod-re-pattern">Pattern objects</h3>
+<p>Returned by <code>re.compile(pattern)</code>. Compiles once and reuses the same regex across repeated calls.</p>
+<table>
+<thead><tr><th>Method</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>search(s)</code> / <code>match(s)</code> / <code>fullmatch(s)</code></td><td>Same as the module-level functions, using the compiled pattern</td></tr>
+<tr><td><code>sub(repl, s [, count])</code> / <code>subn(repl, s [, count])</code></td><td>Same as the module-level functions</td></tr>
+<tr><td><code>split(s [, maxsplit])</code></td><td>Same as the module-level function</td></tr>
+<tr><td><code>findall(s)</code></td><td>Same as the module-level function</td></tr>
+</tbody>
+</table>
+<pre><code class="lox">import re
+
+m = re.search("(?P&lt;user&gt;\w+)@(?P&lt;host&gt;\w+)\.com", "contact: bob@example.com")
+if (m != nil) {
+    print m.group(0)             // "bob@example.com"
+    print m.group("user")        // "bob"
+    print m.groupdict()["host"]  // "example"
+}
+
+print re.sub("\d+", "#", "a1 b22 c333")   // "a# b# c#"
+print re.split(",\s*", "a, b,  c")        // ["a", "b", "c"]
+print re.findall("\d+", "a1 b22 c333")    // ["1", "22", "333"]
+
+digits = re.compile("\d+")
+print digits.sub("#", "1 2 3")            // "# # #"</code></pre>
 
 <!-- ==================== MODULE: SYS ==================== -->
 <h2 class="section" id="mod-sys">sys <span class="pill">module</span></h2>

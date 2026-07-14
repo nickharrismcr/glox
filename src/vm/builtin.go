@@ -24,6 +24,7 @@ func DefineBuiltIns(vm *VM) {
 	makeBuiltInModule(vm, "os")
 	makeBuiltInModule(vm, "gfx")
 	makeBuiltInModule(vm, "physics")
+	makeBuiltInModule(vm, "re")
 
 	core.Log(core.INFO, "Defining built-in functions")
 
@@ -84,6 +85,16 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "os", "dirname", builtin.DirnameBuiltIn)
 	defineBuiltIn(vm, "os", "basename", builtin.BasenameBuiltIn)
 	defineBuiltIn(vm, "os", "splitext", builtin.SpliTextBuiltIn)
+
+	// re module functions
+	defineBuiltIn(vm, "re", "search", builtin.RegexSearchBuiltIn)
+	defineBuiltIn(vm, "re", "match", builtin.RegexMatchBuiltIn)
+	defineBuiltIn(vm, "re", "fullmatch", builtin.RegexFullmatchBuiltIn)
+	defineBuiltIn(vm, "re", "sub", builtin.RegexSubBuiltIn)
+	defineBuiltIn(vm, "re", "subn", builtin.RegexSubnBuiltIn)
+	defineBuiltIn(vm, "re", "split", builtin.RegexSplitBuiltIn)
+	defineBuiltIn(vm, "re", "findall", builtin.RegexFindallBuiltIn)
+	defineBuiltIn(vm, "re", "compile", builtin.RegexCompileBuiltIn)
 
 	// Color utility functions
 	defineBuiltIn(vm, "colour_utils", "fade", builtin.ColourUtilsFadeBuiltIn)
