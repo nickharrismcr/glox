@@ -8,6 +8,7 @@ type ClassObject struct {
 	Name          StringObject
 	Methods       map[int]Value
 	StaticMethods map[int]Value
+	Statics       map[int]Value
 	Super         *ClassObject
 }
 
@@ -17,6 +18,7 @@ func MakeClassObject(name string) *ClassObject {
 		Name:          MakeStringObject(name),
 		Methods:       map[int]Value{},
 		StaticMethods: map[int]Value{},
+		Statics:       map[int]Value{},
 	}
 }
 

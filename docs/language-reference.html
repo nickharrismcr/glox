@@ -461,7 +461,7 @@ print (func () { return 7 })()        // 7</code></pre>
 
 <!-- ==================== CLASSES ==================== -->
 <h2 class="section" id="classes">Classes</h2>
-<p>Classes support single inheritance, an <code>init</code> constructor, instance methods, <code>this</code>, <code>super</code>, and <code>static</code> methods.</p>
+<p>Classes support single inheritance, an <code>init</code> constructor, instance methods, <code>this</code>, <code>super</code>, and <code>static</code> methods and class variables.</p>
 <pre><code class="lox">class Animal {
     init(name) {
         this.name = name
@@ -490,6 +490,27 @@ print d.speak()   // "Rex barks"</code></pre>
     }
 }
 print MathHelper.square(5)   // 25</code></pre>
+<h3>Class variables</h3>
+<p>A <code>static</code> field (no parentheses following the name) declares a class variable &mdash; a value that lives on the class itself rather than on any instance. It's declared with an optional initializer (defaulting to <code>nil</code> when omitted, like a bare <code>var</code>) and read or written from anywhere with <code>ClassName.field</code>, including from inside the class's own methods. There is no implicit <code>this.field</code> access to a class variable &mdash; use the class name explicitly.</p>
+<p>Reading a class variable through a subclass walks up to the nearest ancestor that has it set, so a base class can track state shared across all its subclasses. Writing through a subclass always creates or updates that subclass's own value, shadowing the ancestor's without changing it.</p>
+<pre><code class="lox">class Animal {
+    static count = 0
+
+    init(name) {
+        this.name = name
+        Animal.count = Animal.count + 1
+    }
+}
+
+class Dog < Animal { }
+
+Animal("Rex")
+Dog("Fido")
+print Animal.count   // 2
+print Dog.count      // 2, shared read via the superclass chain
+
+Dog.count = 99        // shadows Animal.count, only for Dog
+print Animal.count    // still 2</code></pre>
 <h3 id="tostring">toString magic method</h3>
 <p>If a class defines <code>toString()</code> returning a string, it is used whenever an instance is printed or passed to <code>str()</code>.</p>
 <pre><code class="lox">class Point {
@@ -1524,7 +1545,7 @@ print digits.sub("#", "1 2 3")            // "# # #"</code></pre>
 <tr><td><code>const</code></td><td>Immutable variable declaration</td></tr>
 <tr><td><code>func</code> / <code>fun</code></td><td>Function declaration</td></tr>
 <tr><td><code>class</code></td><td>Class declaration</td></tr>
-<tr><td><code>static</code></td><td>Static method modifier</td></tr>
+<tr><td><code>static</code></td><td>Static method / class variable modifier</td></tr>
 <tr><td><code>this</code> / <code>super</code></td><td>Instance self-reference / parent access</td></tr>
 <tr><td><code>return</code></td><td>Return from a function</td></tr>
 <tr><td><code>if</code> / <code>else</code></td><td>Conditional</td></tr>

@@ -1045,6 +1045,13 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			name := constants[idx]
 			vm.defineMethod(int(name.InternedId), true)
 
+		case core.OP_CLASS_VAR:
+			// Define a class variable on a class using name from constants
+			idx := vm.currCode[frame.Ip]
+			frame.Ip++
+			name := constants[idx]
+			vm.defineClassVar(int(name.InternedId))
+
 		case core.OP_NEGATE:
 			// Pop numeric value from stack, negate it, push result (handles int and float)
 
@@ -1148,6 +1155,26 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 						goto End
 					}
 				}
+
+			case core.OBJECT_CLASS:
+				// class variables: walk the superclass chain, first match wins
+				class := v.AsClass()
+				found := false
+				for c := class; c != nil; c = c.Super {
+					if val, ok := c.Statics[stringId]; ok {
+						vm.pop()
+						vm.stack[vm.stackTop] = val
+						vm.stackTop++
+						found = true
+						break
+					}
+				}
+				if !found {
+					name := core.GetStringValue(nv)
+					vm.RunTimeError("Get property '%s' not found.", name)
+					goto End
+				}
+
 			case core.OBJECT_NATIVE:
 				// built-in objects can have constants, so check for that
 				bobj, ok := v.Obj.(core.HasConstants)
@@ -1286,6 +1313,14 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			case core.OBJECT_INSTANCE:
 				ot := v.AsInstance()
 				ot.Fields[stringId] = val
+				tmp := vm.pop()
+				vm.pop()
+				vm.stack[vm.stackTop] = tmp
+				vm.stackTop++
+			case core.OBJECT_CLASS:
+				// class variables: always set on the exact class named, never walk Super
+				class := v.AsClass()
+				class.Statics[stringId] = val
 				tmp := vm.pop()
 				vm.pop()
 				vm.stack[vm.stackTop] = tmp
@@ -2067,6 +2102,16 @@ func (vm *VM) defineMethod(stringID int, isStatic bool) {
 	} else {
 		class.Methods[stringID] = method
 	}
+	vm.pop()
+}
+
+//------------------------------------------------------------------------------------------
+
+// defineClassVar sets a class variable (static field) on a class.
+func (vm *VM) defineClassVar(stringID int) {
+	value := vm.Peek(0)
+	class := vm.Peek(1).AsClass()
+	class.Statics[stringID] = value
 	vm.pop()
 }
 

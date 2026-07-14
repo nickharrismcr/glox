@@ -174,6 +174,8 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		return constantInstruction(c, "OP_METHOD", offset)
 	case core.OP_STATIC_METHOD:
 		return constantInstruction(c, "OP_STATIC_METHOD", offset)
+	case core.OP_CLASS_VAR:
+		return constantInstruction(c, "OP_CLASS_VAR", offset)
 	case core.OP_INVOKE:
 		return invokeInstruction(c, "OP_INVOKE", offset)
 	case core.OP_INHERIT:

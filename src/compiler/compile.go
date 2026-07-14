@@ -785,6 +785,18 @@ func (p *Parser) method() {
 	p.consume(TOKEN_IDENTIFIER, "Expect method name.")
 	constant := p.identifierConstant(p.previous)
 	name := p.previous.Lexeme()
+
+	if static && !p.check(TOKEN_LEFT_PAREN) {
+		if p.match(TOKEN_EQUAL) {
+			p.expression()
+		} else {
+			p.emitByte(core.OP_NIL)
+		}
+		p.consumeStatementEnd("Expect ';' after class variable declaration")
+		p.emitBytes(core.OP_CLASS_VAR, constant)
+		return
+	}
+
 	_type := TYPE_METHOD
 
 	if p.previous.Lexeme() == "init" {
