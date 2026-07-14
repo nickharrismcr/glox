@@ -2,6 +2,10 @@ class Animal {
     static count = 0
     static label
 
+    static describe(name) {
+        return name & " is an animal"
+    }
+
     init(name) {
         this.name = name
         Animal.count = Animal.count + 1
@@ -9,6 +13,12 @@ class Animal {
 }
 
 class Dog < Animal {
+}
+
+class MathHelper {
+    static square(x) {
+        return x * x
+    }
 }
 
 var a = Animal("Rex")
@@ -24,3 +34,6 @@ print Animal.count
 
 Animal.count += 1
 print Animal.count
+
+print Animal.describe("Rex")
+print MathHelper.square(5)
