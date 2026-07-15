@@ -7,19 +7,16 @@ import (
 )
 
 type ListObject struct {
-	Items   []Value
-	Tuple   bool
-	Methods map[int]*BuiltInObject
+	Items []Value
+	Tuple bool
 }
 
 func MakeListObject(items []Value, isTuple bool) *ListObject {
 
-	rv := &ListObject{
+	return &ListObject{
 		Items: items,
 		Tuple: isTuple,
 	}
-	rv.RegisterAllListMethods()
-	return rv
 }
 
 func (ListObject) IsObject() {}
@@ -29,67 +26,72 @@ func (ListObject) GetType() ObjectType {
 	return OBJECT_LIST
 }
 
-func (o *ListObject) RegisterMethod(name string, method *BuiltInObject) {
+// listMethods is a shared, package-level table of list methods keyed by
+// interned name id. Built once (see init below) instead of being rebuilt
+// (map + closures) for every list literal; each method recovers its
+// receiver from the stack slot below the arguments rather than closing
+// over a specific *ListObject.
+var listMethods map[int]*BuiltInObject
 
-	if o.Methods == nil {
-		o.Methods = make(map[int]*BuiltInObject)
+func init() {
+	listMethods = map[int]*BuiltInObject{
+		InternName("append"): {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+				if argCount != 1 {
+					vm.RunTimeError("append takes one argument.")
+					return NIL_VALUE
+				}
+				o := vm.Stack(arg_stackptr - 1).AsList()
+				val := vm.Peek(0)
+				o.Append(val)
+				return NIL_VALUE
+			},
+		},
+		InternName("remove"): {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+				if argCount != 1 {
+					vm.RunTimeError("remove takes one argument.")
+					return NIL_VALUE
+				}
+				o := vm.Stack(arg_stackptr - 1).AsList()
+				val := vm.Peek(0)
+				idx := int(val.Data)
+				o.Remove(idx)
+				return NIL_VALUE
+			},
+		},
+		InternName("find"): {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+				if argCount != 1 {
+					vm.RunTimeError("find takes one argument.")
+					return NIL_VALUE
+				}
+				o := vm.Stack(arg_stackptr - 1).AsList()
+				val := vm.Peek(0)
+				for i, item := range o.Items {
+					if ValuesEqual(item, val, true) {
+						return MakeIntValue(i, false)
+					}
+				}
+				return NIL_VALUE
+			},
+		},
+		InternName("length"): {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+				if argCount != 0 {
+					vm.RunTimeError("length takes no arguments.")
+					return NIL_VALUE
+				}
+				o := vm.Stack(arg_stackptr - 1).AsList()
+				return MakeIntValue(o.GetLength(), false)
+			},
+		},
 	}
-	o.Methods[InternName(name)] = method
 }
 
 func (d *ListObject) GetMethod(stringId int) *BuiltInObject {
 
-	return d.Methods[stringId]
-}
-
-func (o *ListObject) RegisterAllListMethods() {
-	o.RegisterMethod("append", &BuiltInObject{
-		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
-			if argCount != 1 {
-				vm.RunTimeError("append takes one argument.")
-				return NIL_VALUE
-			}
-			val := vm.Peek(0)
-			o.Append(val)
-			return NIL_VALUE
-		},
-	})
-	o.RegisterMethod("remove", &BuiltInObject{
-		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
-			if argCount != 1 {
-				vm.RunTimeError("remove takes one argument.")
-				return NIL_VALUE
-			}
-			val := vm.Peek(0)
-			idx := int(val.Data)
-			o.Remove(idx)
-			return NIL_VALUE
-		},
-	})
-	o.RegisterMethod("find", &BuiltInObject{
-		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
-			if argCount != 1 {
-				vm.RunTimeError("find takes one argument.")
-				return NIL_VALUE
-			}
-			val := vm.Peek(0)
-			for i, item := range o.Items {
-				if ValuesEqual(item, val, true) {
-					return MakeIntValue(i, false)
-				}
-			}
-			return NIL_VALUE
-		},
-	})
-	o.RegisterMethod("length", &BuiltInObject{
-		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
-			if argCount != 0 {
-				vm.RunTimeError("length takes no arguments.")
-				return NIL_VALUE
-			}
-			return MakeIntValue(o.GetLength(), false)
-		},
-	})
+	return listMethods[stringId]
 }
 
 func (o *ListObject) Get() []Value {

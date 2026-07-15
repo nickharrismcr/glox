@@ -35,6 +35,20 @@ Key flags:
 - `-i` / `--instrument` — print timing and instruction count
 - `-n` / `--no-peephole` — skip the peephole optimiser
 
+**Fast build vs. debug build:** the default `bin/glox` has the per-instruction
+debug hook compiled *out* of `run()`'s dispatch loop — its mere presence costs
+~25% on dispatch-bound code (see `docs/performance-roadmap.md`). This means
+`-d`/`--debug`/`--info`/`-i`/`--instrument` produce empty trace output and
+zero instruction counts on the default build; it prints a warning rather than
+failing silently. For real trace/instrument output, build with
+`bash bin/build_debug.sh`, which produces `bin/debug_glox` (hook compiled in)
+and leaves the source tree unmodified afterward. Don't hand-edit the commented
+hook line in `src/vm/vm.go` or `core.HotLoopDebugHookCompiled` in
+`src/core/config.go` — always go through the script so they can't drift out
+of sync, and never `sed -i` either file directly (this repo mixes CRLF and LF
+source files; a non-binary-mode `sed -i` silently flattens CRLF → LF across
+the whole file — use `sed -i -b` if you must).
+
 ## Bytecode cache (.lxc files)
 
 Modules are cached as compiled bytecode in `__loxcache__/*.lxc` directories. Stale `.lxc` files (compiled with an older binary) cause hangs or out-of-memory panics when loaded by a newer binary. **Always run `bin/clear_lxc.sh` after any change that affects `.lxc` serialisation** — this includes changes to `Value`, `Chunk`, `bc_cache.go`, or any other type that is written/read by `src/vm/bc_cache.go`.

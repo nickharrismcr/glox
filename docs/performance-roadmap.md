@@ -203,11 +203,45 @@ Confirm attribution with a profiler, then fix in impact order.
 
 ### Step 0 — Measure
 
-Add `runtime/pprof` CPU and allocation profiling behind a flag, and run the
-worst offenders (`trees`, `method_call`, `binary_trees`, `string_equality`).
-Confirm whether the cost is `mapaccess`/`mapassign` (family A), `mallocgc` /
-`runtime.GC` (family B), or `assertI2T`/itab (family A). The profile sets the
-order of everything below.
+✅ **Done.** `--cpuprofile <file>` and `--memprofile <file>` flags added to
+`main.go`, writing standard `runtime/pprof` CPU and heap-allocation profiles
+(open with `go tool pprof -top -focus="glox/" bin/glox.exe <file>`).
+
+Ran against `trees` and `method_call`. Results confirm family A as the
+dominant *attributable* cost, and family B close behind:
+
+- **`trees`** (map-backed instance fields, deep object graphs):
+  `runtime.mapaccess2_fast64` + `internal/runtime/maps.ctrlGroup.matchFull`
+  together ≈ **32% of cumulative CPU** — this is field reads/writes and
+  method lookup going through `map[int]Value` / `class.Methods[id]`, exactly
+  the Step 2 hypothesis. Allocation profile: **`MakeInstanceObject` is 66.6%
+  of all allocated objects** — every `Tree(...)` call allocates both the
+  struct and an empty `map[int]Value{}` (family B, and the direct driver of
+  family A's map cost).
+- **`method_call`** (field + method access, shallower graph, tighter loop):
+  `mapaccess2_fast64`/`mapassign_fast64`/`ctrlGroup.matchFull` together ≈
+  12% cumulative, `invoke`/`invokeFromClass` ≈ 14% cumulative — smaller
+  relative share than `trees` (no per-call instance allocation here, just
+  repeated field/method lookup), but the same map-backed mechanism.
+  `Value.IsStringObject` also shows up, confirming the family-C note about
+  the `<`/`>` fast-path check.
+
+**Both profiles confirm Step 2 (slot-based instance fields) as the
+highest-value next fix** — map access/assign plus the per-instance map
+allocation it requires are the largest single attributable cost in both
+object-heavy benchmarks.
+
+**Windows profiling caveat:** on this machine, CPU profiles also show
+`runtime.stdcall1`/`notewakeup`/`schedule`/`stoplockedm` at a combined
+~30–34% of cumulative time in `trees`. This is very likely a **sampling
+artifact of `pprof` on Windows** (each sample suspends/resumes the thread via
+`SuspendThread`/`GetThreadContext`, which is itself a `stdcall`), not real
+interpreter cost — confirmed by two A/B wall-clock tests that each isolate a
+candidate cause and find no effect: `GODEBUG=asyncpreemptoff=1` (24.5s vs
+24.3s baseline) and a build with `runtime.LockOSThread()` removed from
+`main.go`'s `init()` (24.9s vs 25.4s baseline) — both within noise. Filter
+these frames out with `-focus="glox/"` when reading a profile on Windows;
+don't chase them as a real cost.
 
 ### Step 1 — Cheap, high-confidence wins
 
@@ -215,11 +249,66 @@ order of everything below.
   5 s interval). The remaining forced GC on top-level return
   ([`src/vm/vm.go`](../src/vm/vm.go), `OP_RETURN` `frameCount == 0`) can still be
   gated to debug-only; measure `binary_trees` / `trees` before and after.
-- **Cache collection and string method tables** package-level (shared, keyed by
-  interned id) instead of rebuilding them per object in
-  `RegisterAllListMethods` / `StringObject.GetMethod`.
-- **Hoist the per-instruction `DebugHook` check** out of the hot loop (build tag
-  or a debug/non-debug loop variant).
+- ✅ **Collection and string method tables cached package-level** (shared,
+  keyed by interned id) instead of rebuilding them per object. `ListObject`,
+  `DictObject`, and `StringObject` no longer carry a per-instance
+  `Methods map[int]*BuiltInObject`; each now has a package-level
+  `listMethods`/`dictMethods`/`stringMethods` map built once in an `init()`,
+  and each method recovers its receiver from `vm.Stack(arg_stackptr - 1)`
+  instead of closing over the specific object.
+
+  Added `benchmarks/lox/collections.lox` (+ `benchmarks/python/collections.py`)
+  to the suite — the loxcraft benchmarks are all class/method-call-heavy and
+  don't exercise this path, so this fix was otherwise invisible to
+  `bin/benchmarks.sh`. Pre/post (3-run average, same machine):
+
+  | phase | before | after | speedup | CPython 3 | after/CPython |
+  |---|---|---|---|---|---|
+  | list | 4.75s | 3.44s | 1.38× | 0.93s | 3.68× |
+  | dict | 7.33s | 5.04s | 1.45× | 1.18s | 4.27× |
+  | string | 2.82s | 2.34s | 1.20× | 0.73s | 3.19× |
+  | **total** | **14.89s** | **10.82s** | **1.38×** | **2.85s** | **3.80×** |
+
+  A purer synthetic (2M iterations of just `var l = []; l.append(i);`, no
+  other work) showed a larger ~2.4× wall-time win and ~5.8× fewer allocated
+  objects (23.9M → 4.1M — was ~12 allocs per list: 4 closures + map + map
+  inserts; now 2: the list struct + the append's backing-array grow). The
+  smaller 1.2–1.45× win in `collections.lox` reflects that real method calls
+  are diluted by loop dispatch, index-assignment, and `len()` overhead not
+  touched by this change — representative of mixed real-world code rather
+  than an allocation-only microbenchmark.
+- ✅ **Per-instruction `DebugHook` check hoisted out of the hot loop —
+  via a source-toggled fast/debug build, not loop duplication.** Measured
+  first: removing the check entirely cost `fib` (call-heavy) only −2.1% but
+  cost `loop` (pure dispatch, no calls/allocation) **−25.0%** (8.51s →
+  6.38s, 3-run averages). The cheap version — swap `vm.DebugHook != nil` for
+  a plain `bool` field — recovered **none** of it (8.53s, statistically
+  identical to baseline): the cost isn't the comparison, it's the mere
+  presence of a branch at that point perturbing the Go compiler's codegen
+  for the dispatch switch. A true fix needs the branch physically absent
+  from the compiled hot path, and full loop duplication (~1000+ lines kept
+  in sync by hand) was too much risk for the payoff.
+
+  Landed a lighter-weight version of the same idea: the hook line in
+  `src/vm/vm.go`'s `run()` is commented out by default (`go build -o
+  bin/glox main.go`, unchanged), and `bin/build_debug.sh` mechanically
+  uncomments that exact line plus flips `core.HotLoopDebugHookCompiled` in
+  `src/core/config.go`, builds `bin/debug_glox`, then restores both files
+  (via a `trap ... EXIT`, so it cleans up even if the build fails) — the
+  working tree is never left modified. `main.go` warns on stderr
+  (`warnIfNoDebugHook`) if `--debug`/`--info`/`--instrument` are used on a
+  build where `HotLoopDebugHookCompiled` is false, instead of silently
+  producing empty trace/zero instruction counts. Confirmed the fast default
+  now gets the full win (`loop.lox`: 6.39s, matching the A/B "removed
+  entirely" measurement) and the debug build's `-i` correctly reports
+  non-zero instruction counts. All 176 `new_tests` still pass on the fast
+  build.
+
+  One sharp edge hit and fixed along the way: `sed -i` on this platform
+  silently flattens CRLF → LF across the *whole* file on any in-place edit
+  (Windows-originated files here use CRLF) — `bin/build_debug.sh` uses
+  `sed -i -b` (binary mode) to avoid this; a plain `sed -i` on a CRLF file
+  in this repo will produce a spurious whole-file diff.
 
 ### Step 2 — The structural win: slot-based instance fields
 
@@ -267,8 +356,11 @@ For each change:
 
 - `go build -o bin/glox main.go`, then `bash bin/clear_lxc.sh` (serialisation-
   adjacent changes invalidate cached `.lxc` files).
-- Re-run the profiler on the same benchmark and confirm the targeted symbol
-  shrank.
+- Re-run the profiler (`bin/glox --cpuprofile out.prof --memprofile out.mprof
+  benchmarks/lox/<name>.lox`, then `go tool pprof -top -focus="glox/"
+  bin/glox.exe out.prof`) on the same benchmark and confirm the targeted
+  symbol shrank. On Windows, always pass `-focus="glox/"` — see the Step 0
+  caveat about scheduler-frame sampling noise.
 - `bin/benchmarks.sh 3` for stable ratios; update the README Performance table.
 - Full correctness gate: `python -m pytest tests/new_tests/ -x -q` (with
   `LOX_PATH` and `bin` on `PATH`). Slot-based fields and shared method tables

@@ -54,6 +54,24 @@ Feature summary — see the **[language reference](docs/language-reference.html)
 
 ---
 
+## Build
+
+```bash
+# Fast build (default) -- what bin/glox is built as; also `bash bin/build.sh`
+go build -o bin/glox main.go
+```
+
+`bin/glox` never compiles in the per-instruction debug hook that `--debug`, `--info`, and `--instrument` need — its mere presence in the hot dispatch loop costs ~25% on dispatch-bound code (see `docs/performance-roadmap.md`). Those flags still run against `bin/glox`, but print a warning and produce empty trace output / zero instruction counts rather than silently doing nothing.
+
+```bash
+# Debug build -- hook compiled in, for real --debug/--info/--instrument output
+bash bin/build_debug.sh
+```
+
+This produces `bin/debug_glox` (and `bin/debug_glox.exe`) and leaves the source tree unmodified afterward — it temporarily uncomments the hook line to build, then restores it.
+
+---
+
 ## Testing
 
 The project has two test suites under `tests/`:
@@ -95,26 +113,27 @@ The legacy runner (`tests/old/test.py`) does exact byte comparison against store
 
 This is a toy project written in go, its expected that it will perform poorly compared to Cpython or Clox. However it has been instructive and fun to implement optimisations to squeeze more performance out of the VM, or lift often used lox functions into the language library in go to get a native performance boost.
 
-Benchmarks run via `bin/benchmarks.sh` (loxcraft suite).  
+Benchmarks run via `bin/benchmarks.sh` (loxcraft suite, plus `collections`, a glox-specific addition exercising list/dict/string built-in methods in a hot loop). All numbers are from `bin/glox`, the default fast build (see **Build** above), measured back-to-back in one sitting (3-run averages) — this is a thermally-constrained laptop with a measured ±10–17% run-to-run noise floor (see `docs/performance-roadmap.md`), so don't read small deltas between benchmarks as significant.
 
 | benchmark | glox | CPython 3 | ratio |
 |---|---|---|---|
 | binary_trees | 18.8s | 7.5s | 2.5× |
-| equality | 52.3s | 20.1s | 2.6× |
-| fib | 20.6s | 9.3s | 2.2× |
-| instantiation | 39.7s | 22.5s | 1.8× |
-| invocation | 14.9s | 9.2s | 1.6× |
-| loop | 8.0s | 3.6s | 2.2× |
-| method_call | 22.4s | 8.9s | 2.5× |
-| properties | 16.2s | 7.5s | 2.2× |
-| string_equality | 36.9s | 17.4s | 2.1× |
-| trees | 24.5s | 6.8s | 3.6× |
-| zoo | 15.1s | 10.4s | 1.5× |
+| collections | 10.5s | 2.9s | 3.6× |
+| equality | 52.3s | 19.9s | 2.6× |
+| fib | 23.3s | 9.1s | 2.6× |
+| instantiation | 41.3s | 21.7s | 1.9× |
+| invocation | 16.5s | 9.5s | 1.7× |
+| loop | 6.3s | 3.7s | 1.7× |
+| method_call | 21.2s | 8.6s | 2.5× |
+| properties | 18.1s | 7.6s | 2.4× |
+| string_equality | 40.6s | 17.2s | 2.4× |
+| trees | 23.9s | 6.7s | 3.6× |
+| zoo | 16.7s | 10.0s | 1.7× |
 | zoo_batch | 10.0s | 10.0s | 1.0× |
 
-glox is currently 1.5–3.6× slower than CPython across the suite.
+glox is currently 1.7–3.6× slower than CPython across the suite.
 
-**Why a C VM (clox) is faster.** The gap is structural, not a handful of missing tricks. clox is a tagged-union value in ~16 bytes with `ip`/stack pointers pinned in registers, raw pointer arithmetic (no bounds checks), object type dispatched by a single tag byte, instance fields and methods in a purpose-built open-addressing hash table, and no garbage collector on the hot path. glox pays Go's costs for the same work: a 32-byte `Value`, an `Object` **interface** (virtual dispatch) for every heap type, **Go `map`-backed** instance fields and method tables, bounds-checked slice indexing, a pointer-bearing value stack that the **garbage collector must scan** (with write barriers), and per-object allocation for collection method tables and bound methods. The allocation-free numeric benchmarks (`fib`, `loop`) sit near the ~2.2× floor that dispatch and copy overhead impose; the object-heavy ones (`trees`, `method_call`) run wider because of the map lookups and GC pressure on top.
+**Why a C VM (clox) is faster.** The gap is structural, not a handful of missing tricks. clox is a tagged-union value in ~16 bytes with `ip`/stack pointers pinned in registers, raw pointer arithmetic (no bounds checks), object type dispatched by a single tag byte, instance fields and methods in a purpose-built open-addressing hash table, and no garbage collector on the hot path. glox pays Go's costs for the same work: a 32-byte `Value`, an `Object` **interface** (virtual dispatch) for every heap type, **Go `map`-backed** instance fields and method tables, bounds-checked slice indexing, a pointer-bearing value stack that the **garbage collector must scan** (with write barriers), and per-call allocation for bound methods. `loop` is the closest of the numeric benchmarks to CPython (1.7×) after removing the per-instruction debug hook from the default build's dispatch loop — its mere presence cost ~25% there even as a near-always-false branch. `fib` stays further out because call/return overhead (frame setup, `refreshFrame`) dominates it more than dispatch does. The object-heavy benchmarks (`trees`, `method_call`) run widest because of `map`-backed instance fields and method lookup on top of that, and GC pressure from the per-object allocation they cause — see `docs/performance-roadmap.md` for the profiled breakdown and the planned slot-based-fields fix.
 
 A prioritised plan to close the gap — profiling steps, cheap wins, and the larger structural changes (slot-based instance fields, cached method tables) — is in **[docs/performance-roadmap.md](docs/performance-roadmap.md)**.
 

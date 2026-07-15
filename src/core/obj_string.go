@@ -31,29 +31,33 @@ func (StringObject) GetType() ObjectType {
 	return OBJECT_STRING
 }
 
-func (s StringObject) GetMethod(stringId int) *BuiltInObject {
+// stringMethods is a shared, package-level table of string methods keyed by
+// interned name id, built once instead of allocating a fresh closure on
+// every method lookup. Each method recovers its receiver from the stack
+// slot below the arguments rather than closing over a specific StringObject.
+var stringMethods map[int]*BuiltInObject
 
-	switch stringId {
-
-	case REPLACE:
-		return &BuiltInObject{
+func init() {
+	stringMethods = map[int]*BuiltInObject{
+		REPLACE: {
 			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 2 {
 					vm.RunTimeError("replace takes two arguments.")
 					return NIL_VALUE
 				}
+				s := vm.Stack(arg_stackptr - 1).AsString()
 				fromVal := vm.Peek(1)
 				toVal := vm.Peek(0)
 				return s.Replace(fromVal, toVal)
 			},
-		}
-	case JOIN:
-		return &BuiltInObject{
+		},
+		JOIN: {
 			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
 				if argCount != 1 || !vm.Peek(0).IsListObject() {
 					vm.RunTimeError("Join takes one list argument.")
 					return NIL_VALUE
 				}
+				s := vm.Stack(arg_stackptr - 1).AsString()
 				lstVal := vm.Peek(0)
 				lst := lstVal.AsList()
 				v, err := lst.Join(s.Get())
@@ -63,10 +67,13 @@ func (s StringObject) GetMethod(stringId int) *BuiltInObject {
 				}
 				return v
 			},
-		}
-	default:
-		return nil
+		},
 	}
+}
+
+func (s StringObject) GetMethod(stringId int) *BuiltInObject {
+
+	return stringMethods[stringId]
 }
 
 func (s StringObject) Get() string {

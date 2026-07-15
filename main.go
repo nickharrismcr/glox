@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"runtime/pprof"
 	"strings"
 	"time"
 )
@@ -27,6 +28,8 @@ func init() {
 type Options struct {
 	doRepl      bool
 	printTokens bool
+	cpuProfile  string
+	memProfile  string
 	args        []string
 }
 
@@ -53,7 +56,9 @@ func parseArgs() *Options {
 		usage()
 	}
 	opts := &Options{args: []string{}}
-	for _, arg := range os.Args[1:] {
+	rawArgs := os.Args[1:]
+	for i := 0; i < len(rawArgs); i++ {
+		arg := rawArgs[i]
 		if arg[0] == '-' {
 			switch arg {
 			case "--info":
@@ -79,6 +84,18 @@ func parseArgs() *Options {
 				core.DebugInstrument = true
 			case "--no-peephole", "-n":
 				core.DebugSkipPeephole = true
+			case "--cpuprofile":
+				i++
+				if i >= len(rawArgs) {
+					usage()
+				}
+				opts.cpuProfile = rawArgs[i]
+			case "--memprofile":
+				i++
+				if i >= len(rawArgs) {
+					usage()
+				}
+				opts.memProfile = rawArgs[i]
 			default:
 				usage()
 			}
@@ -157,13 +174,34 @@ func repl(vmInstance *vm.VM) {
 	}
 }
 
+// warnIfNoDebugHook warns on stderr when a debug/instrument flag is used
+// against a fast build that has the hot-loop debug hook compiled out (see
+// core.HotLoopDebugHookCompiled and bin/build_debug.sh). Non-fatal: the
+// script still runs, just without the requested output.
+func warnIfNoDebugHook(flag, consequence string) {
+	if core.HotLoopDebugHookCompiled {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "warning: this is a fast (non-debug) build -- the per-instruction hook that %s needs is compiled out, so %s. Rebuild with bin/build_debug.sh for a debug-capable binary.\n", flag, consequence)
+}
+
 func runFile(opts *Options) {
 	args := opts.args
+
+	// os.Exit skips deferred calls, so CPU profiling must be stopped and
+	// flushed explicitly on every exit path once started.
+	exit := func(code int) {
+		if opts.cpuProfile != "" {
+			pprof.StopCPUProfile()
+		}
+		os.Exit(code)
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println(r)
 			debug.PrintStack()
-			os.Exit(1)
+			exit(1)
 		}
 	}()
 
@@ -175,9 +213,22 @@ func runFile(opts *Options) {
 	}
 	source := string(bytes)
 
+	if opts.cpuProfile != "" {
+		f, err := os.Create(opts.cpuProfile)
+		if err != nil {
+			fmt.Printf("Could not create CPU profile %s : %s", opts.cpuProfile, err)
+			os.Exit(1)
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			fmt.Printf("Could not start CPU profile: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	if opts.printTokens {
 		compiler.PrintTokens(source)
-		os.Exit(0)
+		exit(0)
 	}
 
 	defineBuiltins := !core.DebugSkipBuiltins
@@ -185,20 +236,40 @@ func runFile(opts *Options) {
 	vmInstance.SetArgs(args)
 
 	if core.DebugTraceExecution {
+		warnIfNoDebugHook("--debug/--info", "trace output will be empty")
 		vmInstance.DebugHook = dbg.TraceHook
 	}
 	if core.DebugInstrument {
+		warnIfNoDebugHook("--instrument", "instruction counts will be zero")
 		vmInstance.DebugHook = dbg.InstrumentHook
 	}
 	status, result := vmInstance.Interpret(source, "__main__")
 	if status == vm.INTERPRET_COMPILE_ERROR {
-		os.Exit(65)
+		exit(65)
 	}
 	if status == vm.INTERPRET_RUNTIME_ERROR {
 		fmt.Println(vmInstance.ErrorMsg)
 		vmInstance.PrintStackTrace()
-		os.Exit(70)
+		exit(70)
 	}
+
+	if opts.cpuProfile != "" {
+		pprof.StopCPUProfile()
+	}
+	if opts.memProfile != "" {
+		f, err := os.Create(opts.memProfile)
+		if err != nil {
+			fmt.Printf("Could not create memory profile %s : %s", opts.memProfile, err)
+			os.Exit(1)
+		}
+		defer f.Close()
+		runtime.GC()
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			fmt.Printf("Could not write memory profile: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	fmt.Println(result)
 	if core.DebugInstrument {
 		endTime := time.Now()
@@ -222,6 +293,9 @@ Options:
   --repl                Start interactive REPL
   --force-compile, -f   Force module recompilation
   --print-tokens, -p    Print tokens and exit
-  --instrument, -i      Enable instruction counting and timing`)
+  --instrument, -i      Enable instruction counting and timing
+  --no-peephole, -n     Skip the peephole optimiser
+  --cpuprofile <file>   Write a CPU profile to <file>
+  --memprofile <file>   Write a heap profile to <file> after execution`)
 	os.Exit(1)
 }

@@ -435,9 +435,16 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 	for {
 		inst := vm.currCode[frame.Ip]
-		if vm.DebugHook != nil {
-			vm.DebugHook(vm, core.DebugEventOpcode, inst)
-		}
+		// Per-instruction debug hook: commented out by default because its
+		// mere presence here (not the check itself -- a bool flag in place
+		// of the nil check made no difference) costs ~25% on dispatch-bound
+		// code by disturbing the compiler's codegen for this switch (see
+		// docs/performance-roadmap.md Step 1). bin/build_debug.sh uncomments
+		// this exact line to produce a debug-capable binary and flips
+		// core.HotLoopDebugHookCompiled to match -- don't hand-edit either
+		// one without the other, and always go through the script so they
+		// can't drift out of sync.
+		// if vm.DebugHook != nil { vm.DebugHook(vm, core.DebugEventOpcode, inst) }
 
 		frame.Ip++
 		switch inst {

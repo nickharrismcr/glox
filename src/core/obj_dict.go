@@ -7,17 +7,14 @@ import (
 )
 
 type DictObject struct {
-	Items   map[int]Value
-	Methods map[int]*BuiltInObject
+	Items map[int]Value
 }
 
 func MakeDictObject(items map[int]Value) *DictObject {
 
-	rv := &DictObject{
+	return &DictObject{
 		Items: items,
 	}
-	rv.RegisterAllDictMethods()
-	return rv
 }
 
 func MakeEmptyDictObject() *DictObject {
@@ -38,74 +35,75 @@ func (o *DictObject) String() string {
 	return s[:len(s)-1] + " })"
 }
 
-func (o *DictObject) RegisterMethod(name string, method *BuiltInObject) {
+// dictMethods is a shared, package-level table of dict methods keyed by
+// interned name id, built once instead of being rebuilt (map + closures)
+// for every dict literal. Each method recovers its receiver from the stack
+// slot below the arguments rather than closing over a specific *DictObject.
+var dictMethods map[int]*BuiltInObject
 
-	if o.Methods == nil {
-		o.Methods = make(map[int]*BuiltInObject)
+func init() {
+	dictMethods = map[int]*BuiltInObject{
+		InternName("get"): {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+				if argCount != 2 {
+					vm.RunTimeError("Invalid argument count to get.")
+					return NIL_VALUE
+				}
+				d := vm.Stack(arg_stackptr - 1).AsDict()
+				key := vm.Stack(arg_stackptr)
+				def := vm.Stack(arg_stackptr + 1)
+
+				if key.IsStringObject() {
+					rv, error := d.Get(key.AsString().Get())
+					if error != nil {
+						return def
+					}
+					return rv
+				}
+
+				vm.RunTimeError("Key argument to get must be a string")
+				return NIL_VALUE
+			},
+		},
+		InternName("keys"): {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+
+				if argCount != 0 {
+					vm.RunTimeError("Invalid argument count to keys.")
+					return NIL_VALUE
+				}
+				d := vm.Stack(arg_stackptr - 1).AsDict()
+				return d.Keys()
+			},
+		},
+		InternName("remove"): {
+			Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
+				if argCount != 1 {
+					vm.RunTimeError("Invalid argument count to remove.")
+					return NIL_VALUE
+				}
+				d := vm.Stack(arg_stackptr - 1).AsDict()
+				key := vm.Stack(arg_stackptr)
+
+				if key.IsStringObject() {
+					rv, error := d.Get(key.AsString().Get())
+					if error != nil {
+						return NIL_VALUE
+					}
+					delete(d.Items, InternName(key.AsString().Get()))
+					return rv
+				}
+
+				vm.RunTimeError("Argument to remove must be key.")
+				return NIL_VALUE
+			},
+		},
 	}
-	o.Methods[InternName(name)] = method
 }
 
 func (d *DictObject) GetMethod(stringId int) *BuiltInObject {
 
-	return d.Methods[stringId]
-}
-
-func (d *DictObject) RegisterAllDictMethods() {
-
-	d.RegisterMethod("get", &BuiltInObject{
-		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
-			if argCount != 2 {
-				vm.RunTimeError("Invalid argument count to get.")
-				return NIL_VALUE
-			}
-			key := vm.Stack(arg_stackptr)
-			def := vm.Stack(arg_stackptr + 1)
-
-			if key.IsStringObject() {
-				rv, error := d.Get(key.AsString().Get())
-				if error != nil {
-					return def
-				}
-				return rv
-			}
-
-			vm.RunTimeError("Key argument to get must be a string")
-			return NIL_VALUE
-		},
-	})
-	d.RegisterMethod("keys", &BuiltInObject{
-		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
-
-			if argCount != 0 {
-				vm.RunTimeError("Invalid argument count to keys.")
-				return NIL_VALUE
-			}
-			return d.Keys()
-		},
-	})
-	d.RegisterMethod("remove", &BuiltInObject{
-		Function: func(argCount int, arg_stackptr int, vm VMContext) Value {
-			if argCount != 1 {
-				vm.RunTimeError("Invalid argument count to remove.")
-				return NIL_VALUE
-			}
-			key := vm.Stack(arg_stackptr)
-
-			if key.IsStringObject() {
-				rv, error := d.Get(key.AsString().Get())
-				if error != nil {
-					return NIL_VALUE
-				}
-				delete(d.Items, InternName(key.AsString().Get()))
-				return rv
-			}
-
-			vm.RunTimeError("Argument to remove must be key.")
-			return NIL_VALUE
-		},
-	})
-
+	return dictMethods[stringId]
 }
 
 func (o *DictObject) Set(key string, value Value) {
