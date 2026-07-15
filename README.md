@@ -43,14 +43,15 @@ Feature summary — see the **[language reference](docs/language-reference.html)
 - **`float_array`** — fast native 2D float grid.
 
 **Classes**
-- **`toString()`** magic method, **static methods**, and the **iterator protocol** (`__iter__` / `__next__`).
+- **`toString()`** magic method, **static methods**, **class variables** (`static x = expr;`, shared across instances, inherited via the superclass chain on read), and the **iterator protocol** (`__iter__` / `__next__`).
 
 **Native & graphics**
 - **Raylib `window`** — 2D/3D primitives, camera, textures, shaders, images, keyboard input.
 - **Batch rendering** — `batch()` draws thousands of primitives per call; `batch_instanced()` draws 100k+ instanced textured cubes.
 - **`physics_world`** — native 3D rigid-body sphere simulation (gravity, boundary bounce, collisions in Go).
-- **File & directory I/O** via `os`; PNG output; RGB encode/decode.
-- **Built-in modules** — `math`, `random`, `colour`, `string`, `itertools`, `functools`, `particle_sys`, `sys`, `os`, `inspect`, `gfx` (graphics constructors: `window`, `batch`, `texture`, `shader`, `camera`, …), `physics` (`physics_world`). Import with `from gfx import *` or `import gfx`.
+- **File & directory I/O** via `os`; `os.read_all(path)` for one-shot whole-file reads; PNG output; RGB encode/decode.
+- **Regex** via `re` (Go RE2-backed `search`/`match`/`fullmatch`/`sub`/`subn`/`split`/`findall`/`compile`) and a minimal **`json`** module (`encode`/`decode`/`load`) built on it.
+- **Built-in modules** — `math`, `random`, `colour`, `string`, `itertools`, `functools`, `particle_sys`, `sprite`, `plot_grey`, `plot_rgb`, `re`, `json`, `sys`, `os`, `inspect`, `gfx` (graphics constructors: `window`, `batch`, `texture`, `shader`, `camera`, …), `physics` (`physics_world`), `colour_utils` (native colour math backing `colour`). Import with `from gfx import *` or `import gfx`.
 
 ---
 
