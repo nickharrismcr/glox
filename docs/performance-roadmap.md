@@ -320,6 +320,57 @@ dynamic/unknown fields. This targets the likely top contributor to
 `trees`/`properties`/`method_call`. Optionally add a one-entry inline cache
 (class-id → slot/method) on `OP_GET_PROPERTY` / `OP_INVOKE`.
 
+**⚠️ Attempted and reverted — a runtime-resolved slot table alone is not
+enough; needs the compile-time-baked opcodes above, not a shortcut around
+them.** Built and benchmarked a scoped-down variant: `ClassObject` gained
+`FieldSlots`/`MethodSlots map[int]int` (name id → slot) built lazily/live
+from the object's actual runtime `.Class` pointer, `InstanceObject.Fields`
+became a lazily-grown `[]Value` (+ `FieldsSet []bool`, mirroring
+`Environment.Defined`), `ClassObject.Methods` became a slot-indexed
+`MethodTable []Value`. Deliberately **no compiler changes** — chosen to
+avoid the risk of baking slot numbers into bytecode operands across
+independently-compiled, inheriting classes (this compiler has no static
+class-shape tracking at all today). All 178 tests passed (176 + 2 new
+covering unset-field and cross-inheritance dynamic-field-discovery cases).
+
+Profiling confirmed the hoped-for mechanism: on `trees.lox`,
+`mapaccess2_fast64`+bucket-matching cumulative share dropped from ~32% to
+~14%, and `MakeInstanceObject`'s share of all allocations dropped from
+66.6% to ~44% (a follow-up fix — grow an instance's field storage to the
+class's *current* known slot count on first need, not one slot at a time —
+cut total allocations by a further ~29%). **But a clean 3-run wall-clock
+comparison against the pre-change baseline showed a net regression on the
+benchmarks this step targets**, and only a win on the one it doesn't:
+
+| benchmark | before | after | delta |
+|---|---|---|---|
+| trees | 23.80s | 24.52s | **+3.0%** |
+| properties | 18.28s | 21.21s | **+16.0%** |
+| method_call | 21.23s | 23.18s | **+9.2%** |
+| instantiation | 40.52s | 33.96s | **−16.2%** |
+
+Root cause: this variant still does a map lookup on every access
+(`class.FieldSlots[nameId]`/`class.MethodSlots[nameId]`), just on a smaller,
+class-shared map instead of a per-instance one — plus the added bounds
+check and slice index on top. It only removes *allocation* cost, not
+*lookup* cost. `trees`/`properties`/`method_call` are access-dominated
+(build a handful of objects once, then hit the same fields/methods millions
+of times in a loop) — the residual per-access overhead there outweighs the
+one-time allocation savings. `instantiation.lox` is allocation-dominated
+(many objects created, not heavily re-accessed afterward), which is exactly
+where the allocation win shows through cleanly.
+
+**Conclusion:** the compile-time-baked design originally described above —
+`OP_GET_FIELD_SLOT`/`OP_SET_FIELD_SLOT` with the slot number as a literal
+bytecode operand, or an inline cache that skips the map lookup entirely on
+a monomorphic hit — is not an optional refinement of this idea, it's
+load-bearing. A runtime-resolved slot table by itself is a net loss on
+access-heavy OO code and shouldn't be reattempted as a standalone step;
+either build it together with the inline cache / compile-time slots from
+the start, or don't build it. Reverted (`git restore
+src/core/obj_class.go src/core/obj_instance.go src/vm/vm.go`); no code from
+this attempt is in the tree.
+
 ### Step 3 — Dispatch & object-model micro-opts
 
 - ✅ **Object-subtype tag byte (Option 1 above) — done.** `ObjType` byte added to
