@@ -149,14 +149,10 @@ func ValuesEqual(a, b Value, typesMustMatch bool) bool {
 
 		switch b.Type {
 		case VAL_OBJ:
-			av := a.Obj
-			bv := b.Obj
-			avt := av.GetType()
-			bvt := bv.GetType()
-			if avt != bvt {
+			if a.ObjType != b.ObjType {
 				return false
 			}
-			return av.String() == bv.String()
+			return a.Obj.String() == b.Obj.String()
 		default:
 			return false
 		}
@@ -227,7 +223,7 @@ func (v Value) AsInt() int {
 func IsString(v Value) bool {
 	switch v.Type {
 	case VAL_OBJ:
-		return v.Obj.GetType() == OBJECT_STRING
+		return v.ObjType == OBJECT_STRING
 	}
 	return false
 }
@@ -314,7 +310,7 @@ func (v Value) Immutable() bool {
 
 func (v Value) IsStringObject() bool {
 
-	return v.IsObj() && v.Obj.GetType() == OBJECT_STRING
+	return v.IsObj() && v.ObjType == OBJECT_STRING
 }
 
 func (v Value) AsString() StringObject {
@@ -378,7 +374,7 @@ func (v Value) AsListIterator() *ListIteratorObject {
 
 func (v Value) IsListObject() bool {
 
-	return v.IsObj() && v.Obj.GetType() == OBJECT_LIST
+	return v.IsObj() && v.ObjType == OBJECT_LIST
 }
 
 // func (v Value) isDictObject() bool {
@@ -394,27 +390,27 @@ func (v Value) IsListObject() bool {
 */
 func (v Value) IsBuiltInObject() bool {
 
-	return v.IsObj() && v.Obj.GetType() == OBJECT_NATIVE
+	return v.IsObj() && v.ObjType == OBJECT_NATIVE
 }
 
 func (v Value) IsClosureObject() bool {
 
-	return v.IsObj() && v.Obj.GetType() == OBJECT_CLOSURE
+	return v.IsObj() && v.ObjType == OBJECT_CLOSURE
 }
 
 func (v Value) IsClassObject() bool {
 
-	return v.IsObj() && v.Obj.GetType() == OBJECT_CLASS
+	return v.IsObj() && v.ObjType == OBJECT_CLASS
 }
 
 func (v Value) IsInstanceObject() bool {
 
-	return v.IsObj() && v.Obj.GetType() == OBJECT_INSTANCE
+	return v.IsObj() && v.ObjType == OBJECT_INSTANCE
 }
 
 func (v Value) IsBoundMethodObject() bool {
 
-	return v.IsObj() && v.Obj.GetType() == OBJECT_BOUNDMETHOD
+	return v.IsObj() && v.ObjType == OBJECT_BOUNDMETHOD
 }
 
 func (v *Value) Serialise(buffer *bytes.Buffer) {

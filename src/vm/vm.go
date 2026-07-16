@@ -470,17 +470,17 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			v2 := vm.pop()
 			v1 := vm.pop()
 
-			if v1.IsStringObject() && v2.IsStringObject() {
-				vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsString().Get() > v2.AsString().Get(), false)
+			if v1.IsNumber() && v2.IsNumber() {
+				vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsFloat() > v2.AsFloat(), false)
 				vm.stackTop++
 				continue
 			}
 
-			if !v1.IsNumber() || !v2.IsNumber() {
+			if !v1.IsStringObject() || !v2.IsStringObject() {
 				vm.RunTimeError("Operands must be numbers")
 				goto End
 			}
-			vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsFloat() > v2.AsFloat(), false)
+			vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsString().Get() > v2.AsString().Get(), false)
 			vm.stackTop++
 
 		case core.OP_LESS:
@@ -489,17 +489,17 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 			v2 := vm.pop()
 			v1 := vm.pop()
 
-			if v1.IsStringObject() && v2.IsStringObject() {
-				vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsString().Get() < v2.AsString().Get(), false)
+			if v1.IsNumber() && v2.IsNumber() {
+				vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsFloat() < v2.AsFloat(), false)
 				vm.stackTop++
 				continue
 			}
 
-			if !v1.IsNumber() || !v2.IsNumber() {
+			if !v1.IsStringObject() || !v2.IsStringObject() {
 				vm.RunTimeError("Operands must be numbers")
 				goto End
 			}
-			vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsFloat() < v2.AsFloat(), false)
+			vm.stack[vm.stackTop] = core.MakeBooleanValue(v1.AsString().Get() < v2.AsString().Get(), false)
 			vm.stackTop++
 
 		case core.OP_INC_LOCAL:

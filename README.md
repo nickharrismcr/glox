@@ -118,18 +118,18 @@ Benchmarks run via `bin/benchmarks.sh` (loxcraft suite, plus `collections`, a gl
 
 | benchmark | glox | CPython 3 | ratio |
 |---|---|---|---|
-| binary_trees | 18.8s | 7.5s | 2.5× |
+| binary_trees | 18.7s | 7.3s | 2.6× |
 | collections | 10.5s | 2.9s | 3.6× |
-| equality | 52.3s | 19.9s | 2.6× |
-| fib | 23.3s | 9.1s | 2.6× |
-| instantiation | 41.3s | 21.7s | 1.9× |
-| invocation | 16.5s | 9.5s | 1.7× |
-| loop | 6.3s | 3.7s | 1.7× |
-| method_call | 21.2s | 8.6s | 2.5× |
-| properties | 18.1s | 7.6s | 2.4× |
-| string_equality | 40.6s | 17.2s | 2.4× |
+| equality | 52.2s | 20.8s | 2.5× |
+| fib | 21.1s | 9.1s | 2.3× |
+| instantiation | 39.7s | 21.0s | 1.9× |
+| invocation | 16.6s | 9.2s | 1.8× |
+| loop | 6.0s | 3.5s | 1.7× |
+| method_call | 20.8s | 8.5s | 2.4× |
+| properties | 18.2s | 7.5s | 2.4× |
+| string_equality | 40.3s | 17.2s | 2.4× |
 | trees | 23.9s | 6.7s | 3.6× |
-| zoo | 16.7s | 10.0s | 1.7× |
+| zoo | 16.8s | 9.6s | 1.7× |
 | zoo_batch | 10.0s | 10.0s | 1.0× |
 
 glox is currently 1.7–3.6× slower than CPython across the suite.
@@ -151,5 +151,6 @@ Optimisations in place:
 - Frame context (`frame`, `function`, `chunk`, `constants`, `currCode`) hoisted before the dispatch loop and refreshed only at opcodes that change the active frame (`OP_CALL`, `OP_INVOKE`, `OP_SUPER_INVOKE`, `OP_RETURN`, `OP_RAISE`, toString path).
 - `readShort()` and `readByte()` inlined at all call sites in the dispatch loop, eliminating indirect frame fetches on every jump and loop opcode.
 - GC interval check uses a bitmask (`& 0xFFFF`) rather than modulo, avoiding a multiply-high sequence on every opcode.
+- `Value` carries an `ObjType` tag byte alongside `Obj`, so object-subtype checks (`IsStringObject`, `IsListObject`, etc.) and `ValuesEqual`'s object-equality branch compare a byte instead of calling the `Object.GetType()` interface method. `OP_LESS`/`OP_GREATER` also check `IsNumber()` before falling back to the string-comparison path, so the common numeric case doesn't pay for a string check it doesn't need. ~18% faster on an isolated tight-loop numeric-comparison microbenchmark; within run-to-run noise on the full benchmark suite, where dispatch/call overhead dominates.
 
  
