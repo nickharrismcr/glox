@@ -268,9 +268,26 @@ func NewScanner(source string) *Scanner {
 }
 func (s *Scanner) NextToken() Token {
 
+	// The final entry in Tokens is always TOKEN_EOF (see NewScanner). Once
+	// reached, keep returning it instead of advancing past the end of the
+	// slice -- callers such as parsePrecedence() call advance() unconditionally,
+	// so TokenIdx can otherwise be driven past the last valid index.
+	if s.TokenIdx >= s.Tokens.Size()-1 {
+		return s.Tokens.At(s.Tokens.Size() - 1)
+	}
 	token := s.Tokens.At(s.TokenIdx)
 	s.TokenIdx++
 	return token
+}
+
+// SkipToEnd abandons the remaining token stream and jumps straight to the
+// trailing TOKEN_EOF. Used by the parser to bail out of a malformed parse
+// (e.g. runaway expression nesting) without consuming the remaining tokens
+// one at a time or risking further recursion into them.
+func (s *Scanner) SkipToEnd() Token {
+
+	s.TokenIdx = s.Tokens.Size() - 1
+	return s.Tokens.At(s.Tokens.Size() - 1)
 }
 
 func (s *Scanner) ScanToken() Token {

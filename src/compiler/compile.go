@@ -143,7 +143,23 @@ type Parser struct {
 	globals             map[string]int  // name → compiler-assigned slot index
 	globalsDeclared     map[string]bool // name → true if defined via var/const/implicit declaration (not just referenced)
 	globalCount         int
+	exprDepth           int // current parsePrecedence() recursion depth; guards against runaway nesting blowing the Go stack
+	stmtDepth           int // current statement() recursion depth; guards against runaway nested blocks/if/while blowing the Go stack
 }
+
+// maxExprDepth caps expression-nesting recursion (parens, unary chains, list/dict
+// literals, calls, ...) in parsePrecedence(). Go's goroutine stack survived over
+// 200,000 levels of nested parens in testing but hit an unrecoverable
+// "fatal error: stack overflow" (which recover() cannot catch) around 3,000,000.
+// This limit is generous for any real script while staying far below that cliff.
+const maxExprDepth = 1000
+
+// maxStmtDepth is the statement()-recursion analogue of maxExprDepth, guarding
+// against runaway nested blocks/if/while/for bodies (statement -> declaration ->
+// blockBody -> block -> statement -> ...). That cycle survived 3,000,000 levels
+// of nested blocks in testing but hit the same unrecoverable stack overflow
+// around 15,000,000.
+const maxStmtDepth = 1000
 
 // NewParser creates and initializes a new parser instance for parsing Lox source code.
 // The parser maintains state for current and previous tokens, error handling flags,
@@ -413,6 +429,14 @@ func (p *Parser) declaration() {
 // exception handling, loops, conditionals, and expression statements.
 // This is the main dispatch function for parsing executable statements within blocks.
 func (p *Parser) statement() {
+
+	p.stmtDepth++
+	defer func() { p.stmtDepth-- }()
+	if p.stmtDepth > maxStmtDepth {
+		p.error("Statement nested too deeply")
+		p.current = p.scn.SkipToEnd()
+		return
+	}
 
 	if p.match(TOKEN_PRINT) {
 		p.printStatement()
@@ -1249,6 +1273,12 @@ func (p *Parser) printStatement() {
 // This allows the parser to continue and report multiple errors in one pass.
 func (p *Parser) synchronize() {
 
+	if p.current.Tokentype == TOKEN_EOF {
+		// Nothing left to synchronize against (e.g. after a bailout that jumped
+		// straight to EOF). Leave panicMode set so the unwind back through any
+		// still-open callers reports one error instead of one per stack frame.
+		return
+	}
 	p.panicMode = false
 	for p.current.Tokentype != TOKEN_EOF {
 		if p.previous.Tokentype == TOKEN_SEMICOLON || p.previous.Tokentype == TOKEN_EOL {
@@ -1475,6 +1505,14 @@ func (p *Parser) endScope() {
 // The precedence parameter controls how tightly the current expression binds.
 // Handles assignment validation and ensures proper left-to-right associativity.
 func (p *Parser) parsePrecedence(prec Precedence) {
+
+	p.exprDepth++
+	defer func() { p.exprDepth-- }()
+	if p.exprDepth > maxExprDepth {
+		p.error("Expression nested too deeply")
+		p.current = p.scn.SkipToEnd()
+		return
+	}
 
 	p.advance()
 

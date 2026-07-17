@@ -1633,7 +1633,9 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 						core.LogFmtLn(core.ERROR, "ASSERTION FAILED: Expected iterable at stack top before iter call. stackTop=%d", vm.stackTop)
 					}
 
-					vm.invoke(ITER_METHOD, 0)
+					if !vm.invoke(ITER_METHOD, 0) {
+						goto End
+					}
 					iok, result := vm.run(RUN_CURRENT_FUNCTION)
 
 					// Assert: stack top should be same after vm.run since invoke/run should manage stack properly
@@ -1672,7 +1674,9 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 						core.LogFmtLn(core.ERROR, "ASSERTION FAILED: Expected result at stack top before next call. stackTop=%d", vm.stackTop)
 					}
 
-					vm.invoke(NEXT_METHOD, 0)
+					if !vm.invoke(NEXT_METHOD, 0) {
+						goto End
+					}
 					iok, result = vm.run(RUN_CURRENT_FUNCTION)
 
 					// Assert: stack top should be same after vm.run since invoke/run should manage stack properly
@@ -1701,6 +1705,8 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 
 					continue
 				}
+				vm.RunTimeError("Foreach requires an object with an '__iter__' method.")
+				goto End
 			} else {
 				vm.RunTimeError("Foreach requires an iterable object.")
 				goto End
@@ -1729,7 +1735,9 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 					core.LogFmtLn(core.ERROR, "ASSERTION FAILED: Expected iterVal at stack top before next call. stackTop=%d", vm.stackTop)
 				}
 
-				vm.invoke(NEXT_METHOD, 0)
+				if !vm.invoke(NEXT_METHOD, 0) {
+					goto End
+				}
 				ok, rv := vm.run(RUN_CURRENT_FUNCTION)
 
 				// Assert: stack top should be same after vm.run since invoke/run should manage stack properly

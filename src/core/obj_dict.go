@@ -28,6 +28,12 @@ func (DictObject) GetType() ObjectType {
 }
 
 func (o *DictObject) String() string {
+	stringDepth++
+	defer func() { stringDepth-- }()
+	if stringDepth > maxStringDepth {
+		return "..."
+	}
+
 	s := "Dict({ "
 	for k, v := range o.Items {
 		s = s + fmt.Sprintf("\"%s\":%s,", NameFromID(k), v.String())

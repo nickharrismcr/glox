@@ -142,7 +142,23 @@ func (o *ListObject) Join(s string) (Value, error) {
 	return MakeStringObjectValue(rs, false), nil
 }
 
+// stringDepth guards String() on list/dict objects against unbounded recursion
+// when a container holds a reference to itself (directly, or via another
+// container) -- e.g. `l.append(l)`. Package-level rather than a parameter
+// because String() implements the shared Object interface used by every heap
+// type. Not goroutine-safe, but the VM's object graph is only ever walked
+// from a single goroutine at a time.
+var stringDepth int
+
+const maxStringDepth = 100
+
 func (o *ListObject) String() string {
+
+	stringDepth++
+	defer func() { stringDepth-- }()
+	if stringDepth > maxStringDepth {
+		return "..."
+	}
 
 	list := []string{}
 
