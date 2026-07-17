@@ -1535,7 +1535,9 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 					// get string repr of class by calling AsString().Get() method if present
 					ot := ov.(*core.InstanceObject)
 					if toString, ok := ot.Class.Methods[core.TO_STRING]; ok {
-						vm.call(toString.AsClosure(), 0)
+						if !vm.call(toString.AsClosure(), 0) {
+							goto End
+						}
 						refreshFrame()
 						continue
 					}
