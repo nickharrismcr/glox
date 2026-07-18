@@ -192,6 +192,7 @@ footer{color:var(--muted); font-size:13px; border-top:1px solid var(--border); m
       <a href="#mod-os">os</a>
       <a href="#mod-re">re</a>
       <a href="#mod-pickle">pickle</a>
+      <a href="#mod-process">process</a>
       <a href="#mod-sys">sys</a>
       <a href="#mod-inspect">inspect</a>
       <div class="group">Reference</div>
@@ -567,6 +568,7 @@ try {
 <tr><td><code>RunTimeError</code></td><td>A runtime fault (bad argument, invalid operation, index error…)</td></tr>
 <tr><td><code>EOFError</code></td><td><a href="#mod-os"><code>os.readln()</code></a> reaches end of file</td></tr>
 <tr><td><code>PickleError</code></td><td><a href="#mod-pickle"><code>pickle.dumps()</code></a> is given a value it can't serialise (e.g. a function, class instance, or cyclic structure), or <a href="#mod-pickle"><code>pickle.loads()</code></a> is given malformed data</td></tr>
+<tr><td><code>ProcessError</code></td><td><a href="#mod-process"><code>process.spawn()</code></a> fails to start a process, or a <a href="#mod-process">Process</a>'s <code>send()</code>/<code>recv()</code> hits a closed or broken pipe</td></tr>
 </tbody>
 </table>
 
@@ -1522,6 +1524,43 @@ try {
 } except PickleError as e {
     print e.msg
 }</code></pre>
+
+<!-- ==================== MODULE: PROCESS ==================== -->
+<h2 class="section" id="mod-process">process <span class="pill">module</span></h2>
+<p><code>import process</code> — spawns other <code>glox</code> processes and talks to them over a pipe carrying <a href="#mod-pickle">pickled</a> values, glox's answer to Python's <code>multiprocessing</code>. Since glox has no <code>fork()</code> and no way to serialise a closure, each worker is a separate <code>.lox</code> script run as its own process, not an in-memory function.</p>
+<table>
+<thead><tr><th>Function</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>process.spawn(script_path, ...)</code></td><td>Launch another glox process running <code>script_path</code>, connected by a pipe on its stdin/stdout. Extra string arguments become the child's own <code>sys.args()</code>; they must not start with <code>-</code> (no <code>--</code> escape hatch in argument parsing). Returns a <a href="#mod-process-obj">Process</a>.</td></tr>
+<tr><td><code>process.parent()</code></td><td>Returns a <a href="#mod-process-obj">Process</a> wired to this process's own stdin/stdout -- the far end of the pipe held by whatever spawned it. Used inside a worker script to talk back to its spawner.</td></tr>
+<tr><td><code>process.wait_any(processes)</code></td><td>Blocks until any of the given Process objects has a message ready. Returns the tuple <code>(index, value)</code>. This is the fan-in primitive for collecting results from several workers without polling each in turn.</td></tr>
+</tbody>
+</table>
+<h3 id="mod-process-obj">Process objects</h3>
+<table>
+<thead><tr><th>Method</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>send(value)</code></td><td>Pickle <code>value</code> and write it to the pipe</td></tr>
+<tr><td><code>recv()</code></td><td>Block until a value arrives and return it. Raises <a href="#exceptions"><code>ProcessError</code></a> if the peer closed its end.</td></tr>
+<tr><td><code>try_recv()</code></td><td>Non-blocking <code>recv()</code>. Returns <code>(false, nil)</code> if nothing is waiting, else <code>(true, value)</code> -- the same shape as Go's own <code>v, ok := &lt;-channel</code>.</td></tr>
+<tr><td><code>wait()</code></td><td>Block until the child exits; returns its exit code. Only on a <code>spawn()</code>-side Process.</td></tr>
+<tr><td><code>kill()</code></td><td>Forcibly terminate the child. Only on a <code>spawn()</code>-side Process.</td></tr>
+<tr><td><code>pid()</code></td><td>The child's OS process ID. Only on a <code>spawn()</code>-side Process.</td></tr>
+</tbody>
+</table>
+<pre><code class="lox">// parent.lox
+import process
+p = process.spawn("worker.lox")
+p.send(42)
+print p.recv()      // result from the worker
+p.wait()
+
+// worker.lox
+import process
+p = process.parent()
+x = p.recv()
+p.send(x * 2)</code></pre>
+<div class="note"><strong>Worker pool</strong>There's no shared-memory <code>Queue</code> the way Python's <code>multiprocessing.Queue</code> needs one, but <code>spawn</code>/<code>send</code>/<code>wait_any</code> are enough to drain a shared task queue across several workers -- see <a href="md/PROCESS_MODULE.md">PROCESS_MODULE.md</a> for the full pattern: keep the task list in the parent, and feed each worker its next task the moment <code>wait_any</code> reports it idle.</div>
 
 <!-- ==================== MODULE: SYS ==================== -->
 <h2 class="section" id="mod-sys">sys <span class="pill">module</span></h2>

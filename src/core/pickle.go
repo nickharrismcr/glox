@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 )
 
@@ -357,4 +358,39 @@ func decodeValue(r *pickleReader) (Value, error) {
 	default:
 		return NIL_VALUE, fmt.Errorf("unknown pickle tag %d", tag)
 	}
+}
+
+// WriteFramedValue writes v to w as a 4-byte little-endian length prefix
+// followed by its EncodeValue bytes -- the wire format used by the
+// "process" module's pipe-backed Process objects, so multiple values can be
+// written to a shared stream without running together.
+func WriteFramedValue(w io.Writer, v Value) error {
+	data, err := EncodeValue(v)
+	if err != nil {
+		return err
+	}
+	var lenBuf [4]byte
+	bin.LittleEndian.PutUint32(lenBuf[:], uint32(len(data)))
+	if _, err := w.Write(lenBuf[:]); err != nil {
+		return err
+	}
+	_, err = w.Write(data)
+	return err
+}
+
+// ReadFramedValue reads one length-prefixed value written by
+// WriteFramedValue from r. Returns io.EOF (unwrapped, via io.ReadFull) if
+// the stream closed cleanly before any bytes of the next frame arrived --
+// callers use this to detect the peer closing its end of the pipe.
+func ReadFramedValue(r io.Reader) (Value, error) {
+	var lenBuf [4]byte
+	if _, err := io.ReadFull(r, lenBuf[:]); err != nil {
+		return NIL_VALUE, err
+	}
+	n := bin.LittleEndian.Uint32(lenBuf[:])
+	data := make([]byte, n)
+	if _, err := io.ReadFull(r, data); err != nil {
+		return NIL_VALUE, err
+	}
+	return DecodeValue(data)
 }

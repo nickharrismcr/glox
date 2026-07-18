@@ -26,6 +26,7 @@ func DefineBuiltIns(vm *VM) {
 	makeBuiltInModule(vm, "physics")
 	makeBuiltInModule(vm, "re")
 	makeBuiltInModule(vm, "pickle")
+	makeBuiltInModule(vm, "process")
 
 	core.Log(core.INFO, "Defining built-in functions")
 
@@ -101,6 +102,11 @@ func DefineBuiltIns(vm *VM) {
 	// pickle module functions
 	defineBuiltIn(vm, "pickle", "dumps", builtin.DumpsBuiltIn)
 	defineBuiltIn(vm, "pickle", "loads", builtin.LoadsBuiltIn)
+
+	// process module functions
+	defineBuiltIn(vm, "process", "spawn", builtin.SpawnBuiltIn)
+	defineBuiltIn(vm, "process", "parent", builtin.ParentBuiltIn)
+	defineBuiltIn(vm, "process", "wait_any", builtin.WaitAnyBuiltIn)
 
 	// Color utility functions
 	defineBuiltIn(vm, "colour_utils", "fade", builtin.ColourUtilsFadeBuiltIn)
@@ -182,6 +188,15 @@ class PickleError < Exception {
     init(msg) {
 	    this.msg = msg;
 		this.name = "PickleError";
+	}
+	toString() {
+		return this.msg;
+	}
+}
+class ProcessError < Exception {
+    init(msg) {
+	    this.msg = msg;
+		this.name = "ProcessError";
 	}
 	toString() {
 		return this.msg;
