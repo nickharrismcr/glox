@@ -191,6 +191,7 @@ footer{color:var(--muted); font-size:13px; border-top:1px solid var(--border); m
       <div class="group">System Modules</div>
       <a href="#mod-os">os</a>
       <a href="#mod-re">re</a>
+      <a href="#mod-pickle">pickle</a>
       <a href="#mod-sys">sys</a>
       <a href="#mod-inspect">inspect</a>
       <div class="group">Reference</div>
@@ -565,6 +566,7 @@ try {
 <tr><td><code>Exception</code></td><td>Base class for all exceptions; has <code>msg</code>, <code>name</code>, <code>toString()</code></td></tr>
 <tr><td><code>RunTimeError</code></td><td>A runtime fault (bad argument, invalid operation, index error…)</td></tr>
 <tr><td><code>EOFError</code></td><td><a href="#mod-os"><code>os.readln()</code></a> reaches end of file</td></tr>
+<tr><td><code>PickleError</code></td><td><a href="#mod-pickle"><code>pickle.dumps()</code></a> is given a value it can't serialise (e.g. a function, class instance, or cyclic structure), or <a href="#mod-pickle"><code>pickle.loads()</code></a> is given malformed data</td></tr>
 </tbody>
 </table>
 
@@ -1497,6 +1499,29 @@ print re.findall("\d+", "a1 b22 c333")    // ["1", "22", "333"]
 
 digits = re.compile("\d+")
 print digits.sub("#", "1 2 3")            // "# # #"</code></pre>
+
+<!-- ==================== MODULE: PICKLE ==================== -->
+<h2 class="section" id="mod-pickle">pickle <span class="pill">module</span></h2>
+<p><code>import pickle</code> — serialises plain-data Lox values (<code>nil</code>, <code>bool</code>, <code>int</code>, <code>float</code>, <code>string</code>, <code>list</code>, <code>tuple</code>, <code>dict</code>, <code>vec2</code>/<code>vec3</code>/<code>vec4</code>, arbitrarily nested) to a byte string and back — useful for passing values between separate <code>glox</code> processes over a pipe/socket/file. Closures, classes/instances, modules, files, and native/graphics objects cannot be pickled and raise <a href="#exceptions"><code>PickleError</code></a>, as does a cyclic structure (e.g. a list appended to itself).</p>
+<table>
+<thead><tr><th>Function</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>pickle.dumps(value)</code></td><td>Serialise <code>value</code> to a string of raw encoded bytes. Raises <code>PickleError</code> if <code>value</code> contains an unpicklable type or a cycle.</td></tr>
+<tr><td><code>pickle.loads(data)</code></td><td>Deserialise a string produced by <code>dumps()</code> back into a value. Raises <code>PickleError</code> on truncated or malformed input.</td></tr>
+</tbody>
+</table>
+<pre><code class="lox">import pickle
+
+data = pickle.dumps({"name": "Rex", "pos": vec2(1, 2), "tags": (1, 2, 3)})
+value = pickle.loads(data)
+print value["name"]        // "Rex"
+print value["pos"].x       // 1
+
+try {
+    pickle.dumps(pickle.dumps)   // a function -- not picklable
+} except PickleError as e {
+    print e.msg
+}</code></pre>
 
 <!-- ==================== MODULE: SYS ==================== -->
 <h2 class="section" id="mod-sys">sys <span class="pill">module</span></h2>

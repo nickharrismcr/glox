@@ -25,6 +25,7 @@ func DefineBuiltIns(vm *VM) {
 	makeBuiltInModule(vm, "gfx")
 	makeBuiltInModule(vm, "physics")
 	makeBuiltInModule(vm, "re")
+	makeBuiltInModule(vm, "pickle")
 
 	core.Log(core.INFO, "Defining built-in functions")
 
@@ -97,6 +98,10 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "re", "findall", builtin.RegexFindallBuiltIn)
 	defineBuiltIn(vm, "re", "compile", builtin.RegexCompileBuiltIn)
 
+	// pickle module functions
+	defineBuiltIn(vm, "pickle", "dumps", builtin.DumpsBuiltIn)
+	defineBuiltIn(vm, "pickle", "loads", builtin.LoadsBuiltIn)
+
 	// Color utility functions
 	defineBuiltIn(vm, "colour_utils", "fade", builtin.ColourUtilsFadeBuiltIn)
 	defineBuiltIn(vm, "colour_utils", "tint", builtin.ColourUtilsTintBuiltIn)
@@ -168,6 +173,15 @@ class RunTimeError < Exception {
     init(msg) {
 	    this.msg = msg;
 		this.name = "RunTimeError";
+	}
+	toString() {
+		return this.msg;
+	}
+}
+class PickleError < Exception {
+    init(msg) {
+	    this.msg = msg;
+		this.name = "PickleError";
 	}
 	toString() {
 		return this.msg;
