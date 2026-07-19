@@ -56,6 +56,14 @@ which one (as an index into `processes`) plus the received value. This is how yo
 fan-in results from several workers without polling each one in turn — the same
 role Python's `multiprocessing.connection.wait()` plays.
 
+If one of the processes has simply finished (its script ran to completion and
+closed its end of the pipe cleanly), that's not treated as an error for the wait
+as a whole — it's dropped from consideration and `wait_any` keeps waiting on
+whichever of the others are still live. Only once *every* process in the list has
+finished does `wait_any` raise `ProcessError`; a genuine I/O problem (a broken
+pipe, a truncated message) still raises immediately, since that's not an expected
+"worker is done" event.
+
 ## Process objects
 
 ### `p.send(value)` → nil

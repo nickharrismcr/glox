@@ -26,6 +26,21 @@ type ProcessObject struct {
 	Stdin   io.WriteCloser
 	recvCh  chan recvResult
 	Methods map[int]*core.BuiltInObject
+
+	// recvDone latches once wait_any has observed a clean io.EOF on this
+	// process's recvCh (see WaitAnyBuiltIn). The reader goroutine posts
+	// exactly one value per ReadFramedValue call and never posts again
+	// after an error, so once its terminal EOF has been consumed the
+	// channel will never become ready again -- selecting on it a second
+	// time (e.g. from a later, separate wait_any call over a list that
+	// still includes this process) would block forever. recvDone lets
+	// wait_any recognise and skip an already-finished process up front
+	// instead of adding a permanently-dead case to its select, which
+	// previously could make every case dead at once and hang the whole
+	// process in an unrecoverable Go runtime deadlock. Only ever touched
+	// from WaitAnyBuiltIn on the single VM goroutine, so it needs no
+	// synchronisation.
+	recvDone bool
 }
 
 // newProcessObject starts the background reader goroutine (one

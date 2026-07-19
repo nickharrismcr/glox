@@ -146,6 +146,15 @@ func ParentBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value
 // message ready, using reflect.Select for a dynamic-count select over their
 // recvCh channels (Go's select statement needs a fixed case count at
 // compile time). Returns the tuple (index, value).
+//
+// A process whose peer closed its pipe cleanly (io.EOF -- the child script
+// simply ran to completion) is not a fatal error for the wait as a whole:
+// it's dropped from consideration and the select retries among whatever
+// processes are still live, so one finished worker in a pool can't abort
+// the fan-in wait for the others. Only once every process in the list has
+// closed does wait_any raise, and a genuine I/O error (a broken pipe, a
+// truncated frame -- anything other than a clean io.EOF) still raises
+// immediately, since that's not an expected "the worker is done" event.
 func WaitAnyBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	if argCount != 1 {
 		vm.RunTimeError("wait_any() expects 1 argument (a list of processes).")
@@ -163,23 +172,54 @@ func WaitAnyBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 		return core.NIL_VALUE
 	}
 
-	cases := make([]reflect.SelectCase, len(list.Items))
+	procs := make([]*ProcessObject, len(list.Items))
 	for i, item := range list.Items {
 		procObj, ok := item.Obj.(*ProcessObject)
 		if !ok {
 			vm.RunTimeError("wait_any() list must contain only process objects.")
 			return core.NIL_VALUE
 		}
-		cases[i] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(procObj.recvCh)}
+		procs[i] = procObj
 	}
 
-	chosen, recv, _ := reflect.Select(cases)
-	result := recv.Interface().(recvResult)
-	if result.err != nil {
-		vm.RunTimeErrorNamed("ProcessError", "process %d: %v", chosen, result.err)
-		return core.NIL_VALUE
+	// live holds original-list indices still worth selecting on. Anything
+	// already latched as recvDone from an earlier wait_any call is
+	// excluded up front -- its channel will never be ready again, so
+	// including it here would risk a select whose every case is
+	// permanently dead (an unrecoverable Go runtime deadlock, not a
+	// catchable Lox exception) once every process has finished across
+	// separate calls.
+	live := make([]int, 0, len(procs))
+	for i, p := range procs {
+		if !p.recvDone {
+			live = append(live, i)
+		}
 	}
 
-	tuple := core.MakeListObject([]core.Value{core.MakeIntValue(chosen, false), result.val}, true)
-	return core.MakeObjectValue(tuple, false)
+	for len(live) > 0 {
+		cases := make([]reflect.SelectCase, len(live))
+		for i, origIdx := range live {
+			cases[i] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(procs[origIdx].recvCh)}
+		}
+
+		chosen, recv, _ := reflect.Select(cases)
+		result := recv.Interface().(recvResult)
+		origIdx := live[chosen]
+
+		if result.err != nil {
+			if result.err == io.EOF {
+				procs[origIdx].recvDone = true
+				live = append(live[:chosen], live[chosen+1:]...)
+				continue
+			}
+			vm.RunTimeErrorNamed("ProcessError", "process %d: %v", origIdx, result.err)
+			return core.NIL_VALUE
+		}
+
+		tuple := core.MakeListObject([]core.Value{core.MakeIntValue(origIdx, false), result.val}, true)
+		return core.MakeObjectValue(tuple, false)
+	}
+
+	vm.RunTimeErrorNamed("ProcessError", "wait_any(): all processes have finished")
+	return core.NIL_VALUE
 }
