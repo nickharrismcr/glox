@@ -362,6 +362,36 @@ func (vm *VM) GetGlobals() *core.Environment {
 	return vm.frame().Closure.Function.Environment
 }
 
+// ResolveClass looks up a class by name for pickle's instance
+// reconstruction (see core.DecodeValueResolvingClasses), checking built-ins
+// then the calling frame's module scope -- the same three-tier order
+// raiseException uses to resolve exception handler names (built-in
+// classes, module-scoped globals via Environment.Vars, then the fast
+// globals slice via Chunk.SlotForName).
+func (vm *VM) ResolveClass(name string) (*core.ClassObject, bool) {
+	id := core.InternName(name)
+	if v, ok := vm.BuiltIns[id]; ok {
+		if class, ok := v.Obj.(*core.ClassObject); ok {
+			return class, true
+		}
+	}
+	env := vm.GetGlobals()
+	if env == nil {
+		return nil, false
+	}
+	if v, ok := env.GetVar(id); ok {
+		if class, ok := v.Obj.(*core.ClassObject); ok {
+			return class, true
+		}
+	}
+	if slot := vm.frame().Closure.Function.Chunk.SlotForName(name); slot >= 0 && env.Defined[slot] {
+		if class, ok := env.Globals[slot].Obj.(*core.ClassObject); ok {
+			return class, true
+		}
+	}
+	return nil, false
+}
+
 //------------------------------------------------------------------------------------------
 
 // frame returns the current call frame (internal helper function).

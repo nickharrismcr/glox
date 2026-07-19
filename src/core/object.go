@@ -82,6 +82,7 @@ type VMContext interface {
 	ShowStack() string
 	GetGlobals() *Environment
 	FileName() string
+	ResolveClass(name string) (*ClassObject, bool)
 }
 
 type BuiltInFn func(argCount int, args_stackptr int, vm VMContext) Value
