@@ -568,7 +568,7 @@ try {
 <tr><td><code>RunTimeError</code></td><td>A runtime fault (bad argument, invalid operation, index error…)</td></tr>
 <tr><td><code>EOFError</code></td><td><a href="#mod-os"><code>os.readln()</code></a> reaches end of file</td></tr>
 <tr><td><code>PickleError</code></td><td><a href="#mod-pickle"><code>pickle.dumps()</code></a> is given a value it can't serialise (e.g. a function, class instance, or cyclic structure), or <a href="#mod-pickle"><code>pickle.loads()</code></a> is given malformed data</td></tr>
-<tr><td><code>ProcessError</code></td><td><a href="#mod-process"><code>process.spawn()</code></a> fails to start a process, a <a href="#mod-process">Process</a>'s <code>send()</code>/<code>recv()</code> hits a closed or broken pipe, or <code>process.wait_any()</code> finds every process in its list has finished</td></tr>
+<tr><td><code>ProcessError</code></td><td><a href="#mod-process"><code>process.spawn()</code></a> fails to start a process, or a <a href="#mod-process">Process</a>'s <code>send()</code>/<code>recv()</code> hits a closed or broken pipe</td></tr>
 </tbody>
 </table>
 
@@ -1530,7 +1530,7 @@ try {
 <tbody>
 <tr><td><code>process.spawn(script_path, ...)</code></td><td>Launch another glox process running <code>script_path</code>, connected by a pipe on its stdin/stdout. Extra string arguments become the child's own <code>sys.args()</code>; they must not start with <code>-</code> (no <code>--</code> escape hatch in argument parsing). Returns a <a href="#mod-process-obj">Process</a>.</td></tr>
 <tr><td><code>process.parent()</code></td><td>Returns a <a href="#mod-process-obj">Process</a> wired to this process's own stdin/stdout -- the far end of the pipe held by whatever spawned it. Used inside a worker script to talk back to its spawner.</td></tr>
-<tr><td><code>process.wait_any(processes)</code></td><td>Blocks until any of the given Process objects has a message ready. Returns the tuple <code>(index, value)</code>. This is the fan-in primitive for collecting results from several workers without polling each in turn. A process that finished cleanly (closed its pipe normally) is dropped from consideration rather than aborting the wait for the others; <code>ProcessError</code> is only raised once every process in the list has finished, or immediately on a genuine I/O error.</td></tr>
+<tr><td><code>process.wait_any(processes)</code></td><td>Blocks until any of the given Process objects has a message ready. Returns the tuple <code>(index, value)</code>, or <code>nil</code> once every process in the list has finished. This is the fan-in primitive for collecting results from several workers without polling each in turn. A process that finished cleanly (closed its pipe normally) is dropped from consideration rather than aborting the wait for the others; a genuine I/O error still raises <code>ProcessError</code> immediately.</td></tr>
 </tbody>
 </table>
 <h3 id="mod-process-obj">Process objects</h3>

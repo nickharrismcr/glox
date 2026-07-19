@@ -50,7 +50,7 @@ pipe the process that spawned this one is holding. Used inside a worker script t
 talk back to whatever spawned it. Only exposes `send`/`recv`/`try_recv` (there's no
 underlying child to `wait()`/`kill()`/query the `pid()` of).
 
-### `process.wait_any(processes)` → (index, value)
+### `process.wait_any(processes)` → (index, value) or nil
 Blocks until *any* of the given `Process` objects has a message ready, and returns
 which one (as an index into `processes`) plus the received value. This is how you
 fan-in results from several workers without polling each one in turn — the same
@@ -59,10 +59,12 @@ role Python's `multiprocessing.connection.wait()` plays.
 If one of the processes has simply finished (its script ran to completion and
 closed its end of the pipe cleanly), that's not treated as an error for the wait
 as a whole — it's dropped from consideration and `wait_any` keeps waiting on
-whichever of the others are still live. Only once *every* process in the list has
-finished does `wait_any` raise `ProcessError`; a genuine I/O problem (a broken
-pipe, a truncated message) still raises immediately, since that's not an expected
-"worker is done" event.
+whichever of the others are still live. Once *every* process in the list has
+finished, `wait_any` returns `nil` rather than raising — a live result is always
+the 2-tuple `(index, value)`, so `nil` is an unambiguous "the whole pool is done"
+signal for the caller to check, not an exceptional condition. A genuine I/O
+problem (a broken pipe, a truncated message) still raises `ProcessError`
+immediately.
 
 ## Process objects
 

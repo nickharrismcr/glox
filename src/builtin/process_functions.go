@@ -148,13 +148,15 @@ func ParentBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value
 // compile time). Returns the tuple (index, value).
 //
 // A process whose peer closed its pipe cleanly (io.EOF -- the child script
-// simply ran to completion) is not a fatal error for the wait as a whole:
-// it's dropped from consideration and the select retries among whatever
-// processes are still live, so one finished worker in a pool can't abort
-// the fan-in wait for the others. Only once every process in the list has
-// closed does wait_any raise, and a genuine I/O error (a broken pipe, a
-// truncated frame -- anything other than a clean io.EOF) still raises
-// immediately, since that's not an expected "the worker is done" event.
+// simply ran to completion) is not an error: it's dropped from
+// consideration and the select retries among whatever processes are still
+// live, so one finished worker in a pool can't abort the fan-in wait for
+// the others. Once every process in the list has finished, wait_any
+// returns nil -- an unambiguous sentinel, since a live result is always the
+// 2-tuple (index, value) -- rather than raising, since "the whole pool is
+// done" is an expected steady state for a caller to check, not a fault. A
+// genuine I/O error (a broken pipe, a truncated frame -- anything other
+// than a clean io.EOF) still raises ProcessError immediately.
 func WaitAnyBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	if argCount != 1 {
 		vm.RunTimeError("wait_any() expects 1 argument (a list of processes).")
@@ -220,6 +222,5 @@ func WaitAnyBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Valu
 		return core.MakeObjectValue(tuple, false)
 	}
 
-	vm.RunTimeErrorNamed("ProcessError", "wait_any(): all processes have finished")
 	return core.NIL_VALUE
 }

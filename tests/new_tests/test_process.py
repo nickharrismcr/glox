@@ -66,7 +66,7 @@ def test_process_wait_any_pool(force_compile):
     # Regression test: workers fire-and-forget several messages each with no
     # request/response handshake, then exit. wait_any() must keep draining
     # whichever workers are still live instead of aborting the whole fan-in
-    # the moment any one of them finishes, and must raise a catchable
-    # ProcessError (not deadlock the process) once every worker is done.
+    # the moment any one of them finishes, and must return nil (not deadlock
+    # the process) once every worker is done.
     lines = run_lox("process_wait_any_pool.lox", force_compile=force_compile)
     assert lines == WAIT_ANY_POOL_EXPECTED
