@@ -11,7 +11,7 @@ worker_path = os.join(here, "process_wait_any_pool_worker.lox");
 // cleanly) as fatal for the whole fan-in wait, aborting collection from
 // every other still-running worker; and a follow-up bug where, once every
 // worker had finished, wait_any() could deadlock the whole process instead
-// of raising a catchable ProcessError.
+// of returning cleanly.
 n_workers = 4;
 workers = [];
 foreach (i in range(1, n_workers + 1)) {
@@ -19,17 +19,17 @@ foreach (i in range(1, n_workers + 1)) {
 }
 
 results = {};
-try {
-    while (true) {
-        idx, val = process.wait_any(workers);
-        id = str(idx + 1);
-        if (!(id in results.keys())) {
-            results[id] = [];
-        }
-        results[id].append(val);
+while (true) {
+    r = process.wait_any(workers);
+    if (r == nil) {
+        break;
     }
-} except ProcessError as e {
-    // raised once every worker has finished -- expected termination
+    idx, val = r;
+    id = str(idx + 1);
+    if (!(id in results.keys())) {
+        results[id] = [];
+    }
+    results[id].append(val);
 }
 
 foreach (w in workers) {
