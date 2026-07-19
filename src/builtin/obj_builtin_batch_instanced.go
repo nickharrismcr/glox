@@ -256,7 +256,7 @@ func (b *BatchInstancedObject) Draw(camera *CameraObject) {
 		core.LogFmtLn(core.WARN, "BatchInstancedObject.Draw: No instances to draw")
 		return // No instances to draw
 	}
-	count := int32(len(b.batch.instances.list))
+	count := len(b.batch.instances.list)
 
-	rl.DrawMeshInstanced(b.model.mesh, b.model.material, b.batch.transforms[:count], count)
+	drawMeshInstanced(b.model.mesh, b.model.material, b.batch.transforms[:count], count)
 }
