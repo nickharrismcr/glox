@@ -568,7 +568,7 @@ try {
 <tr><td><code>RunTimeError</code></td><td>A runtime fault (bad argument, invalid operation, index error…)</td></tr>
 <tr><td><code>EOFError</code></td><td><a href="#mod-os"><code>os.readln()</code></a> reaches end of file</td></tr>
 <tr><td><code>PickleError</code></td><td><a href="#mod-pickle"><code>pickle.dumps()</code></a> is given a value it can't serialise (e.g. a function, class instance, or cyclic structure), or <a href="#mod-pickle"><code>pickle.loads()</code></a> is given malformed data</td></tr>
-<tr><td><code>ProcessError</code></td><td><a href="#mod-process"><code>process.spawn()</code></a> fails to start a process, or a <a href="#mod-process">Process</a>'s <code>send()</code>/<code>recv()</code> hits a closed or broken pipe</td></tr>
+<tr><td><code>ProcessError</code></td><td><a href="#mod-process"><code>process.spawn()</code></a> fails to start a process, a <a href="#mod-process">Process</a>'s <code>send()</code>/<code>recv()</code> hits a closed or broken pipe, or <code>process.wait_any()</code> finds every process in its list has finished</td></tr>
 </tbody>
 </table>
 
