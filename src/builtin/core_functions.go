@@ -182,22 +182,21 @@ func FormatBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value
 
 func SleepBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	if argCount != 1 {
-		vm.RunTimeError("sleep expects 1 argument")
+		vm.RunTimeError("sys.sleep expects 1 argument")
 		return core.NIL_VALUE
 	}
 	tVal := vm.Stack(arg_stackptr)
 	if !tVal.IsNumber() {
-		vm.RunTimeError("sleep argument must be number")
+		vm.RunTimeError("sys.sleep argument must be a number")
 		return core.NIL_VALUE
 	}
-	var dur time.Duration
+	var seconds float64
 	if tVal.IsInt() {
-		dur = time.Duration(tVal.AsInt()) * time.Second
+		seconds = float64(tVal.AsInt())
+	} else {
+		seconds = tVal.AsFloat()
 	}
-	if tVal.IsFloat() {
-		dur = time.Duration(tVal.AsFloat()) * time.Second
-	}
-	time.Sleep(dur)
+	time.Sleep(time.Duration(seconds * float64(time.Second)))
 	return core.NIL_VALUE
 }
 

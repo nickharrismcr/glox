@@ -32,6 +32,7 @@ func DefineBuiltIns(vm *VM) {
 
 	defineBuiltIn(vm, "sys", "args", builtin.ArgsBuiltIn)
 	defineBuiltIn(vm, "sys", "clock", builtin.ClockBuiltIn)
+	defineBuiltIn(vm, "sys", "sleep", builtin.SleepBuiltIn)
 	defineBuiltIn(vm, "", "type", builtin.TypeBuiltIn)
 	defineBuiltIn(vm, "", "len", builtin.LenBuiltIn)
 	defineBuiltIn(vm, "", "_sin", builtin.SinBuiltIn)
@@ -47,7 +48,6 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "gfx", "draw_png", builtin.DrawPNGBuiltIn)
 	defineBuiltIn(vm, "", "replace", builtin.ReplaceBuiltIn)
 	defineBuiltIn(vm, "", "format", builtin.FormatBuiltIn)
-	defineBuiltIn(vm, "", "sleep", builtin.SleepBuiltIn)
 	defineBuiltIn(vm, "", "range", builtin.RangeBuiltIn)
 	defineBuiltIn(vm, "", "rand", builtin.RandBuiltIn)
 	defineBuiltIn(vm, "", "_atan2", builtin.Atan2BuiltIn)

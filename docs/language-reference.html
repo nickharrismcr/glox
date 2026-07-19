@@ -764,9 +764,6 @@ pos.add(dp)        // pos becomes vec2(1, 1); dp is unchanged</code></pre>
 </tbody>
 </table>
 
-<div class="sig"><span class="nm">sleep</span>(<em>seconds</em>) <span class="pill">→ nil</span></div>
-<p>Pauses execution for the given number of seconds.</p>
-
 <h2 class="section" id="mod-gfx">gfx &amp; physics modules</h2>
 <p>These create native objects, each documented in its own section. <code>vec2</code>/<code>vec3</code>/<code>vec4</code> are <strong>built-in</strong> (core value types, always available), but the graphics constructors and helpers live in the <code>gfx</code> module and the physics constructor in <code>physics</code> — import them before use:</p>
 <pre><code class="lox">from gfx import *              // window, batch, texture, shader, camera, ...
@@ -1570,9 +1567,10 @@ p.send(x * 2)</code></pre>
 <tbody>
 <tr><td><code>sys.args()</code></td><td>List of command-line arguments</td></tr>
 <tr><td><code>sys.clock()</code></td><td>Current time in seconds (for timing / animation)</td></tr>
+<tr><td><code>sys.sleep(seconds)</code></td><td>Pauses execution for <code>seconds</code> (int or float)</td></tr>
 </tbody>
 </table>
-<div class="note"><strong>Note</strong>File I/O lives in the <a href="#mod-os"><code>os</code></a> module (not <code>sys</code>), and <a href="#builtins"><code>sleep()</code></a> is a built-in function. <code>sys</code> must be imported before use — it is not injected as a built-in.</div>
+<div class="note"><strong>Note</strong>File I/O lives in the <a href="#mod-os"><code>os</code></a> module (not <code>sys</code>). <code>sys</code> must be imported before use — it is not injected as a built-in.</div>
 
 <!-- ==================== MODULE: INSPECT ==================== -->
 <h2 class="section" id="mod-inspect">inspect <span class="pill">module</span></h2>
