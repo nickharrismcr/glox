@@ -1,0 +1,109 @@
+//
+// @file pool.lox
+// @brief A fixed-size worker pool over the process module's spawn/send/recv
+// primitives, glox's answer to Python's multiprocessing.Pool.
+//
+// A Pool spawns n_workers copies of a worker script up front and keeps them
+// alive across calls. Each worker is any script that loops
+// "recv() a task, do work, send() a result" -- see process_pool_worker.lox
+// for the minimal example. Pool.map() hands tasks out to whichever worker
+// is free (via process.wait_any()), correlating each result back to its
+// original task index locally, so results always come back in task order
+// regardless of which worker finishes first or how the work is sized.
+//
+// Known limitation: if a worker crashes mid-task, map() can't tell that
+// apart from "every worker in the pool has exited" (process.wait_any()
+// doesn't distinguish the two) -- it raises PoolError either way, rather
+// than retrying or reporting which task was lost.
+//
+
+import process;
+
+class PoolError < Exception {
+    init(msg) {
+        super.init(msg);
+        this.name = "PoolError";
+    }
+}
+
+class Pool {
+    // Spawns n_workers copies of worker_path immediately. They stay alive,
+    // idle between calls, until close() kills them.
+    init(worker_path, n_workers) {
+        this.n_workers = n_workers;
+        this.workers = [];
+        foreach (i in range(n_workers)) {
+            this.workers.append(process.spawn(worker_path));
+        }
+        this.closed = false;
+    }
+
+    // Runs every item in tasks across the pool and returns the results in
+    // the same order as tasks, regardless of arrival order. Blocks until
+    // every task has a result. Safe to call more than once on the same
+    // pool -- workers are reused, not respawned, between calls.
+    map(tasks) {
+        if (this.closed) {
+            raise PoolError("map() called on a closed pool");
+        }
+
+        var n_tasks = len(tasks);
+        var results = [];
+        foreach (i in range(n_tasks)) {
+            results.append(nil);
+        }
+
+        // in_flight[i] is the task index currently sent to workers[i], or
+        // nil if that worker has nothing outstanding this call.
+        var in_flight = [];
+        foreach (i in range(this.n_workers)) {
+            in_flight.append(nil);
+        }
+
+        var next_task = 0;
+        var active = 0;
+        foreach (i in range(this.n_workers)) {
+            if (next_task < n_tasks) {
+                this.workers[i].send(tasks[next_task]);
+                in_flight[i] = next_task;
+                next_task = next_task + 1;
+                active = active + 1;
+            }
+        }
+
+        while (active > 0) {
+            r = process.wait_any(this.workers);
+            if (r == nil) {
+                raise PoolError("every worker in the pool exited unexpectedly during map()");
+            }
+            idx, val = r;
+            var task_index = in_flight[idx];
+            results[task_index] = val;
+            if (next_task < n_tasks) {
+                this.workers[idx].send(tasks[next_task]);
+                in_flight[idx] = next_task;
+                next_task = next_task + 1;
+            } else {
+                in_flight[idx] = nil;
+                active = active - 1;
+            }
+        }
+
+        return results;
+    }
+
+    // Kills and reaps every worker. Idempotent -- safe to call more than
+    // once. The pool can't be used after this (map() raises PoolError).
+    close() {
+        if (this.closed) {
+            return;
+        }
+        foreach (w in this.workers) {
+            w.kill();
+        }
+        foreach (w in this.workers) {
+            w.wait();
+        }
+        this.closed = true;
+    }
+}

@@ -94,10 +94,26 @@ The child process's OS process ID. Only available on a `spawn()`-side `Process`.
 ## Worker pool: draining a shared task queue
 
 There's no shared-memory `Queue` the way Python's `multiprocessing.Queue` needs one
-— but `spawn`/`send`/`wait_any` are enough to build the same worker-pool pattern.
-The "queue" is just an ordinary list living in the parent (only one process can
-hold it); the parent hands out the next task the moment `wait_any` reports a worker
-is free:
+— but `spawn`/`send`/`wait_any` are enough to build the same worker-pool pattern,
+and the `pool` module (see the language reference's `pool` section) does exactly
+that, so you don't have to hand-roll it:
+
+```lox
+import pool
+
+p = pool.Pool("worker.lox", 3)               // spawns 3 workers up front
+results = p.map([2, 3, 5, 7, 11, 13, 17, 19]) // more tasks than workers
+p.close()
+```
+
+`pool.Pool` is reusable — call `.map()` again on the same pool (workers stay
+alive between calls) rather than paying spawn cost per batch.
+
+Under the hood, `Pool.map()` is just this pattern: the "queue" is an ordinary
+list living in the parent (only one process can hold it); the parent hands out
+the next task the moment `wait_any` reports a worker is free. Worth knowing if
+you need something `pool` doesn't offer (e.g. tasks that arrive incrementally
+rather than as one batch):
 
 ```lox
 import process

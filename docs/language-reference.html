@@ -193,6 +193,7 @@ footer{color:var(--muted); font-size:13px; border-top:1px solid var(--border); m
       <a href="#mod-re">re</a>
       <a href="#mod-pickle">pickle</a>
       <a href="#mod-process">process</a>
+      <a href="#mod-pool">pool</a>
       <a href="#mod-sys">sys</a>
       <a href="#mod-inspect">inspect</a>
       <div class="group">Reference</div>
@@ -1566,7 +1567,27 @@ import process
 p = process.parent()
 x = p.recv()
 p.send(x * 2)</code></pre>
-<div class="note"><strong>Worker pool</strong>There's no shared-memory <code>Queue</code> the way Python's <code>multiprocessing.Queue</code> needs one, but <code>spawn</code>/<code>send</code>/<code>wait_any</code> are enough to drain a shared task queue across several workers -- see <a href="md/PROCESS_MODULE.md">PROCESS_MODULE.md</a> for the full pattern: keep the task list in the parent, and feed each worker its next task the moment <code>wait_any</code> reports it idle.</div>
+<div class="note"><strong>Worker pool</strong>There's no shared-memory <code>Queue</code> the way Python's <code>multiprocessing.Queue</code> needs one, but <code>spawn</code>/<code>send</code>/<code>wait_any</code> are enough to drain a shared task queue across several workers -- the <a href="#mod-pool"><code>pool</code></a> module below does exactly that, so most scripts don't need to hand-roll it. See <a href="md/PROCESS_MODULE.md">PROCESS_MODULE.md</a> for the pattern <code>pool</code> is built on.</div>
+
+<!-- ==================== MODULE: POOL ==================== -->
+<h2 class="section" id="mod-pool">pool <span class="pill">module</span></h2>
+<p><code>import pool</code> — a fixed-size worker pool over <a href="#mod-process">process</a>'s <code>spawn</code>/<code>send</code>/<code>recv</code>/<code>wait_any</code>, glox's answer to Python's <code>multiprocessing.Pool</code>. A worker is any script that loops "<code>recv()</code> a task, do work, <code>send()</code> a result"; <code>Pool.map()</code> hands tasks out to whichever worker is free and returns results in task order, regardless of which worker finishes first.</p>
+<table>
+<thead><tr><th>Function / class</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>pool.Pool(worker_path, n_workers)</code></td><td>Class: spawns <code>n_workers</code> copies of <code>worker_path</code> immediately. They stay alive, idle between calls, until <code>close()</code>.</td></tr>
+<tr><td><code>.map(tasks)</code></td><td>Runs every item in <code>tasks</code> across the pool; blocks until all are done. Returns results in the same order as <code>tasks</code>. Safe to call more than once on the same pool -- workers are reused, not respawned, between calls.</td></tr>
+<tr><td><code>.close()</code></td><td>Kills and reaps every worker. Idempotent. <code>map()</code> raises <code>PoolError</code> if called afterward.</td></tr>
+</tbody>
+</table>
+<pre><code class="lox">import pool
+
+p = pool.Pool("worker.lox", 4)
+results = p.map([1, 2, 3, 4, 5])   // more tasks than workers is fine
+print results                      // in task order, however workers finished
+results2 = p.map([10, 20])         // same pool, same workers, reused
+p.close()</code></pre>
+<div class="note"><strong>Limitation</strong>If a worker crashes mid-task, <code>map()</code> can't distinguish that from every worker in the pool having exited -- <code>process.wait_any()</code> doesn't tell the two apart -- so it raises <code>PoolError</code> either way rather than retrying or reporting which task was lost.</div>
 
 <!-- ==================== MODULE: SYS ==================== -->
 <h2 class="section" id="mod-sys">sys <span class="pill">module</span></h2>
