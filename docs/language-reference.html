@@ -567,7 +567,7 @@ try {
 <tr><td><code>Exception</code></td><td>Base class for all exceptions; has <code>msg</code>, <code>name</code>, <code>toString()</code></td></tr>
 <tr><td><code>RunTimeError</code></td><td>A runtime fault (bad argument, invalid operation, index error…)</td></tr>
 <tr><td><code>EOFError</code></td><td><a href="#mod-os"><code>os.readln()</code></a> reaches end of file</td></tr>
-<tr><td><code>PickleError</code></td><td><a href="#mod-pickle"><code>pickle.dumps()</code></a> is given a value it can't serialise (e.g. a function, class instance, or cyclic structure), or <a href="#mod-pickle"><code>pickle.loads()</code></a> is given malformed data</td></tr>
+<tr><td><code>PickleError</code></td><td><a href="#mod-pickle"><code>pickle.dumps()</code></a> is given a value it can't serialise (e.g. a function, a class itself, or a cyclic structure), or <a href="#mod-pickle"><code>pickle.loads()</code></a> is given malformed data or an encoded instance whose class can't be resolved</td></tr>
 <tr><td><code>ProcessError</code></td><td><a href="#mod-process"><code>process.spawn()</code></a> fails to start a process, or a <a href="#mod-process">Process</a>'s <code>send()</code>/<code>recv()</code> hits a closed or broken pipe</td></tr>
 </tbody>
 </table>
@@ -1501,12 +1501,12 @@ print digits.sub("#", "1 2 3")            // "# # #"</code></pre>
 
 <!-- ==================== MODULE: PICKLE ==================== -->
 <h2 class="section" id="mod-pickle">pickle <span class="pill">module</span></h2>
-<p><code>import pickle</code> — serialises plain-data Lox values (<code>nil</code>, <code>bool</code>, <code>int</code>, <code>float</code>, <code>string</code>, <code>list</code>, <code>tuple</code>, <code>dict</code>, <code>vec2</code>/<code>vec3</code>/<code>vec4</code>, arbitrarily nested) to a byte string and back — useful for passing values between separate <code>glox</code> processes over a pipe/socket/file. Closures, classes/instances, modules, files, and native/graphics objects cannot be pickled and raise <a href="#exceptions"><code>PickleError</code></a>, as does a cyclic structure (e.g. a list appended to itself).</p>
+<p><code>import pickle</code> — serialises plain-data Lox values (<code>nil</code>, <code>bool</code>, <code>int</code>, <code>float</code>, <code>string</code>, <code>list</code>, <code>tuple</code>, <code>dict</code>, <code>vec2</code>/<code>vec3</code>/<code>vec4</code>) and class instances, arbitrarily nested, to a byte string and back — useful for passing values between separate <code>glox</code> processes over a pipe/socket/file. An instance is encoded as its class <em>name</em> plus its fields only — never its methods/code — so <code>loads()</code> can reconstruct it only if a class of that name is already loaded in the decoding process (built-ins first, then the calling script's own module scope); otherwise it raises <a href="#exceptions"><code>PickleError</code></a>, same as for any other unresolvable case. Class identity is by name only, the same convention <code>except ClassName</code> already uses. Closures, classes themselves (not their instances), modules, files, and native/graphics objects cannot be pickled and raise <code>PickleError</code>, as does a cyclic structure (e.g. a list, or an instance field, pointing back at itself).</p>
 <table>
 <thead><tr><th>Function</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><code>pickle.dumps(value)</code></td><td>Serialise <code>value</code> to a string of raw encoded bytes. Raises <code>PickleError</code> if <code>value</code> contains an unpicklable type or a cycle.</td></tr>
-<tr><td><code>pickle.loads(data)</code></td><td>Deserialise a string produced by <code>dumps()</code> back into a value. Raises <code>PickleError</code> on truncated or malformed input.</td></tr>
+<tr><td><code>pickle.loads(data)</code></td><td>Deserialise a string produced by <code>dumps()</code> back into a value. Raises <code>PickleError</code> on truncated/malformed input, or on an encoded instance whose class can't be resolved.</td></tr>
 </tbody>
 </table>
 <pre><code class="lox">import pickle
@@ -1520,7 +1520,16 @@ try {
     pickle.dumps(pickle.dumps)   // a function -- not picklable
 } except PickleError as e {
     print e.msg
-}</code></pre>
+}
+
+class Point {
+    init(x, y) {
+        this.x = x
+        this.y = y
+    }
+}
+p2 = pickle.loads(pickle.dumps(Point(3, 4)))
+print p2.x   // 3</code></pre>
 
 <!-- ==================== MODULE: PROCESS ==================== -->
 <h2 class="section" id="mod-process">process <span class="pill">module</span></h2>

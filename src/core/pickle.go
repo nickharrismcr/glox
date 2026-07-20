@@ -29,6 +29,7 @@ const (
 	pickleTagVec2
 	pickleTagVec3
 	pickleTagVec4
+	pickleTagInstance
 )
 
 // EncodeValue serialises v to a byte slice. Lists/dicts are walked
@@ -141,6 +142,28 @@ func encodeObjectValue(buf *bytes.Buffer, v Value, visiting map[Object]bool) err
 			}
 		}
 		return nil
+	case OBJECT_INSTANCE:
+		inst := v.AsInstance()
+		if visiting[inst] {
+			return errors.New("cannot pickle cyclic structure")
+		}
+		visiting[inst] = true
+		defer delete(visiting, inst)
+
+		buf.WriteByte(pickleTagInstance)
+		className := inst.Class.Name.Get()
+		bin.Write(buf, bin.LittleEndian, uint32(len(className)))
+		buf.WriteString(className)
+		bin.Write(buf, bin.LittleEndian, uint32(len(inst.Fields)))
+		for k, val := range inst.Fields {
+			name := NameFromID(k)
+			bin.Write(buf, bin.LittleEndian, uint32(len(name)))
+			buf.WriteString(name)
+			if err := encodeValue(buf, val, visiting); err != nil {
+				return err
+			}
+		}
+		return nil
 	default:
 		return fmt.Errorf("cannot pickle value of type %s", objectTypeName(v.Obj.GetType()))
 	}
@@ -238,14 +261,30 @@ func (r *pickleReader) readString() (string, error) {
 	return string(b), nil
 }
 
+// ClassResolver looks up a live *ClassObject by name so DecodeValue can
+// reconstruct a pickled instance against a class already loaded in the
+// decoding process. Pickle never ships class code (methods/Super) over the
+// wire, only field data -- see DecodeValueResolvingClasses.
+type ClassResolver func(name string) (*ClassObject, bool)
+
 // DecodeValue deserialises a byte slice produced by EncodeValue. It returns
 // an error rather than panicking on truncated or malformed input.
+//
+// Instance values cannot be reconstructed without a ClassResolver -- use
+// DecodeValueResolvingClasses for input that might contain one.
 func DecodeValue(data []byte) (Value, error) {
-	r := &pickleReader{data: data}
-	return decodeValue(r)
+	return DecodeValueResolvingClasses(data, nil)
 }
 
-func decodeValue(r *pickleReader) (Value, error) {
+// DecodeValueResolvingClasses is DecodeValue plus a ClassResolver used to
+// look up the class of any pickled instance encountered (possibly nested
+// inside a list/dict). Pass nil to behave exactly like DecodeValue.
+func DecodeValueResolvingClasses(data []byte, resolve ClassResolver) (Value, error) {
+	r := &pickleReader{data: data}
+	return decodeValue(r, resolve)
+}
+
+func decodeValue(r *pickleReader, resolve ClassResolver) (Value, error) {
 	tag, err := r.readByte()
 	if err != nil {
 		return NIL_VALUE, err
@@ -288,7 +327,7 @@ func decodeValue(r *pickleReader) (Value, error) {
 		}
 		items := make([]Value, 0, count)
 		for i := uint32(0); i < count; i++ {
-			item, err := decodeValue(r)
+			item, err := decodeValue(r, resolve)
 			if err != nil {
 				return NIL_VALUE, err
 			}
@@ -306,7 +345,7 @@ func decodeValue(r *pickleReader) (Value, error) {
 			if err != nil {
 				return NIL_VALUE, err
 			}
-			val, err := decodeValue(r)
+			val, err := decodeValue(r, resolve)
 			if err != nil {
 				return NIL_VALUE, err
 			}
@@ -355,6 +394,40 @@ func decodeValue(r *pickleReader) (Value, error) {
 			return NIL_VALUE, err
 		}
 		return MakeVec4Value(x, y, z, w, false), nil
+	case pickleTagInstance:
+		className, err := r.readString()
+		if err != nil {
+			return NIL_VALUE, err
+		}
+		count, err := r.readUint32()
+		if err != nil {
+			return NIL_VALUE, err
+		}
+		fields := make(map[int]Value, count)
+		for i := uint32(0); i < count; i++ {
+			name, err := r.readString()
+			if err != nil {
+				return NIL_VALUE, err
+			}
+			val, err := decodeValue(r, resolve)
+			if err != nil {
+				return NIL_VALUE, err
+			}
+			fields[InternName(name)] = val
+		}
+		// Fields must be fully consumed above before any of these error
+		// returns, so the reader cursor lands correctly for whatever comes
+		// after this value in the stream (e.g. a sibling in an outer list).
+		if resolve == nil {
+			return NIL_VALUE, fmt.Errorf("cannot unpickle instance of class %q: no class resolver available", className)
+		}
+		class, ok := resolve(className)
+		if !ok {
+			return NIL_VALUE, fmt.Errorf("cannot unpickle instance of unknown class %q", className)
+		}
+		inst := MakeInstanceObject(class)
+		inst.Fields = fields
+		return MakeObjectValue(inst, false), nil
 	default:
 		return NIL_VALUE, fmt.Errorf("unknown pickle tag %d", tag)
 	}
