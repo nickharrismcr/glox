@@ -23,6 +23,16 @@ POOL_EXPECTED = [
     "nil",
 ]
 
+POOL_100_EXPECTED = [
+    "100",
+    "0",
+    "338350",
+    "1",
+    "10000",
+    "done",
+    "nil",
+]
+
 WAIT_ANY_POOL_EXPECTED = [
     "Results for worker 1",
     "1 * 1 = 10.000000",
@@ -59,6 +69,18 @@ def test_process_basic(force_compile):
 def test_process_pool(force_compile):
     lines = run_lox("process_pool.lox", force_compile=force_compile)
     assert lines == POOL_EXPECTED
+
+
+@pytest.mark.parametrize("force_compile", [False, True])
+def test_process_pool_100(force_compile):
+    # Same fixed-worker-pool/task-queue design as test_process_pool, scaled
+    # to the numbers actually worth checking: a pool much smaller than the
+    # queue (4 workers, 100 tasks), so most workers run several tasks each
+    # and the pool stays saturated throughout. Every task must be dispatched
+    # exactly once and every result slot filled, regardless of which worker
+    # happens to finish first.
+    lines = run_lox("process_pool_100.lox", force_compile=force_compile)
+    assert lines == POOL_100_EXPECTED
 
 
 @pytest.mark.parametrize("force_compile", [False, True])
