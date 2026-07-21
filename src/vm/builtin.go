@@ -27,6 +27,8 @@ func DefineBuiltIns(vm *VM) {
 	makeBuiltInModule(vm, "re")
 	makeBuiltInModule(vm, "pickle")
 	makeBuiltInModule(vm, "process")
+	makeBuiltInModule(vm, "thread")
+	makeBuiltInModule(vm, "sync")
 
 	core.Log(core.INFO, "Defining built-in functions")
 
@@ -108,6 +110,14 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "process", "parent", builtin.ParentBuiltIn)
 	defineBuiltIn(vm, "process", "wait_any", builtin.WaitAnyBuiltIn)
 
+	// thread module functions
+	defineBuiltIn(vm, "thread", "spawn", builtin.ThreadSpawnBuiltIn)
+	defineBuiltIn(vm, "thread", "channel", builtin.ThreadChannelBuiltIn)
+	defineBuiltIn(vm, "thread", "wait_any", builtin.ThreadWaitAnyBuiltIn)
+
+	// sync module functions
+	defineBuiltIn(vm, "sync", "Mutex", builtin.MutexBuiltIn)
+
 	// Color utility functions
 	defineBuiltIn(vm, "colour_utils", "fade", builtin.ColourUtilsFadeBuiltIn)
 	defineBuiltIn(vm, "colour_utils", "tint", builtin.ColourUtilsTintBuiltIn)
@@ -127,7 +137,7 @@ func DefineBuiltIns(vm *VM) {
 func makeBuiltInModule(vm *VM, moduleName string) {
 
 	env := core.NewEnvironment(moduleName)
-	module := core.MakeModuleObject(moduleName, *env)
+	module := core.MakeModuleObject(moduleName, env)
 	vm.BuiltInModules[core.InternName(moduleName)] = module
 	core.LogFmtLn(core.INFO, "Created built-in module %s", moduleName)
 
@@ -197,6 +207,24 @@ class ProcessError < Exception {
     init(msg) {
 	    this.msg = msg;
 		this.name = "ProcessError";
+	}
+	toString() {
+		return this.msg;
+	}
+}
+class ThreadError < Exception {
+    init(msg) {
+	    this.msg = msg;
+		this.name = "ThreadError";
+	}
+	toString() {
+		return this.msg;
+	}
+}
+class SyncError < Exception {
+    init(msg) {
+	    this.msg = msg;
+		this.name = "SyncError";
 	}
 	toString() {
 		return this.msg;

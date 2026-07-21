@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -59,6 +60,28 @@ type VM struct {
 	Repl      bool                // REPL mode: persist globals across Interpret calls
 	replState *compiler.ReplState // persistent compile/run global state for the REPL session
 
+	// threadChans is non-nil only on a VM created by SpawnThread (see
+	// thread.go) -- it's this VM's own end of the channels wired up by
+	// its spawner, returned by ThreadChannels() for thread.channel().
+	threadChans *core.ThreadChannels
+
+	// exceptionFloor bounds how far raiseException's popFrame search may
+	// unwind: it refuses to pop below this frame count, treating that the
+	// same as running out of frames entirely (an "uncaught" exception, at
+	// this boundary rather than the true top of the script). Defaults to
+	// 1 -- the same floor popFrame always enforced before this field
+	// existed. run() raises it to startFrame for the duration of a nested
+	// RUN_CURRENT_FUNCTION call (see CallClosure), so an exception raised
+	// inside that call and not caught within its own frames becomes a
+	// clean INTERPRET_RUNTIME_ERROR returned to the Go caller, rather than
+	// raiseException walking past the call's boundary into the real
+	// caller's frames -- which corrupts the stack, since the native call
+	// that invoked CallClosure still unconditionally does its own
+	// post-call stack bookkeeping once CallClosure returns, and that
+	// bookkeeping assumes a normal single-result return, not a stack
+	// already rearranged for some ancestor's exception handler.
+	exceptionFloor int
+
 	// Debug hook: called with (vm, event, data) at opcode, call, return
 	// opcode events will have data as the opcode byte,
 	// call events will have data as the closure object being called,
@@ -77,6 +100,11 @@ var NEXT_METHOD = core.MakeStringObjectValue("__next__", true)
 //------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------
 
+// moduleCacheMu guards both maps below. Held only around individual map
+// reads/writes, never across a whole compile -- two threads compiling the
+// same not-yet-cached module concurrently is acceptable wasted work, not
+// a bug worth preventing (see docs/thread-module-plan.md).
+var moduleCacheMu sync.Mutex
 var globalModuleSource = map[string]string{}
 var globalModules = map[string]*core.ModuleObject{}
 
@@ -93,6 +121,7 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 		stackTrace:     []string{},
 		BuiltIns:       make(map[int]core.Value),
 		BuiltInModules: make(map[int]*core.ModuleObject),
+		exceptionFloor: 1,
 	}
 	vm.resetStack()
 	if defineBuiltIns && !core.DebugCompileOnly {
@@ -444,6 +473,18 @@ func (vm *VM) pop() core.Value {
 func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 	vm.ErrorMsg = ""
 	startFrame := vm.frameCount
+
+	if mode == RUN_CURRENT_FUNCTION {
+		// An exception raised during this call and not caught within its
+		// own frames must not search further up the real call stack --
+		// see exceptionFloor's doc comment for why. Restored on every
+		// return path via defer, since this call can itself nest (e.g. a
+		// closure invoked via CallClosure calling another via
+		// CallClosure).
+		prevFloor := vm.exceptionFloor
+		vm.exceptionFloor = startFrame
+		defer func() { vm.exceptionFloor = prevFloor }()
+	}
 
 	frame := vm.frame()
 	function := frame.Closure.Function
@@ -2369,7 +2410,7 @@ func (vm *VM) nextHandler() bool {
 
 // popFrame removes the current call frame and continues exception handling in the previous frame.
 func (vm *VM) popFrame() bool {
-	if vm.frameCount == 1 {
+	if vm.frameCount <= vm.exceptionFloor {
 		return false
 	}
 	vm.frameCount--
@@ -2433,7 +2474,9 @@ func (vm *VM) sourceLine(script string, line int) string {
 	source := vm.source
 	if script != vm.script {
 		module := getModule(script)
+		moduleCacheMu.Lock()
 		source = globalModuleSource[module]
+		moduleCacheMu.Unlock()
 	}
 	lines := strings.Split(source, "\n")
 	if line > 0 && line <= len(lines) {
@@ -2457,7 +2500,9 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 		vm.RunTimeError("Could not find module %s.", searchPath)
 		return INTERPRET_RUNTIME_ERROR
 	}
+	moduleCacheMu.Lock()
 	module, ok := globalModules[moduleName]
+	moduleCacheMu.Unlock()
 	if ok {
 		// module already loaded, just add to the current environment
 		core.LogFmtLn(core.DEBUG, "Module %s already loaded, adding to current environment.\n", moduleName)
@@ -2469,7 +2514,9 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 		}
 		return INTERPRET_OK
 	}
+	moduleCacheMu.Lock()
 	globalModuleSource[moduleName] = string(bytes)
+	moduleCacheMu.Unlock()
 	subvm := NewVM(searchPath, false)
 	subvm.BuiltIns = vm.BuiltIns
 	subvm.BuiltInModules = vm.BuiltInModules
@@ -2499,9 +2546,11 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 			subfn.Environment.Vars[core.InternName(name)] = subfn.Environment.Globals[slot]
 		}
 	}
-	mo := core.MakeModuleObject(moduleName, *subfn.Environment)
+	mo := core.MakeModuleObject(moduleName, subfn.Environment)
 
+	moduleCacheMu.Lock()
 	globalModules[moduleName] = mo
+	moduleCacheMu.Unlock()
 	v := core.MakeObjectValue(mo, false)
 	debug.TraceDumpValue("Dump:", v)
 	vm.frame().Closure.Function.Environment.SetVar(core.InternName(alias), v)
@@ -2545,7 +2594,7 @@ func (vm *VM) importFunctionFromModule(module string, name string) bool {
 	if name == "__all__" {
 		// import all functions from the module
 		moduleObj := moduleVal.AsModule()
-		for k, v := range moduleObj.Environment.Vars {
+		for k, v := range moduleObj.Environment.VarsSnapshot() {
 			if v.Type == core.VAL_OBJ && (v.ObjType == core.OBJECT_CLOSURE ||
 				v.ObjType == core.OBJECT_NATIVE) {
 				currentEnv.SetVar(k, v)

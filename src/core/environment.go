@@ -1,6 +1,9 @@
 package core
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 type Environment struct {
 	Name        string
@@ -8,6 +11,16 @@ type Environment struct {
 	Globals     []Value       // slot-indexed, for fast OP_GET_GLOBAL
 	Defined     []bool        // slot-indexed defined flags
 	GlobalNames []string      // slot → name, shared by every function in the compilation unit (for error messages)
+
+	// varsMu guards Vars only. A built-in module's Environment is shared
+	// by reference across the parent VM and every thread-module worker
+	// spawned from it, and module.attr = x (OP_SET_PROPERTY) writes to
+	// Vars directly -- without this, two threads both writing a module
+	// attribute would hit Go's fatal, unrecoverable concurrent-map-write
+	// detector. Globals/Defined are NOT guarded here: they're part of the
+	// documented "globals aren't isolated across threads" limitation (see
+	// docs/thread-module-plan.md), not fixed by this lock.
+	varsMu sync.RWMutex
 }
 
 // NameForSlot returns the global variable name for a slot, for error messages.
@@ -59,6 +72,8 @@ func (env *Environment) SetVar(stringId int, value Value) {
 	if env == nil {
 		panic("Cannot set variable in nil environment")
 	}
+	env.varsMu.Lock()
+	defer env.varsMu.Unlock()
 	env.Vars[stringId] = value
 }
 
@@ -67,6 +82,25 @@ func (env *Environment) GetVar(stringId int) (Value, bool) {
 	if env == nil {
 		panic("Cannot get variable from nil environment")
 	}
+	env.varsMu.RLock()
+	defer env.varsMu.RUnlock()
 	value, ok := env.Vars[stringId]
 	return value, ok
+}
+
+// VarsSnapshot returns a copy of Vars, safe to range over without racing a
+// concurrent SetVar (e.g. from a thread-module worker writing the same
+// shared module Environment). Used by introspection (inspect module) rather
+// than ranging over Vars directly.
+func (env *Environment) VarsSnapshot() map[int]Value {
+	if env == nil {
+		return nil
+	}
+	env.varsMu.RLock()
+	defer env.varsMu.RUnlock()
+	snapshot := make(map[int]Value, len(env.Vars))
+	for k, v := range env.Vars {
+		snapshot[k] = v
+	}
+	return snapshot
 }
