@@ -260,13 +260,24 @@ attributes are shared across threads and **not** isolated by the deep-copy
 mechanism — is deliberate, but it means a script that actually wants two
 threads to safely share and mutate one of those needs a real synchronization
 primitive; today there's nothing to reach for. No new statement/keyword is
-needed for this — glox already has `finally` (confirmed: a real reserved
-token, `docs/language-reference.html`'s exception-handling row lists `try /
-except / finally / raise`), so a plain `acquire()`/`release()` pair used
-with `try { ... } finally { m.release(); }` is already a safe, standard
-pattern, the same idiom Java's `Lock` uses. This fits the rest of this
-plan's approach exactly: new capability = a module + a native object, no
-compiler/grammar changes.
+needed for this: new capability = a module + a native object, no
+compiler/grammar changes, fitting the rest of this plan's approach exactly.
+
+**Correction (found during implementation, not caught at plan time):** the
+paragraph originally here claimed glox's `finally` clause made a plain
+`acquire()`/`release()` pair used with `try { ... } finally { m.release(); }`
+already safe. That's wrong — `finally` is a *lexed* keyword (it appears in
+the scanner and the language reference's keyword list) but was never wired
+into the parser's `try` grammar; `tryExceptStatement` requires at least one
+`except` and has no bare `try { ... } finally { ... }` form at all (confirmed
+empirically: it fails to parse with "Expect except."). The actual
+implementation was unaffected by this error, since `Mutex.locked()` is built
+on Go's own `defer`, not Lox's `finally` — but the manual `acquire()`/
+`release()` pattern genuinely has no `finally`-based safety net, only manual
+release-on-every-path (release in each `except` branch, then rethrow, plus
+release on the normal exit) — see `docs/md/SYNC_MODULE.md` for the corrected
+example. This is exactly why `locked()` should be considered the primary
+pattern, not just a convenience on top of an already-safe alternative.
 
 **`src/builtin/sync_functions.go`** (new): `MutexBuiltIn` — `sync.Mutex()`
 constructs a `MutexObject` wrapping a real Go `sync.Mutex`.

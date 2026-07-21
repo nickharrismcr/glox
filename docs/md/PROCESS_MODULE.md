@@ -148,7 +148,9 @@ there's no separate "ready for work" message needed from the worker side.
 ## Limitations
 
 - No closures: a worker is always a `.lox` script path, never an in-memory function
-  (see [pickle](PICKLE_MODULE.md) for why).
+  (see [pickle](PICKLE_MODULE.md) for why). If you specifically need to hand off a
+  closure, [`thread`](THREAD_MODULE.md) does that — in-process, at the cost of a
+  separate set of tradeoffs (weaker fault isolation, cooperative cancellation only).
 - Blocking I/O only: `recv()` blocks the whole interpreter until data arrives —
   glox has no concurrency/async model to do otherwise. `wait_any` is the one
   multiplexing primitive available.
