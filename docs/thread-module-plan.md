@@ -39,7 +39,9 @@ across threads — a class's methods close over that same shared environment.
 v1 accepts this and documents it plainly: **global/module/class-level
 mutable state is shared across threads and not synchronized for you** —
 same category of caveat as the existing raylib carve-out, not silently
-papered over.
+papered over. This plan also adds a `sync` module (`Mutex`, see below) as
+the one tool a script has for making that shared state safe to touch from
+more than one thread, when it actually needs to.
 
 ## Concurrency prerequisites (do first — nothing else in this plan is safe without these)
 
@@ -147,13 +149,20 @@ type ThreadHandle struct { // parent's view
 ```
 
 **`src/core/object.go`**: extend `VMContext` with
-`SpawnThread(closure Value, args []Value) (*ThreadHandle, error)` and
+`SpawnThread(closure Value, args []Value) (*ThreadHandle, error)`,
 `ThreadChannels() (*ThreadChannels, bool)` (`ok` false unless this VM was
-itself created by `SpawnThread`) — same pattern as `ResolveClass` was added
-for pickle, since `src/builtin` can't reach `*vm.VM`'s unexported `call`/
-`run` directly (would need to import `vm`, which imports `builtin` —
-cycle). Also append `NATIVE_THREAD`/`NATIVE_THREAD_CHANNEL` to the
-`NativeType` const block (append only, don't renumber existing entries).
+itself created by `SpawnThread`), and `CallClosure(closure Value, args
+[]Value) (Value, error)` — same pattern as `ResolveClass` was added for
+pickle, since `src/builtin` can't reach `*vm.VM`'s unexported `call`/`run`
+directly (would need to import `vm`, which imports `builtin` — cycle).
+`CallClosure` is the synchronous case (no new VM, no copy, no goroutine —
+just push+call+run on the *current* VM, reusing exactly the shape
+`callLoadedChunk`/`runThreadWorker` already use); it exists as its own
+primitive because the `sync` module's `Mutex.locked()` below needs it too,
+and `runThreadWorker`'s body should itself just call it instead of
+duplicating the push+call+run sequence a second time. Also append
+`NATIVE_THREAD`/`NATIVE_THREAD_CHANNEL` to the `NativeType` const block
+(append only, don't renumber existing entries).
 
 **`src/vm/vm.go`**: one new unexported field, `threadChans *core.ThreadChannels`
 (nil unless this VM was created by `SpawnThread`).
@@ -244,6 +253,57 @@ another REPL line would be working against a stale backing array, a
 split-brain bug, not just a race. Simplest correct fix is disallowing it
 at the boundary rather than trying to make `GrowGlobals` thread-aware.
 
+## `sync` module: `Mutex` for shared global state
+
+The scope limitation stated up top — globals, class statics, and module
+attributes are shared across threads and **not** isolated by the deep-copy
+mechanism — is deliberate, but it means a script that actually wants two
+threads to safely share and mutate one of those needs a real synchronization
+primitive; today there's nothing to reach for. No new statement/keyword is
+needed for this — glox already has `finally` (confirmed: a real reserved
+token, `docs/language-reference.html`'s exception-handling row lists `try /
+except / finally / raise`), so a plain `acquire()`/`release()` pair used
+with `try { ... } finally { m.release(); }` is already a safe, standard
+pattern, the same idiom Java's `Lock` uses. This fits the rest of this
+plan's approach exactly: new capability = a module + a native object, no
+compiler/grammar changes.
+
+**`src/builtin/sync_functions.go`** (new): `MutexBuiltIn` — `sync.Mutex()`
+constructs a `MutexObject` wrapping a real Go `sync.Mutex`.
+
+**`src/builtin/obj_builtin_sync.go`** (new):
+`MutexObject{core.BuiltInObject; mu sync.Mutex; Methods map[int]*core.BuiltInObject}`.
+**Important**: `CopyValueForSpawn`'s existing "anything else: share by
+pointer" default bucket already does the right thing here without any
+special-casing — a `Mutex` captured by a spawned closure's upvalue must be
+*shared*, not cloned, or every thread ends up locking its own private copy
+and the lock stops meaning anything. Worth a one-line comment at that
+default case in `copy.go` calling this out explicitly, so a future change
+to "clone everything by default" doesn't silently break it.
+
+**`src/builtin/sync_methods.go`** (new):
+- `acquire()` → `mu.Lock()`.
+- `release()` → `mu.Unlock()`, wrapped in its own `recover()` — Go's
+  `sync.Mutex.Unlock()` on an already-unlocked mutex panics, which should
+  surface as a catchable `SyncError` (new exception class, same shape as
+  `ProcessError`/`ThreadError`), not crash the calling thread's goroutine.
+- `locked(closure)`: `mu.Lock(); defer mu.Unlock()`, then
+  `vm.CallClosure(closure, nil)` inside that defer's scope — guarantees the
+  unlock runs even if the closure raises or panics, without the caller
+  needing to remember `finally` at all. The convenience form for the
+  common single-critical-section case; `acquire()`/`release()` stay
+  available for a lock that needs to span multiple statements or
+  functions, matching Go's own `sync.Mutex` offering both styles.
+
+**`SyncError`** class: add next to `ThreadError` in `exceptionSource`
+(`src/vm/builtin.go`). Raised for: `release()` without a matching
+`acquire()`, and any panic escaping a `locked()` closure that isn't already
+a Lox exception.
+
+v1 scope is a single `Mutex` — no `RWMutex`/semaphore/`WaitGroup`-equivalent
+yet, same tight-scoping instinct as the rest of this plan. Natural follow-ons
+if `Mutex` alone proves insufficient in practice.
+
 ## Tests
 
 New `tests/new_tests/lox/thread_*.lox` + `tests/new_tests/test_thread.py`
@@ -270,6 +330,18 @@ New `tests/new_tests/lox/thread_*.lox` + `tests/new_tests/test_thread.py`
   construct from valid Lox source, since Lox-level recursion is already
   capped by `FRAMES_MAX` before it could overflow the Go stack — asserting
   `wait()`/`Handle.Err` surfaces it and the test process itself survives.
+- **`sync_mutex.lox`**: spawn several threads (e.g. 8) that each acquire
+  the same `Mutex`, increment a value read via `thread.channel()` from a
+  shared source, and send the result back — with the lock, the parent
+  reconstructs a correct, non-racy final tally; a variant without
+  `acquire()`/`release()` at all is *not* included as a "must fail" test
+  (a race isn't guaranteed to manifest deterministically, so asserting on
+  it would be flaky) — the case for `Mutex` is made in the docs, not by a
+  test designed to prove the absence of one is broken.
+- **`sync_mutex_finally.lox`**: a closure run via `locked()` raises
+  partway through; asserts a *different* thread can still successfully
+  `acquire()` the same mutex afterward (proving the unlock-on-panic
+  guarantee actually holds, not just that the happy path releases it).
 
 ## Docs
 
@@ -280,6 +352,13 @@ documenting new modules (CLAUDE.md). Explicitly state the "globals/class
 statics are shared, not isolated" limitation and the "cancel() is
 cooperative, not a real kill" limitation in both places — these are the
 two facts a user of this module most needs to not get wrong.
+
+`docs/md/SYNC_MODULE.md` (new, same structure) + a `language-reference.html`
+section + nav link + exceptions table entry for `SyncError`, covering both
+`acquire()`/`release()` and `locked()`, and stating plainly that `Mutex` is
+the *only* tool this plan gives you for the "globals/class statics are
+shared, not isolated" gap — nothing else makes that shared state safe on
+its own.
 
 ## Verification
 
