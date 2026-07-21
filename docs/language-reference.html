@@ -1601,6 +1601,7 @@ p.close()</code></pre>
 <tbody>
 <tr><td><code>thread.spawn(closure, ...args)</code></td><td>Deep-copies <code>closure</code>'s captured upvalues and <code>args</code>, then runs the copy on a new goroutine-backed VM. Returns a <a href="#mod-thread-obj">Thread</a>. Raises <code>ThreadError</code> if <code>closure</code> isn't a function, or if called from the REPL (unsupported).</td></tr>
 <tr><td><code>thread.channel()</code></td><td>Called from inside a spawned function: returns a <a href="#mod-thread-chan-obj">ThreadChannel</a> wired to this thread's own communication channels, the <code>thread</code>-module analogue of <code>process.parent()</code>. Raises <code>ThreadError</code> if called outside a spawned thread.</td></tr>
+<tr><td><code>thread.wait_any(threads)</code></td><td>Blocks until any of the given <a href="#mod-thread-obj">Thread</a> objects has a message ready. Returns <code>(index, value)</code>, or <code>nil</code> once every thread in the list has finished -- the <code>thread</code>-module analogue of <code>process.wait_any()</code>. A thread that finished cleanly (its function returned, or it was cancelled) is dropped from consideration rather than treated as an error; one that ended abnormally and was <em>not</em> cancelled still raises <code>ThreadError</code>.</td></tr>
 </tbody>
 </table>
 <h3 id="mod-thread-obj">Thread objects</h3>
@@ -1608,10 +1609,10 @@ p.close()</code></pre>
 <thead><tr><th>Method</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><code>send(value)</code></td><td>Hands <code>value</code> to the thread directly -- no serialisation, both sides share one address space. Raises <code>ThreadError</code> if the thread has already finished.</td></tr>
-<tr><td><code>recv()</code></td><td>Blocks until the thread sends a value via <code>channel().send()</code>. Raises <code>ThreadError</code> if the thread finished (no more messages) or ended abnormally -- only the original exception's message text carries across, never its class.</td></tr>
+<tr><td><code>recv()</code></td><td>Blocks until the thread sends a value via <code>channel().send()</code>. Raises <code>ThreadError</code> if the thread finished (no more messages) or ended abnormally -- only the original exception's message text carries across, never its class. A cancelled thread finishing is not treated as abnormal.</td></tr>
 <tr><td><code>try_recv()</code></td><td>Non-blocking <code>recv()</code>. Returns <code>(false, nil)</code> if nothing is waiting, else <code>(true, value)</code>.</td></tr>
-<tr><td><code>wait()</code></td><td>Blocks until the thread's function returns, and returns whatever it returned -- unlike <code>process</code>'s <code>wait()</code> (an OS exit code only), a thread's real return value survives since there's no process boundary to lose it across. Raises <code>ThreadError</code> if the thread ended abnormally.</td></tr>
-<tr><td><code>cancel()</code></td><td>Cooperative cancellation only, <strong>not</strong> a real kill: unblocks a thread parked in <code>channel().send()</code>/<code>recv()</code> (both raise <code>ThreadError</code> there), but can't interrupt a thread stuck in a loop that never touches its channel.</td></tr>
+<tr><td><code>wait()</code></td><td>Blocks until the thread's function returns, and returns whatever it returned -- unlike <code>process</code>'s <code>wait()</code> (an OS exit code only), a thread's real return value survives since there's no process boundary to lose it across. Raises <code>ThreadError</code> if the thread ended abnormally; a cancelled thread's <code>wait()</code> returns <code>nil</code> instead.</td></tr>
+<tr><td><code>cancel()</code></td><td>Cooperative cancellation only, <strong>not</strong> a real kill: unblocks a thread parked in <code>channel().send()</code>/<code>recv()</code> (both raise <code>ThreadError</code> inside the thread's own function), but can't interrupt a thread stuck in a loop that never touches its channel. From the parent's side, though, a successfully cancelled thread looks like a clean finish, not a fault -- mirroring <code>process.kill()</code> producing a clean EOF for <code>process.wait_any()</code> rather than a <code>ProcessError</code>.</td></tr>
 </tbody>
 </table>
 <h3 id="mod-thread-chan-obj">ThreadChannel objects</h3>

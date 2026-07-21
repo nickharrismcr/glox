@@ -22,7 +22,17 @@ PANIC_EXPECTED = [
 ]
 
 CANCEL_EXPECTED = [
-    "caught cancel",
+    "nil",
+    "done",
+    "nil",
+]
+
+POOL_100_EXPECTED = [
+    "100",
+    "0",
+    "338350",
+    "1",
+    "10000",
     "done",
     "nil",
 ]
@@ -55,7 +65,20 @@ def test_thread_panic(force_compile):
 @pytest.mark.parametrize("force_compile", [False, True])
 def test_thread_cancel(force_compile):
     # cancel() must unblock a worker parked in channel().recv() promptly
-    # (not hang), surfacing as ThreadError on both the worker's recv() and
-    # the parent's wait().
+    # (not hang). Mirrors process.kill() producing a clean EOF for
+    # process.wait_any rather than a ProcessError: a cancelled thread's
+    # wait() must return cleanly (nil), not raise, since cancellation is
+    # an expected, self-inflicted shutdown, not a fault.
     lines = run_lox("thread_cancel.lox", force_compile=force_compile)
     assert lines == CANCEL_EXPECTED
+
+
+@pytest.mark.parametrize("force_compile", [False, True])
+def test_thread_pool_100(force_compile):
+    # The thread-module analogue of test_process_pool_100: a fixed pool of
+    # 4 in-memory worker closures draining a 100-task queue, dispatched
+    # dynamically via thread.wait_any as each worker frees up. Every task
+    # must be dispatched exactly once and every result slot filled,
+    # regardless of scheduling order across the 4 threads.
+    lines = run_lox("thread_pool_100.lox", force_compile=force_compile)
+    assert lines == POOL_100_EXPECTED

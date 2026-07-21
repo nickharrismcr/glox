@@ -8,13 +8,11 @@ var t = thread.spawn(func() {
 
 t.cancel();
 
-try {
-    t.wait();
-    print "wait returned cleanly";
-}
-except ThreadError as e
-{
-    print "caught cancel";
-}
+// cancel() must unblock the worker's parked recv() promptly (not hang),
+// and -- mirroring process.kill() producing a clean EOF for
+// process.wait_any rather than a ProcessError -- a cancelled thread's
+// wait() must return cleanly rather than raise, since cancellation is an
+// expected, self-inflicted shutdown, not a fault.
+print t.wait();
 
 print "done";

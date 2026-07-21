@@ -8,6 +8,17 @@ type ThreadObject struct {
 	core.BuiltInObject
 	Handle  *core.ThreadHandle
 	Methods map[int]*core.BuiltInObject
+
+	// recvDone latches once ThreadWaitAnyBuiltIn has observed
+	// Handle.FromWorker closed (the thread has finished, normally or by
+	// erroring -- runThreadWorker always closes it). Not strictly required
+	// for correctness the way ProcessObject's identical field is (a closed
+	// Go channel keeps returning ok=false forever, so re-selecting on it is
+	// always safe, unlike process's recvCh, which just goes silent
+	// forever after its terminal post rather than closing) -- kept for
+	// symmetry with process.wait_any and to stop an already-finished
+	// thread from dominating repeated selects once it's known done.
+	recvDone bool
 }
 
 func newThreadObject(handle *core.ThreadHandle) *ThreadObject {

@@ -54,6 +54,19 @@ to this thread's own communication channels — the `thread` module's analogue o
 `process.parent()`.
 - Raises `ThreadError` if called from outside a spawned thread
 
+### `thread.wait_any(threads)` → (index, value) or nil
+Blocks until *any* of the given `Thread` objects has a message ready, and returns
+which one (as an index into `threads`) plus the received value — the `thread`
+module's analogue of `process.wait_any()`, for fanning in results from several
+threads without polling each one in turn.
+
+A thread that has simply finished (its function returned, or it was cancelled) is
+dropped from consideration rather than treated as an error, the same as
+`process.wait_any()` drops a cleanly-finished `Process`. Once *every* thread in the
+list has finished, `wait_any` returns `nil`. A thread that ended abnormally (an
+uncaught exception or panic, and it was *not* cancelled) still raises `ThreadError`
+immediately.
+
 ## Thread objects
 
 The parent-side handle returned by `thread.spawn()`.
@@ -65,9 +78,11 @@ one address space. Raises `ThreadError` if the thread has already finished.
 
 ### `t.recv()` → value
 Blocks until the thread sends a value via `channel().send()`, and returns it.
-Raises `ThreadError` if the thread has finished (no more messages will ever arrive)
-or if the thread ended abnormally (an uncaught exception, or a Go-level panic) —
-either way the original exception's specific class isn't preserved, only its text.
+Raises `ThreadError` if the thread ended abnormally (an uncaught exception, or a
+Go-level panic — either way the original exception's specific class isn't
+preserved, only its text) or if the thread finished cleanly with no more messages
+pending. A *cancelled* thread finishing is not treated as abnormal (see `cancel()`
+below) — `recv()` behaves as if it had simply run to completion.
 
 ### `t.try_recv()` → (ok, value)
 Non-blocking version of `recv()`. Returns `(false, nil)` immediately if nothing is
@@ -78,15 +93,24 @@ Blocks until the thread's function returns, and returns whatever it returned.
 Raises `ThreadError` if the thread ended abnormally instead (see `recv()` above) —
 unlike `process`'s `wait()`, which only ever returns an OS exit code, a thread's
 `wait()` gives you its actual return value, since there's no process boundary to
-lose it across.
+lose it across. A cancelled thread's `wait()` returns `nil` rather than raising —
+see `cancel()` below.
 
 ### `t.cancel()` → nil
 Requests cancellation. **Cooperative only, not a real kill**: it unblocks a thread
-currently parked in `channel().send()`/`recv()` (both raise `ThreadError` there
-instead), but cannot interrupt a thread stuck in a tight loop that never touches its
-channel — there's no preemption point in the interpreter for that. A thread that
-truly won't yield can't be force-stopped the way `process.kill()` can force-stop an
-OS process.
+currently parked in `channel().send()`/`recv()` (both raise `ThreadError` *inside
+the thread's own function*, letting it catch that and clean up if it wants to), but
+cannot interrupt a thread stuck in a tight loop that never touches its channel —
+there's no preemption point in the interpreter for that. A thread that truly won't
+yield can't be force-stopped the way `process.kill()` can force-stop an OS process.
+
+From the *parent's* point of view, though, a successfully cancelled thread looks
+like a clean finish, not a fault — `wait()` returns `nil` and `recv()`/`wait_any()`
+treat it as simply done, mirroring `process.kill()` producing a clean EOF for
+`process.wait_any()` rather than a `ProcessError`. This holds even if the thread's
+own function happened to catch the `ThreadError` `channel()` raised and return
+normally instead of letting it propagate — either way, once cancellation has taken
+effect, the parent sees a clean finish.
 
 ## ThreadChannel objects
 
@@ -119,5 +143,6 @@ Non-blocking version of `recv()`, same shape as `Thread.try_recv()`.
 - **Not supported from the REPL** — `thread.spawn()` raises `ThreadError` if called
   from an interactive session, since the REPL's incremental global-variable growth
   isn't safe to run concurrently with an in-flight thread.
-- An uncaught exception (or panic) inside a thread always surfaces as `ThreadError`,
-  never the original exception's own class — only its message text carries across.
+- An uncaught exception (or panic) inside a thread — other than one caused by
+  `cancel()` — surfaces as `ThreadError`, never the original exception's own class;
+  only its message text carries across.

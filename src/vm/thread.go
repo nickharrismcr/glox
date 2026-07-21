@@ -102,17 +102,32 @@ func runThreadWorker(worker *VM, closure *core.ClosureObject, args []core.Value,
 		result = retVal
 	}()
 
+	// A cancelled thread ending -- whether via the uncaught ThreadError its
+	// own channel().send()/recv() raises on seeing Cancelled fire, or it
+	// just happening to finish independently around the same time
+	// cancel() was called -- is an expected, self-inflicted shutdown, not
+	// a fault. Mirrors process.kill() producing a clean EOF for
+	// process.wait_any rather than a ProcessError: cancel() is glox's
+	// equivalent of kill(), so it must look the same way to wait()/
+	// recv()/wait_any() once it's taken effect.
+	cancelled := false
+	select {
+	case <-worker.threadChans.Cancelled:
+		cancelled = true
+	default:
+	}
+
 	// Both fields are written here, before fromWorker/doneCh are closed --
 	// Go's channel-close happens-before guarantee is what makes it safe
 	// for wait()/recv() to read them after observing either channel
 	// closed, with no mutex needed.
-	if workErr != nil {
+	if workErr != nil && !cancelled {
 		handle.Err = workErr
 		select {
 		case fromWorker <- core.ThreadMessage{Err: workErr}:
 		default: // recv() isn't listening right now: wait() is still authoritative
 		}
-	} else {
+	} else if workErr == nil {
 		handle.Result = result
 	}
 	close(fromWorker)

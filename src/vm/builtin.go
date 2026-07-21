@@ -113,6 +113,7 @@ func DefineBuiltIns(vm *VM) {
 	// thread module functions
 	defineBuiltIn(vm, "thread", "spawn", builtin.ThreadSpawnBuiltIn)
 	defineBuiltIn(vm, "thread", "channel", builtin.ThreadChannelBuiltIn)
+	defineBuiltIn(vm, "thread", "wait_any", builtin.ThreadWaitAnyBuiltIn)
 
 	// sync module functions
 	defineBuiltIn(vm, "sync", "Mutex", builtin.MutexBuiltIn)
