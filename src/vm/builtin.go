@@ -127,7 +127,7 @@ func DefineBuiltIns(vm *VM) {
 func makeBuiltInModule(vm *VM, moduleName string) {
 
 	env := core.NewEnvironment(moduleName)
-	module := core.MakeModuleObject(moduleName, *env)
+	module := core.MakeModuleObject(moduleName, env)
 	vm.BuiltInModules[core.InternName(moduleName)] = module
 	core.LogFmtLn(core.INFO, "Created built-in module %s", moduleName)
 

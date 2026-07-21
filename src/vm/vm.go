@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -77,6 +78,11 @@ var NEXT_METHOD = core.MakeStringObjectValue("__next__", true)
 //------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------
 
+// moduleCacheMu guards both maps below. Held only around individual map
+// reads/writes, never across a whole compile -- two threads compiling the
+// same not-yet-cached module concurrently is acceptable wasted work, not
+// a bug worth preventing (see docs/thread-module-plan.md).
+var moduleCacheMu sync.Mutex
 var globalModuleSource = map[string]string{}
 var globalModules = map[string]*core.ModuleObject{}
 
@@ -2433,7 +2439,9 @@ func (vm *VM) sourceLine(script string, line int) string {
 	source := vm.source
 	if script != vm.script {
 		module := getModule(script)
+		moduleCacheMu.Lock()
 		source = globalModuleSource[module]
+		moduleCacheMu.Unlock()
 	}
 	lines := strings.Split(source, "\n")
 	if line > 0 && line <= len(lines) {
@@ -2457,7 +2465,9 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 		vm.RunTimeError("Could not find module %s.", searchPath)
 		return INTERPRET_RUNTIME_ERROR
 	}
+	moduleCacheMu.Lock()
 	module, ok := globalModules[moduleName]
+	moduleCacheMu.Unlock()
 	if ok {
 		// module already loaded, just add to the current environment
 		core.LogFmtLn(core.DEBUG, "Module %s already loaded, adding to current environment.\n", moduleName)
@@ -2469,7 +2479,9 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 		}
 		return INTERPRET_OK
 	}
+	moduleCacheMu.Lock()
 	globalModuleSource[moduleName] = string(bytes)
+	moduleCacheMu.Unlock()
 	subvm := NewVM(searchPath, false)
 	subvm.BuiltIns = vm.BuiltIns
 	subvm.BuiltInModules = vm.BuiltInModules
@@ -2499,9 +2511,11 @@ func (vm *VM) importModule(moduleName string, alias string) InterpretResult {
 			subfn.Environment.Vars[core.InternName(name)] = subfn.Environment.Globals[slot]
 		}
 	}
-	mo := core.MakeModuleObject(moduleName, *subfn.Environment)
+	mo := core.MakeModuleObject(moduleName, subfn.Environment)
 
+	moduleCacheMu.Lock()
 	globalModules[moduleName] = mo
+	moduleCacheMu.Unlock()
 	v := core.MakeObjectValue(mo, false)
 	debug.TraceDumpValue("Dump:", v)
 	vm.frame().Closure.Function.Environment.SetVar(core.InternName(alias), v)
@@ -2545,7 +2559,7 @@ func (vm *VM) importFunctionFromModule(module string, name string) bool {
 	if name == "__all__" {
 		// import all functions from the module
 		moduleObj := moduleVal.AsModule()
-		for k, v := range moduleObj.Environment.Vars {
+		for k, v := range moduleObj.Environment.VarsSnapshot() {
 			if v.Type == core.VAL_OBJ && (v.ObjType == core.OBJECT_CLOSURE ||
 				v.ObjType == core.OBJECT_NATIVE) {
 				currentEnv.SetVar(k, v)

@@ -48,7 +48,7 @@ func dumpObject(obj core.Object, seen map[uintptr]bool, indent int) {
 		core.LogFmtLn(core.TRACE, "%s<Module %s @%p>\n", indentPad(indent), o.Name, o)
 		mo := obj.(*core.ModuleObject)
 		core.LogFmtLn(core.TRACE, "%s  Env:\n", indentPad(indent))
-		DumpEnvironment(&mo.Environment, seen, indent+2)
+		DumpEnvironment(mo.Environment, seen, indent+2)
 
 	default:
 		core.LogFmtLn(core.TRACE, "%s<%T: %v>\n", indentPad(indent), o, o)

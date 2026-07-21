@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 )
 
 type ListObject struct {
@@ -146,17 +147,20 @@ func (o *ListObject) Join(s string) (Value, error) {
 // when a container holds a reference to itself (directly, or via another
 // container) -- e.g. `l.append(l)`. Package-level rather than a parameter
 // because String() implements the shared Object interface used by every heap
-// type. Not goroutine-safe, but the VM's object graph is only ever walked
-// from a single goroutine at a time.
-var stringDepth int
+// type. An atomic.Int32 rather than a lock: multiple thread-module VMs can
+// now call String() concurrently, but this only needs to not corrupt/panic
+// under that -- a thread occasionally tripping the depth guard a little
+// early because another thread's recursion is interleaved with its own is
+// a cosmetic edge case, not a correctness bug worth a lock on this path.
+var stringDepth atomic.Int32
 
 const maxStringDepth = 100
 
 func (o *ListObject) String() string {
 
-	stringDepth++
-	defer func() { stringDepth-- }()
-	if stringDepth > maxStringDepth {
+	depth := stringDepth.Add(1)
+	defer stringDepth.Add(-1)
+	if depth > maxStringDepth {
 		return "..."
 	}
 

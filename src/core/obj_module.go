@@ -6,10 +6,14 @@ import (
 
 type ModuleObject struct {
 	Name		string
-	Environment	Environment
+	Environment	*Environment
 }
 
-func MakeModuleObject(name string, environment Environment) *ModuleObject {
+// MakeModuleObject stores environment by reference, never a copy -- a copy
+// would duplicate Environment's mutex (see varsMu) while continuing to
+// alias the same underlying Vars map, so two "different" environments
+// would guard the same shared map with two different, uncontended locks.
+func MakeModuleObject(name string, environment *Environment) *ModuleObject {
 
 	return &ModuleObject{
 		Name:		name,

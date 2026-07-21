@@ -28,9 +28,9 @@ func (DictObject) GetType() ObjectType {
 }
 
 func (o *DictObject) String() string {
-	stringDepth++
-	defer func() { stringDepth-- }()
-	if stringDepth > maxStringDepth {
+	depth := stringDepth.Add(1)
+	defer stringDepth.Add(-1)
+	if depth > maxStringDepth {
 		return "..."
 	}
 
