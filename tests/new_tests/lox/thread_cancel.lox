@@ -1,0 +1,20 @@
+import thread;
+
+var t = thread.spawn(func() {
+    var c = thread.channel();
+    c.recv();               // blocks forever -- nothing is ever sent
+    print "should not print";
+});
+
+t.cancel();
+
+try {
+    t.wait();
+    print "wait returned cleanly";
+}
+except ThreadError as e
+{
+    print "caught cancel";
+}
+
+print "done";

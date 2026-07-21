@@ -27,6 +27,8 @@ func DefineBuiltIns(vm *VM) {
 	makeBuiltInModule(vm, "re")
 	makeBuiltInModule(vm, "pickle")
 	makeBuiltInModule(vm, "process")
+	makeBuiltInModule(vm, "thread")
+	makeBuiltInModule(vm, "sync")
 
 	core.Log(core.INFO, "Defining built-in functions")
 
@@ -107,6 +109,13 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "process", "spawn", builtin.SpawnBuiltIn)
 	defineBuiltIn(vm, "process", "parent", builtin.ParentBuiltIn)
 	defineBuiltIn(vm, "process", "wait_any", builtin.WaitAnyBuiltIn)
+
+	// thread module functions
+	defineBuiltIn(vm, "thread", "spawn", builtin.ThreadSpawnBuiltIn)
+	defineBuiltIn(vm, "thread", "channel", builtin.ThreadChannelBuiltIn)
+
+	// sync module functions
+	defineBuiltIn(vm, "sync", "Mutex", builtin.MutexBuiltIn)
 
 	// Color utility functions
 	defineBuiltIn(vm, "colour_utils", "fade", builtin.ColourUtilsFadeBuiltIn)
@@ -197,6 +206,24 @@ class ProcessError < Exception {
     init(msg) {
 	    this.msg = msg;
 		this.name = "ProcessError";
+	}
+	toString() {
+		return this.msg;
+	}
+}
+class ThreadError < Exception {
+    init(msg) {
+	    this.msg = msg;
+		this.name = "ThreadError";
+	}
+	toString() {
+		return this.msg;
+	}
+}
+class SyncError < Exception {
+    init(msg) {
+	    this.msg = msg;
+		this.name = "SyncError";
 	}
 	toString() {
 		return this.msg;

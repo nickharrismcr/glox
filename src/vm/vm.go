@@ -60,6 +60,28 @@ type VM struct {
 	Repl      bool                // REPL mode: persist globals across Interpret calls
 	replState *compiler.ReplState // persistent compile/run global state for the REPL session
 
+	// threadChans is non-nil only on a VM created by SpawnThread (see
+	// thread.go) -- it's this VM's own end of the channels wired up by
+	// its spawner, returned by ThreadChannels() for thread.channel().
+	threadChans *core.ThreadChannels
+
+	// exceptionFloor bounds how far raiseException's popFrame search may
+	// unwind: it refuses to pop below this frame count, treating that the
+	// same as running out of frames entirely (an "uncaught" exception, at
+	// this boundary rather than the true top of the script). Defaults to
+	// 1 -- the same floor popFrame always enforced before this field
+	// existed. run() raises it to startFrame for the duration of a nested
+	// RUN_CURRENT_FUNCTION call (see CallClosure), so an exception raised
+	// inside that call and not caught within its own frames becomes a
+	// clean INTERPRET_RUNTIME_ERROR returned to the Go caller, rather than
+	// raiseException walking past the call's boundary into the real
+	// caller's frames -- which corrupts the stack, since the native call
+	// that invoked CallClosure still unconditionally does its own
+	// post-call stack bookkeeping once CallClosure returns, and that
+	// bookkeeping assumes a normal single-result return, not a stack
+	// already rearranged for some ancestor's exception handler.
+	exceptionFloor int
+
 	// Debug hook: called with (vm, event, data) at opcode, call, return
 	// opcode events will have data as the opcode byte,
 	// call events will have data as the closure object being called,
@@ -99,6 +121,7 @@ func NewVM(script string, defineBuiltIns bool) *VM {
 		stackTrace:     []string{},
 		BuiltIns:       make(map[int]core.Value),
 		BuiltInModules: make(map[int]*core.ModuleObject),
+		exceptionFloor: 1,
 	}
 	vm.resetStack()
 	if defineBuiltIns && !core.DebugCompileOnly {
@@ -450,6 +473,18 @@ func (vm *VM) pop() core.Value {
 func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 	vm.ErrorMsg = ""
 	startFrame := vm.frameCount
+
+	if mode == RUN_CURRENT_FUNCTION {
+		// An exception raised during this call and not caught within its
+		// own frames must not search further up the real call stack --
+		// see exceptionFloor's doc comment for why. Restored on every
+		// return path via defer, since this call can itself nest (e.g. a
+		// closure invoked via CallClosure calling another via
+		// CallClosure).
+		prevFloor := vm.exceptionFloor
+		vm.exceptionFloor = startFrame
+		defer func() { vm.exceptionFloor = prevFloor }()
+	}
 
 	frame := vm.frame()
 	function := frame.Closure.Function
@@ -2375,7 +2410,7 @@ func (vm *VM) nextHandler() bool {
 
 // popFrame removes the current call frame and continues exception handling in the previous frame.
 func (vm *VM) popFrame() bool {
-	if vm.frameCount == 1 {
+	if vm.frameCount <= vm.exceptionFloor {
 		return false
 	}
 	vm.frameCount--

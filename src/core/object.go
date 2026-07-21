@@ -39,6 +39,9 @@ const (
 	NATIVE_BATCH_INSTANCED
 	NATIVE_PHYSICS_WORLD
 	NATIVE_PROCESS
+	NATIVE_THREAD
+	NATIVE_THREAD_CHANNEL
+	NATIVE_MUTEX
 )
 
 type Object interface {
@@ -83,6 +86,19 @@ type VMContext interface {
 	GetGlobals() *Environment
 	FileName() string
 	ResolveClass(name string) (*ClassObject, bool)
+
+	// SpawnThread runs closure (with args) on a new goroutine-backed VM
+	// instance, deep-copying closure/args first (see CopyValueForSpawn) so
+	// the new thread shares no mutable captured state with the caller.
+	SpawnThread(closure Value, args []Value) (*ThreadHandle, error)
+	// ThreadChannels returns this VM's own communication channels, and
+	// false unless this VM was itself created by SpawnThread -- called by
+	// thread.channel() from inside a spawned worker.
+	ThreadChannels() (*ThreadChannels, bool)
+	// CallClosure synchronously invokes closure on the *current* VM (no
+	// new VM, no copy, no goroutine) and returns its result -- used by
+	// thread.spawn's worker body and by sync.Mutex.locked().
+	CallClosure(closure Value, args []Value) (Value, error)
 }
 
 type BuiltInFn func(argCount int, args_stackptr int, vm VMContext) Value
