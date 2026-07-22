@@ -11,7 +11,7 @@ here = os.dirname(sys.args()[0]);
 worker_path = os.join(here, "process_pool_worker.lox");
 
 n_tasks = 100;
-p = pool.Pool(worker_path, 4);
+p = pool.ProcessPool(worker_path, 4);
 
 tasks = [];
 foreach (i in range(1, n_tasks + 1)) {

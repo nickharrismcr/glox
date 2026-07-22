@@ -67,6 +67,11 @@ list has finished, `wait_any` returns `nil`. A thread that ended abnormally (an
 uncaught exception or panic, and it was *not* cancelled) still raises `ThreadError`
 immediately.
 
+`spawn`/`channel`/`wait_any` are enough to build a fixed worker pool over
+threads the same way `process`'s equivalents do over processes — the `pool`
+module's `pool.ThreadPool` does exactly that, built on this same design, so most
+scripts don't need to hand-roll it. See the language reference's `pool` section.
+
 ## Thread objects
 
 The parent-side handle returned by `thread.spawn()`.

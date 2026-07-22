@@ -1575,23 +1575,28 @@ p.send(x * 2)</code></pre>
 
 <!-- ==================== MODULE: POOL ==================== -->
 <h2 class="section" id="mod-pool">pool <span class="pill">module</span></h2>
-<p><code>import pool</code> — a fixed-size worker pool over <a href="#mod-process">process</a>'s <code>spawn</code>/<code>send</code>/<code>recv</code>/<code>wait_any</code>, glox's answer to Python's <code>multiprocessing.Pool</code>. A worker is any script that loops "<code>recv()</code> a task, do work, <code>send()</code> a result"; <code>Pool.map()</code> hands tasks out to whichever worker is free and returns results in task order, regardless of which worker finishes first.</p>
+<p><code>import pool</code> — fixed-size worker pools, glox's answer to Python's <code>multiprocessing.Pool</code>: <code>ProcessPool</code> over <a href="#mod-process">process</a>'s <code>spawn</code>/<code>send</code>/<code>recv</code>/<code>wait_any</code>, <code>ThreadPool</code> over the equivalent <a href="#mod-thread">thread</a> primitives. Both spawn their workers up front and keep them alive across calls; <code>.map()</code> hands tasks out to whichever worker is free and returns results in task order, regardless of which worker finishes first.</p>
 <table>
 <thead><tr><th>Function / class</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>pool.Pool(worker_path, n_workers)</code></td><td>Class: spawns <code>n_workers</code> copies of <code>worker_path</code> immediately. They stay alive, idle between calls, until <code>close()</code>.</td></tr>
-<tr><td><code>.map(tasks)</code></td><td>Runs every item in <code>tasks</code> across the pool; blocks until all are done. Returns results in the same order as <code>tasks</code>. Safe to call more than once on the same pool -- workers are reused, not respawned, between calls.</td></tr>
-<tr><td><code>.close()</code></td><td>Kills and reaps every worker. Idempotent. <code>map()</code> raises <code>PoolError</code> if called afterward.</td></tr>
+<tr><td><code>pool.ProcessPool(worker_path, n_workers)</code></td><td>Class: spawns <code>n_workers</code> copies of the <code>.lox</code> script <code>worker_path</code> immediately. Each worker loops "<code>recv()</code> a task, do work, <code>send()</code> a result". Workers stay alive, idle between calls, until <code>close()</code> kills them.</td></tr>
+<tr><td><code>pool.ThreadPool(task_fn, n_workers)</code></td><td>Class: spawns <code>n_workers</code> threads immediately, each looping "<code>recv()</code> a task via its own channel, call <code>task_fn(task)</code>, <code>send()</code> the result back". <code>task_fn</code> is a plain function, not a script -- no process boundary needs crossing to hand it a closure. Workers stay alive, idle between calls, until <code>close()</code> cancels them.</td></tr>
+<tr><td><code>.map(tasks)</code></td><td>Runs every item in <code>tasks</code> across the pool; blocks until all are done. Returns results in the same order as <code>tasks</code>. Safe to call more than once on the same pool -- workers are reused, not respawned, between calls. Identical contract on both classes.</td></tr>
+<tr><td><code>.close()</code></td><td><code>ProcessPool</code>: kills and reaps every worker. <code>ThreadPool</code>: cancels and reaps every thread. Idempotent either way. <code>map()</code> raises <code>PoolError</code> if called afterward.</td></tr>
 </tbody>
 </table>
 <pre><code class="lox">import pool
 
-p = pool.Pool("worker.lox", 4)
+p = pool.ProcessPool("worker.lox", 4)
 results = p.map([1, 2, 3, 4, 5])   // more tasks than workers is fine
 print results                      // in task order, however workers finished
 results2 = p.map([10, 20])         // same pool, same workers, reused
-p.close()</code></pre>
-<div class="note"><strong>Limitation</strong>If a worker crashes mid-task, <code>map()</code> can't distinguish that from every worker in the pool having exited -- <code>process.wait_any()</code> doesn't tell the two apart -- so it raises <code>PoolError</code> either way rather than retrying or reporting which task was lost.</div>
+p.close()
+
+p2 = pool.ThreadPool(func(x) { return x * x }, 4)   // in-memory function, not a script
+print p2.map([1, 2, 3, 4, 5])
+p2.close()</code></pre>
+<div class="note"><strong>Limitation</strong>If a worker crashes mid-task, <code>map()</code> can't distinguish that from every worker in the pool having exited -- <code>wait_any()</code> doesn't tell the two apart on either backend -- so it raises <code>PoolError</code> either way rather than retrying or reporting which task was lost.</div>
 
 <!-- ==================== MODULE: THREAD ==================== -->
 <h2 class="section" id="mod-thread">thread <span class="pill">module</span></h2>
