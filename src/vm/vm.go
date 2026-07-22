@@ -2334,8 +2334,12 @@ func (vm *VM) raiseException(err core.Value) bool {
 
 	for {
 		vm.appendStackTrace()
-		handler := vm.frame().Handlers
-		if handler != nil {
+		// Try every handler in this frame, from innermost to outermost, before
+		// unwinding to the caller frame -- a nested try whose own except
+		// clauses don't match must still fall back to an enclosing try's
+		// handler in the *same* frame (handler.Prev) rather than immediately
+		// treating the exception as having escaped this frame entirely.
+		for handler := vm.frame().Handlers; handler != nil; handler = handler.Prev {
 
 			vm.stackTop = handler.StackTop
 			vm.stack[vm.stackTop] = err
@@ -2365,9 +2369,15 @@ func (vm *VM) raiseException(err core.Value) bool {
 					v, ok = vm.BuiltIns[id]
 				}
 				if !ok {
-					// also check the fast globals slice (user-defined exception classes)
+					// also check the fast globals slice (user-defined exception classes).
+					// function.Chunk.GlobalNames is only ever populated for the
+					// top-level script's own chunk (see endCompiler()) -- an except
+					// clause inside any other function must resolve the name against
+					// the shared Environment's GlobalNames instead, or it can never
+					// find a global class defined anywhere but its own (nonexistent)
+					// chunk-local table.
 					handlerName := core.GetStringValue(function.Chunk.Constants[idx])
-					if slot := function.Chunk.SlotForName(handlerName); slot >= 0 && function.Environment.Defined[slot] {
+					if slot := function.Environment.SlotForName(handlerName); slot >= 0 && function.Environment.Defined[slot] {
 						v, ok = function.Environment.Globals[slot], true
 					}
 				}
