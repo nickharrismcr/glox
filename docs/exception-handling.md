@@ -1,8 +1,8 @@
 # Exception handling: bytecode shape, VM dispatch, and the finally trampoline
 
-How `try`/`except`/`finally` actually works, end to end — the bytecode layout,
-the VM-side matching machinery, and why the compiler-side `finally` support
-looks the way it does. Grounded in the current code:
+How `try`/`except`/`finally` is implemented, end to end — the bytecode
+layout, the VM-side matching machinery, and the compiler-side design behind
+`finally`. Grounded in the current code:
 [`src/compiler/compile.go`](../src/compiler/compile.go) (`tryExceptStatement`
 and friends), [`src/vm/vm.go`](../src/vm/vm.go) (`raiseException`,
 `nextHandler`, the `OP_TRY`/`OP_END_TRY`/`OP_EXCEPT`/`OP_END_EXCEPT`/
@@ -49,7 +49,8 @@ compiles to, roughly:
         ...
 ```
 
-Two invariants the VM depends on, both easy to break by accident:
+Two invariants the VM depends on, both easy to break by accident when
+touching this code:
 
 - **`OP_END_EXCEPT` must be immediately followed by the next clause's
   `OP_EXCEPT` or `OP_FINALLY`, with nothing in between.** `nextHandler()`
@@ -60,17 +61,14 @@ Two invariants the VM depends on, both easy to break by accident:
   to preserve this.
 - **`OP_TRY`'s operand is patched exactly once**, to the address of the
   *first* clause (`OP_EXCEPT` or, for a bare `try { } finally { }`,
-  `OP_FINALLY` directly) — never re-patched as later clauses compile. This
-  used to be a bug (patched once per clause, so it always ended up pointing
-  at the *last* one); see "Bugs fixed by this design" below.
+  `OP_FINALLY` directly) — never re-patched as later clauses compile.
 
 ## The VM-side matching loop
 
 `OP_TRY` (`vm.go:1420-1433`) pushes an `ExceptionHandler{ExceptIP, StackTop,
 Prev}` onto `frame.Handlers` — a cons-list, so nested `try`s just push more
 entries. `OP_END_TRY` (`vm.go:1434-1441`) pops one entry and jumps past the
-whole except/finally chain on normal completion; the jump offset is real and
-must be consumed (it wasn't, once — see below).
+whole except/finally chain on normal completion.
 
 `raiseException` (`vm.go:2333-2418`) is the whole matching engine:
 
@@ -94,44 +92,44 @@ for {
 }
 ```
 
-Two things worth calling out because they weren't always true:
+Two properties of this loop worth understanding, since they're not obvious
+from the bytecode alone:
 
 - **`OP_FINALLY` is just an always-matching clause**, slotted into the exact
-  same `Handlers`/`nextHandler()` chain `except` clauses use. This is why
-  `finally` correctly runs even when the exception escapes a *nested function
-  call* made from inside the `try` — `popFrame()` unwinds the call stack one
-  frame at a time, and each ancestor frame's own `Handlers` (including any
-  `OP_FINALLY`) gets a fair chance via the same loop above. A pure
-  compile-time jump-splice, with no VM-level participation, could not do
-  this — it only ever sees the current function's own bytecode.
-- **A handler whose own clause chain doesn't match now falls back to
-  `handler.Prev`** (an enclosing `try`, if any, *in the same frame*) before
-  the whole loop gives up and unwinds to the caller frame. This is the
-  `for handler := ...; handler != nil; handler = handler.Prev` structure
-  above; it used to be a plain `if`, which meant a nested `try` whose own
-  `except` didn't match skipped straight past a syntactically-enclosing,
-  actually-matching outer `try` in the same frame and reported the exception
-  as uncaught. See "Bugs fixed by this design" below.
+  same `Handlers`/`nextHandler()` chain `except` clauses use. This is what
+  lets `finally` run correctly even when the exception escapes a *nested
+  function call* made from inside the `try` — `popFrame()` unwinds the call
+  stack one frame at a time, and each ancestor frame's own `Handlers`
+  (including any `OP_FINALLY`) gets a fair chance via the same loop above. A
+  pure compile-time jump-splice, with no VM-level participation, could not do
+  this on its own — it only ever sees the current function's own bytecode,
+  never a frame further up the call stack.
+- **A handler whose own clause chain doesn't match falls back to
+  `handler.Prev`** — an enclosing `try`, if any, *in the same frame* — before
+  the whole loop gives up on this frame and unwinds to the caller. This is
+  what makes a nested `try` correctly defer to a syntactically-enclosing
+  `except` clause that does match, rather than treating "this try's own
+  clauses didn't match" as "the exception has left this frame entirely."
 
 ### Resolving the exception class name
 
 The classname lookup in the `inner` loop tries, in order: the current
 function's own `Environment.GetVar` (checks `Environment.Vars`, the
 module-export/import-all binding table — not locals or upvalues),
-`vm.BuiltIns`, then a
-fast-globals-slice fallback. That last one used to consult
-`function.Chunk.SlotForName(name)` — but `Chunk.GlobalNames` is **only ever
-populated for the top-level script's own chunk** (`endCompiler()`,
-`compile.go` — "inner function chunks don't own globals, they're all in the
-script's environment"). So an `except SomeUserClass` clause compiled inside
-*any* other function always failed this lookup, regardless of where the
-`raise` came from. The fix was `Environment.SlotForName`
-(`src/core/environment.go:40-47`), which scans `Environment.GlobalNames` —
-populated once from the top-level chunk and then shared by every function in
-the compilation unit (the same table `Environment.NameForSlot` already used
-for the reverse direction, in error messages). Built-in exception classes
-(`RunTimeError`, `SyncError`, ...) were never affected, since they resolve
-through `vm.BuiltIns` first.
+`vm.BuiltIns`, then a fallback against the fast globals slice via
+`Environment.SlotForName` (`src/core/environment.go:40-47`), which scans
+`Environment.GlobalNames`.
+
+That last table is worth understanding: `Chunk.GlobalNames` (the slot→name
+table produced by compilation) is only ever populated on the *top-level
+script's* own chunk — inner function chunks don't carry their own copy,
+since every function in a compilation unit shares one `Environment` for
+globals. `Environment.GlobalNames` is where that top-level table gets
+published (`vm.go`'s `initGlobals`) so any function's frame — not just the
+top-level one — can resolve a global exception class by name, the same way
+`Environment.NameForSlot` already does the reverse lookup (slot→name) for
+error messages. Built-in exception classes (`RunTimeError`, `SyncError`,
+...) resolve through `vm.BuiltIns` and never need this path.
 
 ## Why `finally` recompiles its body instead of duplicating bytecode
 
@@ -187,11 +185,8 @@ A few supporting details worth knowing if touching this code:
 - **`break`/`continue` do need it**, since the frame survives and the same
   code can re-fire every loop iteration — `crossTries` (`compile.go:742-758`)
   emits `OP_END_TRY, 0, 0` (pop one handler, jump zero bytes) for *every*
-  `try` crossed, whether or not it has a `finally`. This is also the fix for
-  a second bug: `break`/`continue` never used to touch `frame.Handlers` at
-  all, leaving a stale handler (with a stack height from inside the
-  now-exited loop iteration) that could wrongly intercept a later, unrelated
-  exception.
+  `try` crossed, whether or not it has a `finally`, so `frame.Handlers`
+  always reflects only the trys still lexically in scope.
 - **`localCountAtCrossing`** on each `trampolineSite` records the exact local
   count (== runtime stack height relative to `frame.Slots`) at the moment
   that jump lands — constant across every hop of a chain, since each hop's
@@ -213,19 +208,3 @@ itself (uncaught here) and normal/`return`/`break`/`continue` exits are
 covered. Covering this too would mean wrapping every `except` clause body in
 its own private nested `try` tied to the same `finally`, multiplying compiled
 copies and trampoline chains — deliberately out of scope.
-
-## Bugs fixed by this design (for context, not because they're expected to recur)
-
-- `OP_TRY`'s operand was patched once per `except` clause instead of once,
-  so it always ended up pointing at the *last* clause.
-- Falling through a `try` body without raising, when an `except` clause was
-  present, panicked the VM outright — `OP_END_TRY` never consumed its own
-  jump offset.
-- After a non-last `except` clause matched and completed, execution fell
-  through into the next clause's own body and ran that too.
-- `break`/`continue` never popped `frame.Handlers` (see above).
-- A nested `try` whose own clauses didn't match unwound straight to the
-  *caller* frame instead of falling back to an enclosing `try`'s handler in
-  the same frame (see "same frame" fallback above).
-- `except SomeUserClass` failed to resolve inside any non-top-level function
-  (see "Resolving the exception class name" above).
