@@ -133,6 +133,10 @@ The `run()` function in `src/vm/vm.go` is the hot path. Key invariants to preser
 - `readShort()` and `readByte()` helpers have been **deleted** — their logic is inlined at call sites. Do not re-introduce calls to them; inline directly using `vm.currCode[frame.Ip]` and `frame.Ip++`.
 - The specialised peephole opcodes (`OP_ADD_II`, `OP_ADD_FF`, `OP_INCR_CONST_I`, `OP_INCR_CONST_F`) use the hoisted `frame` and `constants` locals directly — keep them consistent if refactoring.
 
+### Exception handling (try/except/finally)
+
+The bytecode shape (`OP_TRY`/`OP_END_TRY`/`OP_EXCEPT`/`OP_END_EXCEPT`/`OP_FINALLY`/`OP_RAISE`), the `frame.Handlers` matching loop in `raiseException`/`nextHandler`, and the compiler-side `finally` trampoline design (`TryFinally`/`trampolineSite` in `src/compiler/compile.go`) are documented in full in [`docs/exception-handling.md`](docs/exception-handling.md). Read it before touching any of this — it covers a couple of non-obvious bytecode invariants (e.g. `OP_END_EXCEPT` must be immediately followed by the next clause's `OP_EXCEPT`/`OP_FINALLY`) that are easy to break silently.
+
 ### Tests
 
 The active test suite is `tests/new_tests/` (pytest). The old `tests/test.py` is legacy. Run tests with:

@@ -34,6 +34,18 @@ func (env *Environment) NameForSlot(slot int) string {
 	return fmt.Sprintf("#%d", slot)
 }
 
+// SlotForName returns the global slot index for the given name, or -1 if not
+// found. Unlike Chunk.SlotForName, this works from inside any function in
+// the compilation unit, not just the top-level script -- see GlobalNames.
+func (env *Environment) SlotForName(name string) int {
+	for i, n := range env.GlobalNames {
+		if n == name {
+			return i
+		}
+	}
+	return -1
+}
+
 func NewEnvironment(name string) *Environment {
 	return &Environment{
 		Name: name,

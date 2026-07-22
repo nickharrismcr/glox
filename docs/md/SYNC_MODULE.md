@@ -54,24 +54,21 @@ which is deep-copied so each side gets its own isolated copy. A lock only means
 something if every thread is contending for the *same* one.
 
 ### `m.acquire()` → nil
-Blocks until the lock is free, then takes it. **glox has no `finally` clause** (`try`
-requires at least one `except`, and there's no bare `try { ... } finally { ... }`
-form), so guaranteeing release on every path means releasing on both the normal exit
-and every `except` branch:
+Blocks until the lock is free, then takes it. Pair it with `release()` in a
+`finally` block to guarantee release on every path — normal completion, a
+caught exception, or one that isn't caught here:
 
 ```lox
 m.acquire()
 try {
     // ... critical section ...
-} except Exception as e {
+} finally {
     m.release()
-    raise e
 }
-m.release()
 ```
 
-This is exactly the footgun `locked()` below exists to remove — prefer it unless
-you specifically need a lock that spans more than one statement or function call.
+Prefer `locked()` below unless you specifically need a lock that spans more
+than one statement or function call.
 
 ### `m.release()` → nil
 Releases the lock. Raises `SyncError` if called without a matching `acquire()`

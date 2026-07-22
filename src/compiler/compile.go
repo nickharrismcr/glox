@@ -50,6 +50,45 @@ type Loop struct {
 	scopeDepth int // scope depth owned by the loop itself (e.g. the for/foreach control variable's scope); continue must not pop below this
 }
 
+// parserSnapshot captures enough of the parser's token-stream position to
+// rewind and re-parse the same token range again later. Safe because
+// Scanner.Tokens is fully materialized up front (see NewScanner) and
+// NextToken() is a pure index into that fixed slice -- replaying is
+// side-effect-free.
+type parserSnapshot struct {
+	current, previous Token
+	tokenIdx          int
+}
+
+// TryFinally tracks one lexically-enclosing try/finally construct while its
+// body is being compiled, mirroring how Loop tracks enclosing loops. It lets
+// return/break/continue detect that they're jumping out across a `finally`
+// block and splice that block's cleanup in before completing the jump.
+type TryFinally struct {
+	scopeDepthAtEntry int // Compiler.scopeDepth at the point OP_TRY was emitted (before the try body's own beginScope)
+	hasFinally        bool
+	finallySnapshot   parserSnapshot   // token position of the finally block's body, for replaying it
+	pending           []trampolineSite // deferred break/continue/return jumps that must run this try's finally before completing
+	previous          *TryFinally
+}
+
+// trampolineSite is one deferred break/continue/return jump that needs this
+// try's finally block replayed before it can complete. localCountAtCrossing
+// is the exact local-variable count the runtime stack has (relative to
+// frame.Slots) at the moment this jump lands -- constant across every hop of
+// a chain, since each hop's own finally replay pushes/pops in balance and
+// leaves the stack exactly as it found it. It's used to seed the compiler's
+// bookkeeping before compiling the finally replay, so any locals it declares
+// can't alias a still-needed value (e.g. a pending return's retval) sitting
+// higher on the real stack than this hop's own natural compile-time count.
+type trampolineSite struct {
+	jumpOffset           int
+	remaining            []*TryFinally // further outer try-with-finally contexts still to run, in order
+	localCountAtCrossing int
+	retvalSlot           int             // -1 for break/continue (no value to preserve); the anchored slot for return
+	finalize             func(p *Parser) // emits the terminal instruction once `remaining` is exhausted
+}
+
 type Upvalue struct {
 	index   uint8
 	isLocal bool
@@ -87,6 +126,7 @@ type Compiler struct {
 	localCount  int
 	scopeDepth  int
 	loop        *Loop
+	tries       *TryFinally
 	upvalues    [256]*Upvalue
 	scriptName  string
 	environment *core.Environment
@@ -395,6 +435,23 @@ func (p *Parser) advance() {
 
 }
 
+// snapshotPos captures the parser's current token-stream position so it can
+// be replayed later via restorePos, to recompile the same source range more
+// than once (used for `finally` blocks, which are compiled once per exit
+// path rather than duplicated as raw bytecode -- see TryFinally).
+func (p *Parser) snapshotPos() parserSnapshot {
+
+	return parserSnapshot{current: p.current, previous: p.previous, tokenIdx: p.scn.TokenIdx}
+}
+
+// restorePos rewinds the parser to a previously captured snapshotPos
+// position, so the next advance()/match()/consume() calls replay the same
+// tokens again.
+func (p *Parser) restorePos(s parserSnapshot) {
+
+	p.current, p.previous, p.scn.TokenIdx = s.current, s.previous, s.tokenIdx
+}
+
 // getRule retrieves the parsing rule for a given token type from the rules table.
 // Returns the ParseRule containing prefix/infix functions and precedence for the token.
 // This is used by the Pratt parser to determine how to parse expressions.
@@ -473,29 +530,48 @@ func (p *Parser) statement() {
 	}
 }
 
-// tryExceptStatement compiles try/except blocks for exception handling.
-// Syntax: try { ... } except ExceptionType as var { ... } [except AnotherType as var2 { ... }]*
-// It generates bytecode to:
-// 1. Set up exception handling with OP_TRY
-// 2. Execute the try block in a new scope
-// 3. Handle multiple except clauses with different exception types
-// 4. Bind caught exceptions to variables in except block scopes
-// 5. Jump over except blocks if no exception occurs
+// tryExceptStatement compiles try/except/finally blocks for exception handling.
+// Syntax: try { ... } [except ExceptionType as var { ... }]* [finally { ... }]
+// (at least one of except/finally is required). It generates bytecode to:
+//  1. Set up exception handling with OP_TRY, pointing at the first except
+//     clause (or straight at OP_FINALLY for a bare try/finally) -- patched
+//     exactly once, regardless of how many except clauses follow.
+//  2. Execute the try block in a new scope.
+//  3. Handle multiple except clauses with different exception types, each
+//     exiting via its own jump so control never falls into the next clause's
+//     raw bytes.
+//  4. Bind caught exceptions to variables in except block scopes.
+//  5. If a `finally` clause is present, compile its body twice: once as an
+//     always-matching handler (OP_FINALLY) that re-raises afterward, reached
+//     when an exception escapes uncaught here; once as the shared landing
+//     point for normal try/except completion. See TryFinally/trampolineSite
+//     for how return/break/continue crossing the boundary are handled.
 func (p *Parser) tryExceptStatement() {
 
 	_ = p.match(TOKEN_EOL)
 	p.consume(TOKEN_LEFT_BRACE, "Expect '{' brace after try")
-	exceptTry := p.emitTry()
+	tryOp := p.emitTry()
+
+	tryCtx := &TryFinally{scopeDepthAtEntry: p.currentCompiler.scopeDepth, previous: p.currentCompiler.tries}
+	p.currentCompiler.tries = tryCtx
+
 	p.beginScope()
 	p.block()
 	p.endScope()
-	endTryJump := p.emitJump(core.OP_END_TRY)
-	for {
-		p.consume(TOKEN_EXCEPT, "Expect except.")
+
+	exitJumps := []int{p.emitJump(core.OP_END_TRY)}
+
+	firstClausePatched := false
+	hasExcept := false
+	for p.match(TOKEN_EXCEPT) {
+		hasExcept = true
 		p.consume(TOKEN_IDENTIFIER, "Expect Exception type.")
-		p.beginScope()
 		idx := p.identifierConstant(p.previous)
-		p.patchTry(exceptTry)
+		if !firstClausePatched {
+			p.patchTry(tryOp)
+			firstClausePatched = true
+		}
+		p.beginScope()
 		p.consume(TOKEN_AS, "Expect as")
 		ev := p.parseVariable("Expect exception variable name.")
 		p.defineVariable(ev)
@@ -505,14 +581,189 @@ func (p *Parser) tryExceptStatement() {
 		p.emitByte(idx)
 		p.block()
 		p.endScope()
+		exitJumps = append(exitJumps, p.emitJump(core.OP_JUMP))
 		p.emitByte(core.OP_END_EXCEPT)
-		if !p.check(TOKEN_EXCEPT) {
-			break
-		}
 	}
 
-	p.patchJump(endTryJump)
+	hasFinally := p.match(TOKEN_FINALLY)
+	if !hasExcept && !hasFinally {
+		p.error("Expect except or finally.")
+		return
+	}
+	tryCtx.hasFinally = hasFinally
 
+	if !hasFinally {
+		for _, j := range exitJumps {
+			p.patchJump(j)
+		}
+		p.currentCompiler.tries = tryCtx.previous
+		p.compileTrampolinesAfterNormalPath(tryCtx)
+		return
+	}
+
+	p.consume(TOKEN_LEFT_BRACE, "Expect '{' after finally.")
+	tryCtx.finallySnapshot = p.snapshotPos()
+
+	if !firstClausePatched {
+		p.patchTry(tryOp) // bare try/finally: OP_TRY jumps straight at OP_FINALLY below
+	}
+
+	// Copy #2: the always-matching catch-all/reraise handler, reached via
+	// raiseException/nextHandler when an exception escapes this try uncaught
+	// (or escapes a nested call made from inside it). Compiled BEFORE copy #1
+	// so it sits immediately after the last except clause's OP_END_EXCEPT,
+	// preserving the OP_END_EXCEPT-then-OP_EXCEPT/OP_FINALLY adjacency
+	// nextHandler() scans for.
+	p.emitByte(core.OP_FINALLY)
+	p.beginScope()
+	p.addLocal(SyntheticToken("__exc"))
+	excSlot := p.currentCompiler.localCount - 1
+	p.markInitialised()
+	p.currentCompiler.tries = tryCtx.previous // control flow inside finally sees only outer trys
+	p.block()
+	p.emitBytes(core.OP_GET_LOCAL, uint8(excSlot))
+	p.emitByte(core.OP_RAISE)
+	p.endScope()
+
+	for _, j := range exitJumps {
+		p.patchJump(j)
+	}
+
+	// Copy #1: the shared landing point for normal try completion and every
+	// except clause's normal completion.
+	p.restorePos(tryCtx.finallySnapshot)
+	p.beginScope()
+	p.block()
+	p.endScope()
+
+	p.currentCompiler.tries = tryCtx.previous
+	p.compileTrampolinesAfterNormalPath(tryCtx)
+}
+
+// compileTrampolinesAfterNormalPath compiles tryCtx's pending
+// break/continue/return trampolines (see compilePendingTrampolines), placed
+// immediately after the normal-completion path in the bytecode stream. That
+// adjacency means normal completion would otherwise fall straight through
+// into them, so -- when there's anything to skip -- this wraps them in an
+// unconditional jump the normal path takes to land just past all of them,
+// at the true end of the whole try/except/finally statement.
+func (p *Parser) compileTrampolinesAfterNormalPath(tryCtx *TryFinally) {
+
+	if len(tryCtx.pending) == 0 {
+		return
+	}
+	skip := p.emitJump(core.OP_JUMP)
+	p.compilePendingTrampolines(tryCtx)
+	p.patchJump(skip)
+}
+
+// compilePendingTrampolines resolves every break/continue/return that
+// deferred into tryCtx while its body was being compiled (see
+// TryFinally/trampolineSite), chaining onward into any further outer
+// try/finally the same jump also needs to cross.
+//
+// This runs unconditionally, whether or not tryCtx ended up with a finally
+// clause -- return/break/continue must defer into the innermost enclosing
+// try *before* that try has parsed far enough to know whether a `finally`
+// follows its except clauses (single-pass parser, `finally` is the last
+// thing consumed), so every enclosing try collects deferred sites
+// regardless. If tryCtx has no finally, there's nothing to replay -- the
+// jump just passes straight through to the next hop (or the real
+// terminal instruction) with no bytecode of its own.
+func (p *Parser) compilePendingTrampolines(tryCtx *TryFinally) {
+
+	for _, site := range tryCtx.pending {
+		p.patchJump(site.jumpOffset)
+
+		if tryCtx.hasFinally {
+			c := p.currentCompiler
+			savedCount := c.localCount
+			savedDepth := c.scopeDepth
+
+			// Reserve slots up to localCountAtCrossing so this replay's own
+			// locals can't alias whatever's still live higher on the real
+			// runtime stack (e.g. a pending return's anchored value). The
+			// runtime stack height never changes across a chain of hops --
+			// each replay's own scope pushes and pops in balance -- so this
+			// is safe regardless of which hop of the chain we're compiling.
+			for i := c.localCount; i < site.localCountAtCrossing; i++ {
+				c.locals[i] = &Local{depth: c.scopeDepth}
+			}
+			c.localCount = site.localCountAtCrossing
+
+			savedTries := c.tries
+			c.tries = tryCtx.previous
+
+			p.restorePos(tryCtx.finallySnapshot)
+			p.beginScope()
+			p.block()
+			p.endScope()
+
+			c.tries = savedTries
+			c.localCount = savedCount
+			c.scopeDepth = savedDepth
+
+			if site.retvalSlot >= 0 {
+				p.emitBytes(core.OP_GET_LOCAL, uint8(site.retvalSlot))
+			}
+		}
+
+		if len(site.remaining) > 0 {
+			next := site.remaining[0]
+			newSite := trampolineSite{
+				jumpOffset:           p.emitJump(core.OP_JUMP),
+				remaining:            site.remaining[1:],
+				localCountAtCrossing: site.localCountAtCrossing,
+				retvalSlot:           site.retvalSlot,
+				finalize:             site.finalize,
+			}
+			next.pending = append(next.pending, newSite)
+		} else {
+			site.finalize(p)
+		}
+	}
+}
+
+// crossTries walks the currently-enclosing try/finally contexts, from
+// innermost outward, that a break/continue targeting a loop at
+// boundaryDepth (Loop.scopeDepth) would jump out across. It pops every
+// crossed try's handler unconditionally (OP_END_TRY with a zero jump
+// offset -- fixes a stale-handler bug that existed even without finally:
+// break/continue never used to touch frame.Handlers at all), and returns
+// all of them, in the same innermost-to-outermost order, for the caller to
+// defer cleanup jumps through.
+//
+// This deliberately does NOT filter by hasFinally: for a try the
+// break/continue is directly inside (not yet closed), hasFinally isn't
+// known yet -- `finally` is the last thing tryExceptStatement() parses, so
+// its own still-being-compiled body can't know whether one follows.
+// compilePendingTrampolines resolves this correctly once each try actually
+// closes and hasFinally becomes known.
+func (p *Parser) crossTries(boundaryDepth int) []*TryFinally {
+
+	var crossed []*TryFinally
+	for t := p.currentCompiler.tries; t != nil && t.scopeDepthAtEntry >= boundaryDepth; t = t.previous {
+		p.emitByte(core.OP_END_TRY)
+		p.emitByte(0)
+		p.emitByte(0)
+		crossed = append(crossed, t)
+	}
+	return crossed
+}
+
+// localCountAtDepth returns how many of the current function's locals have
+// depth <= boundaryDepth -- i.e. the local count (and so the runtime stack
+// height relative to frame.Slots) that remains once every local declared
+// inside a loop body has been popped, mirroring the depth check
+// break/continue's own pop-loop already uses.
+func (p *Parser) localCountAtDepth(boundaryDepth int) int {
+
+	c := p.currentCompiler
+	n := c.localCount
+	for n > 0 && c.locals[n-1].depth > boundaryDepth {
+		n--
+	}
+	return n
 }
 
 // raiseStatement compiles raise statements for throwing exceptions.
@@ -1029,17 +1280,55 @@ func (p *Parser) returnStatement() {
 	}
 	if p.checkStatementEnd() {
 		p.consumeStatementEnd("Expect ';' after return value.") // consumes ; / EOL, leaves } / EOF
-		p.emitReturn()
+		if p.currentCompiler.type_ == TYPE_INITIALIZER {
+			p.emitBytes(core.OP_GET_LOCAL, 0)
+		} else {
+			p.emitByte(core.OP_NIL)
+		}
 	} else {
 		if p.currentCompiler.type_ == TYPE_INITIALIZER {
 			p.error("Can't return from an initializer.")
 		}
 		p.expression()
 		p.consumeStatementEnd("Expect ';' after return value.")
-		op := core.OP_RETURN
-
-		p.emitByte(op)
 	}
+
+	// Collect every enclosing try, innermost first -- a return crosses all
+	// of them, unconditionally, up to the function boundary (unlike
+	// break/continue, which only cross as far as the target loop).
+	//
+	// Deliberately not filtered by hasFinally: for a try this return is
+	// directly inside (not yet closed), hasFinally isn't known yet --
+	// `finally` is the last thing tryExceptStatement() parses, so its own
+	// still-being-compiled body can't know whether one follows.
+	// compilePendingTrampolines resolves this correctly once each try
+	// actually closes and hasFinally becomes known.
+	var chain []*TryFinally
+	for t := p.currentCompiler.tries; t != nil; t = t.previous {
+		chain = append(chain, t)
+	}
+	if len(chain) == 0 {
+		p.emitByte(core.OP_RETURN)
+		return
+	}
+
+	// Anchor the return value in a synthetic local before any enclosing
+	// finally block (not yet parsed at this point) can declare locals of its
+	// own that might otherwise reuse this slot number.
+	p.addLocal(SyntheticToken("__retval"))
+	retvalSlot := p.currentCompiler.localCount - 1
+	p.markInitialised()
+
+	site := trampolineSite{
+		jumpOffset:           p.emitJump(core.OP_JUMP),
+		remaining:            chain[1:],
+		localCountAtCrossing: p.currentCompiler.localCount,
+		retvalSlot:           retvalSlot,
+		finalize: func(p *Parser) {
+			p.emitByte(core.OP_RETURN)
+		},
+	}
+	chain[0].pending = append(chain[0].pending, site)
 }
 
 // whileStatement compiles while loops with break/continue support.
@@ -1151,13 +1440,40 @@ func (p *Parser) breakStatement() {
 	// Only pop locals declared strictly inside the loop body. Same reasoning
 	// as continueStatement() above.
 	c := p.currentCompiler
-	loopScopeDepth := c.loop.scopeDepth
+	loop := c.loop
+	loopScopeDepth := loop.scopeDepth
 	for i := 0; i < c.localCount; i += 1 {
 		if c.locals[i].depth > loopScopeDepth {
 			p.emitByte(core.OP_POP)
 		}
 	}
-	p.currentCompiler.loop.breaks = append(p.currentCompiler.loop.breaks, p.emitJump(core.OP_JUMP))
+
+	p.emitCrossingJump(loopScopeDepth, func(p *Parser) {
+		loop.breaks = append(loop.breaks, p.emitJump(core.OP_JUMP))
+	})
+}
+
+// emitCrossingJump emits whatever jump takes a break/continue across any
+// try/finally blocks it crosses on the way out to loopScopeDepth: if none
+// have a finally clause, the real terminal jump is emitted immediately
+// exactly as before (via finalize); otherwise a deferred jump is queued so
+// the innermost crossed try's finally runs first, chaining outward through
+// the rest before finalize finally runs.
+func (p *Parser) emitCrossingJump(loopScopeDepth int, finalize func(p *Parser)) {
+
+	crossed := p.crossTries(loopScopeDepth)
+	if len(crossed) == 0 {
+		finalize(p)
+		return
+	}
+	site := trampolineSite{
+		jumpOffset:           p.emitJump(core.OP_JUMP),
+		remaining:            crossed[1:],
+		localCountAtCrossing: p.localCountAtDepth(loopScopeDepth),
+		retvalSlot:           -1,
+		finalize:             finalize,
+	}
+	crossed[0].pending = append(crossed[0].pending, site)
 }
 
 // breakpointStatement compiles breakpoint statements for debugging support.
@@ -1185,18 +1501,23 @@ func (p *Parser) continueStatement() {
 	// (e.g. the for/foreach loop variable) since continue jumps back into that same
 	// scope rather than exiting it. Only pop locals declared strictly inside the loop body.
 	c := p.currentCompiler
-	loopScopeDepth := c.loop.scopeDepth
+	loop := c.loop
+	loopScopeDepth := loop.scopeDepth
 	for i := 0; i < c.localCount; i += 1 {
 		if c.locals[i].depth > loopScopeDepth {
 			p.emitByte(core.OP_POP)
 		}
 	}
-	if p.currentCompiler.loop.foreach {
-		p.currentCompiler.loop.continues = append(p.currentCompiler.loop.continues, p.emitJump(core.OP_JUMP))
-	} else {
-		p.emitLoop(core.OP_LOOP, p.currentCompiler.loop.start)
-	}
 
+	if loop.foreach {
+		p.emitCrossingJump(loopScopeDepth, func(p *Parser) {
+			loop.continues = append(loop.continues, p.emitJump(core.OP_JUMP))
+		})
+	} else {
+		p.emitCrossingJump(loopScopeDepth, func(p *Parser) {
+			p.emitLoop(core.OP_LOOP, loop.start)
+		})
+	}
 }
 
 // foreachStatement compiles foreach loops for iterating over collections.

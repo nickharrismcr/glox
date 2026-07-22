@@ -1427,10 +1427,16 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 				Prev:     frame.Handlers,
 			}
 
-		// ended a try block OK, so pop the handler block
+		// ended a try block OK, so pop the handler block and jump past the
+		// except/finally clauses (the 2-byte offset following this opcode --
+		// previously never consumed, which crashed the VM on this exact path;
+		// see docs/language-reference.html's try/except/finally notes)
 		case core.OP_END_TRY:
 			// End try block successfully: remove exception handler from stack
 			frame.Handlers = frame.Handlers.Prev
+			offset := uint16(vm.currCode[frame.Ip])<<8 | uint16(vm.currCode[frame.Ip+1])
+			frame.Ip += 2
+			frame.Ip += int(offset)
 
 		// marks the start of an exception handler block.  index of exception classname is in next instruction
 		case core.OP_EXCEPT:
@@ -2328,8 +2334,12 @@ func (vm *VM) raiseException(err core.Value) bool {
 
 	for {
 		vm.appendStackTrace()
-		handler := vm.frame().Handlers
-		if handler != nil {
+		// Try every handler in this frame, from innermost to outermost, before
+		// unwinding to the caller frame -- a nested try whose own except
+		// clauses don't match must still fall back to an enclosing try's
+		// handler in the *same* frame (handler.Prev) rather than immediately
+		// treating the exception as having escaped this frame entirely.
+		for handler := vm.frame().Handlers; handler != nil; handler = handler.Prev {
 
 			vm.stackTop = handler.StackTop
 			vm.stack[vm.stackTop] = err
@@ -2338,6 +2348,17 @@ func (vm *VM) raiseException(err core.Value) bool {
 			vm.frame().Ip = int(handler.ExceptIP)
 		inner:
 			for {
+				if vm.getCode()[vm.frame().Ip] == core.OP_FINALLY {
+					// always-matching finally handler: run it unconditionally,
+					// then (per the compiled bytecode) re-raise the same
+					// exception unless the finally block itself returns,
+					// breaks/continues, or raises a different one.
+					vm.frame().Ip++
+					vm.ErrorMsg = ""
+					vm.stackTrace = []string{}
+					vm.frame().Handlers = handler.Prev
+					return true
+				}
 				// get handler classname
 				vm.frame().Ip += 2
 				idx := vm.getCode()[vm.frame().Ip-1]
@@ -2348,9 +2369,15 @@ func (vm *VM) raiseException(err core.Value) bool {
 					v, ok = vm.BuiltIns[id]
 				}
 				if !ok {
-					// also check the fast globals slice (user-defined exception classes)
+					// also check the fast globals slice (user-defined exception classes).
+					// function.Chunk.GlobalNames is only ever populated for the
+					// top-level script's own chunk (see endCompiler()) -- an except
+					// clause inside any other function must resolve the name against
+					// the shared Environment's GlobalNames instead, or it can never
+					// find a global class defined anywhere but its own (nonexistent)
+					// chunk-local table.
 					handlerName := core.GetStringValue(function.Chunk.Constants[idx])
-					if slot := function.Chunk.SlotForName(handlerName); slot >= 0 && function.Environment.Defined[slot] {
+					if slot := function.Environment.SlotForName(handlerName); slot >= 0 && function.Environment.Defined[slot] {
 						v, ok = function.Environment.Globals[slot], true
 					}
 				}
@@ -2396,7 +2423,7 @@ func (vm *VM) nextHandler() bool {
 	for {
 		vm.frame().Ip++
 		if code[vm.frame().Ip] == core.OP_END_EXCEPT {
-			if code[vm.frame().Ip+1] == core.OP_EXCEPT {
+			if code[vm.frame().Ip+1] == core.OP_EXCEPT || code[vm.frame().Ip+1] == core.OP_FINALLY {
 				vm.frame().Ip += 1
 				return true
 			}

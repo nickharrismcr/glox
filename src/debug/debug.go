@@ -196,6 +196,8 @@ func DisassembleInstruction(c *core.Chunk, name string, function string, depth i
 		return simpleInstruction("OP_RAISE", offset)
 	case core.OP_END_EXCEPT:
 		return simpleInstruction("OP_END_EXCEPT", offset)
+	case core.OP_FINALLY:
+		return simpleInstruction("OP_FINALLY", offset)
 	case core.OP_BREAKPOINT:
 		return simpleInstruction("OP_BREAKPOINT", offset)
 	case core.OP_UNPACK:
