@@ -3,14 +3,15 @@ import os;
 import sys;
 from pool import PoolError;
 
-// Regression test: a Pool must be reusable across multiple map() calls
-// without respawning its workers. Proven by recording each worker's pid()
-// right after construction and again after two separate map() calls --
-// they must be identical, since a respawn would hand out fresh pids.
+// Regression test: a ProcessPool must be reusable across multiple map()
+// calls without respawning its workers. Proven by recording each worker's
+// pid() right after construction and again after two separate map()
+// calls -- they must be identical, since a respawn would hand out fresh
+// pids. See thread_pool_reuse.lox for the same property on ThreadPool.
 here = os.dirname(sys.args()[0]);
 worker_path = os.join(here, "process_pool_worker.lox");
 
-p = pool.Pool(worker_path, 2);
+p = pool.ProcessPool(worker_path, 2);
 
 pids_before = [];
 foreach (w in p.workers) {

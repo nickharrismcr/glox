@@ -101,19 +101,22 @@ that, so you don't have to hand-roll it:
 ```lox
 import pool
 
-p = pool.Pool("worker.lox", 3)               // spawns 3 workers up front
+p = pool.ProcessPool("worker.lox", 3)        // spawns 3 workers up front
 results = p.map([2, 3, 5, 7, 11, 13, 17, 19]) // more tasks than workers
 p.close()
 ```
 
-`pool.Pool` is reusable — call `.map()` again on the same pool (workers stay
-alive between calls) rather than paying spawn cost per batch.
+`pool.ProcessPool` is reusable — call `.map()` again on the same pool (workers
+stay alive between calls) rather than paying spawn cost per batch. The `pool`
+module also has `pool.ThreadPool`, the same interface built on
+[`thread`](THREAD_MODULE.md) instead — see the language reference's `pool`
+section for both.
 
-Under the hood, `Pool.map()` is just this pattern: the "queue" is an ordinary
-list living in the parent (only one process can hold it); the parent hands out
-the next task the moment `wait_any` reports a worker is free. Worth knowing if
-you need something `pool` doesn't offer (e.g. tasks that arrive incrementally
-rather than as one batch):
+Under the hood, `ProcessPool.map()` is just this pattern: the "queue" is an
+ordinary list living in the parent (only one process can hold it); the parent
+hands out the next task the moment `wait_any` reports a worker is free. Worth
+knowing if you need something `pool` doesn't offer (e.g. tasks that arrive
+incrementally rather than as one batch):
 
 ```lox
 import process
