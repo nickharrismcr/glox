@@ -6,6 +6,21 @@ whole separate process per worker because there's no way to serialise a closure
 across a process boundary, `thread.spawn()` can take an in-memory function directly,
 since no process boundary is crossed.
 
+**When to reach for `process`/`ProcessPool` instead:** the main case is real fault
+isolation — a `process` worker that segfaults, infinite-loops in native code, or
+corrupts memory only takes down its own OS process, while every `thread` worker
+shares one address space, so a genuinely broken worker (not just an uncaught Lox
+exception, which `thread` already handles cleanly) risks the whole program.
+`process.kill()` is also a real, forceful stop; `thread.cancel()` only works if the
+worker actually checks its channel (see `cancel()` below). The other case is when
+the work itself needs OS-process semantics — running an external binary, isolating
+file-descriptor/working-directory state, or wanting the OS to reclaim resources on
+exit regardless of what the script does. For everything else — ordinary CPU-bound
+task parallelism without exotic native-code risk — `thread`/`ThreadPool` is the
+better default: cheaper to spawn, takes an in-memory closure directly instead of a
+separate worker script, and `wait()` gives you a real return value instead of just
+an exit code.
+
 **Important limitation, by design, not an oversight:** only a spawned closure's own
 *captured (upvalue) locals* are isolated from the spawning script — deep-copied at
 spawn time, so mutating one side afterward never leaks into the other. Top-level
