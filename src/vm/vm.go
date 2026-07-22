@@ -1427,10 +1427,16 @@ func (vm *VM) run(mode VMRunMode) (InterpretResult, core.Value) {
 				Prev:     frame.Handlers,
 			}
 
-		// ended a try block OK, so pop the handler block
+		// ended a try block OK, so pop the handler block and jump past the
+		// except/finally clauses (the 2-byte offset following this opcode --
+		// previously never consumed, which crashed the VM on this exact path;
+		// see docs/language-reference.html's try/except/finally notes)
 		case core.OP_END_TRY:
 			// End try block successfully: remove exception handler from stack
 			frame.Handlers = frame.Handlers.Prev
+			offset := uint16(vm.currCode[frame.Ip])<<8 | uint16(vm.currCode[frame.Ip+1])
+			frame.Ip += 2
+			frame.Ip += int(offset)
 
 		// marks the start of an exception handler block.  index of exception classname is in next instruction
 		case core.OP_EXCEPT:
@@ -2338,6 +2344,17 @@ func (vm *VM) raiseException(err core.Value) bool {
 			vm.frame().Ip = int(handler.ExceptIP)
 		inner:
 			for {
+				if vm.getCode()[vm.frame().Ip] == core.OP_FINALLY {
+					// always-matching finally handler: run it unconditionally,
+					// then (per the compiled bytecode) re-raise the same
+					// exception unless the finally block itself returns,
+					// breaks/continues, or raises a different one.
+					vm.frame().Ip++
+					vm.ErrorMsg = ""
+					vm.stackTrace = []string{}
+					vm.frame().Handlers = handler.Prev
+					return true
+				}
 				// get handler classname
 				vm.frame().Ip += 2
 				idx := vm.getCode()[vm.frame().Ip-1]
@@ -2396,7 +2413,7 @@ func (vm *VM) nextHandler() bool {
 	for {
 		vm.frame().Ip++
 		if code[vm.frame().Ip] == core.OP_END_EXCEPT {
-			if code[vm.frame().Ip+1] == core.OP_EXCEPT {
+			if code[vm.frame().Ip+1] == core.OP_EXCEPT || code[vm.frame().Ip+1] == core.OP_FINALLY {
 				vm.frame().Ip += 1
 				return true
 			}
