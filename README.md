@@ -10,11 +10,6 @@ The extensions to the language include enhanced string operations, lists, dictio
 
 📖 **[Full language reference: `docs/language-reference.html`](docs/language-reference.html)** — a guide to the syntax, built-in types and functions, native objects, and library modules. Open it in a browser.  
 
-**Authorship**
-
-The port of Bob Nystrom's clox bytecode interpreter to Go was done **by hand**, along with the language extensions up to and including exception handling. The Raylib graphics bindings and the core VM optimisations — superinstructions, native vector types, and similar — were assisted by **GitHub Copilot**. More recent work was co-authored with **Claude Code** (Anthropic);  language features (lambdas, one-line braced blocks, the full compound-assignment set, the ternary conditional expression, default & variadic parameters, loop-scope and compiler fixes), VM performance (`Value`-struct shrink, faster global lookup, per-call allocation removal), benchmarking, Raylib/physics additions and demos, and tooling, tests, and the HTML language reference.
-
-
 ### Additions to vanilla Lox
 
 Feature summary — see the **[language reference](docs/language-reference.html)** for full syntax, methods, and examples.
@@ -107,6 +102,12 @@ bash bin/run_tests.old.sh
 ```
 
 The legacy runner (`tests/old/test.py`) does exact byte comparison against stored output files in `tests/old/output/`. Use `python test.py lox/foo.lox --write` to record expected output for a new script.
+
+---
+
+**Authorship**
+
+The port of Bob Nystrom's clox bytecode interpreter to Go was done **by hand**, along with the language extensions up to and including exception handling. The Raylib graphics bindings and the core VM optimisations — superinstructions, native vector types, and similar — were assisted by **GitHub Copilot**. More recent work was co-authored with **Claude Code** (Anthropic); language features (lambdas, one-line braced blocks, the full compound-assignment set, the ternary conditional expression, default & variadic parameters, loop-scope and compiler fixes, the `finally` clause and a set of pre-existing exception-handling bugs it exposed), the `thread`/`sync` concurrency modules and `pool.lox`, VM performance (`Value`-struct shrink, faster global lookup, per-call allocation removal), benchmarking, Raylib/physics additions and demos, and tooling, tests, and the HTML language reference.
 
 ---
 
