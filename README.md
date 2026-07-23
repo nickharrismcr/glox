@@ -29,12 +29,6 @@ Feature summary — see the **[language reference](docs/language-reference.html)
 - **Exceptions** — `try` / `except` / `finally`, `raise`, custom `Exception` subclasses, catchable runtime errors.
 - **Module imports with bytecode caching** — `import m`, `import m as alias`, `from m import ...`; compiled modules cached as `__loxcache__/<module>.lxc`.
 
-**Concurrency**
-- **`process`** — spawns separate OS `glox` processes and communicates over `send()`/`recv()` (values [pickled](docs/md/PICKLE_MODULE.md) across the pipe); real fault isolation, at one-process-per-worker cost.
-- **`thread`** — goroutine-backed workers in the same process; `spawn()` deep-copies a closure's captured state so no mutable state is shared by default, `wait()`/`recv()` retrieve results directly (no pickling needed).
-- **`sync`** — `Mutex`, for serialising access to shared globals/class statics across threads.
-- **`pool`** — `ProcessPool` / `ThreadPool`, fixed-size worker pools with a `map(tasks)` convenience API built on `process`/`thread`.
-
 **Types & operators**
 - **Lists** — slicing, slice assignment, `&` concatenation, `in` membership, `append`/`remove`.
 - **Tuples** — immutable sequences.
@@ -53,6 +47,12 @@ Feature summary — see the **[language reference](docs/language-reference.html)
 - **File & directory I/O** via `os`; `os.read_all(path)` for one-shot whole-file reads; PNG output; RGB encode/decode.
 - **Regex** via `re` (Go RE2-backed `search`/`match`/`fullmatch`/`sub`/`subn`/`split`/`findall`/`compile`) and a minimal **`json`** module (`encode`/`decode`/`load`) built on it.
 - **Built-in modules** — `math`, `random`, `colour`, `string`, `itertools`, `functools`, `particle_sys`, `sprite`, `plot_grey`, `plot_rgb`, `re`, `json`, `sys`, `os`, `inspect`, `gfx` (graphics constructors: `window`, `batch`, `texture`, `shader`, `camera`, …), `physics` (`physics_world`), `colour_utils` (native colour math backing `colour`). Import with `from gfx import *` or `import gfx`.
+
+**Concurrency**
+- **`process`** — spawns separate OS `glox` processes and communicates over `send()`/`recv()` (values [pickled](docs/md/PICKLE_MODULE.md) across the pipe); real fault isolation, at one-process-per-worker cost.
+- **`thread`** — goroutine-backed workers in the same process; `spawn()` deep-copies a closure's captured state so no mutable state is shared by default, `wait()`/`recv()` retrieve results directly (no pickling needed).
+- **`sync`** — `Mutex`, for serialising access to shared globals/class statics across threads.
+- **`pool`** — `ProcessPool` / `ThreadPool`, fixed-size worker pools with a `map(tasks)` convenience API built on `process`/`thread`.
 
 ---
 
