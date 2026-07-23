@@ -183,6 +183,7 @@ footer{color:var(--muted); font-size:13px; border-top:1px solid var(--border); m
       <a href="#mod-functools">functools</a>
       <a href="#mod-string">string</a>
       <a href="#mod-json">json</a>
+      <a href="#mod-logging">logging</a>
       <a href="#mod-colour">colour</a>
       <a href="#mod-colour-utils">colour_utils</a>
       <a href="#mod-particle">particle_sys</a>
@@ -1330,6 +1331,42 @@ try {
 config = json.load("config.json")
 print config["name"]</code></pre>
 
+<!-- ==================== MODULE: LOGGING ==================== -->
+<h2 class="section" id="mod-logging">logging <span class="pill">module</span></h2>
+<p><code>import logging</code> — basic leveled logging with a pluggable writer. A <code>Logger</code> filters messages against its own configured minimum level, then hands a fully-formatted line to a writer closure — a plain <code>func(line)</code> that receives the formatted string. The default writer prints to stdout; swap in something else (e.g. <code>logging.file_writer(file)</code>) to send output elsewhere.</p>
+<table>
+<thead><tr><th>Function / class</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>logging.Logger(name, level, writer)</code></td><td>Class: all three constructor arguments are optional — <code>name="root"</code>, <code>level=Logger.INFO</code>, <code>writer=func(line) { print line; }</code>. <code>name</code> labels every line this logger produces.</td></tr>
+<tr><td><code>Logger.DEBUG</code> / <code>.INFO</code> / <code>.WARN</code> / <code>.ERROR</code> / <code>.CRITICAL</code></td><td>Static level constants (10/20/30/40/50 — spaced to leave room for an in-between custom level).</td></tr>
+<tr><td><code>.debug(msg)</code> / <code>.info(msg)</code> / <code>.warn(msg)</code> / <code>.error(msg)</code> / <code>.critical(msg)</code></td><td>Log <code>msg</code> at the named level.</td></tr>
+<tr><td><code>.log(level, msg)</code></td><td>Log <code>msg</code> at an arbitrary integer <code>level</code> — what the convenience methods above call internally.</td></tr>
+<tr><td><code>.set_level(level)</code> / <code>.get_level()</code></td><td>Change/query the logger's minimum level after construction. A message below the configured level is suppressed before it's even formatted — the writer is never called for it.</td></tr>
+<tr><td><code>.set_writer(writer)</code></td><td>Swap this logger's writer closure after construction.</td></tr>
+<tr><td><code>Logger.level_name(level)</code></td><td>Static: the name for a known level constant, or <code>"LEVEL&lt;n&gt;"</code> for any other integer — never raises.</td></tr>
+<tr><td><code>logging.file_writer(file)</code></td><td>Returns a writer closure that appends each line to an already-open <code>file</code> (from <a href="#mod-os"><code>os.open()</code></a>) instead of printing it. The caller still owns the file's lifecycle — open it before, close it after.</td></tr>
+</tbody>
+</table>
+<pre><code class="lox">import logging
+import os
+from logging import Logger
+
+log = Logger()                 // name="root", level=INFO, writer=print
+log.debug("not shown")         // below the default INFO level
+log.info("starting up")        // [2024-01-15 09:30:00] [INFO] root: starting up
+log.warn("low disk space")
+log.error("connection failed")
+
+quiet = Logger("worker", Logger.ERROR)   // only ERROR and CRITICAL get through
+quiet.warn("ignored")
+quiet.error("shown")
+
+file = os.open("app.log", "a")
+file_log = Logger("app", Logger.INFO, logging.file_writer(file))
+file_log.info("wrote a line to app.log instead of stdout")
+os.close(file)</code></pre>
+<div class="note"><strong>No real timestamp before this module</strong>glox has no wall-clock date/time facility elsewhere — <code>sys.clock()</code> is elapsed seconds since the interpreter started, not a real time. <code>logging</code> is the reason <a href="#mod-sys"><code>sys.today()</code></a>/<a href="#mod-sys"><code>sys.now()</code></a> exist: every log line's <code>[date time]</code> prefix comes from those two functions.</div>
+
 <!-- ==================== MODULE: COLOUR ==================== -->
 <h2 class="section" id="mod-colour">colour <span class="pill">module</span></h2>
 <p><code>import colour</code> — colour constants and manipulation helpers (a Lox-friendly wrapper over the native <a href="#mod-colour-utils">colour_utils</a>). All colours are <code>vec4</code> RGBA (0–255).</p>
@@ -1699,6 +1736,8 @@ print counter   // always exactly 20</code></pre>
 <tr><td><code>sys.args()</code></td><td>List of command-line arguments</td></tr>
 <tr><td><code>sys.clock()</code></td><td>Current time in seconds (for timing / animation)</td></tr>
 <tr><td><code>sys.sleep(seconds)</code></td><td>Pauses execution for <code>seconds</code> (int or float)</td></tr>
+<tr><td><code>sys.today()</code></td><td>Current date as a string, <code>"YYYY-MM-DD"</code></td></tr>
+<tr><td><code>sys.now()</code></td><td>Current time as a string, <code>"HH:MM:SS"</code> (no date — pair with <code>sys.today()</code> for both)</td></tr>
 </tbody>
 </table>
 <div class="note"><strong>Note</strong>File I/O lives in the <a href="#mod-os"><code>os</code></a> module (not <code>sys</code>). <code>sys</code> must be imported before use — it is not injected as a built-in.</div>

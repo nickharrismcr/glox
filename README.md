@@ -46,7 +46,7 @@ Feature summary — see the **[language reference](docs/language-reference.html)
 - **`physics_world`** — native 3D rigid-body sphere simulation (gravity, boundary bounce, collisions in Go).
 - **File & directory I/O** via `os`; `os.read_all(path)` for one-shot whole-file reads; PNG output; RGB encode/decode.
 - **Regex** via `re` (Go RE2-backed `search`/`match`/`fullmatch`/`sub`/`subn`/`split`/`findall`/`compile`) and a minimal **`json`** module (`encode`/`decode`/`load`) built on it.
-- **Built-in modules** — `math`, `random`, `colour`, `string`, `itertools`, `functools`, `particle_sys`, `sprite`, `plot_grey`, `plot_rgb`, `re`, `json`, `sys`, `os`, `inspect`, `gfx` (graphics constructors: `window`, `batch`, `texture`, `shader`, `camera`, …), `physics` (`physics_world`), `colour_utils` (native colour math backing `colour`). Import with `from gfx import *` or `import gfx`.
+- **Built-in modules** — `math`, `random`, `colour`, `string`, `itertools`, `functools`, `logging`, `particle_sys`, `sprite`, `plot_grey`, `plot_rgb`, `re`, `json`, `sys`, `os`, `inspect`, `gfx` (graphics constructors: `window`, `batch`, `texture`, `shader`, `camera`, …), `physics` (`physics_world`), `colour_utils` (native colour math backing `colour`). Import with `from gfx import *` or `import gfx`.
 
 **Concurrency**
 - **`process`** — spawns separate OS `glox` processes and communicates over `send()`/`recv()` (values [pickled](docs/md/PICKLE_MODULE.md) across the pipe); real fault isolation, at one-process-per-worker cost.

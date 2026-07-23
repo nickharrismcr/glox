@@ -35,6 +35,8 @@ func DefineBuiltIns(vm *VM) {
 	defineBuiltIn(vm, "sys", "args", builtin.ArgsBuiltIn)
 	defineBuiltIn(vm, "sys", "clock", builtin.ClockBuiltIn)
 	defineBuiltIn(vm, "sys", "sleep", builtin.SleepBuiltIn)
+	defineBuiltIn(vm, "sys", "today", builtin.TodayBuiltIn)
+	defineBuiltIn(vm, "sys", "now", builtin.NowBuiltIn)
 	defineBuiltIn(vm, "", "type", builtin.TypeBuiltIn)
 	defineBuiltIn(vm, "", "len", builtin.LenBuiltIn)
 	defineBuiltIn(vm, "", "_sin", builtin.SinBuiltIn)

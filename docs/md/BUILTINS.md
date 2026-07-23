@@ -651,8 +651,10 @@ pos.add(dp);        // pos becomes vec2(1, 1); dp is unchanged
 The sys module provides system-level functionality (accessed via `sys.function_name`). No import needed for `sys` — it's always available.
 
 - **`sys.args()`** - Returns command line arguments
-- **`sys.clock()`** - Returns current time in seconds
+- **`sys.clock()`** - Returns elapsed time in seconds since the interpreter started (for timing/animation, not a real timestamp)
 - **`sys.sleep(seconds)`** - Pauses execution for the specified number of seconds
+- **`sys.today()`** - Returns the current date as a string, `"YYYY-MM-DD"`
+- **`sys.now()`** - Returns the current time as a string, `"HH:MM:SS"` (no date — pair with `sys.today()` for both; used by the [`logging`](#system-modules) module's timestamps)
 
 File I/O is not part of `sys` — see [`os`](OS_MODULE.md) for `open`/`close`/`readln`/`write`/`read_all` and the rest of the filesystem API.
 

@@ -34,6 +34,14 @@ func ClockBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value 
 	return core.MakeFloatValue(float64(elapsed.Seconds()), false)
 }
 
+func TodayBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+	return core.MakeStringObjectValue(time.Now().Format("2006-01-02"), false)
+}
+
+func NowBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
+	return core.MakeStringObjectValue(time.Now().Format("15:04:05"), false)
+}
+
 func FloatBuiltIn(argCount int, arg_stackptr int, vm core.VMContext) core.Value {
 	if argCount != 1 {
 		vm.RunTimeError("Single argument expected.")
