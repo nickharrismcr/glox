@@ -29,6 +29,12 @@ Feature summary — see the **[language reference](docs/language-reference.html)
 - **Exceptions** — `try` / `except` / `finally`, `raise`, custom `Exception` subclasses, catchable runtime errors.
 - **Module imports with bytecode caching** — `import m`, `import m as alias`, `from m import ...`; compiled modules cached as `__loxcache__/<module>.lxc`.
 
+**Concurrency**
+- **`process`** — spawns separate OS `glox` processes and communicates over `send()`/`recv()` (values [pickled](docs/md/PICKLE_MODULE.md) across the pipe); real fault isolation, at one-process-per-worker cost.
+- **`thread`** — goroutine-backed workers in the same process; `spawn()` deep-copies a closure's captured state so no mutable state is shared by default, `wait()`/`recv()` retrieve results directly (no pickling needed).
+- **`sync`** — `Mutex`, for serialising access to shared globals/class statics across threads.
+- **`pool`** — `ProcessPool` / `ThreadPool`, fixed-size worker pools with a `map(tasks)` convenience API built on `process`/`thread`.
+
 **Types & operators**
 - **Lists** — slicing, slice assignment, `&` concatenation, `in` membership, `append`/`remove`.
 - **Tuples** — immutable sequences.
