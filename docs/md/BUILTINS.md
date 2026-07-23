@@ -13,9 +13,8 @@
 9. [FloatArray Object](#floatarray-object)
 10. [PhysicsWorld Object](#physicsworld-object)
 11. [Vector Objects](#vector-objects)
-12. [File Operations](#file-operations)
-13. [System Modules](#system-modules)
-14. [Color Utilities Module](#color-utilities-module)
+12. [System Modules](#system-modules)
+13. [Color Utilities Module](#color-utilities-module)
 
 ---
 
@@ -32,34 +31,32 @@
 
 ### Container Functions
 
-- **`len(container)`** - Returns the length of a container (string, list, etc.)
-- **`append(list, item)`** - Appends an item to a list
-- **`range(n)`** - Creates a range iterator from 0 to n-1
+- **`len(container)`** - Returns the length of a container (string, list, dict, tuple)
+- **`range(n)` / `range(start, end)` / `range(start, end, step)`** - Native integer iterator, for use with `foreach`
+- **`append(list, item)`** - Appends an item to a list. `list.append(item)` (the method form) is the more idiomatic spelling — both do the same thing.
 
 ### String Functions
 
-- **`replace(string, old, new)`** - Replaces occurrences of 'old' with 'new' in string
+- **`replace(string, old, new)`** - Replaces occurrences of 'old' with 'new' in string. `string.replace(old, new)` (the method form) is equivalent.
 - **`str(value)`** - Converts any value to its string form (uses a class's `toString` for instances)
 - **`format(fmt, args...)`** - printf-style formatting using Go verbs (`%s`, `%d`, `%f`, `%v`); wraps `fmt.Sprintf`
 
-**String interpolation:** any `${ expr }` inside a string literal (either `"…"` or `'…'`) is evaluated and stringified into the result, e.g. `print "total: ${count} (${pct}%)"`. Values are stringified the same way as `str()`. Write a literal `$` as `$$`. It is pure sugar: `"a${x}b"` desugars to `("a" & str(x) & "b")`.
-
-### Color Functions
-
-- **`encode_rgb(r, g, b)`** - Encodes RGB values (0-255) into a single integer
-- **`decode_rgb(color)`** - Decodes an RGB integer into [r, g, b] components
-
-**Note:** For advanced color manipulation (fade, tint, brightness, HSV conversion, etc.), see the [Color Utilities Module](#color-utilities-module).
+**String interpolation:** any `${ expr }` inside a string literal (either `"…"` or `'…'`) is evaluated and stringified into the result, e.g. `print "total: ${count} (${pct}%)"`. Values are stringified the same way as `str()`. Write a literal `$` as `$$`. It is pure sugar: `"a${x}b"` desugars to `("a" & str(x) & "b")`. Note that `&`, not `+`, is the string concatenation operator — `"a" + "b"` raises a `RunTimeError`.
 
 ### Graphics Functions
 
-> **Note:** graphics constructors and helpers live in the built-in **`gfx`** module (and `physics_world` in **`physics`**). Import them before use — `from gfx import *` (names stay unqualified, as below) or `import gfx` then `gfx.window(...)`. Only `vec2`/`vec3`/`vec4` remain global.
+> **Note:** graphics constructors and helpers live in the built-in **`gfx`** module (and `physics_world` in **`physics`**). Import them before use — `from gfx import *` (names stay unqualified, as in the examples below) or `import gfx` then `gfx.window(...)`. Only `vec2`/`vec3`/`vec4` remain global.
 
 - **`window(width, height)`** - Creates a window object (`gfx`)
 - **`batch(type)`** - Creates a new batch object for optimized rendering of primitives (`gfx`)
 - **`texture` / `render_texture` / `shader` / `camera` / `image` / `batch_instanced` / `float_array`** - native graphics objects (`gfx`)
 - **`draw_png(filename, width, height, data)`** - Writes PNG image data to file (`gfx`)
-- **`encode_rgba` / `decode_rgba`** - pack/unpack RGBA into a float (`gfx`)
+- **`encode_rgba(r, g, b)` → float / `decode_rgba(value)` → `[r, g, b]`** - pack/unpack an RGB triple (0-255 each) into the single float `float_array`/`draw_array` expect for color-encoded data (`gfx`)
+
+### Random & Color Functions
+
+- **`rand()`** - Global, no import needed. Returns a float in `[0.0, 1.0)`, like Python's `random.random()` — **not** an integer, so `rand() % n` raises `RunTimeError` (`%` requires integer operands). Use [`random.integer(min, max)`](#system-modules) for a random integer in a range.
+- For RGB manipulation (fade, tint, brightness, HSV conversion, etc.), see the [Color Utilities Module](#color-utilities-module).
 
 ### Special Functions
 
@@ -74,7 +71,9 @@ The window object provides the main interface for graphics rendering and input h
 ### Window Creation
 
 ```lox
-var win = window(width, height);
+import gfx;
+
+var win = gfx.window(800, 600);
 win.init();
 ```
 
@@ -110,8 +109,13 @@ win.init();
 - **`draw_texture_flip(texture, x, y, color_vec4, flip_x)`** - Draw a texture, mirrored horizontally when `flip_x` is true
 - **`draw_texture_scaled(texture, x, y, color_vec4, flip_x, scale)`** - Like `draw_texture_flip`, but scales the drawn size by `scale` (dest size = frame size × `scale`); `x, y` anchor the top-left corner of the *scaled* sprite
 - **`draw_texture_rect(texture, x, y, src_x, src_y, src_w, src_h, color_vec4)`** - Draw part of a texture
+- **`draw_texture_pro(texture, src_x, src_y, src_w, src_h, dest_x, dest_y, dest_w, dest_h, origin_x, origin_y, rotation, color_vec4)`** - Full-control texture draw: arbitrary source/destination rectangles, rotation origin, and rotation angle
 - **`draw_render_texture(render_texture, x, y, color_vec4)`** - Draw a render texture
 - **`draw_render_texture_ex(render_texture, x, y, rotation, scale, color_vec4)`** - Draw render texture with transformation
+
+#### Off-screen Texture Mode
+- **`begin_texture_mode(render_texture)`** - Redirect subsequent drawing calls to a `render_texture` instead of the screen
+- **`end_texture_mode()`** - Stop redirecting; drawing calls go back to the window
 
 ### Blend Modes
 - **`begin_blend_mode(mode)`** - Begin custom blend mode (use win.BLEND_* constants)
@@ -126,9 +130,12 @@ win.init();
 
 #### Batch Type Constants
 - **`win.BATCH_CUBE`** - For cube batch creation
-- **`win.BATCH_TEXTURED_CUBE`** - For textured cube batch creation
 - **`win.BATCH_SPHERE`** - For sphere batch creation
-- **`win.BATCH_PLANE`** - For plane batch creation
+- **`win.BATCH_TRIANGLE3`** - For 3D triangle batch creation
+- **`win.BATCH_CIRCLE3`** - For 3D circle batch creation (see [Batch Object](#batch-object))
+
+#### Texture Wrap Mode Constants
+- **`win.WRAP_REPEAT`** / **`win.WRAP_CLAMP`** / **`win.WRAP_MIRROR_REPEAT`** / **`win.WRAP_MIRROR_CLAMP`** - For `texture.set_wrap_mode()`
 
 ### Input Methods
 - **`key_down(key_code)`** - Check if key is currently pressed (use win.KEY_* constants)
@@ -165,35 +172,27 @@ The batch object provides high-performance rendering for large numbers of simila
 ### Batch Creation
 
 ```lox
- 
-var cube_batch = batch(win.BATCH_CUBE);      // Create a batch for cubes
-var sphere_batch = batch(win.BATCH_SPHERE);  // Create a batch for spheres
+import gfx;
 
+var win = gfx.window(800, 600);
+win.init();
+
+var cube_batch = gfx.batch(win.BATCH_CUBE);      // Create a batch for cubes
+var sphere_batch = gfx.batch(win.BATCH_SPHERE);  // Create a batch for spheres
 ```
 
 **Supported batch types:**
-- `win.BATCH_CUBE`  - For rendering cubes
-- `win.BATCH_TEXTURED_CUBE` - For rendering textured cubes
-- `win.BATCH_SPHERE`   - For rendering spheres
-- `win.BATCH_TRIANGLE3` - for rendering triangles
- 
+- `win.BATCH_CUBE` - For rendering cubes
+- `win.BATCH_SPHERE` - For rendering spheres
+- `win.BATCH_TRIANGLE3` - For rendering 3D triangles (`add_triangle3`/`set_triangle3*` methods)
+- `win.BATCH_CIRCLE3` - For rendering flat 3D circles (`add_circle3`/`set_circle3*`/`set_circle_texture` methods)
 
 ### Adding Primitives
 
 ```lox
 // Add primitives to batch (returns index for later modification)
-var index = cube_batch.add(position, size, color);
-
- 
-// Examples:
 var idx1 = cube_batch.add(vec3(0, 0, 0), vec3(1, 1, 1), vec4(255, 0, 0, 255));
 var idx2 = sphere_batch.add(vec3(2, 0, 0), vec3(0.5, 0.5, 0.5), vec4(0, 255, 0, 255));
- 
-
-// Textured cube example:
-var textured_batch = batch(win.BATCH_TEXTURED_CUBE);
-var my_texture = texture(image("myimage.png"), 1, 1, 1);
-var idx4 = textured_batch.add_textured_cube(my_texture, vec3(0, 0, 0), vec3(1, 1, 1), vec4(255, 255, 255, 255));
 ```
 
 ### Updating Primitives
@@ -202,14 +201,14 @@ Update existing primitives by index:
 
 ```lox
 // Update position, size, or color of existing entries
-cube_batch.set_position(index, vec3(1, 2, 3));
-cube_batch.set_size(index, vec3(2, 2, 2));
-cube_batch.set_color(index, vec4(0, 0, 255, 255));
+cube_batch.set_position(idx1, vec3(1, 2, 3));
+cube_batch.set_size(idx1, vec3(2, 2, 2));
+cube_batch.set_color(idx1, vec4(0, 0, 255, 255));
 
 // Get current values
-var pos = cube_batch.get_position(index);
-var size = cube_batch.get_size(index);
-var color = cube_batch.get_color(index);
+var pos = cube_batch.get_position(idx1);
+var size = cube_batch.get_size(idx1);
+var color = cube_batch.get_color(idx1);
 ```
 
 ### Rendering
@@ -227,75 +226,66 @@ sphere_batch.draw();    // Renders all spheres in one call
 win.end_3d();
 ```
 
-#### Optimized Rendering with Culling
+#### Frustum-culled Rendering
 
-For large scenes, use culling methods to automatically skip primitives that are too far away or outside the camera's view:
+For large scenes, `draw_frustum_culled` automatically skips primitives outside the camera's field of view. It takes the camera's position and forward direction directly, rather than the `camera` object itself — the camera object has no getter for its current target/forward direction, so track it in Lox alongside `camera.set_target(...)`:
 
 ```lox
-// Distance-based culling - skips objects beyond max_distance
-cube_batch.draw_culled(camera, max_distance);
+var cam_pos = vec3(15, 15, 15);
+var cam_target = vec3(0, 0, 0);
+var cam_forward = math.normalize3(cam_target - cam_pos);
 
-// Frustum culling - skips objects outside camera's field of view
-cube_batch.draw_frustum_culled(camera);
-
-// Example usage:
 win.begin_3d(camera);
-cube_batch.draw_frustum_culled(camera);  // Only renders visible cubes
-sphere_batch.draw_culled(camera, 50.0);  // Only renders spheres within 50 units
+cube_batch.draw_frustum_culled(cam_pos, cam_forward, 100.0, 60.0);  // max_distance=100, fov=60 degrees
 win.end_3d();
 ```
 
-**Culling Method Parameters:**
-- **`draw_culled(camera, max_distance)`** - Culls objects beyond `max_distance` from camera position
-- **`draw_frustum_culled(camera)`** - Culls objects outside the camera's viewing frustum (field of view)
-
-**Performance Benefits:**
-- Distance culling: Skip distant objects to maintain frame rate
-- Frustum culling: Only render what's actually visible on screen
-- Automatic optimization: No need to manually track object visibility
+- **`draw_frustum_culled(camera_position, camera_forward, max_distance, fov_degrees)`** - Culls objects beyond `max_distance` or outside a `fov_degrees`-wide cone in front of `camera_forward`. `camera_forward` **must be a unit vector** — normalize it yourself (`math.normalize3(target - position)`) before passing it in, since the culling math compares it directly against a cosine value.
 
 ### Batch Management
 
 ```lox
 // Get information about the batch
 var count = cube_batch.count();           // Number of entries
-var capacity = cube_batch.capacity();     // Current capacity
-
-// Memory management
-cube_batch.reserve(5000);                 // Pre-allocate space for 5000 entries
-cube_batch.clear();                       // Remove all entries
+var capacity = cube_batch.reserve(5000);  // Pre-allocate space for 5000 entries
 
 // Validation
-var valid = cube_batch.is_valid_index(idx); // Check if index exists
+var valid = cube_batch.is_valid_index(idx1); // Check if index exists
+
+// Remove all entries
+cube_batch.clear();
 ```
 
-### Performance Benefits
+### Performance comparison
 
-**Without Batching (Traditional):**
+**Without batching** — one draw call per object, slow at scale:
 ```lox
-// 1000 individual draw calls - SLOW!
-for (var i = 0; i < 1000; i = i + 1) {
-    win.cube(positions[i], sizes[i], colors[i]);  // 1000 draw calls
+foreach (i in range(len(positions))) {
+    win.cube(positions[i].x, positions[i].y, positions[i].z, 1, 1, 1, colors[i]);
 }
 ```
 
-**With Batching (Optimized):**
+**With batching** — one draw call for the whole set:
 ```lox
-// 1 optimized draw call - FAST!
-var cube_batch = batch("cube");
-for (var i = 0; i < 1000; i = i + 1) {
-    cube_batch.add(positions[i], sizes[i], colors[i]);  // Add to batch
+var cube_batch = gfx.batch(win.BATCH_CUBE);
+foreach (i in range(len(positions))) {
+    cube_batch.add(positions[i], vec3(1, 1, 1), colors[i]);
 }
-cube_batch.draw();  // Single lox draw call for all 1000 cubes 
+cube_batch.draw();  // Single draw call for every cube added above
 ```
 
 ### Complete Example
 
 ```lox
+import gfx;
 import colour_utils;
+import math;
 
-// Create batch and add cubes
-var cube_batch = batch(win.BATCH_CUBE);
+var win = gfx.window(800, 600);
+win.init();
+var camera = gfx.camera(vec3(15, 15, 15), vec3(0, 0, 0), vec3(0, 1, 0));
+
+var cube_batch = gfx.batch(win.BATCH_CUBE);
 var indices = [];
 
 // Add 100 cubes in a grid
@@ -305,31 +295,25 @@ for (var x = 0; x < 10; x = x + 1) {
         var size = vec3(1, 1, 1);
         var hue = (x + z) * 20;
         var color = colour_utils.hsv_to_rgb(hue, 0.8, 1.0);
-        
-        var idx = cube_batch.add(pos, size, color);
-        indices.append(idx);
+        indices.append(cube_batch.add(pos, size, color));
     }
 }
 
 // Animation loop
 while (!win.should_close()) {
     var time = sys.clock();
-    
-    // Update cube positions with wave effect
-    for (var i = 0; i < len(indices); i = i + 1) {
-        var wave = sin(time + i * 0.1) * 2;
-        var oldPos = cube_batch.get_position(indices[i]);
-        var newPos = vec3(oldPos.x, wave, oldPos.z);
-        cube_batch.set_position(indices[i], newPos);
+
+    // Update cube positions with a wave effect
+    foreach (idx in indices) {
+        var wave = math.sin(time + idx * 0.1) * 2;
+        var old_pos = cube_batch.get_position(idx);
+        cube_batch.set_position(idx, vec3(old_pos.x, wave, old_pos.z));
     }
-    
-    // Render
+
     win.begin();
     win.clear(vec4(0, 0, 0, 255));
     win.begin_3d(camera);
-    
-    cube_batch.draw();  // Single call renders all 100 cubes!
-    
+    cube_batch.draw();  // Single call renders all 100 cubes
     win.end_3d();
     win.end();
 }
@@ -342,65 +326,56 @@ while (!win.should_close()) {
 - Combine multiple batch types in the same scene
 - Clear batches between frames only if needed (reusing is more efficient)
 - Use `draw_frustum_culled()` for large scenes to automatically skip off-screen objects
-- Use `draw_culled()` with distance limits to maintain smooth frame rates
 
-### Large-Scale Culling Example
+### Large-Scale Example
 
-For scenes with thousands of objects, use culling to maintain performance:
+For scenes with thousands of objects, frustum culling keeps frame time down even when most of the scene is off-screen:
 
 ```lox
+import gfx;
 import colour_utils;
+import random;
+import math;
 
 var CITY_SIZE = 50;  // 50x50 = 2500 buildings
-var camera = camera(vec3(0, 20, 0), vec3(0, 0, 0), vec3(0, 1, 0));
+var win = gfx.window(800, 600);
+win.init();
+var camera = gfx.camera(vec3(0, 20, 0), vec3(0, 0, 0), vec3(0, 1, 0));
 
-// Create batch and generate a city
-var cube_batch = batch(win.BATCH_CUBE);
+var cube_batch = gfx.batch(win.BATCH_CUBE);
 cube_batch.reserve(CITY_SIZE * CITY_SIZE);  // Pre-allocate for performance
 
 for (var x = 0; x < CITY_SIZE; x = x + 1) {
     for (var z = 0; z < CITY_SIZE; z = z + 1) {
-        var height = rand() % 15 + 2;  // Random building height
+        var height = random.integer(2, 16);  // Random building height
         var pos = vec3(x * 4 - CITY_SIZE * 2, height / 2, z * 4 - CITY_SIZE * 2);
         var size = vec3(1.5, height, 1.5);
-        var color = colour_utils.hsv_to_rgb(rand() % 360, 0.7, 0.9);
-        
+        var color = colour_utils.hsv_to_rgb(random.integer(0, 359), 0.7, 0.9);
         cube_batch.add(pos, size, color);
     }
 }
 
-print("Generated " + cube_batch.count() + " buildings");
-
 // Animation loop with automatic culling
+var cam_target = vec3(0, 10, 0);
 while (!win.should_close()) {
     var time = sys.clock();
-    
-    // Fly camera through the city
+
+    // Fly the camera through the city
     var radius = CITY_SIZE * 1.5;
-    var cam_x = cos(time * 0.3) * radius;
-    var cam_z = sin(time * 0.3) * radius;
-    var cam_y = 25 + sin(time * 0.5) * 10;
-    
-    camera.position = vec3(cam_x, cam_y, cam_z);
-    camera.target = vec3(0, 10, 0);
-    
-    // Render with automatic frustum culling
+    var cam_pos = vec3(math.cos(time * 0.3) * radius, 25 + math.sin(time * 0.5) * 10, math.sin(time * 0.3) * radius);
+    camera.set_position(cam_pos);
+    camera.set_target(cam_target);
+
     win.begin();
     win.clear(vec4(0.1, 0.1, 0.2, 1.0));
     win.begin_3d(camera);
-    
-    // Only renders buildings visible in camera's field of view
-    cube_batch.draw_frustum_culled(camera);
-    
+    // draw_frustum_culled takes the camera's position/forward directly, not
+    // the camera object -- see the note in the Batch Object section above.
+    cube_batch.draw_frustum_culled(cam_pos, math.normalize3(cam_target - cam_pos), radius * 2.0, 60.0);
     win.end_3d();
     win.end();
 }
 ```
-
-**Culling Results:**
-- **2,500 buildings:** Typically only 200-400 rendered (80%+ culling efficiency)
-- **Performance:** Maintains 60+ FPS even with complex scenes
-- **Automatic:** No manual distance checking or visibility calculations needed
 
 ---
 
@@ -411,19 +386,23 @@ Textures are used for storing and displaying 2D image data.
 ### Texture Creation
 
 ```lox
-var img = image("filename.png");
-var tex = texture(img, frames, start_frame, end_frame);
+import gfx;
+
+var img = gfx.image("filename.png");
+var tex = gfx.texture(img, frames, start_frame, end_frame);
 ```
 
-- **`image(filename)`** - Load an image from file
-- **`texture(image, frames, start_frame, end_frame)`** - Create a texture from an image with animation support
+- **`gfx.image(filename)`** - Load an image from file
+- **`gfx.texture(image, frames, start_frame, end_frame)`** - Create a texture from an image with animation support
 
 ### Texture Methods
 
 - **`width()`** - Returns texture width in pixels
 - **`height()`** - Returns texture height in pixels
 - **`frame_width()`** - Returns frame width (for animated textures)
-- **`animate(frame_time)`** - Set automatic frame animation ( ticks per frame )
+- **`animate(frame_time)`** - Set automatic frame animation (ticks per frame)
+- **`set_wrap_mode(mode)`** - Set the texture's wrap mode, one of `win.WRAP_REPEAT`, `win.WRAP_CLAMP`, `win.WRAP_MIRROR_REPEAT`, `win.WRAP_MIRROR_CLAMP`
+- **`unload()`** - Free the texture's GPU resources
 
 ---
 
@@ -434,22 +413,31 @@ RenderTextures allow rendering to an off-screen buffer that can be used as a tex
 ### RenderTexture Creation
 
 ```lox
-var rt = render_texture(width, height);
+import gfx;
+
+var rt = gfx.render_texture(width, height);
 ```
 
 ### RenderTexture Methods
 
 - **`width()`** - Returns render texture width
 - **`height()`** - Returns render texture height
-- **`clear(color_vec4)`** - Clear the render texture with specified color
+- **`get_texture()`** - Returns the underlying texture, for passing to `draw_texture`/`textured_cube`/etc.
+- **`unload()`** - Free the render texture's GPU resources
 
-#### Drawing Methods (same as window but to render texture)
-- **`line(x1, y1, x2, y2, color_vec4)`** - Draw line to render texture
-- **`line_ex(x1, y1, x2, y2, thickness, color_vec4)`** - Draw thick line to render texture
-- **`rectangle(x, y, width, height, color_vec4)`** - Draw rectangle to render texture
-- **`circle_fill(x, y, radius, color_vec4)`** - Draw filled circle to render texture
-- **`circle(x, y, radius, color_vec4)`** - Draw circle outline to render texture
-- **`pixel(x, y, color_vec4)`** - Draw pixel to render texture
+#### Drawing methods (same as window, but targeting the render texture)
+- **`line(x1, y1, x2, y2, color_vec4)`**
+- **`line_ex(x1, y1, x2, y2, thickness, color_vec4)`**
+- **`rectangle(x, y, width, height, color_vec4)`**
+- **`circle_fill(x, y, radius, color_vec4)`**
+- **`circle(x, y, radius, color_vec4)`**
+- **`triangle(x1, y1, x2, y2, x3, y3, color_vec4)`**
+- **`pixel(x, y, color_vec4)`**
+- **`text(text, x, y, size, color_vec4)`**
+- **`draw_texture(texture, x, y, color_vec4)`**
+- **`draw_texture_pro(texture, src_x, src_y, src_w, src_h, dest_x, dest_y, dest_w, dest_h, origin_x, origin_y, rotation, color_vec4)`**
+- **`draw_array_fast(float_array)`** - Faster variant of `window.draw_array` for use inside `begin_texture_mode`/`end_texture_mode`
+- **`clear(color_vec4)`** - Clear the render texture with specified color
 
 ---
 
@@ -460,13 +448,15 @@ Cameras define the viewpoint for 3D rendering.
 ### Camera Creation
 
 ```lox
-var cam = camera(position_vec3, target_vec3, up_vec3);
+import gfx;
+
+var cam = gfx.camera(position_vec3, target_vec3, up_vec3);
 ```
 
 ### Camera Methods
 
 - **`set_position(vec3_position)`** - Set camera position using a vec3
-- **`get_position()`** - get position vec3 
+- **`get_position()`** - Get position vec3
 - **`set_target(vec3_target)`** - Set camera target (what it's looking at) using a vec3
 - **`set_fovy(field_of_view)`** - Set field of view in degrees
 - **`update()`** - Update camera (enables free-look controls)
@@ -480,7 +470,9 @@ Shaders allow custom GPU programs for advanced rendering effects.
 ### Shader Creation
 
 ```lox
-var shader = shader();
+import gfx;
+
+var shdr = gfx.shader();
 ```
 
 ### Shader Methods
@@ -503,7 +495,9 @@ Images represent raw pixel data that can be loaded and manipulated.
 ### Image Creation
 
 ```lox
-var img = image("filename.png");
+import gfx;
+
+var img = gfx.image("filename.png");
 ```
 
 ### Image Methods
@@ -520,7 +514,9 @@ FloatArrays store 2D arrays of floating-point values, useful for mathematical co
 ### FloatArray Creation
 
 ```lox
-var arr = float_array(width, height);
+import gfx;
+
+var arr = gfx.float_array(width, height);
 ```
 
 ### FloatArray Methods
@@ -543,7 +539,7 @@ many identical, roughly-equal-mass moving bodies (particle bursts, ball
 pits, debris) where the Lox-level cost of a class + per-object `update()`
 call becomes the hot path. See `lox_examples/3d_balls_physics_shaders.lox`
 for a full example (spawning, rendering, and explosion forces on top of a
-`physics_world`), and `docs/PLAN_physics_world.md` for the design rationale.
+`physics_world`), and `docs/plans/PLAN_physics_world.md` for the design rationale.
 
 Fixed level geometry (floors, shelves, ramps) can be added as static boxes
 with `add_static_box` — optionally tilted, never moving — for dynamic
@@ -558,7 +554,9 @@ lives in the native type.
 ### PhysicsWorld Creation
 
 ```lox
-var world = physics_world(min_vec3, max_vec3, cell_size, gravity_vec3);
+import physics;
+
+var world = physics.physics_world(min_vec3, max_vec3, cell_size, gravity_vec3);
 ```
 
 - `min_vec3` / `max_vec3` - Opposite corners of the simulation's boundary box. Bodies bounce off these bounds (each body's own radius is accounted for automatically).
@@ -570,7 +568,7 @@ var world = physics_world(min_vec3, max_vec3, cell_size, gravity_vec3);
 - **`add_material(restitution, friction, damping)`** - Register a material and return its integer id. `restitution` controls bounciness (both boundary bounces and body-body collisions, combined via `sqrt(a * b)` when two different materials collide); `damping` is a per-step velocity multiplier (air resistance); `friction` is accepted but not yet applied to collision response.
 - **`add(pos_vec3, vel_vec3, radius, material_id)`** - Add a dynamic sphere body and return its integer id (a stable handle used by every other method).
 - **`add_static_box(pos_vec3, half_extents_vec3, axis_vec3, angle, material_id)`** - Add a fixed box that never moves, optionally tilted `angle` degrees around `axis` (`angle = 0` for axis-aligned). No velocity argument — fixed-ness is unconditional. For floors, shelves, ramps.
-- **`get_box_transform(id)`** - For a static box body, returns `(position, half_extents, axis, angle)` as a list. Feed straight into `win.cube_rotated()` so drawing always matches exactly what physics collided against.
+- **`get_box_transform(id)`** - For a static box body, returns `(position, half_extents, axis, angle)` as a tuple. Feed straight into `win.cube_rotated()` so drawing always matches exactly what physics collided against.
 - **`remove(id)`** - Remove a body from the simulation. Ids are tombstoned, not reused.
 - **`get_position(id)`** - Get a body's current position as a vec3.
 - **`add_impulse(id, impulse_vec3)`** - Add an instantaneous velocity change (`vel += impulse_vec3`) to a body. This is the primitive for one-off forces such as explosions — compute the direction/falloff in Lox, then call this once per affected body.
@@ -588,9 +586,10 @@ static bodies never collide with each other.
 ### PhysicsWorld Example
 
 ```lox
-var world = physics_world(vec3(-10, 0, -10), vec3(10, 100, 10), 2.0, vec3(0, -0.01, 0));
-var mat = world.add_material(0.5, 0.3, 0.99);
+import physics;
 
+var world = physics.physics_world(vec3(-10, 0, -10), vec3(10, 100, 10), 2.0, vec3(0, -0.01, 0));
+var mat = world.add_material(0.5, 0.3, 0.99);
 var id = world.add(vec3(0, 5, 0), vec3(0.1, 0, 0), 0.5, mat);
 
 while (true) {
@@ -598,7 +597,8 @@ while (true) {
     print world.get_position(id);
 
     foreach (pair in world.collisions()) {
-        print "collision:", pair[0], pair[1], pair[2], pair[3];
+        a_id, b_id, normal, impulse = pair;
+        print "collision: " & str(a_id) & " " & str(b_id) & " " & str(normal) & " " & str(impulse);
     }
 }
 ```
@@ -607,7 +607,7 @@ while (true) {
 
 ## Vector Objects
 
-Vector objects represent mathematical vectors for 2D, 3D, and 4D operations.
+Vector objects represent mathematical vectors for 2D, 3D, and 4D operations — `vec2`/`vec3`/`vec4` are always global, no import needed.
 
 ### Vector Creation
 
@@ -619,15 +619,15 @@ var v4 = vec4(x, y, z, w);
 
 ### Vector properties
 ```lox
-v2.x = 1 
-v2.y = 2
+v2.x = 1;
+v2.y = 2;
 ```
 
 ### Vector addition 
 ```lox
-v1=vec3(1,3,4)
-v2=vec3(2,4,5)
-v3=v2 ++ v1
+var v1 = vec3(1, 3, 4);
+var v2 = vec3(2, 4, 5);
+var v3 = v2 ++ v1;
 ```
 
 ### In-place addition
@@ -635,80 +635,63 @@ v3=v2 ++ v1
 Each vector type also has an `.add(other)` method that mutates the receiver's components directly instead of allocating a new vector — useful in hot loops (e.g. updating an entity's position every frame).
 
 ```lox
-pos = vec2(0, 0)
-dp = vec2(1, 1)
-pos.add(dp)        // pos becomes vec2(1, 1); dp is unchanged
+var pos = vec2(0, 0);
+var dp = vec2(1, 1);
+pos.add(dp);        // pos becomes vec2(1, 1); dp is unchanged
 ```
 
 **Caution:** unlike `++` (which always allocates a fresh vector), `.add()` mutates the existing object, so any other reference to that same vector — e.g. a value stored via `this.pos = pos` in a constructor, when the caller kept its own reference to the argument — is mutated too. Prefer `.add()` only where the receiver is known not to be aliased elsewhere (a field set from an unshared literal, for example); otherwise use `++`.
 
 ---
 
-
-
 ## System Modules
 
 ### sys Module
 
-The sys module provides system-level functionality (accessed via sys.function_name).
-
-`import sys` 
+The sys module provides system-level functionality (accessed via `sys.function_name`). No import needed for `sys` — it's always available.
 
 - **`sys.args()`** - Returns command line arguments
 - **`sys.clock()`** - Returns current time in seconds
 - **`sys.sleep(seconds)`** - Pauses execution for the specified number of seconds
 
-## File Operations
+File I/O is not part of `sys` — see [`os`](OS_MODULE.md) for `open`/`close`/`readln`/`write`/`read_all` and the rest of the filesystem API.
 
-### File I/O Functions
+### random Module
 
-- **`sys.open(filename, mode)`** - Open a file for reading/writing
-  - Modes: "r" (read), "w" (write), "a" (append)
-- **`sys.close(file)`** - Close an open file
-- **`sys.readln(file)`** - Read a line from file
-- **`sys.write(file, text)`** - Write text to file
+`import random` — extends the global [`rand()`](#random--color-functions) with common patterns:
 
-### Example File Usage
-
-```lox
-var file = sys.open("data.txt", "w");
-sys.write(file, "Hello, World!\n");
-sys.close(file);
-
-file = sys.open("data.txt", "r");
-var line = sys.readln(file);
-print line;
-sys.close(file);
-```
-
----
+- **`random.integer(min, max)`** - Random integer in `[min, max]` (inclusive both ends)
+- **`random.float(min, max)`** - Random float in `[min, max)`
+- **`random.choice(list)`** - Randomly select one element from a list
 
 ### inspect Module
 
-The inspect module provides debugging and introspection capabilities (accessed via inspect.function_name).
+The inspect module provides debugging and introspection capabilities (accessed via `inspect.function_name`).
 
+```lox
+import inspect;
+
+inspect.dump_frame();
 ```
-import inspect
+Prints the current frame's name, stack, and locals/globals to stdout.
 
-inspect.dump_frame() 
+```lox
+var d = inspect.get_frame();
 ```
-- print current frame name, stack/locals, globals 
-
-`d=inspect.get_frame()` returns frame data dictionary with keys:
-`function`   - function name 
-`line`       - current line
-`file`       - current script 
-`args`       - list of arguments
-`locals`     - dictionary of locals
-`globals`    - dictionary of globals 
-`prev_frame` - calling frame dict (or nil) 
-
+Returns a dict describing the current frame, with keys:
+- `function` - function name
+- `line` - current line
+- `file` - current script
+- `args` - list of arguments
+- `locals` - dict of locals
+- `globals` - dict of globals
+- `prev_frame` - calling frame's dict (or `nil`)
 
 ---
 
 ## Color Utilities Module
 
-The `colour_utils` module provides native high-performance color manipulation functions (accessed via colour_utils.function_name).
+The `colour_utils` module provides native high-performance color manipulation functions (accessed via `colour_utils.function_name`).
 
 ### Color Utility Functions
 
@@ -746,6 +729,10 @@ The `colour_utils` module provides native high-performance color manipulation fu
 
 ```lox
 import colour_utils;
+import gfx;
+
+var win = gfx.window(800, 600);
+win.init();
 
 // Apply effects directly with RGB values - all functions return vec4s
 var faded_red = colour_utils.fade(255, 0, 0, 0.5);
@@ -770,20 +757,19 @@ win.text("Colorful!", 10, 10, 20, orange);
 ### Basic Graphics Program
 
 ```lox
-var win = window(800, 600);
+import gfx;
+
+var win = gfx.window(800, 600);
 win.init();
 win.set_target_fps(60);
 
 while (!win.should_close()) {
     win.begin();
     win.clear(vec4(50, 50, 50, 255));
-    
-    // Draw a filled circle
+
     win.circle_fill(400, 300, 50, vec4(255, 0, 0, 255));
-    
-    // Draw text
     win.text("Hello, GLox!", 350, 200, 20, vec4(255, 255, 255, 255));
-    
+
     win.end();
 }
 
@@ -793,23 +779,25 @@ win.close();
 ### 3D Rendering Example
 
 ```lox
-var win = window(800, 600);
-var cam = camera(vec3(5, 5, 5), vec3(0, 0, 0), vec3(0, 1, 0));
+import gfx;
+
+var win = gfx.window(800, 600);
+var cam = gfx.camera(vec3(5, 5, 5), vec3(0, 0, 0), vec3(0, 1, 0));
 
 win.init();
 cam.set_fovy(45);
 
 while (!win.should_close()) {
     cam.update();
-    
+
     win.begin();
     win.clear(vec4(100, 150, 200, 255));
-    
+
     win.begin_3d(cam);
     win.cube(0, 0, 0, 2, 2, 2, vec4(255, 0, 0, 255));
     win.grid(10, 1);
     win.end_3d();
-    
+
     win.end();
 }
 
@@ -819,13 +807,15 @@ win.close();
 ### Mandelbrot Set Visualization
 
 ```lox
+import gfx;
+
 var width = 800;
 var height = 600;
-var win = window(width, height);
+var win = gfx.window(width, height);
 
 win.init();
 
-var mandel_data = lox_mandel_array(width, height, 1.0, -0.5, 0.0, 100);
+var mandel_data = gfx.lox_mandel_array(width, height, 1.0, -0.5, 0.0, 100);
 
 while (!win.should_close()) {
     win.begin();
@@ -835,8 +825,3 @@ while (!win.should_close()) {
 
 win.close();
 ```
-
- 
- 
-
- 

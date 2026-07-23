@@ -31,41 +31,46 @@ The GLox interpreter now includes comprehensive shader support using raylib-go b
 
 ### Basic Shader Loading from Files
 ```lox
-// Load shader from files
-shader_obj = shader("vertex.vs", "fragment.fs")
+import gfx;
+
+// shader(vs_path, fs_path) loads and compiles from two GLSL source files
+var shader_obj = gfx.shader("vertex.vs", "fragment.fs");
 if (shader_obj.is_valid()) {
-    print("Shader loaded successfully!")
+    print "Shader loaded successfully!";
 }
 ```
 
 ### Loading Shader from Memory
 ```lox
-vertex_code = "#version 330\n..."
-fragment_code = "#version 330\n..."
+import gfx;
 
-shader_obj = shader()
-shader_obj.load_from_memory(vertex_code, fragment_code)
+var vertex_code = "#version 330\n...";
+var fragment_code = "#version 330\n...";
+
+// shader() with no arguments creates an empty shader for load_from_memory
+var shader_obj = gfx.shader();
+shader_obj.load_from_memory(vertex_code, fragment_code);
 ```
 
 ### Setting Uniforms
 ```lox
 // Get uniform locations
-time_loc = shader_obj.get_location("time")
-color_loc = shader_obj.get_location("color")
-position_loc = shader_obj.get_location("position")
+var time_loc = shader_obj.get_location("time");
+var color_loc = shader_obj.get_location("color");
+var position_loc = shader_obj.get_location("position");
 
 // Set uniform values
-shader_obj.set_value_float(time_loc, current_time)
-shader_obj.set_value_vec3(color_loc, vec3(1.0, 0.5, 0.2))
-shader_obj.set_value_vec4(position_loc, vec4(x, y, z, w))
+shader_obj.set_value_float(time_loc, current_time);
+shader_obj.set_value_vec3(color_loc, vec3(1.0, 0.5, 0.2));
+shader_obj.set_value_vec4(position_loc, vec4(x, y, z, w));
 ```
 
 ### Using Shaders in Rendering
 ```lox
 // Apply shader to rendering
-win.begin_shader_mode(shader_obj)
-win.sphere(position, radius, color)
-win.end_shader_mode()
+win.begin_shader_mode(shader_obj);
+win.sphere(position, radius, color);
+win.end_shader_mode();
 ```
 
 ## Demo Applications
